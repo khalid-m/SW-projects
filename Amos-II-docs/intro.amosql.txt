@@ -1,0 +1,429 @@
+/*-*-sql-*-********************************************************************
+*                            Tutorial on                                      *
+*                              Amos II                                        *
+*                        Tore Risch, 2015-01-09                               *
+******************************************************************************/
+
+/*******************************************************************
+ * 1. Start the Amos II console top loop by running the executable *
+ *    'amos2' in the 'bin' folder of the downloaded system.        *
+ *                                                                 *
+ * 2. Cut-and-paste the commands below to the Amos II top loop and *
+ *    observe the effects                                          *
+ ******************************************************************/
+
+                      /******************************************
+                       * Those of you who use emacs:            *
+                       * The file lsp/init.el defines the F2    *
+                       * button to move forward in this script  *
+                       * inside an emacs shell                  *
+                      /*****************************************/
+
+/* Documentation of function 'sqrt()': */
+
+doc("sqrt");
+
+/* Documentation of all functions whose names contain the string 'nearest': */
+
+doc(apropos("nearest"));
+
+/* Source code of all functions whose names contain the string 'nearest': */
+
+sourcecode(apropos("nearest"));
+
+/* What folder is my current working direcory? */
+
+pwd();
+
+/* What is the Java CLASSPATH OS environment variable? */
+
+getenv("CLASSPATH");
+
+/* Call built-in arithmetic functions: */
+
+1+2+3;
+
+sqrt(1+2+3);
+
+/* Vector arithmetics */
+
+{1,2,3}+{4,5,6};
+
+{1,2,3}*{4,5,6};
+
+5*{1,2,3};
+
+{1,2,3}/4;
+
+{1,2,3}.*{4,5,6};
+
+{1,2,3}./{4,5,6};
+
+/* String functions: */
+
+"abra" + "kadabra";
+
+upper("abrakadabra");
+
+substring("abrakadabra",2,4);
+
+/* Define your own type 'Person' with a property 'name' */
+
+create type Department properties
+  (name Charstring);
+
+/* Create three department objects. Set property 'name':
+   Bind interface variables :d1, :d2, and :d3 to the created departments: */
+
+create Department (name) instances :d1 ("Toys"), :d2 ("Food"), :d3 ("Tools");
+
+/* Get the names of all departments: */
+
+select name(d) from Department d;
+
+/* What is the name of the department in variable :d1? */
+
+name(:d1);
+
+/* Get the objects representing the departments: */
+
+select d from Department d;
+
+/* Create type 'Person' with property functions 'name', 'dept', and 'income' */
+
+create type Person properties
+  (name Charstring,
+   dept Department,
+   income Number);
+
+/* Create some persons and assign them to departments: */
+
+create Person(name, income, dept) instances
+  :p1 ("Maja",    100, :d1),
+  :p2 ("Bill",    200, :d2),
+  :p3 ("Bull",    300, :d3),
+  :p4 ("Pelle",   400, :d1),
+  :p5 ("Måns",    500, :d2),
+  :p6 ("Olle",    500, :d1),
+  :p7 ("Birgitta",600, :d3),
+  :p8 ("Murre",   700, :d1);
+
+/* Get the income of the person in variable :p3: */
+
+income(:p3);
+
+/* Get the names and incomes of all persons in the database: */
+
+select name(p), income(p) from Person p;
+
+/* Get the names of persons working in department named 'Toys': */
+
+select name(p)
+  from Person p
+ where name(dept(p)) = "Toys";
+
+/* Get the incomes of the persons ordered decreasingly by income: */
+
+select name(p), income(p)
+  from Person p 
+ order by income(p) desc;
+
+/* Get the two highest paid persons: */
+
+select name(p), income(p)
+  from Person p 
+ order by income(p) desc
+ limit 2;
+
+/* get the incomes of all persons earning more that 400 ordered by 
+   their names: */
+
+select income(p)
+  from Person p
+ where income(p) > 400
+ order by name(p);
+
+/* How many persons are there in the database? */
+
+count(select p from Person p);
+
+/* What is the total sum of the incomes of all persons? */
+
+sum(select income(p) from Person p);
+
+/* What is average of the incomes of all persons? */
+
+avg(select income(p) from Person p);
+
+/* What is the standard deviation of the incomes of all persons? */
+
+stdev(select income(p) from Person p);
+
+/* Create type 'Account' with properties 'id', 'owner', and 'balance': */
+
+create type Account properties
+  (id Number,
+   owner Person,
+   balance Number);
+
+/* Create some accounts and assign them to persons: */
+
+create account(id, owner, balance) instances
+  (1,:p1, 150),
+  (2,:p1, 200),
+  (3,:p2, 400),
+  (4,:p2,  85),
+  (5,:p2,  70),
+  (6,:p3,  10),
+  (7,:p5, 500),
+  (8,:p6,  75),
+  (9,:p6,  95),
+  (10,:p7,105),
+  (11,:p8, 90);
+
+/* Get the balances of the accounts of the person named 'Bill': */
+
+select balance(a)
+  from Account a
+ where name(owner(a)) = "Bill";
+
+/* Get the names and account balances of all persons in the 'Toys' 
+   department: */ 
+
+select name(p), balance(a)
+  from Person p, Account a
+ where name(dept(p)) = "Toys"
+   and owner(a) = p;
+
+/* Count the number of accounts per person in 'Toys' department: */
+
+select name(p), count(a)
+  from Person p, Account a
+ where name(dept(p)) = "Toys"
+   and owner(a) = p
+ group by name(p); 
+
+/* Compute total balance of accounts per person in 'Toys' department: */
+
+select name(p), sum(balance(a))
+  from Person p, Account a
+ where name(dept(p)) = "Toys"
+   and owner(a) = p
+ group by name(p); 
+
+/* Get the total balances for all persons in the database: */
+
+select name(p), sum(balance(a))
+  from Person p, Account a
+ where owner(a) = p
+ group by name(p); 
+
+/* Get the average incomes and standard deviations per department without
+   showing the departments' names: */
+
+select avg(income(p)), stdev(income(p))
+  from Department d, Person p
+ where dept(p)=d
+ group by d;
+
+/* Get decreasingly ordered total balances of each person in the database: */
+
+select name(p), sum(balance(a))
+  from Person p, Account a
+ where owner(a) = p
+ group by name(p)
+ order by sum(balance(a)) desc; 
+
+/* What are the lowest incomes in each department? */
+
+select name(p), min(income(p))
+  from Department d, Person p
+ where dept(p) = d
+ group by min(income(p)), name(p);
+
+
+/* Get the two departments with higest average incomes with standard 
+   deviations: */
+
+select name(d), avg(income(p)), stdev(income(p))
+  from Department d, Person p
+ where dept(p) = d
+ group by name(d)
+ order by avg(income(p)) desc
+ limit 2;
+
+/* For each person get the name, department name, income, and total balance,
+   ordered by total balance decreasingly */
+
+select name(p), name(d), income(p), sum(balance(a))
+  from Department d, Person p, Account a
+ where owner(a) = p
+   and dept(p) = d
+ group by name(p), name(d), income(p) 
+ order by sum(balance(a)) desc;
+
+/* User defined derived functions: */
+
+/* The following function finds the incomes higher than a given
+   threshold. It is a function returning a bag (set with duplicates)
+   of numbers */
+
+create function higherIncomes (Number thres) -> Bag of Number
+  as select income(p) 
+       from Person p
+      where income(p)>thres;
+
+/* Call function highIncomes(): */
+
+higherIncomes(500);
+
+/* Function highIncomesPers() returns both names and incomes. It is a
+   function returning a bag of tuples (pairs): */
+
+create function higherIncomePers (Number thres) 
+                                -> Bag of (Charstring nm, Number inc) 
+  as select name(p), inc 
+       from Number inc, Person p
+      where income(p)=inc
+        and inc > thres;
+
+/* Call tuple valued function: Get persons earning more than 100: */
+
+higherIncomePers(500);
+
+/* The following function returns the k highest paid persons: */
+
+create function highestIncomePers(Number k)
+                                -> Bag of (Charstring nm, Number inc)
+  as select name(p), income(p)
+       from Person p
+      order by income(p) desc
+      limit k;
+
+/* Get the tho highest earners: */
+
+highestIncomePers(2);
+
+/****************** collections ******************/
+
+/* Bags */
+
+/* The function iota() returns a bag of integers in an interval: */
+
+iota(2,6);
+
+/* You can assign a variable to a bag valued function: */
+
+set :b = iota(1,10);
+
+:b;
+
+/* Use in() to extract values from bag: */
+
+in(:b);
+
+/* Alternatively 'in' operator: */
+
+select x from Number x where x in :b;
+
+set :b = iota(1,100000);
+
+/* Aggregate functions over bags: */
+
+count(:b);
+
+sum(:b);
+
+avg(:b);
+
+stdev(:b);
+
+maxagg(:b);
+
+minagg(:b);
+
+sum(select n
+      from Number n
+     where n in :b
+     limit 20);
+
+/* Smaller bag: */
+
+set :b2 = iota(1,30);
+
+/* Aggregation over bags: */
+
+sum(select x from Number x where x in :b2 and x>7);
+
+set :b3 = (select x from Number x where x in :b2 and x > 7);
+
+sum(:b3);
+
+avg(:b3);
+
+/* Vectors (ordered collections) */
+
+/* Set interface variable :v0 to value of query forming a VECTOR 
+   {1,2,3,4,5,6,7,8,9,10} by using vselect instead of select: */
+
+set :v0 = vselect i from Number i where i in iota(1,10) order by i;
+
+:v0;
+
+/* Set :v to the square root of elements in :v */
+
+set :v = vselect sqrt(i) from Number i where i in :v0 order by i;
+
+:v;
+
+/* Basic vector aggregation: */
+
+dim(:v);
+
+vsum(:v);
+
+vavg(:v);
+
+vstdev(:v);
+
+/* The 'in' operator extracts values from vectors: */
+
+select n 
+  from Number n 
+ where n in {1,2,3}
+   and n >= 2; 
+
+/* Represent coordinates as 2D vectors: */
+
+set :c1 = {1,2};
+set :c2 = {3,4};
+
+/* Euclidean coordinate distance: */
+
+euclid(:c1, :c2);
+
+/* Vectors can hold objects of any datatype: */
+
+{1,3,{3,4}};
+
+{1,"a",{"b","c"}};
+
+/* Save database in file mydb.dmp: */
+
+save "mydb.dmp";
+
+/* After saving the interface variables are lost: */
+
+:b;
+
+/* Quit Amos II: */
+
+quit;
+
+/* Run Amos II again with the save database: */
+
+amos2 mydb.dmp
+
+/* Inspect the database again: */
+
+higherIncomePers(100);

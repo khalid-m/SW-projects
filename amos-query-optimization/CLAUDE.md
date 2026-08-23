@@ -31,6 +31,25 @@ any) prompted the exploration.
      like a multi-value hash index, but (on the AMOS II release tested) does **not**
      support `>`/`<` range predicates out of the box.
 
+## Reference material
+
+Official AMOS II documentation is kept locally as a sibling directory,
+[`../Amos-II-docs/`](../Amos-II-docs/) (source:
+https://www.it.uu.se/research/group/udbl/amos/), containing:
+
+- `intro.amosql.txt` — introductory tutorial (AmosQL script).
+- `Amos II Release 18 User's Manual.html` — the full user's manual.
+- `tut.pdf` — tutorial on object-oriented data modeling with Amos II.
+- `Amos II cheat sheet.html` — quick syntax/function reference.
+- `FuncMedPaper.pdf` — "Functional Data Integration in a Distributed Mediator
+  System," the paper describing the underlying system architecture.
+
+Consult these before assuming AMOS II syntax or behavior — but per the working
+convention below, still verify against a real `Javaamos`/`amos2` run before writing
+anything into this repo's tutorials as fact, since documented behavior and a
+specific release's actual behavior have already diverged once (`"btree"` vs.
+`"mbtree"` as a valid index-type name).
+
 ## Working conventions for this repo
 
 - **Every claim about AMOS II behavior in the tutorial must be backed by an actual

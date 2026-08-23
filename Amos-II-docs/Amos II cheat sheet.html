@@ -1,0 +1,474 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <title>Amos II cheat sheet</title>
+  </head>
+  <body>
+    <div align="center"><big><big>Cheat sheet for Amos II<br>
+          <small>Tore Risch<br>
+            November 1, 2013</small><br>
+        </big></big></div>
+    <b><br>
+      <big>Running, saving, and exiting:</big></b><br>
+    <table border="1" height="140" width="100%" cellpadding="2"
+      cellspacing="2">
+      <tbody>
+        <tr>
+          <td valign="top"><small><b><big>What?</big></b></small><br>
+          </td>
+          <td valign="top"><b>Documented where?</b><br>
+          </td>
+          <td valign="top"><b>Examples</b><br>
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">Starting Amos II top loop from console with
+            empty database<br>
+          </td>
+          <td valign="top"><a
+          href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#running">
+          Getting started</a>
+          </td>
+          <td valign="top">amos2
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">Saving the database on disk<br>
+          </td>
+          <td valign="top"><a
+          href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#saving">
+          Saving and quitting</a><br>
+          </td>
+          <td valign="top">save 'mydb.dmp';<br>
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">Leaving Amos II top loop</td>
+          <td valign="top"><a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#saving">Saving
+
+
+
+
+              and quitting</a><br>
+          </td>
+          <td valign="top">quit;<br>
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">Starting Amos II with saved database<br>
+          </td>
+          <td valign="top"><a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#running">Getting
+
+
+              started</a><br>
+          </td>
+          <td valign="top">amos2 mydb.dmp<br>
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">Starting Amos II from console with Java<br>
+          </td>
+          <td valign="top"><a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#javaamos">Java
+
+
+
+
+              interface</a><br>
+          </td>
+          <td valign="top">javaamos<br>
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">Reading AmosQL statements from a file<br>
+          </td>
+          <td valign="top"><a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#redirect">Redirect
+
+              statement</a><br>
+          </td>
+          <td valign="top">&lt; 'myscript.amosql';<br>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <br>
+    <big><b>Defining types, functions, properties, and relationships:</b></big><br>
+    <table border="1" height="422" width="100%" cellpadding="2"
+      cellspacing="2">
+      <tbody>
+        <tr>
+          <td valign="top"><b>What?</b><br>
+          </td>
+          <td valign="top"><b>Documented where?</b><br>
+          </td>
+          <td valign="top"><b>Examples</b><br>
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">Defining types</td>
+          <td valign="top"><a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#types">Types</a>
+          </td>
+          <td valign="top">
+            create type Person;<br>
+            create type Department;<br>
+            create type Course;
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">Defining subtype<br>
+          </td>
+          <td valign="top"><a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#subtype">Types</a><br>
+          </td>
+          <td valign="top">create type Student <font color="#ff0000">under</font>
+            Person;
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">Defining atomic <font color="#ff0000">property</font><br>
+          </td>
+          <td valign="top"><a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#stored-function">Stored
+
+
+
+
+
+
+
+
+
+
+
+
+              functions</a><br>
+          </td>
+          <td valign="top">create function <font color="#ff0000">name</font>(Person
+
+
+
+
+
+
+
+            p) -&gt; Charstring nm as stored; <br>
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">Defining unique property<br>
+          </td>
+          <td valign="top"><a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#key">Cardinality
+
+
+              constraints</a><br>
+          </td>
+          <td valign="top">create function ssn(Person p) -&gt; Number no
+            <font color="#ff0000">key</font> as stored;<br>
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">Defining bag valued property<br>
+          </td>
+          <td valign="top"><a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#stored-function">Stored
+
+
+
+
+
+
+
+
+
+
+
+
+              functions</a><br>
+          </td>
+          <td valign="top">create function phones(Person p) -&gt; <font
+              color="#ff0000">Bag of</font> Number no as stored;<br>
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">Defining many-one relationship between <font
+              color="#3366ff">types</font><br>
+          </td>
+          <td valign="top"><a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#2.5.1_Cardinality_constraints">Cardinality
+
+
+
+
+
+
+
+
+
+
+
+
+              constraints</a><br>
+          </td>
+          <td valign="top">create function dept(<font color="#3366ff">Person
+
+
+
+
+
+
+
+            </font>p) -&gt;<font color="#3366ff"> Department&nbsp; </font>d
+            as stored;<br>
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">Defining many-many relationships between <font
+              color="#3366ff">types</font><br>
+          </td>
+          <td valign="top"><a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#2.5.1_Cardinality_constraints">Cardinality constraints</a><br>
+          </td>
+          <td valign="top">create function teaches(<font color="#3366ff">Person
+            </font>p) -&gt; <font color="#ff0000">Bag of</font> <font
+              color="#3366ff">Course </font>c as stored;<br>
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">Defining one-one relationship between <font
+              color="#3366ff">types</font><br>
+          </td>
+          <td valign="top"><a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#key">Cardinality constraints</a><br>
+          </td>
+          <td valign="top">create function spouse(<font color="#3366ff">Person
+            </font>p) -&gt; <font color="#3366ff">Person </font>q <font
+              color="#ff0000">key</font> as stored; <br>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <big><b><br>
+      </b><b>Populating and updating the database</b></big><br>
+    <table border="1" height="255" width="100%" cellpadding="2"
+      cellspacing="2">
+      <tbody>
+        <tr>
+          <td valign="top"><b>What?</b><br>
+          </td>
+          <td valign="top"><b>Documented where?</b><br>
+          </td>
+          <td valign="top"><b>Examples</b><br>
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">Creating a new object bound to a <font
+              color="#ff0000">temporary variable</font></td>
+          <td valign="top"><a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#create-object">Create objects</a><br>
+            <font color="#ff0000"><a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#variables">Interface variables</a></font><br>
+          </td>
+          <td valign="top">create Person instances <font
+              color="#ff0000">:tore</font>;<br>
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">Setting properties <br>
+          </td>
+          <td valign="top"><a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#updates">Updates</a><br>
+          </td>
+          <td valign="top">set name(:tore) = "Tore";<br>
+            set phone(:tore) = 12345;<br>
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">Adding a property<br>
+          </td>
+          <td valign="top"><a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#updates">Updates</a><br>
+          </td>
+          <td valign="top">add phone(:tore) = 6789;<br>
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">Updating sets of values<br>
+          </td>
+          <td valign="top"><a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#updates">Updates</a><br>
+          </td>
+          <td valign="top">add friends(:tore) = p<br>
+            from Person p<br>
+            where "Ulla" in name(parents(p));<br>
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">Creating objects and setting properties<br>
+          </td>
+          <td valign="top"><a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#create-object">Create objects</a><br>
+          </td>
+          <td valign="top">create Person(name,ssn,phones) <br>
+            instances
+            ("Ulla",58102534,321456),("Kalle",65734828,bag(987654,567890));<br>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <br>
+    <big><b>Querying the database</b></big><br>
+    <table border="1" width="100%" cellpadding="2" cellspacing="2">
+      <tbody>
+        <tr>
+          <td valign="top"><b>What?</b><br>
+          </td>
+          <td valign="top"><b>Documented where?</b><br>
+          </td>
+          <td valign="top"><b>Examples</b><br>
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">Finding an object<br>
+          </td>
+          <td valign="top"><a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#select-statement">Select statement</a><br>
+          </td>
+          <td valign="top">select p into :kalle from Person p where
+            name(p)="Kalle";<br>
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">Accessing properties<br>
+          </td>
+          <td valign="top"><a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#function-call">Function call</a><br>
+          </td>
+          <td valign="top">phones(:kalle);<br>
+            select phones(p) from Person p where name(p)="Tore";<br>
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">String matching<br>
+          </td>
+          <td valign="top"><a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#STRING">String functions</a><br>
+          </td>
+          <td valign="top">select name(p) from Person p where
+            like(name(p),"*ll*");<br>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <br>
+    <big><b>Inverse functions</b></big><br>
+    <table border="1" width="100%" cellpadding="2" cellspacing="2">
+      <tbody>
+        <tr>
+          <td valign="top"><b>What?</b><br>
+          </td>
+          <td valign="top"><b>Documented where?</b><br>
+          </td>
+          <td valign="top"><b>Examples</b><br>
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">Defining an <font color="#3366ff">inverse </font>of
+            another <font color="#cc0000">function</font><br>
+          </td>
+          <td valign="top"><a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#derived-function">Derived functions</a><br>
+          </td>
+          <td valign="top">create function <font color="#3366ff">personNamed</font>(Charstring
+            nm) -&gt; Bag of Person p<br>
+            as select p where <font color="#cc0000">name</font>(p)=nm;<br>
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">Updating inverse functions<br>
+          </td>
+          <td valign="top"><a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#updates">Updates</a><br>
+          </td>
+          <td valign="top">create Person instances :ville;<br>
+            add personNamed("Ville") = :ville;<br>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <br>
+    <big><b>Help</b></big><br>
+    <table border="1" width="100%" cellpadding="2" cellspacing="2">
+      <tbody>
+        <tr>
+          <td valign="top"><b>What?</b><br>
+          </td>
+          <td valign="top"><b>Documented where?</b><br>
+          </td>
+          <td valign="top"><b>Examples</b><br>
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">Function documentation</td>
+          <td valign="top"><a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#code-search">Searching source code<br>
+            </a> </td>
+          <td valign="top">apropos("qrt");<br>
+            doc("qrt");<br>
+            sourcecode("sqrt");<br>
+            doc(apropos("nearest"));<br>
+            sourcecode(apropos("qrt"));<br>
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">Functions whose source code match <font
+              color="#ff0000">pattern</font><br>
+          </td>
+          <td valign="top"><a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#code-search">Searching source code</a><br>
+          </td>
+          <td valign="top">select source_text(f) from Function f , where
+            like(source_text(f),"<font color="#ff0000">*sqrt(*</font>");<br>
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">Command line help<br>
+          </td>
+          <td valign="top"><a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#running">Getting started</a><br>
+          </td>
+          <td valign="top">amos2 -h<br>
+            javaamos -h<br>
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">Current file folder<br>
+          </td>
+          <td valign="top"><a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#2.8_Accessing_data_in_files">Accessing data in files</a><br>
+          </td>
+          <td valign="top">pwd();<br>
+            cd("..");<br>
+          </td>
+        </tr>
+        <tr>
+          <td valign="top">Files in current file folder (matching <font
+              color="#ff0000">pattern</font>)<br>
+          </td>
+          <td valign="top"><a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html#2.8_Accessing_data_in_files">Accessing data in files</a><br>
+          </td>
+          <td valign="top">dir(".");<br>
+            dir(".","<font color="#ff0000">*.txt</font>");<br>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <br>
+  </body>
+</html>
