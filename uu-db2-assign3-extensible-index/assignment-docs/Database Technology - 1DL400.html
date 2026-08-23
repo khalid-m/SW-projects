@@ -1,0 +1,505 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xml:lang="en" lang="en">
+  <head>
+    <!--?xml version="1.0" encoding="UTF-8"?-->
+    <title>Database Technology - 1DL400</title>
+    <style type="text/css" media="screen">
+ @import url(http://www.it.uu.se/edu/course/homepage/dbastekn2/vt11/uu_css/maincss.css); </style>
+    <link rel="stylesheet" type="text/css" media="screen"
+      href="./uu_css/maincss.css">
+    <link rel="stylesheet" href="./uu_css/profil.css" type="text/css">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <!-- meta name="Description" content="Ange beskrivning h�r och tag sedan bort kommentering" /-->
+    <!-- meta name="Keywords" content="Ange kommaseparerade nyckelord h�r och tag sedan bort kommentering" /--><!-- ReadSpeaker script nedan -->
+    <script type="text/javascript" language="JavaScript">
+ 
+  <!-- function sayit()
+{ if (window.getSelection) // recent Mozilla versions
+{ var selectedString = window.getSelection(); }
+else if (document.all) // MSIE 4+
+{ rng = document.selection.createRange(); selectedString=rng.text; }
+else if (document.getSelection) //older Mozilla versions
+{ var selectedString = document.getSelection(); }
+document.rs_form.rstext.value = selectedString;
+document.rs_form.url.value = document.location.href; } //-->
+  </script>
+    <meta content="Kjell Orsborn" name="author">
+    <!-- <link rel="stylesheet" stylesheet="" type="text/css" media="screen" 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  href="http://user.it.uu.se/%7Eudbl/dbt-vt2007/uu_css/maincss.css"> 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <link rel="stylesheet" href="http://user.it.uu.se/%7Eudbl/dbt-vt2007/uu_css/profil.css" type="text/css"> -->
+    <!-- <body class="red"> -->
+  </head>
+  <body class="red" bgcolor="#ffffff" marginheight="0" marginwidth="0"
+    text="#000000">
+    <!-- Kom ih�g att byta i nedanst�ende rad mot din enhet och dess url -->
+    <div id="smulrad" class="smulrad"> <a href="http://www.uu.se/"
+        title="Till universitetets hemsida.">Uppsala University</a> / <a
+        href="http://www.it.uu.se/research/csd">Computer Science
+        Division </a>
+      / <a href="http://www.it.uu.se/research/group/udbl/">Uppsala
+        Database
+        Laboratory</a> : <a href="index.html">Database Design - 1DL400</a>
+    </div>
+    <!-- Start header -->
+    <div style="left: 0px; width: 160px; top: 0px; height: 637px;"
+      id="leftcolumn"> <a href="http://www.uu.se"><img
+          src="http://user.it.uu.se/%7Eudbl/dbt-vt2007/uu_img/uulogo_red.gif"
+          alt="Uppsala universitet" style="border: 0px solid ; width:
+          160px; height: 160px;"></a><!-- lyssna-knapp -->
+      <div id="knapp">
+        <form class="ISI_REMOVE" id="rs_form" name="rs_form"
+          action="http://isi.phoneticom.com/cgi-bin/uursone"
+          method="post" onsubmit="sayit()" target="rs"> <input
+            value="Listen" class="saysubmit" accesskey="L" title="Listen
+            to page/marked text" alt="Read text" type="submit"><input
+            name="rstext" type="hidden"><input name="customerid"
+            value="47" type="hidden"><input name="url" type="hidden"><input
+            name="id" value="1" type="hidden"><input name="type"
+            value="2" type="hidden"><input name="lang" value="en"
+            type="hidden"></form>
+      </div>
+      <!-- Ange spr�k h�r f�r ReadSpeaker. Se www.uu.se/webbdesign/lyssna -->
+      <div class="hide"> <a title="Hoppa �ver l�nkar" accesskey="2"
+          href="#maincontent">Hoppa �ver l�nkar</a></div>
+      <table style="width: 100%; text-align: left;" border="0"
+        cellpadding="2" cellspacing="2">
+        <tbody>
+          <tr>
+            <td><br>
+            </td>
+            <td><span style="color: rgb(255, 255, 255);">CONTENTS </span>
+              <br>
+            </td>
+          </tr>
+          <tr>
+          </tr>
+        </tbody> <tbody>
+          <tr>
+            <td><img alt="" src="./uu_img/arrow_menu.gif" style="width:
+                20px; height: 9px;" align="left"></td>
+            <td> <a href="./index.html/#News"> News </a></td>
+          </tr>
+          <tr>
+            <td><img alt="" src="./uu_img/arrow_menu.gif" style="width:
+                20px; height: 9px;" align="left"></td>
+            <td><a href="./index.html#Literature"> Literature </a></td>
+          </tr>
+          <tr>
+            <td><img alt="" src="./uu_img/arrow_menu.gif" style="width:
+                20px; height: 9px;" align="left"></td>
+            <td><a href="./dbt2-assignments.html"> Assignments </a></td>
+          </tr>
+          <tr>
+            <td><img alt="" src="./uu_img/arrow_menu.gif" style="width:
+                20px; height: 9px;" align="left"></td>
+            <td> <a href="./index.html#Teachers"> Teachers </a></td>
+          </tr>
+          <tr>
+            <td><img alt="" src="./uu_img/arrow_menu.gif" style="width:
+                20px; height: 9px;" align="left"></td>
+            <td> <a href="./index.html#Schedule"> Schedule </a></td>
+          </tr>
+          <tr>
+            <td><img alt="" src="./uu_img/arrow_menu.gif" style="width:
+                20px; height: 9px;" align="left"></td>
+            <td> <a href="./dbt-1dl400-goal.html"> Goal, content and
+                prerequisites </a></td>
+          </tr>
+          <tr>
+            <td><img alt="" src="./uu_img/arrow_menu.gif" style="width:
+                20px; height: 9px;" align="left"></td>
+            <td> <a href="./dbt-1dl400-organization.html"> Organization
+                and
+                examination </a></td>
+          </tr>
+          <tr>
+            <td><img alt="" src="./uu_img/arrow_menu.gif" style="width:
+                20px; height: 9px;" align="left"></td>
+            <td> <a href="./dbt-1dl400-slides.html"> OH slides and
+                compendium </a></td>
+          </tr>
+          <tr>
+            <td><img alt="" src="./uu_img/arrow_menu.gif" style="width:
+                20px; height: 9px;" align="left"></td>
+            <td> <a href="./dbt-1dl400-misc.html"> F.A.Q. </a></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- End header, start main content --><!-- ISI_LISTEN_START -->
+    <div id="maincontent">
+      <h2>Database Design II - 1DL400 <br>
+      </h2>
+      <h3>Assignments - Spring 2013<br>
+      </h3>
+      <br>
+      <h3><a name="News"></a>News</h3>
+      <ul>
+	 <li>2013-01-19 - Instructions for submission updated!. /TT </li>
+        <li>2013-01-16 - This page up. /TR </li>
+        <li>2013-01-18 - Update assignment's date, time, and location. /TT </li>
+      </ul>
+      <h3><a name="Assistants"></a>Assistants</h3>
+      <ul>
+        <li>Thanh Truong (TT), course assistant, email: Thanh.Truong@it.uu.se room 1354</li>
+            <br> Office hours: Every Tuesdays starting from Feb 5 to Feb 26 and Mar 26, 13:15 - 15:00 <br>
+        <li>Andrej Andrejev (AA), course assistant, email: Andrej.Andrejev@it.uu.se room 1306</li>
+            <br> Office hours: Every Tuesdays starting from Feb 5 to Feb 26 and Mar 26, 13:15 - 15:00 <br>        
+      </ul>
+      <b><br>
+      </b>
+      <h3><a name="Supervision"></a>Supervision</h3>
+      <li>Students work in group and  send <font color="#ff0000">ONLY by email </font> the group's solution to the assistants.</li>
+      <li>The assistant will then grade the group's assignments and
+        provide
+        consultation to her/his groups during times scheduled for this
+        purpose.</li>
+      <li>Besides one occasion for each assignment, there are no
+        additional
+        bookings of the computer labs for this course, so make sure to
+        plan
+        your work since it can get crowded during peak times.</li>
+      <span style="font-weight: bold;"><br>
+        <br>
+      </span>
+      <h3><a name="Software"></a>Software </h3>
+      The assignments will require to use the DBMSs MySQL and <a
+        style="font-weight: bold;"
+        href="http://user.it.uu.se/%7Eudbl/amos/index.html">Amos II</a>
+      running on Windows. The software and databases will be stored on
+      the
+      USB stick we give you at the start of the course. <br>
+      <br>
+      Installation:<br>
+      <ol>
+        <li>Download the zip files <a
+            href="http://udbl2.it.uu.se/Course/xampp.zip">xampp.zip</a>
+          and <a href="http://user.it.uu.se/~udbl/amos">amos2.zip</a>
+          to your
+          USB stick. </li>
+        <li>Unzip xampp.zip the <b>root directory</b> of your stick.
+          The
+          directory named 'xampp' must be top level directory of the
+          stick. <br>
+        </li>
+        <li>Unzip amos2.zip to a new directory named 'amos2' on the
+          stick.
+          The directory named 'amos2' must be top level directory of the
+          stick<br>
+        </li>
+      </ol>
+      No more installation is required.<br>
+      <br>
+      <span style="font-weight: bold;">Notice</span> that unpacking the
+      zip
+      files (411 MB) to the stick may take more than 25 minutes, so
+      prepare
+      the USB stick before the assignment occasion so you don't waste
+      time.
+      <h5>MySQL</h5>
+      <span style="font-weight: bold;">Assignment 1</span> requires the
+      relational DBMS MySQL. <br>
+      <br>
+      The manual for MySQL is <a
+        href="http://dev.mysql.com/doc/refman/5.5/en/">here</a>. To run
+      MySQL
+      go to the directory 'xampp' on the USB stick where you find the
+      following command procedures to run MySQL:
+      <ol>
+        <li>Click 'mysql_start' in folder 'xampp' to start the MySQL
+          server.</li>
+        <li>Click 'mysql_prompt' in folder 'xampp' to run the SQL top
+          loop in
+          MySQL (no password).</li>
+        <li>Click 'mysql_stop' in folder 'xampp' to stop the MySQL
+          server.<span style="font-weight: bold;"> <span
+              style="font-weight: bold;">Do not
+              pull the stick</span> without first ejecting it.</span> <span
+            style="font-weight: bold;">Do not</span> kill the MySQL
+          server process
+          from the task manager or by closing the server console window,
+          as the
+          database may then become corrupted.</li>
+      </ol>
+      In order not to be mixed up with some other MySQL server running
+      on the
+      same computer, the client/server communication for the MySQL
+      server on
+      the stick is using port 4306 (the default MySQL port is 3306). <br>
+      <br>
+      The SQL scripts populating the database are in <a
+        href="http://udbl2.it.uu.se/Course/JohnsonSchema.sql">JohnsonSchema.sql</a>,
+      <a href="http://udbl2.it.uu.se/Course/JohnsonData.sql">JohnsonData.sql</a>,
+      and
+      <a href="http://udbl2.it.uu.se/Course/extension.sql">extension.sql</a>.
+      Download these scripts to the 'xampp' directory on the USB stick.
+      Then
+      populate the database by giving the following command to the MySQL
+      top
+      loop: <br>
+      <br>
+      mysql&gt; create database JohnsonBrothers;<br>
+      mysql&gt; connect JohnsonBrothers;<br>
+      mysql&gt; source JohnsonSchema.sql;<br>
+      mysql&gt; source JohnsonData.sql;<br>
+      mysql&gt; source extension.sql;<br>
+      <br>
+      At any point, if you would like to erase the whole JohnsonBrothers
+      database issue the following command: <br>
+      <br>
+      mysql&gt; drop database JohnsonBrothers;<br>
+      <br>
+      <br>
+      You can exit from mysql prompt by typing; <br>
+      <br>
+      mysql&gt; quit;<br>
+      <br>
+      <br>
+      Once the above commands are run successfully the database is
+      created on
+      the USB stick in directory xampp/mysql/data/johnsonbrothers. <br>
+      <h5>Amos II</h5>
+      <span style="font-weight: bold;">Assignments 2 and 3</span>
+      require
+      Amos II. <br>
+      <br>
+      The manual for Amos II is <a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html">here</a>.
+      To
+      run Amos II go to the directory 'amos2/bin' on the stick and run
+      'amos2.exe'. You should first run and understand the examples <a
+href="http://www.it.uu.se/research/group/udbl/amos/doc/example.osql">here</a>
+      and then do the tutorial in <a
+        href="http://www.it.uu.se/research/group/udbl/amos/doc/tut.pdf">tut.pdf</a>.
+      <br>
+      <br>
+      <a href="db2-assignments/company_data_vt2011.sql"><b> </b></a>
+      <ul style="font-weight: bold;">
+      </ul>
+      <h3>Registration</h3>
+      The assignments should be solved in groups of 2-3 persons. It is
+      your
+      responsibility to form the groups. Please do not register groups
+      until
+      you are sure of all the members of the group. Assistants have the
+      right
+      not to correct the assignments that are submitted individually. <br>
+      <br>
+      <h3>Submitting</h3>      
+        <li>Solutions should be sent <font color="#ff0000">ONLY by email </font> to the assistant. In attachment, it should contain the executable code (SQL for assignment 1, AmosQL for assignment 2, AmosQL and Java for assignment 3), and  any additional logs and graphics in separate files.</li> 
+	 <li> For each assignment there is a deadline. We guarantee that
+        assignments
+        submitted before their respective deadline will be graded in a
+        week
+        from the deadline. Assignments that are turned in after deadline
+        will
+        be graded whenever we have time (possibly after the exam). There
+        is a
+        'hard' deadline after which we will not accept new assignments.</li> 
+      <li>
+        If you fail on an assignment, you have to complete it and submit
+        it
+        again according to the assistants' comments. Failed assignments
+        can be
+        collected only from the correspondent assistant during his/her
+        consultation time.
+      </li>      
+      <h3><a name="Assignments"></a>Assignments</h3>
+      <ul>
+        <li>Hard deadline for all assignments: <b><span style="color:
+              rgb(255, 0, 0);">Tuesday March 26, 2013</span></b></li>
+      </ul>
+      <h4>Assignment 1: Stored procedures and Triggers <span
+          style="font-weight: bold;">[<a
+            href="http://udbl2.it.uu.se/Course/db2-vt12-assignment1.pdf">pdf</a>]
+        </span></h4>
+      <ul>
+        <ul>
+          <li>Date:Mon February 4	2013 <br>
+          </li>
+          <li>Location: Pol_1312D, Pol_1313<br>
+          </li>
+          <li>Time: <span style="font-weight: bold;">3:15 p.m. to 5:00 p.m.</span></li>
+          <li><span style="font-weight: bold;"></span>Deadline: Mon February 11, 2013 <br>
+          </li>
+        </ul>
+      </ul>
+      Background reading: <br>
+      <ul>
+        <ul>
+          <li>Padron-McCarthy/Risch: Chapter 7, 8, 9, 12, 14, 15 <br>
+          </li>
+          <li>Elmasri/Navathe: Chapter 8, 9.2 <br>
+          </li>
+        </ul>
+      </ul>
+      MySQL programmer's manual:
+      <ul>
+        <ul>
+          <li><a
+              href="http://dev.mysql.com/doc/refman/5.5/en/stored-programs-views.html">Defining
+
+
+
+stored
+
+
+
+Procedures,
+views,
+              and triggers</a><br>
+          </li>
+          <li><a
+              href="http://dev.mysql.com/doc/refman/5.5/en/tutorial.html">Tutorial</a><br>
+          </li>
+          <li><a href="http://udbl2.it.uu.se/Course/hints_db2_a1.txt">Specific
+
+hints
+on
+              assignment1</a><br>
+          </li>
+        </ul>
+      </ul>
+      <br>
+      <h4>Assignment 2: Object-oriented database design <span
+          style="font-weight: bold;"></span></h4>
+      <ul>
+        <ul>
+          <li>Date:Tor February 21 2013</li>
+          <li>Location: Pol_1312D, Pol_1313D<br>
+          </li>
+          <li>Time: <span style="font-weight: bold;">3:15 p.m. to 5:00 p.m</span></li>
+          <li><span style="font-weight: bold;"></span>Deadline: Thursday February 28 2013 <br>
+          </li>
+        </ul>
+      </ul>
+      <ul>
+        <ul>
+          <br>
+        </ul>
+      </ul>
+      Choose one of the following tasks:
+      <ul>
+        <ul>
+          <br>
+        </ul>
+        <ul>
+          <li>Stock market application [<a
+              href="http://udbl2.it.uu.se/Course/VT13/db2-vt13-assignment2-stockdb.pdf">pdf</a>].
+            Here
+            is a file with <a href="http://udbl2.it.uu.se/Course/VT13/stockinfo.xls">test
+              data</a>  in Excel format and <a href="http://udbl2.it.uu.se/Course/VT13/stockinfo.rtf">test
+              data</a> in RTF format. </li>
+        </ul>
+        <ul>
+          <li>Database for scientific mesh-discretized data [<a
+              href="http://udbl2.it.uu.se/Course/VT13/db2-vt13-assignment2-meshdb.pdf">pdf</a>]
+          </li>
+        </ul>
+      </ul>
+      Background reading:
+      <ul>
+        <ul>
+          <li>Padron-McCarthy/Risch: Chapter 16 <br>
+          </li>
+          <li>Elmasri/Navathe: Chapter 20, 21, 22 (to be updated)</li>
+        </ul>
+      </ul>
+      <br>
+      <h4>Assignment 3: Extensible database indexing<br>
+      </h4>
+      <ul>
+        <ul>
+          <li>Date:Mon March 4 2013<br>
+          </li>
+          <li>Location: Pol_1312D, Pol_1313D</li>
+          <li>Time: 8:15 to 10:00 <br>
+          </li>
+          <li><span style="font-weight: bold;"></span>Deadline: Mon March 11 2013<br>
+          </li>
+        </ul>
+        <ul>
+          <li>Instructions : Assignment 3 - Extensible database indexing
+            [<a
+              href="http://udbl2.it.uu.se/Course/VT13/db2-vt13-assignment3.pdf">PDF</a>]</li>
+        </ul>
+        <ul>
+          <li>Download and unzip to <b>the root directory</b> of your
+            USB
+            stick:[<a href="http://udbl2.it.uu.se/Course/VT13/DB2_3rdEx.zip">Skeleton</a>]</li>
+          <li><font color="red">[Lab] </font> You can run (click) on
+            "assignment3.cmd".</li>
+          <li><font color="red">[Home] </font> Make sure that your
+            installed
+            Java version must be from 1.6 to higher one. Then change <font
+              color="red">JAVA_HOME </font>variable environment in file
+            setup.cmd
+            to your local Java path. <br>
+            After that, you can run (click) on assignment3.cmd.</li>
+        </ul>
+        <ul>
+          <li>Tutorial on Assignment 3 [<a href="http://udbl2.it.uu.se/Course/VT13/DB2VT13_Tutorial_A3.pdf">PDF</a>] and [<a href="http://udbl2.it.uu.se/Course/VT13/mexima_demo.zip">demo</a>]</li>
+        </ul>
+        <br>
+        <br>
+       
+      </ul>
+    </div>
+    <!-- Start footer --><!-- ISI_LISTEN_STOP -->
+    <div id="footer" class="sidfot"> © 2011 Uppsala Universitet,
+      Department
+      of Information Technology, Box 337, 751 05 Uppsala, Sweden |
+      Updated:
+      2011-12-19 | This page is maintained by <a
+        href="mailto:Tore.Risch@it.uu.se">Tore Risch</a><br>
+    </div>
+    <br>
+    <!-- End footer -->
+  </body>
+</html>
