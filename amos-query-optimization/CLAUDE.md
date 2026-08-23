@@ -43,6 +43,11 @@ https://www.it.uu.se/research/group/udbl/amos/), containing:
 - `Amos II cheat sheet.html` — quick syntax/function reference.
 - `FuncMedPaper.pdf` — "Functional Data Integration in a Distributed Mediator
   System," the paper describing the underlying system architecture.
+- `javaapi.pdf` — "Amos II Java Interfaces" (D. Elin and T. Risch), documenting the
+  `callin`/`callout` Java foreign-function API (`CallContext`, `Tuple`, etc.) used
+  to implement foreign functions like the ones this repo's tutorial calls.
+- `external.pdf` — reference on external/foreign functions and wrappers in AMOS II
+  (binding non-AmosQL implementations, e.g. Java/C, into the query engine).
 
 Consult these before assuming AMOS II syntax or behavior — but per the working
 convention below, still verify against a real `Javaamos`/`amos2` run before writing
