@@ -1,0 +1,192 @@
+
+JavaAMOS 1> create type WineSample;
+#[OID 1513 "WINESAMPLE"]
+0.002 s
+JavaAMOS 2> create function wsId(WineSample ws) -> Number id as stored;
+#[OID 1515 "WINESAMPLE.WSID->NUMBER"]
+0.007 s
+JavaAMOS 3> create function features(WineSample ws) -> Vector of Number f as stored;
+#[OID 1518 "WINESAMPLE.FEATURES->VECTOR-NUMBER"]
+0.002 s
+JavaAMOS 4> pwd();
+"C:/Users/klmah/Desktop/DB2_3rdEx"
+0.03 s
+JavaAMOS 4> set :csvpos = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+0.015 s
+JavaAMOS 5> create function addwinesample(Vector of Number csvrow, Vector of Number csvpos)
+                            -> Boolean
+    /* Add one new wine sample to the database */
+    as begin
+        declare WineSample ws;
+        create WineSample(wsId, features)
+        instances ws (csvrow[0], project(csvrow, csvpos));
+       end;
+#[OID 1521 "VECTOR-NUMBER.VECTOR-NUMBER.ADDWINESAMPLE->BOOLEAN"]
+0.018 s
+JavaAMOS 6> addwinesample(cast(read_ntuples('winequalitysample.csv') as Vector of Number),
+              :csvpos);
+[Expanding image to 6309588]
+Image moved in ADDFUNCTION0
+0.13 s
+JavaAMOS 7>
+count(select s from WineSample s);
+2939
+0.023 s
+JavaAMOS 8> create function getSample(Number wsId) -> Winesample ws
+  as select ws where wsId(ws) = wsId;
+#[OID 4466 "NUMBER.GETSAMPLE->WINESAMPLE"]
+0.006 s
+JavaAMOS 9> getSample(37);
+#[OID 1558]
+0.021 s
+JavaAMOS 9> pc("getSample");
+----------------------------
+getsample(Number)->Winesample
+
+Execution plan:
+(NUMBER.GETSAMPLE->WINESAMPLE WSID- WS+) <-
+(HASH-FULL-SCAN #[OID 1515 "WINESAMPLE.WSID->NUMBER"] WS+ WSID-)
+#[OID 4466 "NUMBER.GETSAMPLE->WINESAMPLE"]
+0.029 s
+JavaAMOS 9> getSample(37);
+#[OID 1558]
+0.026 s
+JavaAMOS 9> getSample(37);
+#[OID 1558]
+0.015 s
+JavaAMOS 9> getSample(37);
+#[OID 1558]
+0.015 s
+JavaAMOS 9> getSample(37);
+#[OID 1558]
+0.015 s
+JavaAMOS 9> getSample(37);
+#[OID 1558]
+0.023 s
+JavaAMOS 9> getSample(37);
+#[OID 1558]
+0.015 s
+JavaAMOS 9> getSample(37);
+#[OID 1558]
+0.022 s
+JavaAMOS 9> getSample(37);
+#[OID 1558]
+0.014 s
+JavaAMOS 9> getSample(37);
+#[OID 1558]
+0.018 s
+JavaAMOS 9> getSample(37);
+#[OID 1558]
+0.028 s
+JavaAMOS 9> create_index("wsId", "id", "hash", "unique");
+{NIL,NIL}
+0.025 s
+JavaAMOS 10> indexes(#"wsId");
+{#[OID 1516 "P_WINESAMPLE.WSID->NUMBER"],0,"hash","unique"}
+{#[OID 1516 "P_WINESAMPLE.WSID->NUMBER"],1,"hash","unique"}
+0.039 s
+JavaAMOS 10> reoptimize("getSample");
+#[OID 4466 "NUMBER.GETSAMPLE->WINESAMPLE"]
+0.032 s
+JavaAMOS 11> getSample(37);
+#[OID 1558]
+0.015 s
+JavaAMOS 11> getSample(37);
+#[OID 1558]
+0.029 s
+JavaAMOS 11> getSample(37);
+#[OID 1558]
+0.028 s
+JavaAMOS 11> getSample(37);
+#[OID 1558]
+0.017 s
+JavaAMOS 11> getSample(37);
+#[OID 1558]
+0.017 s
+JavaAMOS 11> getSample(37);
+#[OID 1558]
+0.023 s
+JavaAMOS 11> getSample(37);
+#[OID 1558]
+0.029 s
+JavaAMOS 11> getSample(37);
+#[OID 1558]
+0.022 s
+JavaAMOS 11> getSample(37);
+#[OID 1558]
+0.027 s
+JavaAMOS 11> getSample(37);
+#[OID 1558]
+0.026 s
+JavaAMOS 11>
+JavaAMOS 17> create function closeWineSamples(WineSample ws, Number distance)
+       -> Bag of WineSample as select closestws from WineSample closestws where euclid(features(ws),features(closestws)) <= distance;
+Redefining #[OID 4468 "WINESAMPLE.NUMBER.CLOSEWINESAMPLES->WINESAMPLE"]
+Recompiling #[OID 4468 "WINESAMPLE.NUMBER.CLOSEWINESAMPLES->WINESAMPLE"]
+#[OID 4468 "WINESAMPLE.NUMBER.CLOSEWINESAMPLES->WINESAMPLE"]
+0.011 s
+JavaAMOS 18>
+JavaAMOS 18> set :ws = getSample(37);
+0.001 s
+JavaAMOS 19> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.036 s
+JavaAMOS 19> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.039 s
+JavaAMOS 19> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.039 s
+JavaAMOS 19> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.045 s
+JavaAMOS 19> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.049 s
+JavaAMOS 19> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.054 s
+JavaAMOS 19> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.045 s
+JavaAMOS 19> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.048 s
+JavaAMOS 19> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.038 s
+JavaAMOS 19> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.052 s
+JavaAMOS 19> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.045 s
+JavaAMOS 19>
+JavaAMOS 19> pc("closeWineSamples");
+----------------------------
+closewinesamples(Winesample,Number)->Bag of Winesample
+
+Execution plan:
+(WINESAMPLE.NUMBER.CLOSEWINESAMPLES->WINESAMPLE WS- DISTANCE- CLOSESTWS+) <-
+(NESTED-LOOP-JOIN
+   (HASH-INDEX-GET #[OID 1518 "WINESAMPLE.FEATURES->VECTOR-NUMBER"] WS-
+      _V2+)
+   (HASH-FULL-SCAN #[OID 1518 "WINESAMPLE.FEATURES->VECTOR-NUMBER"] CLOSESTWS+
+      _V3+)
+   (CALL #extpred "EUCLIDBBF"# #[OID 819 "VECTOR-NUMBER.VECTOR-NUMBER.EUCLID->NUMBER"]
+      _V2- _V3- _V4+)
+   (CALL #extpred "LE--"# #[OID 200 "OBJECT.OBJECT.<=->BOOLEAN"] _V4- DISTANCE-))
+#[OID 4468 "WINESAMPLE.NUMBER.CLOSEWINESAMPLES->WINESAMPLE"]
+0.034 s
+JavaAMOS 19>
