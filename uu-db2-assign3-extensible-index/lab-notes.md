@@ -662,6 +662,129 @@ plan vs. delegated to an opaque, potentially-sublinear foreign call) is real and
 would be expected to matter much more at a larger `n` — this small dataset and
 this many dimensions just aren't a strong enough test of it.
 
+## Exercise 6 — transparent extensible indexing (`register_exindextype`, `create_index`, `kdtree.lsp`)
+
+Exercises 3-5 used the KD-tree *manually*: `closeWineSamples2` explicitly calls
+`kdtreeProximitySearch` itself. Exercise 6's point is different — make the
+*existing* `closeWineSamples` (which just calls `euclid(...)`, written in Exercise 2
+with no awareness of any KD-tree) get automatically rewritten by the optimizer to
+use the KD-tree, with zero change to `closeWineSamples`'s own definition.
+
+### 6.a/6.b — registering the index type and its foreign functions
+
+```
+register_exindextype('KDTREE', FALSE);
+TRUE
+```
+
+This registers `KDTREE` as a new *index type* with Mexima (AMOS's extensible
+indexing manager) — it does not attach an index to anything yet.
+
+```
+create function kdtree_make() -> Integer xid
+  as foreign 'JAVA:KDTreeIndex_Stub/kdtree_make';
+create function kdtree_put(Integer xid, Object fo, Object o) -> Object
+  as foreign 'JAVA:KDTreeIndex_Stub/kdtree_put';
+create function kdtree_delete(Integer kdId, Object f) -> Boolean
+  as foreign 'JAVA:KDTreeIndex_Stub/kdtree_delete';
+create function kdtree_get(Integer kdId, Object o) -> Bag of Object
+  as foreign 'JAVA:KDTreeIndex_Stub/kdtree_get';
+create function kdtree_clear(Integer kdId) -> Boolean
+  as foreign 'JAVA:KDTreeIndex_Stub/kdtree_clear';
+```
+
+`kdtree_make`/`kdtree_put` already existed from Exercise 3, so those two are plain
+redefinitions; `kdtree_delete`/`kdtree_get`/`kdtree_clear` are new bindings — these
+are the five standard operations Mexima expects any registered index type to
+provide, so that `create_index`/`drop_index`/query execution can drive a KDTREE
+index generically without AMOS knowing anything KD-tree-specific.
+
+```
+load_lisp('kdtree.lsp');
+Loading "kdtree.lsp"
+"kdtree.lsp"
+```
+
+Loads the Lisp rewrite rule that tells the optimizer: *if a column has a KDTREE
+index, a call to `euclid(a, b) <= distance` over that column can be rewritten to a
+call to `kdtreeProximitySearch`.* Still inert at this point — no column has a
+KDTREE index yet.
+
+### 6.c — creating the actual index, and why `pc()` didn't change at first
+
+```
+create_index("features", "f", "KDTREE", "multiple");
+{NIL,NIL}
+```
+
+This is the step that actually builds a KD-tree instance over `features`'s result
+(`f`) and registers it as an index Mexima knows about — internally, `create_index`
+called `kdtree_make` (allocating a new tree id) and populated it via `kdtree_put`
+for every existing `WineSample`, the same operations Exercise 3 did by hand.
+
+**Gotcha confirmed by testing**: `pc("closeWinesamples")` right after `create_index`
+— and again after `reoptimize("closeWineSamples")` — still showed the *old*,
+unchanged naive plan (`NESTED-LOOP-JOIN` / `HASH-FULL-SCAN` / `CALL EUCLIDBBF`).
+`reoptimize` alone did not pick up the new index. What actually triggered the
+rewrite was `recompile("closeWineSamples")`:
+
+```
+recompile("closeWineSamples");
+Recompiling #[OID 4468 "WINESAMPLE.NUMBER.CLOSEWINESAMPLES->WINESAMPLE"]
+```
+
+After `recompile`, `pc("closeWinesamples")` showed the new plan:
+
+```
+Execution plan:
+(WINESAMPLE.NUMBER.CLOSEWINESAMPLES->WINESAMPLE WS- DISTANCE- CLOSESTWS+) <-
+(NESTED-LOOP-JOIN
+   (HASH-INDEX-GET #[OID 1518 "WINESAMPLE.FEATURES->VECTOR-NUMBER"] WS-
+      _V2+)
+   (CALL #extpred "JAVA:KDTREEINDEX_STUB/KDTREEPROXIMITYSEARCH"# #[OID 4479 "INTEGER.VECTOR-NUMBER.NUMBER.KDTREEPROXIMITYSEARCH->OBJECT"]
+      12 _V2- DISTANCE- _V5+)
+   (CALL #extpred "EXTRACTKEYVALUE"# #[OID 1462 "OBJECT.EXTRACTKEYVALUE->OBJECT.OBJECT"]
+      _V5- _V7+ _V8+)
+   (CALL #extpred "CONSTRUCT-VECTORC"# #[OID 75 "VECTOR"] _V7- CLOSESTWS+
+      *)
+   (CALL #extpred "EUCLIDBBF"# #[OID 819 "VECTOR-NUMBER.VECTOR-NUMBER.EUCLID->NUMBER"]
+      _V2- _V8- _V9+)
+   (CALL #extpred "LE--"# #[OID 200 "OBJECT.OBJECT.<=->BOOLEAN"] _V9- DISTANCE-))
+```
+
+A subsequent `reoptimize("closeWineSamples")` (run after the `recompile` had already
+switched the plan) left it unchanged, which is expected — there was nothing further
+to change.
+
+### 6.d — reading the rewritten plan
+
+This is exactly the transparent-rewrite behaviour the exercise is about:
+`closeWineSamples`'s own OSQL definition (`select closestws ... where
+euclid(features(ws),features(closestws)) <= distance`) was never touched, yet the
+plan now routes the neighbor search through the KD-tree:
+
+- `HASH-INDEX-GET` on `features` — same first step as before, fetches `ws`'s own
+  feature vector.
+- `CALL KDTREEPROXIMITYSEARCH` with `12` as its first argument — the KD-tree id
+  `create_index` allocated — replaces the old `HASH-FULL-SCAN` + `EUCLIDBBF` +
+  `LE--` chain entirely. This one call now does the neighbor search **and** the
+  distance filtering together (it only returns objects already known to be within
+  `distance`), instead of scanning every row and computing+filtering per row.
+- `EXTRACTKEYVALUE` / `CONSTRUCT-VECTORC` / `EUCLIDBBF` / `LE--` after it look like
+  they redundantly recompute the distance — but these run only over the KD-tree's
+  already-filtered result set, not over all 2939 rows, so this isn't the same cost
+  as the old full scan.
+
+Correctness was also confirmed before this change: `closeWineSamples(:ws, 5)` and
+`closeWineSamples2(:ws, 5)` returned the same 13 objects (different order), matching
+Exercise 4/5's distance-3 check at a wider distance.
+
+**Takeaway**: `register_exindextype` + foreign-function bindings + `load_lisp` only
+make a rewrite rule *available*; nothing changes in any query's plan until
+`create_index` actually attaches an instance of that index type to a specific
+column, and even then the running query needs an explicit `recompile` (not just
+`reoptimize`) to pick up the newly available index in this AMOS release.
+
 ## Session transcript
 
 ```
