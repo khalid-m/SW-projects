@@ -3,6 +3,18 @@
 Environment: **Amos II Release 16, v11** (assignment doc examples were written against an
 older release, but the behavior matches).
 
+> **Environment note:** the `amos2.zip` distribution described in the assignment
+> instructions could not be located. Instead, an **`AmosNT_floq`** build (which
+> includes source code) was used, backed up at
+> `/Volumes/WD4TB/WB-backup-2012-10/_check/_softwares-fixed/amos-backup/AmosNT_floq`
+> on a 4TB external disk drive. The 32-bit JDK used
+> (`jdk-7u80-windows-i586.exe`, see below) is also archived there, at
+> `/Volumes/WD4TB/WB-backup-2012-10/_check/_softwares-fixed/amos-backup/lab3-java-32-bit/jdk-7u80-windows-i586.exe`,
+> for future use. This was run on **Windows 11**, itself running inside a
+> **VMware Fusion** VM. The assignment folder
+> (`uu-db2-assign3-extensible-index`) was copied to the Windows desktop (as
+> `DB2_3rdEx`) for local work.
+
 ## Environment setup: installing Java and running `amos2.exe` on Windows
 
 ### Problem: `amos2.exe` is a 32-bit executable
@@ -184,6 +196,17 @@ This is confirmed by the repo's own worked solution script
 consistently uses `KDTreeIndex_Stub` throughout, never the PDF's `KDTreeIndex`.
 **Rule of thumb:** every `'JAVA:KDTreeIndex/...'` string in the PDF needs `_Stub`
 appended before running it.
+
+### Decision: run `DB2_3rdEx/lab3_stub.osql`, not the PDF's inline code
+
+Going forward, exercises are worked through by running the statements in
+[`DB2_3rdEx/lab3_stub.osql`](DB2_3rdEx/lab3_stub.osql) directly, rather than
+retyping code from `assignment-docs/db2-vt13-assignment3.pdf`. Checked:
+`lab3_stub.osql` already uses `KDTreeIndex_Stub` correctly in every
+`create function ... as foreign` statement (the only `KDTreeIndex` without `_Stub`
+left anywhere in that file is a stray comment under Exercise 4.a — the actual
+executable statement right below it is correct). The PDF is still useful for
+reading what each exercise/TODO is asking for, just not for copying code from.
 
 ## Session transcript
 

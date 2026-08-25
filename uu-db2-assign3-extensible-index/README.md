@@ -3,6 +3,20 @@
 Uppsala University, Department of Information Technology
 Database Design II (1DL400) — Thanh Truong
 
+> **Environment note:** the `amos2.zip` distribution described in the assignment
+> instructions could not be located. Instead, an **`AmosNT_floq`** build (which
+> includes source code) was used, backed up at
+> `/Volumes/WD4TB/WB-backup-2012-10/_check/_softwares-fixed/amos-backup/AmosNT_floq`
+> on a 4TB external disk drive. The 32-bit JDK used
+> (`jdk-7u80-windows-i586.exe`, see the known issue below) is also archived there,
+> at
+> `/Volumes/WD4TB/WB-backup-2012-10/_check/_softwares-fixed/amos-backup/lab3-java-32-bit/jdk-7u80-windows-i586.exe`,
+> for future use. This was run on **Windows 11**, itself running inside a
+> **VMware Fusion** VM. The assignment folder
+> (`uu-db2-assign3-extensible-index`) was copied to the Windows desktop (as
+> `DB2_3rdEx`) for local work; see [`lab-notes.md`](lab-notes.md) for the full
+> environment setup and troubleshooting log.
+
 ## 1. Overview
 
 This assignment gives hands-on experience with **extensible indexing** in the AMOS II
@@ -189,6 +203,18 @@ create function kdtree_make() -> Integer id as foreign 'JAVA:KDTreeIndex_Stub/kd
 ```
 This matches what [`lab3_stub_sol-notJavaFile.java`](lab3_stub_sol-notJavaFile.java)
 uses throughout — `KDTreeIndex_Stub`, never the PDF's `KDTreeIndex`.
+
+### Source of truth: follow `DB2_3rdEx/lab3_stub.osql`, not the PDF
+
+Given the mismatch above, exercises going forward are worked through using
+[`DB2_3rdEx/lab3_stub.osql`](DB2_3rdEx/lab3_stub.osql) as the actual script to run
+— not by retyping statements from `assignment-docs/db2-vt13-assignment3.pdf`.
+`lab3_stub.osql` already uses the correct `KDTreeIndex_Stub` class name in its
+`create function ... as foreign` statements (checked: all of them do, except one
+stray comment under Exercise 4.a that still says `KDTreeIndex` — the actual
+executable statement right below it is correct). The PDF remains useful for the
+exercise *descriptions*/what each `TODO` is asking for, but its inline code
+snippets should not be copy-pasted directly.
 
 ## 5. Exercises
 
