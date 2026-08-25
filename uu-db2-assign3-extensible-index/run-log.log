@@ -189,4 +189,18 @@ Execution plan:
    (CALL #extpred "LE--"# #[OID 200 "OBJECT.OBJECT.<=->BOOLEAN"] _V4- DISTANCE-))
 #[OID 4468 "WINESAMPLE.NUMBER.CLOSEWINESAMPLES->WINESAMPLE"]
 0.034 s
-JavaAMOS 19>
+JavaAMOS 8> create function kdtree_make() -> Integer xid
+  as foreign 'JAVA:KDTreeIndex_Stub/kdtree_make';
+#[OID 1514 "KDTREE_MAKE->INTEGER"]
+JavaAMOS 9> create function winesampleIndex()-> Integer as stored;
+#[OID 1516 "WINESAMPLEINDEX->INTEGER"]
+JavaAMOS 11> set winesampleIndex() = kdtree_make();
+No object found named (CALL #extpred JAVA:KDTREEINDEX_STUB/KDTREE_MAKE# KDTREE_MAKE->INTEGER _V1) of type FUNCTION
+JavaAMOS 11> set :xid = kdtree_make();
+0.004 s
+JavaAMOS 12> set winesampleIndex() = :xid;
+NIL
+JavaAMOS 13> winesampleIndex();
+11
+0.03 s
+JavaAMOS 13>

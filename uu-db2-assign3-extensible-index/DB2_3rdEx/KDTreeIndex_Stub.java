@@ -91,8 +91,11 @@ public class KDTreeIndex_Stub {
      -----------------------------------------------------------------*/
     public void kdtree_make(CallContext cxt, Tuple tpl)throws AmosException{
 	// TODO Increase idgen by 1
+	idgen++;
 
 	// TODO Return the current value of idgen 
+	tpl.setElem(0, idgen);
+	cxt.emit(tpl);
     }
 
     /*-----------------------------------------------------------------
@@ -114,7 +117,8 @@ public class KDTreeIndex_Stub {
 	KDTree<Oid>  m = locateKdtree(id);
 	
 	if (m != null){
-	    // TODO Insert to KD-tree	    
+	    // TODO Insert to KD-tree
+		m.insert(key, val);	    
 	}
 
 	// Emit val to tpl 
