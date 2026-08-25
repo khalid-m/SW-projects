@@ -171,6 +171,13 @@ asci_pairs();
 pc("asci_pairs");
 ```
 
+```
+Execution plan:
+(ASCI_PAIRS->CHARSTRING.NUMBER CH+ N+) <-
+(HASH-FULL-SCAN #[OID 1516 "CHARSTRING.ASCI_MAP->NUMBER"] CH+ N+)
+#[OID 1521 "ASCI_PAIRS->CHARSTRING.NUMBER"]
+```
+
 ---
 
 ## Part 3 — HASH-INDEX-SCAN: a *multiple* (non-unique) hash index
