@@ -199,25 +199,30 @@ public class KDTreeIndex_Stub {
 	throws AmosException,
 	KeySizeException,
 	java.lang.IllegalArgumentException {
-	// TODO Get the id 
+		// TODO Get the id 
+		int id = tpl.getIntElem(0);
+		
+		// TODO Extract feature vector f as key
+		double [] key  = toArray(tpl.getSeqElem(1));
 
-	// TODO Extract feature vector f as key
-
-	// TODO Get the distance 
-    
-	KDTree<Oid>  m = null;
-	// TODO Get the KD-tree whose id = id
-	
-	if (m != null && m.size() > 0){
-	    // TODO Find all values whose keys are within distance dist. 
-	    List<Oid> ln = null; // list of values 
-
-	    if (ln != null && ln.size() > 0) {		
-		// Loop through and emit the found values
-		for(Oid val : ln) {
-		    // TODO set val to tpl and emit
+		// TODO Get the distance 
+	    double dist = tpl.getDoubleElem(2);
+		KDTree<Oid>  m = null;
+		// TODO Get the KD-tree whose id = id
+		m = locateKdtree(id);
+		if (m != null && m.size() > 0){
+		    // TODO Find all values whose keys are within distance dist. 
+		    List<Oid> ln = null; // list of values 
+		    ln = m.nearestEuclidean(key, dist);
+		
+		    if (ln != null && ln.size() > 0) {		
+			// Loop through and emit the found values
+				for(Oid val : ln) {
+				    // TODO set val to tpl and emit
+				    tpl.setElem(3, val);
+					cxt.emit(tpl);
+				}
+		    }
 		}
-	    }
-	}
     }
 }

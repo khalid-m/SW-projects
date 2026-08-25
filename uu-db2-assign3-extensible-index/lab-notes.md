@@ -394,6 +394,174 @@ no combination of built-in hash/mbtree indexes on `features` can change that, si
 none of them can index on *distance-to-an-arbitrary-point* — which is precisely
 what a KD-tree is for.
 
+## Exercise 3 — manual KD-tree index (`kdtree_make`, `kdtree_put`, population)
+
+Continuing in [`DB2_3rdEx/lab3_stub.osql`](DB2_3rdEx/lab3_stub.osql), Exercise 3.a
+through 3.d: building a KD-tree index by hand and loading every `WineSample` into
+it, ahead of the transparent-indexing exercises later on.
+
+### 3.a — `kdtree_make`
+
+```
+JavaAMOS 12> create function kdtree_make() -> Integer xid
+  as foreign 'JAVA:KDTreeIndex_Stub/kdtree_make';
+#[OID 4471 "KDTREE_MAKE->INTEGER"]
+```
+
+Implemented in [`KDTreeIndex_Stub.java`](DB2_3rdEx/KDTreeIndex_Stub.java):
+```java
+public void kdtree_make(CallContext cxt, Tuple tpl) throws AmosException {
+    idgen++;
+    tpl.setElem(0, idgen);
+    cxt.emit(tpl);
+}
+```
+`idgen` starts at `10` (field default); each call increments it and emits the new
+value as the new KD-tree's id. Straightforward — no indexing/search logic yet,
+just an id generator.
+
+**Gotcha hit and resolved along the way:** the very first time this was tried, the
+running `javaamos` session kept returning `NIL` even after the Java above was
+written and compiled — turned out to be a stale session/binding issue, resolved by
+a full recompile (`javac KDTreeIndex_Stub.java`) *and* a fresh `javaamos` restart
+(foreign-function classes load once at connection time; a session already running
+when you recompile won't pick up the change).
+
+### 3.b — `winesampleIndex`
+
+```
+JavaAMOS 13> create function winesampleIndex()-> Integer as stored;
+#[OID 4473 "WINESAMPLEINDEX->INTEGER"]
+
+JavaAMOS 14> set :xid = kdtree_make();
+JavaAMOS 15> set winesampleIndex() = :xid;
+NIL
+JavaAMOS 16> winesampleIndex();
+11
+```
+
+**Gotcha:** the assignment's one-line form,
+```
+set winesampleIndex() = kdtree_make();
+```
+fails on this release:
+```
+No object found named (CALL #extpred JAVA:KDTREEINDEX_STUB/KDTREE_MAKE# KDTREE_MAKE->INTEGER _V1) of type FUNCTION
+```
+The optimizer chokes on a **foreign-function call nested directly as the
+right-hand side of `set <stored-function>() = ...;`** — it seems to try resolving
+the inner `CALL` expression as a named object rather than evaluating it first.
+**Fix**: split it into two statements — evaluate into a variable, then assign:
+```
+set :xid = kdtree_make();
+set winesampleIndex() = :xid;
+```
+This works cleanly (`winesampleIndex()` then correctly returns `11`, i.e. whatever
+`kdtree_make()` most recently generated).
+
+### 3.c — `kdtree_put`
+
+```
+JavaAMOS 16> create function kdtree_put(Integer xid, Object fo, Object o) -> Object
+  as foreign 'JAVA:KDTreeIndex_Stub/kdtree_put';
+#[OID 4476 "INTEGER.OBJECT.OBJECT.KDTREE_PUT->OBJECT"]
+```
+
+Implemented in `KDTreeIndex_Stub.java` (the one `TODO` filled in beyond the given
+skeleton):
+```java
+if (m != null){
+    m.insert(key, val);
+}
+```
+i.e. once the target KD-tree is located (`locateKdtree(id)`, already provided in
+the skeleton), insert the extracted feature-vector key and the `WineSample`
+object id (`val`) into it.
+
+### 3.d — populate the index
+
+```
+JavaAMOS 17> create function addWineSampleIndex(WineSample ws, Vector of Number fv)
+                                 -> WineSample
+  as kdtree_put(winesampleIndex(), fv, ws);
+#[OID 4478 "WINESAMPLE.VECTOR-NUMBER.ADDWINESAMPLEINDEX->WINESAMPLE"]
+
+JavaAMOS 18> for each Winesample ws addWineSampleIndex(ws, features(ws));
+NIL
+0.063 s
+```
+
+Loops over all 2939 `WineSample` rows and inserts each one's features into the
+KD-tree created in 3.b. `NIL`/`0.063 s` is the expected output for a procedural
+`for each` statement (it doesn't return a value) — not an error.
+
+## Exercise 4 — manual KD-tree proximity search (`kdtreeProximitySearch`, `closeWineSamples2`)
+
+### 4.a — `kdtreeProximitySearch`
+
+```
+JavaAMOS 19> create function kdtreeProximitySearch(Integer xid, Vector of Number f,
+                                      Number distance)
+                                    -> Bag of Object
+  as foreign 'JAVA:KDTreeIndex_Stub/kdtreeProximitySearch';
+#[OID 4480 "INTEGER.VECTOR-NUMBER.NUMBER.KDTREEPROXIMITYSEARCH->OBJECT"]
+```
+
+Implemented in `KDTreeIndex_Stub.java` (this method was still a full `TODO` stub
+in the provided skeleton — no `cxt.emit` anywhere in it, so it originally produced
+an empty bag every time, silently, with no error):
+```java
+public void kdtreeProximitySearch(CallContext cxt, Tuple tpl)
+    throws AmosException, KeySizeException, java.lang.IllegalArgumentException {
+    int id = tpl.getIntElem(0);
+    double[] featureVector = toArray(tpl.getSeqElem(1));
+    double distance = tpl.getDoubleElem(2);
+
+    KDTree<Oid> m = locateKdtree(id);
+
+    if (m != null && m.size() > 0) {
+        List<Oid> ln = m.nearestEuclidean(featureVector, distance);
+        if (ln != null && ln.size() > 0) {
+            for (Oid val : ln) {
+                tpl.setElem(3, val);
+                cxt.emit(tpl);
+            }
+        }
+    }
+}
+```
+Uses `kd.jar`'s `nearestEuclidean(key, distance)` to get every stored point within
+`distance` of `featureVector`, then emits one result row per match.
+
+### 4.b — `closeWineSamples2`
+
+```
+JavaAMOS 20> create function closeWineSamples2(WineSample ws, Number distance)
+                                -> Bag of WineSample
+as kdtreeProximitySearch(winesampleIndex(), features(ws), distance);
+#[OID 4482 "WINESAMPLE.NUMBER.CLOSEWINESAMPLES2->WINESAMPLE"]
+
+JavaAMOS 21> closeWineSamples2(:ws, 3);
+#[OID 3158]
+#[OID 1558]
+0.082 s
+```
+
+**Correctness check against Exercise 2:** `closeWineSamples(:ws, 3)` (the naive
+`euclid`-based full scan) returned `#[OID 1558]` and `#[OID 3158]`.
+`closeWineSamples2(:ws, 3)` (the manual KD-tree search) returns the **same two
+objects** (order differs, which is expected — AmosQL bags are unordered). This
+confirms the KD-tree implementation is functionally correct: it finds the same
+neighbors as the ground-truth full scan, just via a different index structure.
+
+On timing: this first call took `0.082 s`, slower than `closeWineSamples`'s
+~0.036–0.054 s range from Exercise 2. Not yet a fair comparison — this is a single
+cold call (`closeWineSamples2` freshly defined/compiled, no repeated-call warm-up
+data yet), whereas Exercise 2's number came from an average over ten repeated
+calls. Exercise 5 (next) is specifically about comparing the two properly with
+repeated timing and `pc()` on both functions — that comparison shouldn't be drawn
+from this single data point.
+
 ## Session transcript
 
 ```
