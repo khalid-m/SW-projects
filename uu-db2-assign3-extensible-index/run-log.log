@@ -234,3 +234,140 @@ JavaAMOS 21> closeWineSamples2(:ws, 3);
 #[OID 1558]
 0.082 s
 JavaAMOS 21>
+JavaAMOS 21> closeWineSamples2(:ws, 3);
+#[OID 3158]
+#[OID 1558]
+0.066 s
+JavaAMOS 21> closeWineSamples2(:ws, 3);
+#[OID 3158]
+#[OID 1558]
+0.05 s
+JavaAMOS 21> closeWineSamples2(:ws, 3);
+#[OID 3158]
+#[OID 1558]
+0.048 s
+JavaAMOS 21> closeWineSamples2(:ws, 3);
+#[OID 3158]
+#[OID 1558]
+0.066 s
+JavaAMOS 21> closeWineSamples2(:ws, 3);
+#[OID 3158]
+#[OID 1558]
+0.037 s
+JavaAMOS 21> closeWineSamples2(:ws, 3);
+#[OID 3158]
+#[OID 1558]
+0.046 s
+JavaAMOS 21> closeWineSamples2(:ws, 3);
+#[OID 3158]
+#[OID 1558]
+0.04 s
+JavaAMOS 21> closeWineSamples2(:ws, 3);
+#[OID 3158]
+#[OID 1558]
+0.051 s
+JavaAMOS 21> closeWineSamples2(:ws, 3);
+#[OID 3158]
+#[OID 1558]
+0.049 s
+JavaAMOS 21> closeWineSamples2(:ws, 3);
+#[OID 3158]
+#[OID 1558]
+0.042 s
+JavaAMOS 21>
+JavaAMOS 24> closeWineSamples2(:ws, 3);
+#[OID 3158]
+#[OID 1558]
+0.049 s
+JavaAMOS 24> closeWineSamples2(:ws, 3);
+#[OID 3158]
+#[OID 1558]
+0.039 s
+JavaAMOS 24> closeWineSamples2(:ws, 3);
+#[OID 3158]
+#[OID 1558]
+0.046 s
+JavaAMOS 24> closeWineSamples2(:ws, 3);
+#[OID 3158]
+#[OID 1558]
+0.043 s
+JavaAMOS 24> closeWineSamples2(:ws, 3);
+#[OID 3158]
+#[OID 1558]
+0.034 s
+JavaAMOS 24> closeWineSamples2(:ws, 3);
+#[OID 3158]
+#[OID 1558]
+0.049 s
+JavaAMOS 24> closeWineSamples2(:ws, 3);
+#[OID 3158]
+#[OID 1558]
+0.053 s
+JavaAMOS 24> closeWineSamples2(:ws, 3);
+#[OID 3158]
+#[OID 1558]
+0.039 s
+JavaAMOS 24> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.046 s
+JavaAMOS 24> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.047 s
+JavaAMOS 24> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.058 s
+JavaAMOS 24> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.049 s
+JavaAMOS 24> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.057 s
+JavaAMOS 24> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.048 s
+JavaAMOS 24> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.048 s
+JavaAMOS 24> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.047 s
+JavaAMOS 24>
+JavaAMOS 24> pc("closeWinesamples");
+----------------------------
+closewinesamples(Winesample,Number)->Bag of Winesample
+
+Execution plan:
+(WINESAMPLE.NUMBER.CLOSEWINESAMPLES->WINESAMPLE WS- DISTANCE- CLOSESTWS+) <-
+(NESTED-LOOP-JOIN
+   (HASH-INDEX-GET #[OID 1518 "WINESAMPLE.FEATURES->VECTOR-NUMBER"] WS-
+      _V2+)
+   (HASH-FULL-SCAN #[OID 1518 "WINESAMPLE.FEATURES->VECTOR-NUMBER"] CLOSESTWS+
+      _V3+)
+   (CALL #extpred "EUCLIDBBF"# #[OID 819 "VECTOR-NUMBER.VECTOR-NUMBER.EUCLID->NUMBER"]
+      _V2- _V3- _V4+)
+   (CALL #extpred "LE--"# #[OID 200 "OBJECT.OBJECT.<=->BOOLEAN"] _V4- DISTANCE-))
+#[OID 4468 "WINESAMPLE.NUMBER.CLOSEWINESAMPLES->WINESAMPLE"]
+0.029 s
+JavaAMOS 24> pc("closeWinesamples2");
+----------------------------
+closewinesamples2(Winesample,Number)->Bag of Winesample
+
+Execution plan:
+(WINESAMPLE.NUMBER.CLOSEWINESAMPLES2->WINESAMPLE WS- DISTANCE- _V4+) <-
+(NESTED-LOOP-JOIN
+   (HASH-INDEX-GET #[OID 1518 "WINESAMPLE.FEATURES->VECTOR-NUMBER"] WS-
+      _V3+)
+   (HASH-FULL-SCAN #[OID 4472 "WINESAMPLEINDEX->INTEGER"] _V2+)
+   (CALL #extpred "JAVA:KDTREEINDEX_STUB/KDTREEPROXIMITYSEARCH"# #[OID 4479 "INTEGER.VECTOR-NUMBER.NUMBER.KDTREEPROXIMITYSEARCH->OBJECT"]
+      _V2- _V3- DISTANCE- _V4+))
+#[OID 4481 "WINESAMPLE.NUMBER.CLOSEWINESAMPLES2->WINESAMPLE"]
+0.028 s
+JavaAMOS 24>

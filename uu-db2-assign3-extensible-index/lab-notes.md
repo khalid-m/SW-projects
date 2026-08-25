@@ -562,6 +562,106 @@ calls. Exercise 5 (next) is specifically about comparing the two properly with
 repeated timing and `pc()` on both functions — that comparison shouldn't be drawn
 from this single data point.
 
+## Exercise 5 — comparing `closeWineSamples` vs. `closeWineSamples2`
+
+TODO 5 asks to investigate the execution plans *and* the speed of the naive
+(`closeWineSamples`, Exercise 2) vs. manual-KD-tree (`closeWineSamples2`, Exercise
+4) proximity searches, and explain the difference.
+
+### Timing: two separate batches, no consistent winner at this scale
+
+**Batch 1** (`closeWineSamples2` ×11, cold start included):
+`0.082, 0.066, 0.05, 0.048, 0.066, 0.037, 0.046, 0.04, 0.051, 0.049, 0.042` →
+avg ≈ **0.0525s** — vs. Exercise 2's `closeWineSamples` ×11 average ≈ **0.0445s**.
+KD-tree version *slower* here.
+
+**Batch 2** (back-to-back, 8 calls each): `closeWineSamples2`:
+`0.049, 0.039, 0.046, 0.043, 0.034, 0.049, 0.053, 0.039` → avg ≈ **0.044s**;
+`closeWineSamples`: `0.046, 0.047, 0.058, 0.049, 0.057, 0.048, 0.048, 0.047` →
+avg ≈ **0.050s**. KD-tree version *faster* here — the opposite of batch 1.
+
+Both functions land in the same overall ~0.034–0.082s band across both batches,
+with which one is "faster" flipping between runs. At `n = 2939`, this looks like
+measurement noise dominating any real difference, not a decisive result either
+way — worth keeping in mind when writing up "comments on speed."
+
+### Execution plans: where the real structural difference is
+
+```
+JavaAMOS 24> pc("closeWinesamples");
+Execution plan:
+(WINESAMPLE.NUMBER.CLOSEWINESAMPLES->WINESAMPLE WS- DISTANCE- CLOSESTWS+) <-
+(NESTED-LOOP-JOIN
+   (HASH-INDEX-GET #[OID 1518 "WINESAMPLE.FEATURES->VECTOR-NUMBER"] WS-
+      _V2+)
+   (HASH-FULL-SCAN #[OID 1518 "WINESAMPLE.FEATURES->VECTOR-NUMBER"] CLOSESTWS+
+      _V3+)
+   (CALL #extpred "EUCLIDBBF"# #[OID 819 "VECTOR-NUMBER.VECTOR-NUMBER.EUCLID->NUMBER"]
+      _V2- _V3- _V4+)
+   (CALL #extpred "LE--"# #[OID 200 "OBJECT.OBJECT.<=->BOOLEAN"] _V4- DISTANCE-))
+
+JavaAMOS 24> pc("closeWinesamples2");
+Execution plan:
+(WINESAMPLE.NUMBER.CLOSEWINESAMPLES2->WINESAMPLE WS- DISTANCE- _V4+) <-
+(NESTED-LOOP-JOIN
+   (HASH-INDEX-GET #[OID 1518 "WINESAMPLE.FEATURES->VECTOR-NUMBER"] WS-
+      _V3+)
+   (HASH-FULL-SCAN #[OID 4472 "WINESAMPLEINDEX->INTEGER"] _V2+)
+   (CALL #extpred "JAVA:KDTREEINDEX_STUB/KDTREEPROXIMITYSEARCH"# #[OID 4479 "INTEGER.VECTOR-NUMBER.NUMBER.KDTREEPROXIMITYSEARCH->OBJECT"]
+      _V2- _V3- DISTANCE- _V4+))
+```
+
+Both plans share the same first step — `HASH-INDEX-GET` on `features` to fetch
+`ws`'s own feature vector, `O(1)`-ish, done once. That's where the similarity ends.
+
+**`closeWineSamples`'s second step is `HASH-FULL-SCAN` over `features` — i.e. over
+all 2939 `WineSample` rows** (`CLOSESTWS+ _V3+`, both unbound). Every one of those
+rows then pays for a `CALL EUCLIDBBF` (the distance computation) and a `CALL LE--`
+(the filter, applied *after* the distance is already computed). This is explicitly
+`O(n)` **inside AMOS's own visible plan** — the cost is spent one row at a time, in
+operators AMOS itself is executing and counting.
+
+**`closeWineSamples2`'s second step is also a `HASH-FULL-SCAN` — but over
+`WINESAMPLEINDEX->INTEGER`, not over `WineSample`.** `winesampleIndex()` is a
+**zero-argument stored function holding a single `Integer` value** (the KD-tree's
+id) — as a "table," it has exactly **one row**, ever. So this "full scan" is
+scanning a relation of size 1, not size 2939 — despite the same operator name as
+the expensive scan in `closeWineSamples`, it's `O(1)` in practice. (This matches
+the assignment's own aside: *"Notice that winesampleindex() contains exactly one
+object."*)
+
+**All of the real proximity-search work in `closeWineSamples2` happens inside the
+single `CALL kdtreeProximitySearch`** — `_V2- _V3- DISTANCE- _V4+`: the KD-tree id,
+`ws`'s feature vector, and the distance go in; every matching object comes out of
+that one call. Crucially, **this is opaque to AMOS's plan** — from AMOS's point of
+view, one physical operator handles the entire neighbor search, regardless of how
+many `WineSample` rows exist. The linear-scan-or-not question has been *moved
+inside* the KD-tree implementation (`kd.jar`'s `nearestEuclidean`), where it no
+longer shows up as an explicit per-row operator in `pc()`'s output.
+
+### Why this explains the (inconclusive) timing data
+
+Structurally, `closeWineSamples2`'s plan should scale far better as `WineSample`
+grows: its AMOS-visible cost is constant (one index-get, one 1-row scan, one
+opaque call) regardless of `n`, whereas `closeWineSamples`'s cost is explicitly
+linear in `n` inside the plan itself (a real full scan over all rows, with a
+distance computed for every one).
+
+*However*, whether `kdtreeProximitySearch` is actually fast **depends entirely on
+the KD-tree's own internal behavior**, which `pc()` can't see into. KD-trees are
+well known to lose their pruning advantage as dimensionality grows — the "curse of
+dimensionality" — and `features` here is **11-dimensional**, high enough that a
+KD-tree's search can degrade toward visiting a large fraction of stored points
+anyway, even though it's still *structurally* a different algorithm from a brute
+force scan. That's a plausible explanation for the mixed timing results above: at
+`n = 2939` and 11 dimensions, the KD-tree's algorithmic advantage may not be large
+enough to reliably beat the naive scan's overhead-free simplicity — the two
+approaches end up close enough that ordinary run-to-run variance can flip which
+one looks faster. The *architectural* difference (linear scan visible in the AMOS
+plan vs. delegated to an opaque, potentially-sublinear foreign call) is real and
+would be expected to matter much more at a larger `n` — this small dataset and
+this many dimensions just aren't a strong enough test of it.
+
 ## Session transcript
 
 ```
