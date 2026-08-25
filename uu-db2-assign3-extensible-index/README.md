@@ -104,6 +104,92 @@ At the `Javaamos N>` prompt, paste and run statements from the OSQL script one a
 the script is meant to be worked through interactively so execution plans (`pc(...)`) and
 timings can be compared at each step, not executed as a single batch.
 
+### Known issue: `amos2.exe` requires a 32-bit JDK
+
+`amos2.exe` (the native launcher inside `amos2.zip`'s `bin/` folder) is a **32-bit
+(x86)** executable. Since it loads the JVM in-process (via JNI), it can only load a
+**32-bit `jvm.dll`** — pointing `JAVA_HOME` at a modern 64-bit JDK will fail (e.g.
+"not a valid Win32 application," or a JNI/`jvm.dll` load error).
+
+To confirm an `amos2.exe`'s architecture yourself, check the `Machine` field in its
+PE header — from PowerShell, no extra tools required:
+
+```powershell
+$path = "path\to\amos2.exe"
+$fs = [System.IO.File]::OpenRead($path)
+$br = New-Object System.IO.BinaryReader($fs)
+$fs.Seek(0x3C, 'Begin') | Out-Null
+$peOffset = $br.ReadInt32()
+$fs.Seek($peOffset + 4, 'Begin') | Out-Null
+$machine = $br.ReadUInt16()
+"{0:X}" -f $machine
+$br.Close()
+$fs.Close()
+```
+
+`14C` = 32-bit (x86) — the case observed for this assignment's `amos2.exe`. `8664`
+would mean 64-bit (x64).
+
+**Fix:** install a **32-bit JDK** and point `JAVA_HOME` at it in `setup.cmd`. Oracle
+stopped publishing 32-bit JDK builds after Java 8, so target a 32-bit JDK build
+(satisfies the assignment's "1.6 or higher" requirement) — free 32-bit Windows
+builds are available from Eclipse Adoptium (Temurin) or Azul Zulu.
+
+For this repo, **`jdk-7u80-windows-i586.exe`** (32-bit/x86 build of JDK 7u80) was
+downloaded from
+https://www.oracle.com/java/technologies/javase/javase7-archive-downloads.html
+and used to run `amos2.exe` successfully.
+
+**Gotcha when editing `setup.cmd`:** this script's convention is that `JAVA_HOME`
+holds the JDK's **`bin`** directory directly (it's used bare in `PATH`, with no
+`\bin` appended elsewhere) — e.g. the original assignment's own
+`JAVA_HOME=...\jdk1.7.0_40\bin\`. Setting it to just the JDK root (no trailing
+`bin\`) leaves `javac`/`java` off `PATH`:
+```
+'javac' is not recognized as an internal or external command, operable program or batch file.
+```
+Fix: make sure `JAVA_HOME` ends in `\bin\`, e.g.
+`set JAVA_HOME=C:\Program Files (x86)\Java\jdk1.7.0_80\bin\`.
+
+With a 32-bit JDK installed and `setup.cmd`'s `JAVA_HOME`/paths pointed at the
+correct local install (see [`lab-notes.md`](lab-notes.md) for the exact working
+session), the full documented workflow succeeds end to end:
+```
+call setup.cmd
+javac KDTreeIndex_Stub.java
+javaamos
+```
+```
+Release 16, v11
+Connecting
+Entering top loop
+JavaAMOS 1>
+```
+
+### Known issue: the assignment PDF's foreign-function class name doesn't match the skeleton
+
+The assignment PDF's illustrative code listings (e.g. Exercise 3.a) write the
+foreign-function class as **`KDTreeIndex`**, e.g.:
+```
+create function kdtree_make() -> Integer id as foreign 'JAVA:KDTreeIndex/kdtree_make';
+```
+But the actual skeleton file provided, [`KDTreeIndex_Stub.java`](KDTreeIndex_Stub.java),
+declares `public class KDTreeIndex_Stub` — note the `_Stub` suffix. Running the
+PDF's version verbatim fails:
+```
+Exception in thread "main" java.lang.NoClassDefFoundError: KDTreeIndex
+...
+bindJava: Couldn't find class KDTreeIndex
+```
+
+**Fix:** append `_Stub` to the class name in every foreign-function binding copied
+from the PDF:
+```
+create function kdtree_make() -> Integer id as foreign 'JAVA:KDTreeIndex_Stub/kdtree_make';
+```
+This matches what [`lab3_stub_sol-notJavaFile.java`](lab3_stub_sol-notJavaFile.java)
+uses throughout — `KDTreeIndex_Stub`, never the PDF's `KDTreeIndex`.
+
 ## 5. Exercises
 
 The database schema is defined first:
