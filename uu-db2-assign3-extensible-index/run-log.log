@@ -524,3 +524,55 @@ JavaAMOS 35> closeWineSamples(:ws, 3);
 #[OID 3158]
 0.041 s
 JavaAMOS 35>
+create function featuredWineSamples(Vector of Number fv)->Bag of Winesample as
+  select ws from Winesample ws where features(ws)=fv;
+Redefining #[OID 4491 "VECTOR-NUMBER.FEATUREDWINESAMPLES->WINESAMPLE"]
+Recompiling #[OID 4491 "VECTOR-NUMBER.FEATUREDWINESAMPLES->WINESAMPLE"]
+#[OID 4491 "VECTOR-NUMBER.FEATUREDWINESAMPLES->WINESAMPLE"]
+0.022 s
+JavaAMOS 39> set :fv = {7,0.31,0.26,7.4,0.069,28,160,0.9954,3.13,0.46,9.8};
+0.006 s
+JavaAMOS 41> featuredWineSamples(:fv);
+#[OID 1558]
+0.021 s
+JavaAMOS 41> featuredWineSamples(:fv);
+#[OID 1558]
+0.028 s
+JavaAMOS 41> featuredWineSamples(:fv);
+#[OID 1558]
+0.031 s
+JavaAMOS 41> featuredWineSamples(:fv);
+#[OID 1558]
+0.022 s
+JavaAMOS 41> featuredWineSamples(:fv);
+#[OID 1558]
+0.029 s
+JavaAMOS 41> featuredWineSamples(:fv);
+#[OID 1558]
+0.031 s
+JavaAMOS 41> featuredWineSamples(:fv);
+#[OID 1558]
+0.031 s
+JavaAMOS 41> featuredWineSamples(:fv);
+#[OID 1558]
+0.012 s
+JavaAMOS 41> featuredWineSamples(:fv);
+#[OID 1558]
+0.02 s
+JavaAMOS 41> featuredWineSamples(:fv);
+#[OID 1558]
+0.03 s
+JavaAMOS 41> featuredWineSamples(:fv);
+#[OID 1558]
+0.032 s
+JavaAMOS 41> pc(#"featuredWineSamples");
+----------------------------
+featuredwinesamples(Vector of Number)->Bag of Winesample
+
+Execution plan:
+(VECTOR-NUMBER.FEATUREDWINESAMPLES->WINESAMPLE FV- WS+) <-
+(XTREE-INDEX-SCAN #[OID 1518 "WINESAMPLE.FEATURES->VECTOR-NUMBER"] WS+
+   FV-)
+#[OID 4491 "VECTOR-NUMBER.FEATUREDWINESAMPLES->WINESAMPLE"]
+0.039 s
+JavaAMOS 41>

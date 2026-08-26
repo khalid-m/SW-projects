@@ -860,6 +860,58 @@ multidimensional index type is behind the rewrite. Correctness held throughout �
 `closeWineSamples(:ws, 3)` kept returning the same two objects (`#[OID 1558]`,
 `#[OID 3158]`) across the whole exercise.
 
+## Exercise 8 — exact-match search on `features`, using the same XTREE index
+
+The last exercise checks that the XTREE index (still in place on `features` from
+Exercise 7) also supports **exact-match** lookups on the feature vector, not just
+the proximity searches Exercises 6-7 exercised — i.e. the same physical index
+serving two different query shapes.
+
+```
+create function featuredWineSamples(Vector of Number fv) -> Bag of Winesample as
+  select ws from Winesample ws where features(ws) = fv;
+```
+
+A plain equality query: "find all wine samples whose feature vector equals `fv`
+exactly." No proximity/`euclid` involved this time — no rewrite rule needed for
+this one, since `=` on an indexed column is something the optimizer can already
+use directly.
+
+```
+set :fv = {7,0.31,0.26,7.4,0.069,28,160,0.9954,3.13,0.46,9.8};
+featuredWineSamples(:fv);
+#[OID 1558]
+```
+
+`#[OID 1558]` is the same wine sample `getSample(37)` (and `:ws`) has pointed to
+throughout this whole run log — confirming `:fv` here is genuinely that sample's
+own feature vector, and the exact-match lookup finds it correctly.
+
+Called 11 times back to back: `0.021, 0.028, 0.031, 0.022, 0.029, 0.031, 0.031,
+0.012, 0.02, 0.03, 0.032` → avg ≈ **0.0261s** — noticeably faster than any of the
+`closeWineSamples`/`closeWineSamples2` proximity-search timings seen in Exercises
+5-7 (all ≈0.045-0.05s). This is expected: an exact-match lookup on an ordered
+index is a much cheaper operation than a radius/proximity search, regardless of
+which multidimensional index type backs it.
+
+```
+pc(#"featuredWineSamples");
+Execution plan:
+(VECTOR-NUMBER.FEATUREDWINESAMPLES->WINESAMPLE FV- WS+) <-
+(XTREE-INDEX-SCAN #[OID 1518 "WINESAMPLE.FEATURES->VECTOR-NUMBER"] WS+
+   FV-)
+```
+
+Confirms it: a single `XTREE-INDEX-SCAN` operator, taking `fv` bound and
+producing `ws` — no `NESTED-LOOP-JOIN`, no `CALL EUCLIDBBF`/`LE--`, none of the
+proximity-search machinery from the earlier exercises. The same X-tree structure
+built in Exercise 7 for `euclid(...)  <= distance` proximity queries is reused
+here, transparently, for a completely different query shape (`=` instead of
+`<=`) — the same kind of "one physical index, multiple query patterns" pattern
+seen with `mbtree`/`hash` indexes in the standalone
+[amos-query-optimization](../amos-query-optimization/tutorial-index-execution-plans.md)
+tutorial.
+
 ## Session transcript
 
 ```
