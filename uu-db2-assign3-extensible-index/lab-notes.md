@@ -785,6 +785,81 @@ make a rewrite rule *available*; nothing changes in any query's plan until
 column, and even then the running query needs an explicit `recompile` (not just
 `reoptimize`) to pick up the newly available index in this AMOS release.
 
+## Exercise 7 — swapping the KDTREE index for a built-in XTREE index
+
+TODO 7.a asks to replace the KDTREE index on `features`'s `f` with a built-in
+`XTREE` index (an X-tree, a different multidimensional index structure) on the
+*same* column, then compare against Exercise 6's KDTREE results — again without
+touching `closeWineSamples`'s own definition.
+
+### Confirming the KDTREE index, then swapping it out
+
+```
+indexes(#"features");
+{#[OID 1519 "P_WINESAMPLE.FEATURES->VECTOR-NUMBER"],0,"hash","unique"}
+{#[OID 1519 "P_WINESAMPLE.FEATURES->VECTOR-NUMBER"],1,"kdtree","multiple"}
+```
+
+Confirms `features` carries two indexes at this point: the default unique hash
+(position 0, needed since `features` is a stored function) plus the `kdtree`
+index from Exercise 6.c (position 1).
+
+```
+drop_index("features","f");
+1
+indexes(#"features");
+{#[OID 1519 "P_WINESAMPLE.FEATURES->VECTOR-NUMBER"],0,"hash","unique"}
+```
+
+Dropping `f`'s index removes the KDTREE entry; only the hash index (needed for
+`features`'s own key lookups) survives — same "can't drop the last index"
+constraint seen in the earlier `winequalitysamples` example, just not triggered
+here since the hash index remains.
+
+```
+create_index("features","f","XTREE","multiple");
+{NIL,NIL}
+```
+
+Same shape of call as Exercise 6.c, just `"XTREE"` instead of `"KDTREE"` —
+`XTREE` is a built-in AMOS index type (unlike `KDTREE`, it needs no
+`register_exindextype`/foreign-function setup at all).
+
+```
+recompile("closeWinesamples");
+reoptimize("closeWinesamples");
+reoptimize("closeWinesamples");
+```
+
+`recompile` was run again here (same lesson as 6.c: it's what actually makes the
+optimizer re-examine available indexes), followed by two `reoptimize` calls,
+both no-ops once the plan had already switched.
+
+**Gap in this run**: no `pc("closeWinesamples")` was captured after the XTREE
+swap, so — unlike Exercise 6.d — there's no confirmed execution-plan text here
+showing the operator name for the X-tree lookup (e.g. an `XTREE-...` operator in
+place of `CALL KDTREEINDEX_STUB/KDTREEPROXIMITYSEARCH`). Worth re-running
+`pc("closeWinesamples")` once more if a plan-level before/after comparison is
+needed for the write-up.
+
+### Timing: KDTREE vs. XTREE, still inconclusive at this scale
+
+`closeWineSamples(:ws, 3)` ×12 immediately after the KDTREE→plan switch (6.c):
+`0.041, 0.047, 0.038, 0.059, 0.035, 0.044, 0.045, 0.045, 0.042, 0.048, 0.045,
+0.052` → avg ≈ **0.0451s**.
+
+`closeWineSamples(:ws, 3)` ×10 after the XTREE swap:
+`0.053, 0.045, 0.048, 0.041, 0.05, 0.042, 0.053, 0.052, 0.036, 0.041` →
+avg ≈ **0.0461s**.
+
+Essentially the same average as the KDTREE-backed run (and both are in the same
+band as Exercise 5's naive-scan timings) — consistent with the same conclusion
+drawn in Exercise 5: at `n = 2939` and 11 dimensions, differences between these
+approaches don't show up reliably in wall-clock timing, regardless of which
+multidimensional index type is behind the rewrite. Correctness held throughout —
+`closeWineSamples(:ws, 3)` kept returning the same two objects (`#[OID 1558]`,
+`#[OID 3158]`) across the whole exercise.
+
 ## Session transcript
 
 ```

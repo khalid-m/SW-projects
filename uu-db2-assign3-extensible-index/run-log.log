@@ -460,3 +460,67 @@ JavaAMOS 30> closeWinesamples(:ws,3);
 #[OID 1558]
 0.052 s
 JavaAMOS 30>
+JavaAMOS 30> indexes(#"features");
+{#[OID 1519 "P_WINESAMPLE.FEATURES->VECTOR-NUMBER"],0,"hash","unique"}
+{#[OID 1519 "P_WINESAMPLE.FEATURES->VECTOR-NUMBER"],1,"kdtree","multiple"}
+0.047 s
+JavaAMOS 30> drop_index("features","f");
+1
+0.027 s
+JavaAMOS 31> indexes(#"features");
+{#[OID 1519 "P_WINESAMPLE.FEATURES->VECTOR-NUMBER"],0,"hash","unique"}
+0.025 s
+JavaAMOS 31> create_index("features","f","XTREE","multiple");
+{NIL,NIL}
+0.199 s
+JavaAMOS 32> recompile("closeWinesamples");
+Recompiling #[OID 4468 "WINESAMPLE.NUMBER.CLOSEWINESAMPLES->WINESAMPLE"]
+#[OID 4468 "WINESAMPLE.NUMBER.CLOSEWINESAMPLES->WINESAMPLE"]
+0.04 s
+JavaAMOS 33> reoptimize("closeWinesamples");
+#[OID 4468 "WINESAMPLE.NUMBER.CLOSEWINESAMPLES->WINESAMPLE"]
+0.038 s
+JavaAMOS 34> reoptimize("closeWinesamples");
+#[OID 4468 "WINESAMPLE.NUMBER.CLOSEWINESAMPLES->WINESAMPLE"]
+0.027 s
+JavaAMOS 35> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.053 s
+JavaAMOS 35> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.045 s
+JavaAMOS 35> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.048 s
+JavaAMOS 35> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.041 s
+JavaAMOS 35> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.05 s
+JavaAMOS 35> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.042 s
+JavaAMOS 35> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.053 s
+JavaAMOS 35> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.052 s
+JavaAMOS 35> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.036 s
+JavaAMOS 35> closeWineSamples(:ws, 3);
+#[OID 1558]
+#[OID 3158]
+0.041 s
+JavaAMOS 35>
