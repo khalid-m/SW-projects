@@ -80,6 +80,73 @@ Debugging: `(objlog "<query>;")` dumps a query's unoptimized/optimized
 ObjectLog form; `(break dynprogsort)` / `(trace dynprogsort)` instrument the
 function during a `lisp;` session; `(load "lab7.lsp")` reloads edits.
 
+## `pc()` output: older build vs. newer build
+
+Two AMOS II builds were both run for this assignment (see
+[`run-log.md`](run-log.md) for the full transcripts) — an older one (per the
+Örebro assignment's "use the version from Assignment 4" instruction) and a
+newer one also available on the lab VM:
+
+| | Older build | Newer build |
+|---|---|---|
+| Path | `older-amos2\bin\amos2` | `AmosNT_floq\bin\amos2` |
+| Version banner | `Amos II Release 8, v2` | `Release 16, v11` |
+| Prompt | `Amos n>` | `AmosQL n>` |
+
+Running `pc("matches_in_1950")` against the **same** stored function on each
+produces very different output.
+
+**Older build** (Release 8, v2) prints a sequence of optimizer *stages* as
+flat ObjectLog predicate lists — no physical operators named anywhere:
+
+```
+Original definition of MATCHES_IN_1950->MATCH: ...
+Simplified: ...
+Normalized and simplified: ...
+Coerced: same
+Decomposed (TBR):
+(MATCHES_IN_1950->MATCH M+) <-
+(AND (P_TOURNAMENT.YEAR->INTEGER _V3 1950)
+     (P_MATCH.PLAYED_IN->TOURNAMENT M _V3)
+     (P_MATCH.SPECTATORS->INTEGER M _V2)
+     (CALL GT-- #[OID 121 "OBJECT.OBJECT.>->BOOLEAN"] _V2 100000))
+```
+
+The final "Decomposed (TBR)" stage is the closest thing to a plan, but it
+only shows the chosen *predicate order* and binding pattern — it never names
+an index-access method.
+
+**Newer build** (Release 16, v11) instead prints a single, much more
+informative **"Execution plan"** section, expressed directly in terms of
+physical operators:
+
+```
+Execution plan:
+(MATCHES_IN_1950->MATCH M+) <-
+(NESTED-LOOP-JOIN
+   (HASH-FULL-SCAN #[OID 1515 "TOURNAMENT.YEAR->INTEGER"] _V3+ 1950)
+   (HASH-FULL-SCAN #[OID 1549 "MATCH.PLAYED_IN->TOURNAMENT"] M+ _V3-)
+   (HASH-INDEX-GET #[OID 1552 "MATCH.SPECTATORS->INTEGER"] M- _V2+)
+   (CALL #extpred "GT--"# #[OID 202 "OBJECT.OBJECT.>->BOOLEAN"] _V2- 100000))
+```
+
+This is exactly the `<STRUCTURE>-<OPERATION>` naming convention documented
+in [`../tutorial-index-execution-plans.md`](../tutorial-index-execution-plans.md)
+(`HASH-FULL-SCAN`, `HASH-INDEX-GET`, etc.) — the older build simply doesn't
+surface that information through `pc()` at all.
+
+Despite the very different presentation, **both builds agree on the
+underlying optimizer decision**: predicate order `year → played_in →
+spectators → GT--` (the `>` test) in both cases — same plan, different
+report format.
+
+**Practical implication:** when producing or verifying execution-plan output
+for the tutorial or the Exercise 7 report, run `pc()` on the **newer build**
+(`AmosNT_floq`) — its output is what the tutorial's index-execution-plan
+material assumes. The older build is still needed for the `dynprogsort`
+Lisp work itself, since the Örebro assignment specifies that version for
+ALisp/`optmethod('exhaustive')`.
+
 ## Deliverable
 
 The filled-in `dynprogsort` definition, plus example optimized queries
