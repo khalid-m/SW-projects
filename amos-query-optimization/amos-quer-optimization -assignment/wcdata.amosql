@@ -1,0 +1,491 @@
+/*-*-sql-*-*******************************************************************
+/* Extra data for the World Cup database */
+/* Gustav Fahl 930225 */
+/* updated 950227 Gustav Fahl */
+/*   - added spectators to all matches */
+/*   - added a couple of more matches from 1950 */
+/* Must be loaded before committing data in tutorial.amosql because it
+   uses enviroonment variables defined in tutorial.amosql */
+create country (name) instances
+  :arg ("Argentina"),
+  :aut ("Austria"),
+  :bul ("Bulgaria"),
+  :cam ("Cameroon"),
+  :chi ("Chile"),
+  :col ("Colombia"),
+  :cri ("Costa Rica"),
+  :cub ("Cuba"),
+  :els ("El Salvador"),
+  :eng ("England"),
+  :fra ("France"),
+  :ger ("Germany"),
+  :hol ("Holland"),
+  :hun ("Hungary"),
+  :irn ("Iran"),
+  :isr ("Israel"),
+  :mex ("Mexico"),
+  :par ("Paraguay"),
+  :per ("Peru"),
+  :pol ("Poland"),
+  :rom ("Romania"),
+  :sco ("Scotland"),
+  :urs ("Soviet Union"),
+  :swe ("Sweden"),
+  :sui ("Switzerland"),
+  :uru ("Uruguay"),
+  :wal ("Wales"),
+  :yug ("Yugoslavia");
+
+create tournament(year, host) instances
+  :t1 (1930, :uru),
+  :t3 (1938, :fra),
+  :t4 (1950, :bra),
+  :t5 (1954, :sui),
+  :t6 (1958, :swe),
+  :t7 (1962, :chi),
+  :t8 (1966, :eng),
+  :t9 (1970, :mex),
+  :t10 (1974, :ger),
+  :t11 (1978, :arg),
+  :t13 (1986, :mex);
+
+create player(name) instances
+  :p4 ("Kurt Hamrin"),
+  :p5 ("Agne Simonsson"),
+  :p6 ("Nils Liedholm"),
+  :p7 ("Lennart Skoglund"),
+  :p8 ("Gunnar Gren"),
+  :p9 ("Tomas Brolin"),
+  :p10 ("Andranik Eskandarian"),
+  :p11 ("Ernie Brandts"),
+  :p12 ("Hans-Hubert Vogts");
+
+create referee(name) instances
+  :r2 ("Tullio Lanese"),
+  :r3 ("Carlos Maciel"),
+  :r4 ("Zoran Petrovic");
+
+create team (represents) instances
+  :swe34 (:swe),
+  :arg34 (:arg),
+  :ger34 (:ger),
+  :bra38 (:bra),
+  :cub38 (:cub),
+  :hun38 (:hun),
+  :pol38 (:pol),
+  :swe38 (:swe),
+  :bra50 (:bra),
+  :ita50 (:ita),
+  :par50 (:par),
+  :esp50 (:esp),
+  :swe50 (:swe),
+  :uru50 (:uru),
+  :yug50 (:yug),
+  :aut54 (:aut),
+  :ger54 (:ger),
+  :hun54 (:hun),
+  :sui54 (:sui),
+  :fra58 (:fra),
+  :mex58 (:mex),
+  :hun58 (:hun),
+  :wal58 (:wal),
+  :urs58 (:urs),
+  :ger58 (:ger),
+  :bra58 (:bra),
+  :par58 (:par),
+  :swe58 (:swe),
+  :swe70 (:swe),
+  :ita70 (:ita),
+  :isr70 (:isr),
+  :uru70 (:uru),
+  :swe74 (:swe),
+  :bul74 (:bul),
+  :hol74 (:hol),
+  :uru74 (:uru),
+  :pol74 (:pol),
+  :ger74 (:ger),
+  :yug74 (:yug),
+  :swe78 (:swe),
+  :bra78 (:bra),
+  :aut78 (:aut),
+  :esp78 (:esp),
+  :irn78 (:irn),
+  :sco78 (:sco),
+  :hol78 (:hol),
+  :ita78 (:ita),
+  :ger78 (:ger),
+  :cam82 (:cam),
+  :els82 (:els),
+  :hun82 (:hun),
+  :per82 (:per),
+  :pol82 (:pol),
+  :cam90 (:cam),
+  :arg90 (:arg),
+  :rom90 (:rom),
+  :urs90 (:urs),
+  :col90 (:col),
+  :eng90 (:eng),
+  :swe90 (:swe),
+  :bra90 (:bra),
+  :sco90 (:sco),
+  :cri90 (:cri);
+
+add participating_teams(:t2)=:swe34;
+add participating_teams(:t2)=:arg34;
+add participating_teams(:t2)=:ger34;
+add participating_teams(:t3)=:bra38;
+add participating_teams(:t3)=:cub38;
+add participating_teams(:t3)=:hun38;
+add participating_teams(:t3)=:pol38;
+add participating_teams(:t3)=:swe38;
+add participating_teams(:t4)=:bra50;
+add participating_teams(:t4)=:ita50;
+add participating_teams(:t4)=:par50;
+add participating_teams(:t4)=:esp50;
+add participating_teams(:t4)=:swe50;
+add participating_teams(:t4)=:uru50;
+add participating_teams(:t4)=:yug50;
+add participating_teams(:t5)=:aut54;
+add participating_teams(:t5)=:ger54;
+add participating_teams(:t5)=:hun54;
+add participating_teams(:t5)=:sui54;
+add participating_teams(:t6)=:fra58;
+add participating_teams(:t6)=:mex58;
+add participating_teams(:t6)=:hun58;
+add participating_teams(:t6)=:wal58;
+add participating_teams(:t6)=:urs58;
+add participating_teams(:t6)=:ger58;
+add participating_teams(:t6)=:bra58;
+add participating_teams(:t6)=:par58;
+add participating_teams(:t6)=:swe58;
+add participating_teams(:t9)=:swe70;
+add participating_teams(:t9)=:ita70;
+add participating_teams(:t9)=:isr70;
+add participating_teams(:t9)=:uru70;
+add participating_teams(:t10)=:swe74;
+add participating_teams(:t10)=:bul74;
+add participating_teams(:t10)=:hol74;
+add participating_teams(:t10)=:uru74;
+add participating_teams(:t10)=:pol74;
+add participating_teams(:t10)=:ger74;
+add participating_teams(:t10)=:yug74;
+add participating_teams(:t11)=:swe78;
+add participating_teams(:t11)=:bra78;
+add participating_teams(:t11)=:aut78;
+add participating_teams(:t11)=:esp78;
+add participating_teams(:t11)=:irn78;
+add participating_teams(:t11)=:sco78;
+add participating_teams(:t11)=:hol78;
+add participating_teams(:t11)=:ita78;
+add participating_teams(:t11)=:ger78;
+add participating_teams(:t12)=:cam82;
+add participating_teams(:t12)=:els82;
+add participating_teams(:t12)=:hun82;
+add participating_teams(:t12)=:per82;
+add participating_teams(:t12)=:pol82;
+add participating_teams(:t14)=:cam90;
+add participating_teams(:t14)=:arg90;
+add participating_teams(:t14)=:rom90;
+add participating_teams(:t14)=:urs90;
+add participating_teams(:t14)=:col90;
+add participating_teams(:t14)=:eng90;
+add participating_teams(:t14)=:swe90;
+add participating_teams(:t14)=:bra90;
+add participating_teams(:t14)=:sco90;
+add participating_teams(:t14)=:cri90;
+
+add players(:swe58)=:p4;
+add players(:swe58)=:p5;
+add players(:swe58)=:p6;
+add players(:swe58)=:p7;
+add players(:swe58)=:p8;
+add players(:swe90)=:p9;
+add players(:irn78)=:p10;
+add players(:hol78)=:p11;
+add players(:ger78)=:p12;
+
+create match (played_in, spectators, refereed_by) instances
+  :m3401 (:t2,nil,nil);
+add team_participations(:m3401)=(:swe34, 3);
+add team_participations(:m3401)=(:arg34, 2);
+
+create match (played_in, spectators, refereed_by) instances
+  :m3402 (:t2,3000,nil);
+add team_participations(:m3402)=(:swe34, 1);
+add team_participations(:m3402)=(:ger34, 2);
+
+create match (played_in, spectators, refereed_by) instances
+  :m3801 (:t3,nil,nil);
+add team_participations(:m3801)=(:swe38, 8);
+add team_participations(:m3801)=(:cub38, 0);
+
+create match (played_in, spectators, refereed_by) instances
+  :m3802 (:t3,17000,nil);
+add team_participations(:m3802)=(:swe38, 1);
+add team_participations(:m3802)=(:hun38, 5);
+
+create match (played_in, spectators, refereed_by) instances
+  :m3803 (:t3,nil,nil);
+add team_participations(:m3803)=(:swe38, 2);
+add team_participations(:m3803)=(:bra38, 4);
+
+create match (played_in, spectators, refereed_by) instances
+  :m3804 (:t3,nil,nil);
+add team_participations(:m3804)=(:bra38, 6);
+add team_participations(:m3804)=(:pol38, 5);
+
+create match (played_in, spectators, refereed_by) instances
+  :m5001 (:t4,56502,nil);
+add team_participations(:m5001)=(:swe50, 3);
+add team_participations(:m5001)=(:ita50, 2);
+
+create match (played_in, spectators, refereed_by) instances
+  :m5002 (:t4,7903,nil);
+add team_participations(:m5002)=(:swe50, 2);
+add team_participations(:m5002)=(:par50, 2);
+
+create match (played_in, spectators, refereed_by) instances
+  :m5003 (:t4,138886,nil);
+add team_participations(:m5003)=(:swe50, 1);
+add team_participations(:m5003)=(:bra50, 7);
+
+create match (played_in, spectators, refereed_by) instances
+  :m5004 (:t4,7987,nil);
+add team_participations(:m5004)=(:swe50, 2);
+add team_participations(:m5004)=(:uru50, 3);
+
+create match (played_in, spectators, refereed_by) instances
+  :m5005 (:t4,11227,nil);
+add team_participations(:m5005)=(:swe50, 3);
+add team_participations(:m5005)=(:esp50, 1);
+
+create match (played_in, spectators, refereed_by) instances
+  :m5006 (:t4, 199854,nil);
+add team_participations(:m5006)=(:bra50, 1);
+add team_participations(:m5006)=(:uru50, 2);
+
+create match (played_in, spectators, refereed_by) instances
+  :m5007 (:t4, 142409,nil);
+add team_participations(:m5007)=(:bra50, 2);
+add team_participations(:m5007)=(:yug50, 0);
+
+create match (played_in, spectators, refereed_by) instances
+  :m5008 (:t4, 152772,nil);
+add team_participations(:m5008)=(:bra50, 6);
+add team_participations(:m5008)=(:esp50, 1);
+
+create match (played_in, spectators, refereed_by) instances
+  :m5401 (:t5,31000,nil);
+add team_participations(:m5401)=(:aut54, 7);
+add team_participations(:m5401)=(:sui54, 5);
+
+create match (played_in, spectators, refereed_by) instances
+  :m5402 (:t5,56000,nil);
+add team_participations(:m5402)=(:hun54, 8);
+add team_participations(:m5402)=(:ger54, 3);
+
+create match (played_in, spectators, refereed_by) instances
+  :m5801 (:t6,34107,nil);
+add team_participations(:m5801)=(:swe58, 3);
+add team_participations(:m5801)=(:mex58, 0);
+add player_participations(:m5801)=(:p4, 0, 0);
+add player_participations(:m5801)=(:p5, 2, 0);
+add player_participations(:m5801)=(:p6, 1, 0);
+add player_participations(:m5801)=(:p7, 0, 0);
+add player_participations(:m5801)=(:p8, 0, 0);
+
+create match (played_in, spectators, refereed_by) instances
+  :m5802 (:t6,38850,nil);
+add team_participations(:m5802)=(:swe58, 2);
+add team_participations(:m5802)=(:hun58, 1);
+add player_participations(:m5802)=(:p4, 2, 0);
+add player_participations(:m5802)=(:p5, 0, 0);
+add player_participations(:m5802)=(:p6, 0, 0);
+add player_participations(:m5802)=(:p7, 0, 0);
+add player_participations(:m5802)=(:p8, 0, 0);
+
+create match (played_in, spectators, refereed_by) instances
+  :m5803 (:t6,29800,nil);
+add team_participations(:m5803)=(:swe58, 0);
+add team_participations(:m5803)=(:wal58, 0);
+add player_participations(:m5803)=(:p7, 0, 0);
+
+create match (played_in, spectators, refereed_by) instances
+  :m5804 (:t6,31900,nil);
+add team_participations(:m5804)=(:swe58, 2);
+add team_participations(:m5804)=(:urs58, 0);
+add player_participations(:m5804)=(:p4, 1, 0);
+add player_participations(:m5804)=(:p5, 1, 0);
+add player_participations(:m5804)=(:p6, 0, 0);
+add player_participations(:m5804)=(:p7, 0, 0);
+add player_participations(:m5804)=(:p8, 0, 0);
+
+create match (played_in, spectators, refereed_by) instances
+  :m5805 (:t6,49471,nil);
+add team_participations(:m5805)=(:swe58, 3);
+add team_participations(:m5805)=(:ger58, 1);
+add player_participations(:m5805)=(:p4, 1, 0);
+add player_participations(:m5805)=(:p5, 0, 0);
+add player_participations(:m5805)=(:p6, 0, 0);
+add player_participations(:m5805)=(:p7, 1, 0);
+add player_participations(:m5805)=(:p8, 1, 0);
+add player_participations(:m5805)=(:p8, 0, 0);
+
+create match (played_in, spectators, refereed_by) instances
+  :m5806 (:t6,49737,nil);
+add team_participations(:m5806)=(:swe58, 2);
+add team_participations(:m5806)=(:bra58, 5);
+add player_participations(:m5806)=(:p4, 0, 0);
+add player_participations(:m5806)=(:p5, 1, 0);
+add player_participations(:m5806)=(:p6, 1, 0);
+add player_participations(:m5806)=(:p7, 0, 0);
+add player_participations(:m5806)=(:p8, 0, 0);
+
+create match (played_in, spectators, refereed_by) instances
+  :m5807 (:t6,16518,nil);
+add team_participations(:m5807)=(:fra58, 7);
+add team_participations(:m5807)=(:par58, 3);
+
+create match (played_in, spectators, refereed_by) instances
+  :m7001 (:t9,14000,nil);
+add team_participations(:m7001)=(:swe70, 0);
+add team_participations(:m7001)=(:ita70, 1);
+
+create match (played_in, spectators, refereed_by) instances
+  :m7002 (:t9,9000,nil);
+add team_participations(:m7002)=(:swe70, 1);
+add team_participations(:m7002)=(:isr70, 1);
+
+create match (played_in, spectators, refereed_by) instances
+  :m7003 (:t9,18000,nil);
+add team_participations(:m7003)=(:swe70, 1);
+add team_participations(:m7003)=(:uru70, 0);
+
+create match (played_in, spectators, refereed_by) instances
+  :m7401 (:t10,23300,nil);
+add team_participations(:m7401)=(:swe74, 0);
+add team_participations(:m7401)=(:bul74, 0);
+
+create match (played_in, spectators, refereed_by) instances
+  :m7402 (:t10,53700,nil);
+add team_participations(:m7402)=(:swe74, 0);
+add team_participations(:m7402)=(:hol74, 0);
+
+create match (played_in, spectators, refereed_by) instances
+  :m7403 (:t10,28300,nil);
+add team_participations(:m7403)=(:swe74, 3);
+add team_participations(:m7403)=(:uru74, 0);
+
+create match (played_in, spectators, refereed_by) instances
+  :m7404 (:t10,45000,nil);
+add team_participations(:m7404)=(:swe74, 0);
+add team_participations(:m7404)=(:pol74, 1);
+
+create match (played_in, spectators, refereed_by) instances
+  :m7405 (:t10,67800,nil);
+add team_participations(:m7405)=(:swe74, 2);
+add team_participations(:m7405)=(:ger74, 4);
+
+create match (played_in, spectators, refereed_by) instances
+  :m7406 (:t10,37700,nil);
+add team_participations(:m7406)=(:swe74, 2);
+add team_participations(:m7406)=(:yug74, 1);
+
+create match (played_in, spectators, refereed_by) instances
+  :m7801 (:t11,38000,nil);
+add team_participations(:m7801)=(:swe78, 1);
+add team_participations(:m7801)=(:bra78, 1);
+
+create match (played_in, spectators, refereed_by) instances
+  :m7802 (:t11,46000,nil);
+add team_participations(:m7802)=(:swe78, 0);
+add team_participations(:m7802)=(:aut78, 1);
+
+create match (played_in, spectators, refereed_by) instances
+  :m7803 (:t11,48000,nil);
+add team_participations(:m7803)=(:swe78, 0);
+add team_participations(:m7803)=(:esp78, 1);
+
+create match (played_in, spectators, refereed_by) instances
+  :m7804 (:t11,8000,nil);
+add team_participations(:m7804)=(:irn78, 1);
+add team_participations(:m7804)=(:sco78, 1);
+add player_participations(:m7804)=(:p10, 0, 1);
+
+create match (played_in, spectators, refereed_by) instances
+  :m7805 (:t11,70000,nil);
+add team_participations(:m7805)=(:hol78, 2);
+add team_participations(:m7805)=(:ita78, 1);
+add player_participations(:m7805)=(:p11, 1, 1);
+
+create match (played_in, spectators, refereed_by) instances
+  :m7806 (:t11,20000,nil);
+add team_participations(:m7806)=(:aut78, 3);
+add team_participations(:m7806)=(:ger78, 2);
+add player_participations(:m7806)=(:p12, 0, 1);
+
+create match (played_in, spectators, refereed_by) instances
+  :m8201 (:t12,23000,nil);
+add team_participations(:m8201)=(:hun82, 10);
+add team_participations(:m8201)=(:els82, 1);
+
+create match (played_in, spectators, refereed_by) instances
+  :m8202 (:t12,11000,nil);
+add team_participations(:m8202)=(:cam82, 0);
+add team_participations(:m8202)=(:per82, 0);
+
+create match (played_in, spectators, refereed_by) instances
+  :m8203 (:t12,19000,nil);
+add team_participations(:m8203)=(:cam82, 0);
+add team_participations(:m8203)=(:pol82, 0);
+
+create match (played_in, spectators, refereed_by) instances
+  :m8204 (:t12,20000,nil);
+add team_participations(:m8204)=(:cam82, 1);
+add team_participations(:m8204)=(:ita82, 1);
+
+create match (played_in, spectators, refereed_by) instances
+  :m9001 (:t14,62628, :r2);
+add team_participations(:m9001)=(:swe90, 1);
+add team_participations(:m9001)=(:bra90, 2);
+add player_participations(:m9001)=(:p9, 1, 0);
+
+create match (played_in, spectators, refereed_by) instances
+  :m9002 (:t14,31823, :r3);
+add team_participations(:m9002)=(:swe90, 1);
+add team_participations(:m9002)=(:sco90, 2);
+add player_participations(:m9002)=(:p9, 0, 0);
+
+create match (played_in, spectators, refereed_by) instances
+  :m9003 (:t14,30223, :r4);
+add team_participations(:m9003)=(:swe90, 1);
+add team_participations(:m9003)=(:cri90, 2);
+add player_participations(:m9003)=(:p9, 0, 0);
+
+create match (played_in, spectators, refereed_by) instances
+  :m9004 (:t14,73780,nil);
+add team_participations(:m9004)=(:cam90, 1);
+add team_participations(:m9004)=(:arg90, 0);
+
+create match (played_in, spectators, refereed_by) instances
+  :m9005 (:t14,38687,nil);
+add team_participations(:m9005)=(:cam90, 2);
+add team_participations(:m9005)=(:rom90, 1);
+
+create match (played_in, spectators, refereed_by) instances
+  :m9006 (:t14,37307,nil);
+add team_participations(:m9006)=(:cam90, 0);
+add team_participations(:m9006)=(:urs90, 4);
+
+create match (played_in, spectators, refereed_by) instances
+  :m9007 (:t14,50026,nil);
+add team_participations(:m9007)=(:cam90, 2);
+add team_participations(:m9007)=(:col90, 1);
+
+create match (played_in, spectators, refereed_by) instances
+  :m9008 (:t14,55205,nil);
+add team_participations(:m9008)=(:cam90, 2);
+add team_participations(:m9008)=(:eng90, 3);
+
+add team_participations(:m1)=(:ita82, 3);
+add team_participations(:m1)=(:bra82, 2);
