@@ -375,7 +375,7 @@ diagnosed from real output (full transcripts in
 | 1 | `Undefined function: MAKE-PLANINFO` | `planinfo` is documented in the PDF but **not** predefined on this build, and neither the PDF nor `kodskelett.lsp` supplies the `defstruct` as loadable code | add `(defstruct planinfo plan bound rem cost fanout)` to `lab7.lsp` |
 | 2 | `Unbound variable: NULL` | blank 2 written as `( null queue ...)` — missing inner parens, so `null` was read as a bare variable reference instead of a call | `((null queue) ...)` |
 | 3 | `Error 10, Not a number: #(PLANINFO ...)` | **ALisp's `sort` ignores `:key`**, so `<` was applied to raw `planinfo` structs instead of their cost fields | replace `sort` with an explicit `dolist` min-scan |
-| 4 | optimized body became the constant `FALSE`, then `Error 3, Not a list: AND` | `l` arrives as a **bare predicate list, with no `AND` tag** — so `(cdr l)` dropped the first predicate, and `andify`-wrapping the return value broke the caller's contract | `:rem (if (eq (car l) 'AND) (cdr l) l)`; return `(planinfo-plan bestplan)` unwrapped |
+| 4 | optimized body became the constant `FALSE`, then `Error 3, Not a list: AND` | `l` arrives as a **bare predicate list, with no `AND` tag** — so `(cdr l)` dropped the first predicate, and `andify`-wrapping the return value broke the caller's contract | `:rem l`; return `(planinfo-plan bestplan)` unwrapped |
 
 Two of these contradict the PDF directly, and are worth calling out since
 the PDF is otherwise the authority for this exercise:

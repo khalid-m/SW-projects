@@ -752,9 +752,15 @@ This was later confirmed independently by a `planinfo` struct dump (see Bug
 2), which showed `plan` (1 predicate) + `rem` (3 predicates) = exactly the
 query's 4 predicates, with no `AND` symbol anywhere.
 
-Fixed with a defensive check that works for either shape:
+Fixed by using `l` directly:
 
-    :rem (if (eq (car l) 'AND) (cdr l) l)
+    :rem l
+
+(An intermediate version used a defensive
+`(if (eq (car l) 'AND) (cdr l) l)` to handle either shape. That was
+dropped after a real run confirmed plain `:rem l` produces the identical
+plan — the `AND`-tagged shape the guard existed for was never observed in
+any run, so it was speculative code.)
 
 ### Bug 2 — ALisp's `sort` does not honor `:key`
 
@@ -912,3 +918,169 @@ greedy missed. A query where the two plausibly disagree is still needed to
 show exhaustive search doing distinctive work — and with `trace`
 unavailable, a `(print ...)` inside `dynprogsort` remains the only way to
 prove it is the code path that ran.
+
+### Independent reproduction
+
+Re-ran the whole sequence after the comment-consolidation edit to
+`lab7.lsp` (comments only, no code change): fresh `(load "lab7.lsp")`,
+`optmethod`, and `create function` redefining the existing function from
+scratch.
+
+    Amos 4> optmethod("optmethod");
+    Unknown optimization method: optmethod
+    0.006 s
+    Amos 4> optmethod("exhaustive");
+    "EXHAUSTIVE"
+    Amos 5>  create function matches_in_1950() -> Match as select m
+    from match m
+    where spectators(m)>100000
+    and year(played_in(m))=1950;
+    Redefining #[OID 1246 "MATCHES_IN_1950->MATCH"]
+    #[OID 1246 "MATCHES_IN_1950->MATCH"]
+    0.007 s
+
+`pc('matches_in_1950')` returned the same `Decomposed (TBR)` plan as the
+working run above, verbatim. Two incidental findings:
+
+- **`optmethod("exhaustive")` returned `"EXHAUSTIVE"`**, not `"RANKSORT"` —
+  confirming the setting **persists across `lisp;`/`:osql` switches and
+  reloads within a session**, and that it was already exhaustive from an
+  earlier call. This also gives a non-destructive way to *query* the
+  current mode: call `optmethod` with the value you believe is already set,
+  and the returned old value confirms or refutes it without changing
+  anything.
+- Double-quoted AmosQL strings (`optmethod("exhaustive")`) work
+  interchangeably with the single-quoted form used elsewhere in this log.
+  `optmethod("optmethod")` was a typo and is rejected with
+  `Unknown optimization method: optmethod`, leaving the setting untouched.
+
+**Takeaway:** the fix is stable and reproducible from a clean load, not a
+one-off artifact of a particular session's state.
+
+### Canonical transcript (use this one for the report)
+
+Minimal, self-contained, and self-proving: fresh session, load, switch
+mode, create the function under exhaustive from the start, inspect plan.
+Nothing carried over from a previous session, and no redefinition history.
+
+    C:\Users\klmah\Desktop\Amos-related\older-amos2\bin>amos2 wc.dmp
+    Amos II Release 8, v2
+    Amos 1> lisp;
+    lisp 1> (load "lab7.lsp")
+    Loading "lab7.lsp"
+    (DYNPROGSORT REDEFINED)
+    "lab7.lsp"
+    0.021 s
+    lisp 1> :osql
+    Amos 1> optmethod("exhaustive");
+    "RANKSORT"
+    0.005 s
+    Amos 2> create function matches_in_1950() -> Match as select m from match m where spectators(m)>100000 and year(played_in(m))=1950;
+    #[OID 1234 "MATCHES_IN_1950->MATCH"]
+    0.019 s
+    Amos 3> pc('matches_in_1950');
+    ----------------------------
+    Original definition of MATCHES_IN_1950->MATCH:
+    (CREATE-FUNCTION #[OID 1234 "MATCHES_IN_1950->MATCH"] NIL
+       ((MATCH _V1))
+       AS
+       (M)
+       FOREACH
+       ((MATCH M))
+       WHERE
+       (AND (> (SPECTATORS M)
+               100000)
+            (= (YEAR
+                  (PLAYED_IN M))
+               1950)))
+
+    Simplified:
+    (MATCHES_IN_1950->MATCH M+) <-
+    (AND (MATCH.SPECTATORS->INTEGER M _V2)
+         (MATCH.PLAYED_IN->TOURNAMENT M _V3)
+         (TOURNAMENT.YEAR->INTEGER _V3 1950)
+         (OBJECT.OBJECT.>->BOOLEAN _V2 100000))
+
+    Normalized and simplified:
+    (MATCHES_IN_1950->MATCH M+) <-
+    (AND (P_MATCH.SPECTATORS->INTEGER M _V2)
+         (P_MATCH.PLAYED_IN->TOURNAMENT M _V3)
+         (P_TOURNAMENT.YEAR->INTEGER _V3 1950)
+         (OBJECT.OBJECT.>->BOOLEAN _V2 100000))
+
+    Coerced: same
+
+    Decomposed (TBR):
+    (MATCHES_IN_1950->MATCH M+) <-
+    (AND (P_TOURNAMENT.YEAR->INTEGER _V3 1950)
+         (P_MATCH.PLAYED_IN->TOURNAMENT M _V3)
+         (P_MATCH.SPECTATORS->INTEGER M _V2)
+         (CALL GT-- #[OID 121 "OBJECT.OBJECT.>->BOOLEAN"] _V2 100000))
+    #[OID 1234 "MATCHES_IN_1950->MATCH"]
+    0.038 s
+
+**Why this is the one to submit:** the `"RANKSORT"` returned by
+`optmethod("exhaustive")` at `Amos 1` proves the mode was switched *before*
+the function was ever created, so the plan at `Amos 3` can only have come
+from `dynprogsort` — there is no prior greedy plan in this session that
+could have been cached and redisplayed. The `Decomposed (TBR)` stage
+matches the PDF's target `l2` exactly, modulo session-local variable names
+(`_V3` vs `_V_NIL_2`) and OIDs.
+
+### Controlled A/B: `ranksort` vs `exhaustive` on the same query
+
+A single fresh session comparing both optimizers on `matches_in_1950`,
+with the mode switch recorded in the transcript itself (important, because
+`pc()` output never states which optimizer produced it):
+
+    C:\Users\klmah\Desktop\Amos-related\older-amos2\bin>amos2 wc.dmp
+    Amos II Release 8, v2
+    Amos 1> lisp;
+    lisp 1> (load "lab7.lsp")
+    Loading "lab7.lsp"
+    (DYNPROGSORT REDEFINED)
+    "lab7.lsp"
+    0.027 s
+    lisp 1> :osql
+    Amos 1> create function matches_in_1950() ... ;   [default ranksort]
+    #[OID 1234 "MATCHES_IN_1950->MATCH"]
+    Amos 2> reoptimize('matches_in_1950');
+    Amos 3> pc('matches_in_1950');                   -> plan P
+    Amos 3> optmethod("exhaustive");
+    "RANKSORT"
+    0.002 s
+    Amos 4> reoptimize('matches_in_1950');
+    Amos 5> create function matches_in_1950() ... ;  [now exhaustive]
+    Redefining #[OID 1234 "MATCHES_IN_1950->MATCH"]
+    Amos 6> reoptimize('matches_in_1950');
+    Amos 7> pc('matches_in_1950');                   -> plan P (identical)
+
+Both halves produced the same `Decomposed (TBR)` plan, verbatim:
+
+    (AND (P_TOURNAMENT.YEAR->INTEGER _V3 1950)
+         (P_MATCH.PLAYED_IN->TOURNAMENT M _V3)
+         (P_MATCH.SPECTATORS->INTEGER M _V2)
+         (CALL GT-- #[OID 121 "OBJECT.OBJECT.>->BOOLEAN"] _V2 100000))
+
+The `"RANKSORT"` returned at `Amos 3` is what makes this a valid A/B: it
+proves the first `pc()` came from the default greedy optimizer and
+everything after came from `dynprogsort`.
+
+**Takeaways:**
+- `:rem l` (the simplified form, without the `eq` guard) is confirmed
+  correct under `dynprogsort` in a clean session, not just in a session
+  carrying earlier state.
+- **`ranksort` and `exhaustive` agree exactly on this query.** Good
+  validation — the exhaustive optimizer matches the reference heuristic on
+  a case whose optimum is unambiguous — but it also means
+  `matches_in_1950` cannot demonstrate exhaustive search finding anything
+  greedy misses. A larger query with more viable join orderings is needed
+  for that.
+- **Procedural note for future test sessions:** `pc()` output never
+  indicates which optimizer produced it, and a fresh session always starts
+  on `ranksort`. Always call `optmethod('exhaustive')` explicitly at the
+  start of a `dynprogsort` test and keep its return value in the
+  transcript — it is the only in-transcript evidence of which code path
+  ran. One earlier run was invalidated by exactly this omission (a fresh
+  session that was never switched, so its "verification" was really just
+  greedy output).

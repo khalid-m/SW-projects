@@ -4,24 +4,25 @@
 ;;; L is an AND predicate to be optimized.
 ;;; BND is a list of the initially bound variables in L.
 ;;; Reorder L using dynamic programming:
+;;;
+;;; CALLING CONVENTION ON THIS BUILD (Amos II Release 8, v2) — differs from
+;;; the PDF, and getting it wrong fails SILENTLY (the optimized body comes
+;;; back as the constant FALSE rather than erroring). L arrives as a BARE
+;;; list of predicates, (pred1 pred2 ...), and a bare list must be returned.
+;;; The PDF's l1/l2 examples both show (AND pred1 pred2 ...), which invites
+;;; (cdr l) on input and (andify ...) on output — both wrong here: the cdr
+;;; deletes the first real predicate, and the andify makes the caller try to
+;;; walk the leading AND symbol as a predicate ("Error 3, Not a list: AND").
+;;; Verified by a real run: a planinfo dump showed plan=1 + rem=3 = exactly
+;;; the query's 4 predicates, with no AND symbol anywhere. See run-log.md.
   (if l
       (let (queue			; Priority queue of cost investigated (partial) plans.
 	    bestplan oldplan oldbound oldrem oldcost oldfanout 
 	    bpat predcost predfanout predcost-fanout newplaninfo)
     (setq queue (list (make-planinfo :plan nil  ; Create queue and initialize it to contain
                                   :bound bnd
-                                  :rem (if (eq (car l) 'AND) (cdr l) l)
-                                                ; NOTE: on this build l arrives as a BARE list
-                                                ; of predicates, with no leading AND tag —
-                                                ; proven by a real run where a planinfo dump
-                                                ; showed plan=1 + rem=3 = exactly the query's
-                                                ; 4 predicates and no AND symbol anywhere.
-                                                ; So a plain (cdr l), as the PDF's l1 example
-                                                ; would suggest, silently dropped the first
-                                                ; real predicate on every call. The eq check
-                                                ; strips the tag only if one is actually
-                                                ; present, so both shapes work — see
-                                                ; run-log.md.
+                                  :rem l        ; l is already a bare predicate list — no AND
+                                                ; tag to strip (see CALLING CONVENTION above)
                                   :cost 0       ; a node with cost 0 and fanout 1
                                   :fanout 1)))					
 	(while t
@@ -43,14 +44,7 @@
 	  (setq queue (removeeq bestplan queue) )		; Remove BESTPLAN from priority queue
 	  (if (null (planinfo-rem bestplan)) ; If BESTPLAN is a complete plan, return that plan.
           (return (planinfo-plan bestplan)))
-	  ; NOTE: return the BARE predicate list, not (andify ...). The PDF's
-	  ; l1 -> l2 example shows both wrapped in AND, but on this build the
-	  ; optimizer passes l in as a bare list of predicates (proven by a real
-	  ; run: a planinfo dump showed plan=1 + rem=3 = exactly the query's 4
-	  ; predicates, no AND symbol anywhere) and expects a bare list back.
-	  ; Wrapping the result in AND made the caller walk the returned list,
-	  ; treat the leading AND symbol as a predicate, and fail with
-	  ; "Error 3, Not a list: AND" — see run-log.md.
+	  ; Returned BARE, not (andify ...) — see the CALLING CONVENTION note above.
 	  (setq oldplan (planinfo-plan bestplan))
 	  (setq oldbound (planinfo-bound bestplan))
 	  (setq oldrem (planinfo-rem bestplan))
