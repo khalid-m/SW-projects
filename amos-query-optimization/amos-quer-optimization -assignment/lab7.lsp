@@ -10,17 +10,47 @@
 	    bpat predcost predfanout predcost-fanout newplaninfo)
     (setq queue (list (make-planinfo :plan nil  ; Create queue and initialize it to contain
                                   :bound bnd
-                                  :rem (cdr l)
+                                  :rem (if (eq (car l) 'AND) (cdr l) l)
+                                                ; NOTE: on this build l arrives as a BARE list
+                                                ; of predicates, with no leading AND tag —
+                                                ; proven by a real run where a planinfo dump
+                                                ; showed plan=1 + rem=3 = exactly the query's
+                                                ; 4 predicates and no AND symbol anywhere.
+                                                ; So a plain (cdr l), as the PDF's l1 example
+                                                ; would suggest, silently dropped the first
+                                                ; real predicate on every call. The eq check
+                                                ; strips the tag only if one is actually
+                                                ; present, so both shapes work — see
+                                                ; run-log.md.
                                   :cost 0       ; a node with cost 0 and fanout 1
                                   :fanout 1)))					
 	(while t
 	  (cond 
 	   ( (null queue)			; If the queue is empty, then...
 	    (amos-error "Query not executable" (andify l))))
-	  (setq bestplan (car (sort queue '< :key 'planinfo-cost)))	; The plan in the queue with lowest total cost
+	  ; NOTE: ALisp's `sort` does not honor the `:key` keyword the way
+	  ; CommonLisp's does — a prior version here, (sort queue '< :key
+	  ; 'planinfo-cost), ended up calling `<` directly on raw planinfo
+	  ; STRUCTS instead of their extracted cost fields, producing
+	  ; "Error 10, Not a number: #(PLANINFO ...)" as soon as the queue
+	  ; held more than one element. Fixed with a manual linear scan,
+	  ; extracting (planinfo-cost p) explicitly at each comparison
+	  ; instead of relying on :key — see run-log.md.
+	  (setq bestplan (car queue))	; The plan in the queue with lowest total cost
+	  (dolist (p (cdr queue))
+	    (if (< (planinfo-cost p) (planinfo-cost bestplan))
+		(setq bestplan p)))
 	  (setq queue (removeeq bestplan queue) )		; Remove BESTPLAN from priority queue
 	  (if (null (planinfo-rem bestplan)) ; If BESTPLAN is a complete plan, return that plan.
-          (return (andify (planinfo-plan bestplan))))
+          (return (planinfo-plan bestplan)))
+	  ; NOTE: return the BARE predicate list, not (andify ...). The PDF's
+	  ; l1 -> l2 example shows both wrapped in AND, but on this build the
+	  ; optimizer passes l in as a bare list of predicates (proven by a real
+	  ; run: a planinfo dump showed plan=1 + rem=3 = exactly the query's 4
+	  ; predicates, no AND symbol anywhere) and expects a bare list back.
+	  ; Wrapping the result in AND made the caller walk the returned list,
+	  ; treat the leading AND symbol as a predicate, and fail with
+	  ; "Error 3, Not a list: AND" — see run-log.md.
 	  (setq oldplan (planinfo-plan bestplan))
 	  (setq oldbound (planinfo-bound bestplan))
 	  (setq oldrem (planinfo-rem bestplan))

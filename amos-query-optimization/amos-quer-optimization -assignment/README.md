@@ -360,10 +360,71 @@ gaps in the skeleton):
 All 10 blanks are now filled in `lab7.lsp`. Parenthesis balance was checked
 mechanically (stripping comments first, since several comments contain
 example Lisp data like `(50 . 1.78571)` that would otherwise be
-miscounted as code) and confirmed to close out evenly. Next step is to
-actually `(load "lab7.lsp")` inside a real `lisp;` session against `wc.dmp`
-and verify it against a real query — see the plan at the end of this
-section.
+miscounted as code) and confirmed to close out evenly.
+
+### Running it: four bugs the skeleton's blanks alone didn't cover
+
+Filling all 10 blanks was **not** sufficient to get a working optimizer.
+Four further problems only surfaced when actually running against
+`wc.dmp` — none of them visible from reading the skeleton, and all four
+diagnosed from real output (full transcripts in
+[`run-log.md`](run-log.md)):
+
+| # | Symptom | Cause | Fix |
+|---|---|---|---|
+| 1 | `Undefined function: MAKE-PLANINFO` | `planinfo` is documented in the PDF but **not** predefined on this build, and neither the PDF nor `kodskelett.lsp` supplies the `defstruct` as loadable code | add `(defstruct planinfo plan bound rem cost fanout)` to `lab7.lsp` |
+| 2 | `Unbound variable: NULL` | blank 2 written as `( null queue ...)` — missing inner parens, so `null` was read as a bare variable reference instead of a call | `((null queue) ...)` |
+| 3 | `Error 10, Not a number: #(PLANINFO ...)` | **ALisp's `sort` ignores `:key`**, so `<` was applied to raw `planinfo` structs instead of their cost fields | replace `sort` with an explicit `dolist` min-scan |
+| 4 | optimized body became the constant `FALSE`, then `Error 3, Not a list: AND` | `l` arrives as a **bare predicate list, with no `AND` tag** — so `(cdr l)` dropped the first predicate, and `andify`-wrapping the return value broke the caller's contract | `:rem (if (eq (car l) 'AND) (cdr l) l)`; return `(planinfo-plan bestplan)` unwrapped |
+
+Two of these contradict the PDF directly, and are worth calling out since
+the PDF is otherwise the authority for this exercise:
+
+- **`l` is not `AND`-tagged.** The PDF's `l1`/`l2` examples both show
+  `(AND pred1 pred2 ...)`, which is why the obvious reading of blank 1 is
+  `:rem (cdr l)` (strip the tag) and of blank 5 is `(andify ...)` (re-add
+  it). On this build the optimizer passes a bare list **and expects a bare
+  list back** — proven by a `planinfo` struct dump in an error message
+  showing `plan` (1) + `rem` (3) = exactly the query's 4 predicates with no
+  `AND` symbol anywhere. Following the PDF literally here produces a
+  silently-wrong plan (`FALSE`) rather than an error, which makes it the
+  most dangerous of the four.
+- **`:key` is unavailable**, so the `sort`-based min-find discussed above
+  is not merely less efficient — it does not work at all. The manual
+  `O(n)` scan is required.
+
+### Debugging without Lisp debugging
+
+`trace`, `break`, and `pp` all fail on this build with
+`Error 44, Not supported: Lisp debugging`. The Örebro assignment says to
+replace `amos2.dmp` with a specific `amos.dmp` to enable them, but **that
+download link is dead**, and substituting another `amos2.dmp` found locally
+did not help (a trivial `(trace foo)` on a hand-defined function still
+failed). Plan accordingly: the only working technique is the PDF's own
+fallback of adding `(print ...)` calls inside the function — that, plus
+reading struct dumps out of error messages, is how three of the four bugs
+above were found.
+
+### Current state
+
+`dynprogsort` runs cleanly and produces the plan the assignment specifies.
+`pc('matches_in_1950')`'s `Decomposed (TBR)` stage matches the PDF's target
+`l2` exactly — same predicate order (`year → played_in → spectators →
+GT--`) and the same `CALL GT--` boundification — differing only in
+session-local variable names and OIDs.
+
+Two caveats to address before hand-in:
+
+1. **This query does not discriminate exhaustive from greedy.** The default
+   `ranksort` heuristic produced the *same* plan in every earlier
+   transcript, so the working output demonstrates `dynprogsort` is
+   **correct**, not that exhaustive search found anything greedy missed. A
+   query with more predicates / more viable join orderings would show it
+   doing distinctive work.
+2. **Nothing yet proves `dynprogsort` is the code path that ran.** With
+   `trace` unavailable, a `(print ...)` inside the function is the only
+   direct evidence — worth capturing for the report, since "show the
+   optimization function" is the graded deliverable.
 
 ### Understanding `:bound` and `pred_binds`
 

@@ -692,3 +692,223 @@ by the *default* greedy optimizer in every earlier run (see the
 wouldn't by itself prove exhaustive search changed anything — only the
 `trace` output (or a query where greedy and exhaustive plausibly disagree)
 gives real evidence `dynprogsort` specifically produced this result.
+
+---
+
+## The `FALSE` plan bug — four fixes to get a working `dynprogsort`
+
+After the first crash-free run above, `pc('matches_in_1950')` reported the
+optimized body as the literal constant `FALSE` — a syntactically valid but
+semantically empty plan (the query would return nothing). It reproduced
+identically under `reoptimize`, so it was deterministic, not transient.
+
+Four distinct bugs had to be found and fixed. Each was diagnosed from real
+output, and two of the intermediate hypotheses turned out to be **wrong** —
+recorded here because the wrong turns are as instructive as the fixes.
+
+### Dead end: Lisp debugging is unavailable on this build
+
+`(trace dynprogsort)` and `(pp dynprogsort)` both fail:
+
+    lisp 6> (pp dynprogsort)
+    Error 44, Not supported: Lisp debugging
+    When evaluating: (GETD FN)
+    Lisp debugging not supported
+
+    lisp 7> (trace dynprogsort)
+    Error 44, Not supported: Lisp debugging
+    When evaluating: (SYMBOL-FUNCTION FN)
+    Lisp debugging not supported
+
+The Örebro assignment says to replace `amos2.dmp` with a specific `amos.dmp`
+to enable Lisp debugging, but **that download link is dead**. Substituting a
+different `amos2.dmp` found locally did *not* help — a trivial test still
+failed:
+
+    lisp 1> (defun foo (x) x)
+    FOO
+    lisp 1> (trace foo)
+    Error 44, Not supported: Lisp debugging
+
+So `trace`/`break`/`pp` are off the table entirely, and the only viable
+debugging route is the PDF's own fallback: **add `(print ...)` calls inside
+the function**. Worth knowing up front, since three of the four bugs below
+were found via `print` output or via struct dumps in error messages.
+
+### Bug 1 — `(cdr l)` dropped the first predicate (`l` has no `AND` tag)
+
+A `(print l)` at the top of `dynprogsort` revealed the actual argument for a
+nested predicate's optimization:
+
+    ((#[OID 121 "OBJECT.OBJECT.>->BOOLEAN"] X Y))
+    (Y)
+
+`l` is a **bare list of predicates** — no leading `AND` symbol — and `bnd`
+is `(Y)`. The PDF's `l1` example shows `(AND pred1 pred2 ...)`, which is why
+blank 1 had `:rem (cdr l)` to strip the tag. With no tag to strip, `(cdr l)`
+silently discarded the **first real predicate** on every call.
+
+This was later confirmed independently by a `planinfo` struct dump (see Bug
+2), which showed `plan` (1 predicate) + `rem` (3 predicates) = exactly the
+query's 4 predicates, with no `AND` symbol anywhere.
+
+Fixed with a defensive check that works for either shape:
+
+    :rem (if (eq (car l) 'AND) (cdr l) l)
+
+### Bug 2 — ALisp's `sort` does not honor `:key`
+
+With Bug 1 fixed, the next run failed with a full struct dump:
+
+    Error 10, Not a number: #(PLANINFO ((#[OID 1001 "P_TOURNAMENT.YEAR->INTEGER"] _V3 1950)) (_V3) ((#[OID 1038 "P_MATCH.SPECTATORS->INTEGER"] M _V2) (#[OID 1035 "P_MATCH.PLAYED_IN->TOURNAMENT"] M _V3) (#[OID 121 "OBJECT.OBJECT.>->BOOLEAN"] _V2 100000)) 28 1.0)
+
+Reading the struct's five slots in `defstruct` order confirms the algorithm
+was working correctly up to that point: `plan` = `year` placed first (cost
+`28`, matching the earlier verified `simple-pred-cost` result exactly),
+`bound` = `(_V3)`, `rem` = the other three predicates, `fanout` = `1.0`.
+
+"Not a number" on a whole `planinfo` struct means `<` was being applied to
+raw structs rather than to extracted cost values — i.e. blank 3's
+
+    (sort queue '< :key 'planinfo-cost)
+
+was calling `<` directly on `planinfo` objects, so **ALisp's `sort` ignores
+the `:key` keyword** that CommonLisp's honors (the PDF does warn "ALisp
+differs from CommonLisp in some ways"). This only surfaced on the second
+loop iteration, because the first iteration's queue held a single element
+and `sort` never had to compare anything.
+
+Fixed by replacing `sort` with an explicit linear min-scan that extracts the
+cost at each comparison:
+
+    (setq bestplan (car queue))
+    (dolist (p (cdr queue))
+      (if (< (planinfo-cost p) (planinfo-cost bestplan))
+          (setq bestplan p)))
+
+This is the `O(n)` manual scan alternative considered earlier — it is now
+required, not merely preferred, since `:key` is unavailable.
+
+### Bug 3 — the missing `defstruct` (found earlier, recorded for completeness)
+
+Covered in the preceding section: `(defstruct planinfo plan bound rem cost
+fanout)` is documented in the PDF as a reference but is **not** predefined
+on this build, and neither `kodskelett.lsp` nor the PDF supplies it as code
+to load. Without it, the first real call fails with `Undefined function:
+MAKE-PLANINFO`.
+
+### Bug 4 — `andify` on the return value broke the caller's contract
+
+With Bugs 1-3 fixed, the search ran to completion and failed at the very
+last step:
+
+    Error 3, Not a list: AND
+
+Blank 5 was returning `(andify (planinfo-plan bestplan))`, wrapping the
+finished plan as `(AND p1 p2 p3 p4)` — chosen because the PDF's `l1` → `l2`
+example shows both input and output wrapped in `AND`. But since `l` arrives
+as a bare list (Bug 1), the caller also expects a **bare list back**: it
+walks the returned list treating each element as a predicate, hits the bare
+symbol `AND` in first position, and fails because a symbol is not a list.
+
+Fixed by returning the plan unwrapped:
+
+    (return (planinfo-plan bestplan))
+
+**Wrong hypotheses recorded for honesty.** Two intermediate diagnoses were
+mistaken and cost several runs: (a) that the reload was silently failing or
+the VM's copy was stale — disproved once `(DYNPROGSORT REDEFINED)` was
+observed and the VM file content was compared directly; (b) that the
+top-level query passed `l` **with** an `AND` tag while nested calls did not
+— disproved by re-reading the Bug 2 struct dump, which proved the top-level
+`l` had exactly 4 real predicates and no tag. The lesson matches this repo's
+standing convention: re-read the real output already captured before
+theorizing about what a build "probably" does.
+
+### Working run — output matches the PDF's expected `l2`
+
+**Setup:** older build (`amos2 wc.dmp`), `lab7.lsp` with all four fixes.
+
+**Command(s) and output:**
+
+    Amos 2> lisp;
+    lisp 2> (load "lab7.lsp")
+    Loading "lab7.lsp"
+    (MAKEFN-PLANINFO REDEFINED)
+    (DYNPROGSORT REDEFINED)
+    "lab7.lsp"
+    0.017 s
+    lisp 2> :osql
+    Amos 2> create function matches_in_1950() -> Match as select m
+    from match m
+    where spectators(m)>100000
+    and year(played_in(m))=1950;
+    #[OID 1246 "MATCHES_IN_1950->MATCH"]
+    0.02 s
+    Amos 3> reoptimize('matches_in_1950');
+    #[OID 1246 "MATCHES_IN_1950->MATCH"]
+    0.007 s
+    Amos 4> pc('matches_in_1950');
+    ----------------------------
+    Original definition of MATCHES_IN_1950->MATCH:
+    (CREATE-FUNCTION #[OID 1246 "MATCHES_IN_1950->MATCH"] NIL
+       ((MATCH _V1))
+       AS
+       (M)
+       FOREACH
+       ((MATCH M))
+       WHERE
+       (AND (> (SPECTATORS M)
+               100000)
+            (= (YEAR
+                  (PLAYED_IN M))
+               1950)))
+
+    Simplified:
+    (MATCHES_IN_1950->MATCH M+) <-
+    (AND (MATCH.SPECTATORS->INTEGER M _V2)
+         (MATCH.PLAYED_IN->TOURNAMENT M _V3)
+         (TOURNAMENT.YEAR->INTEGER _V3 1950)
+         (OBJECT.OBJECT.>->BOOLEAN _V2 100000))
+
+    Normalized and simplified:
+    (MATCHES_IN_1950->MATCH M+) <-
+    (AND (P_MATCH.SPECTATORS->INTEGER M _V2)
+         (P_MATCH.PLAYED_IN->TOURNAMENT M _V3)
+         (P_TOURNAMENT.YEAR->INTEGER _V3 1950)
+         (OBJECT.OBJECT.>->BOOLEAN _V2 100000))
+
+    Coerced: same
+
+    Decomposed (TBR):
+    (MATCHES_IN_1950->MATCH M+) <-
+    (AND (P_TOURNAMENT.YEAR->INTEGER _V3 1950)
+         (P_MATCH.PLAYED_IN->TOURNAMENT M _V3)
+         (P_MATCH.SPECTATORS->INTEGER M _V2)
+         (CALL GT-- #[OID 121 "OBJECT.OBJECT.>->BOOLEAN"] _V2 100000))
+    #[OID 1246 "MATCHES_IN_1950->MATCH"]
+    0.03 s
+    Amos 4>
+
+**Takeaway:** `dynprogsort` now produces a correct plan, and the
+`Decomposed (TBR)` stage matches the PDF's target `l2` exactly — same
+predicate order (`year → played_in → spectators → GT--`) and the same
+`CALL GT--` boundification of the `>` test, differing only in session-local
+variable names (`_V3` vs the PDF's `_V_NIL_2`) and OID numbers:
+
+    PDF l2:  (AND (P_TOURNAMENT.YEAR->INTEGER _V_NIL_2 1950)
+                  (P_MATCH.PLAYED_IN->TOURNAMENT M _V_NIL_2)
+                  (P_MATCH.SPECTATORS->INTEGER M _V_NIL_1)
+                  (CALL GT-- #[OID 91 ...] _V_NIL_1 100000))
+
+Note the displayed output *is* `AND`-wrapped even though `dynprogsort`
+returns a bare list — the caller re-wraps it for display, which
+independently confirms the bare-list-in/bare-list-out convention of Bug 4.
+
+**Still outstanding:** this plan is the same one the *default* `ranksort`
+heuristic already produced in every earlier transcript, so it demonstrates
+`dynprogsort` is **correct**, not that exhaustive search found anything
+greedy missed. A query where the two plausibly disagree is still needed to
+show exhaustive search doing distinctive work — and with `trace`
+unavailable, a `(print ...)` inside `dynprogsort` remains the only way to
+prove it is the code path that ran.
