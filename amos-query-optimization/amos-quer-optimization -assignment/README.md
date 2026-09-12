@@ -147,6 +147,83 @@ material assumes. The older build is still needed for the `dynprogsort`
 Lisp work itself, since the Örebro assignment specifies that version for
 ALisp/`optmethod('exhaustive')`.
 
+## Writing `lab7.lsp`
+
+[`lab7.lsp`](lab7.lsp) is the working copy of the skeleton — a straight copy
+of [`kodskelett.lsp`](kodskelett.lsp), with the 10 `######` blanks being
+filled in one at a time. See
+[`kodskelett-explained.md`](kodskelett-explained.md) for a full line-by-line
+walkthrough of the skeleton (including a Lisp basics primer) and what each
+blank needs to become.
+
+### Progress so far
+
+**Done — blanks 6 and 7** (the cost/fanout of a candidate predicate, inside
+the `dolist` loop over remaining predicates):
+
+```lisp
+(setq predcost-fanout (simple-pred-cost pred bpat))
+(setq predcost (car predcost-fanout))
+(setq predfanout (cdr predcost-fanout))
+```
+
+Rather than calling `simple-pred-cost` twice (once for the cost, once for
+the fanout — the two separate blanks as originally laid out in the
+skeleton), this calls it **once**, storing the full `(cost . fanout)` dotted
+pair in a new local `predcost-fanout`, then splits it with `car`/`cdr`.
+Two things had to be fixed to make this work correctly, both good general
+Lisp lessons (see [`kodskelett-explained.md`](kodskelett-explained.md) for
+the underlying concepts of `let` scoping and dotted pairs):
+
+- `predcost-fanout` had to be **added to the `let` binding list** (the big
+  list of local variable names right after `(let (queue ...`). Any `setq`
+  onto a name not declared there is treated as an implicit *global*
+  assignment by ALisp, printing `WARNING! Setting undeclared global
+  variable: ...` — harmless for one-off debugging at the `lisp;` prompt (see
+  the real example of this warning in [`run-log.md`](run-log.md)), but wrong
+  inside a function meant to be re-entrant and side-effect-free between
+  calls.
+- Both `setq` forms needed **matching closing parens**. An initial draft
+  left `(setq predcost (car predcost-fanout)` and
+  `(setq predfanout (cdr predcost-fanout)` each missing their final `)` —
+  which doesn't error immediately, but silently causes the Lisp reader to
+  keep consuming the *next* form (the second `setq`, then the `cond`
+  guarding `make-planinfo`, and so on) as extra arguments to the first,
+  still-open `setq`. This is the kind of bug that's easy to introduce and
+  hard to notice by eye in deeply-nested Lisp — worth double-checking paren
+  balance around every edited blank.
+
+**Still open:**
+
+- **Blank 1** — initialize `queue` to a single-element list holding one
+  `planinfo` with an empty `plan`, `bound = bnd`, `rem` = `l`'s predicate
+  list (i.e. `(cdr l)`, stripping the leading `AND`), `cost = 0`,
+  `fanout = 1`.
+- **Blank 2** — the empty-queue test (`(null queue)`) guarding the
+  "query not executable" error.
+- **Blanks 3 and 4** — pop the lowest-total-cost `planinfo` off the front of
+  `queue` (`(car queue)`) and remove it (`(cdr queue)`) — valid only because
+  blank 10 (below) keeps `queue` sorted by cost on every insert.
+- **Blank 5** — the completion check: if `(planinfo-rem bestplan)` is empty,
+  `return` `(planinfo-plan bestplan)` as the final answer, relying on the
+  cost model's monotonicity (see the "Dynamic programming" section of the
+  Linköping PDF) to guarantee this is the cheapest plan overall.
+- **Blanks 8 and 9** — the new `:cost` and `:fanout` fields for the extended
+  `planinfo`: `oldcost + predcost * oldfanout` and
+  `oldfanout * predfanout`, per the PDF's worked example arithmetic
+  (`100+200*50=10100`, `50*1=50`).
+- **Blank 10** — insert the newly built `planinfo` into `queue` while
+  keeping it sorted by total cost (a sorted-insert helper, or an append
+  followed by a full re-sort — the PDF explicitly allows plain lists and a
+  simple approach "in this exercise").
+
+Once all 10 are filled in, the plan is to `(load "lab7.lsp")` inside a real
+`lisp;` session against `wc.dmp`, `(trace dynprogsort)` it, run
+`optmethod('exhaustive')`, and confirm the output against a query with a
+known-cheapest plan — then append that transcript to
+[`run-log.md`](run-log.md) per this repo's verify-against-a-real-run
+convention.
+
 ## Deliverable
 
 The filled-in `dynprogsort` definition, plus example optimized queries
