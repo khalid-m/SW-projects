@@ -193,6 +193,81 @@ the underlying concepts of `let` scoping and dotted pairs):
   hard to notice by eye in deeply-nested Lisp — worth double-checking paren
   balance around every edited blank.
 
+**Done — blanks 8 and 9** (the `:cost` and `:fanout` fields of the extended
+`planinfo`, inside `make-planinfo`):
+
+```lisp
+:cost (+ oldcost (* oldfanout predcost))
+:fanout (* oldfanout predfanout)
+```
+
+An earlier draft of the `:cost` line multiplied by `predfanout` (the new
+predicate's own fanout) instead of `oldfanout` (the accumulated fanout of
+everything executed *before* this predicate) — caught by re-checking
+against the PDF's worked arithmetic: `"the total cost so far is
+100+200*50=10100"`, where `200` is the new predicate's own cost and `50` is
+the *previous* fanout, not the new predicate's fanout (which is `1` in that
+example and never appears in the cost formula at all — it only feeds into
+`:fanout`, the running total for whatever comes *after*). Conceptually:
+cost is "how many times do I run this predicate," which is once per tuple
+already produced upstream (`oldfanout`) — the new predicate's own output
+size doesn't affect how many times *it itself* runs.
+
+### Blank 10 — queue insert, and the design choice it forces on blanks 3/4
+
+Two designs were considered for keeping `queue` (a plain Lisp list of
+`planinfo`s) yielding "the cheapest plan" on demand — they trade work
+between *insert time* (blank 10) and *pop time* (blanks 3/4), and whichever
+is chosen for one **must** match the other:
+
+**Approach A — keep `queue` sorted at insert time:**
+```lisp
+; blank 10:
+(setq queue (sort (cons newplaninfo queue) '< :key 'planinfo-cost))
+; blanks 3/4 (cheap, since queue is already sorted):
+(setq bestplan (car queue))
+(setq queue (cdr queue))
+```
+
+**Approach B — insert cheaply, find the minimum at pop time** (the one
+`lab7.lsp` currently uses):
+```lisp
+; blank 10:
+(setq queue (cons newplaninfo queue))
+; blanks 3/4 must now search for the minimum instead of assuming (car queue):
+(setq bestplan (car queue))
+(dolist (p (cdr queue))
+  (if (< (planinfo-cost p) (planinfo-cost bestplan))
+      (setq bestplan p)))
+(setq queue (removeeq bestplan queue))
+```
+
+`cons` sticks one item onto the *front* of a list without touching the
+rest: `(cons 1 '(2 3))` → `(1 2 3)`. `sort` (used only in Approach A) takes
+a comparison function and, via `:key`, a function to extract what to
+compare by — `(sort queue '< :key 'planinfo-cost)` sorts `planinfo`
+structs by their `cost` field (via the `defstruct`-generated accessor
+`planinfo-cost`) rather than trying to compare whole structs directly;
+both `'<` and `'planinfo-cost` are quoted since they're passed as function
+*values* for `sort` to call later, not invoked immediately.
+
+Both approaches are correct and do roughly the same total work (sorting
+happens somewhere in the loop either way) — the PDF explicitly allows this
+level of simplicity ("it is OK to use ordinary LISP-lists to represent a
+queue" for this exercise; a real implementation would want an indexed
+structure instead). **The two blanks are not independent decisions**: blank
+10 being `cons`-only (Approach B) means blanks 3/4 must do the search-based
+min-finding shown above (`removeeq`, not `cdr`, since the minimum may not
+be at the front) — plugging Approach A's simple `(car queue)`/`(cdr queue)`
+onto an unsorted queue built by Approach B's blank 10 would silently return
+wrong (non-cheapest) plans.
+
+An alternative to the manual `dolist` min-search is `(car (sort queue '<
+:key 'planinfo-cost))` — reuses `sort` at pop time instead of insert time,
+simpler to write but does more work than necessary (fully orders the list
+just to take its first element, then discards that order immediately since
+new inserts aren't kept sorted).
+
 **Still open:**
 
 - **Blank 1** — initialize `queue` to a single-element list holding one
@@ -201,21 +276,99 @@ the underlying concepts of `let` scoping and dotted pairs):
   `fanout = 1`.
 - **Blank 2** — the empty-queue test (`(null queue)`) guarding the
   "query not executable" error.
-- **Blanks 3 and 4** — pop the lowest-total-cost `planinfo` off the front of
-  `queue` (`(car queue)`) and remove it (`(cdr queue)`) — valid only because
-  blank 10 (below) keeps `queue` sorted by cost on every insert.
+- **Blanks 3 and 4** — given blank 10 is `cons`-only (Approach B above),
+  these must find the minimum-cost `planinfo` in `queue` (not just
+  `(car queue)`) and remove that specific element via `removeeq` (not
+  `cdr`, since it may not be at the front).
 - **Blank 5** — the completion check: if `(planinfo-rem bestplan)` is empty,
   `return` `(planinfo-plan bestplan)` as the final answer, relying on the
   cost model's monotonicity (see the "Dynamic programming" section of the
   Linköping PDF) to guarantee this is the cheapest plan overall.
-- **Blanks 8 and 9** — the new `:cost` and `:fanout` fields for the extended
-  `planinfo`: `oldcost + predcost * oldfanout` and
-  `oldfanout * predfanout`, per the PDF's worked example arithmetic
-  (`100+200*50=10100`, `50*1=50`).
-- **Blank 10** — insert the newly built `planinfo` into `queue` while
-  keeping it sorted by total cost (a sorted-insert helper, or an append
-  followed by a full re-sort — the PDF explicitly allows plain lists and a
-  simple approach "in this exercise").
+
+### Understanding `:bound` and `pred_binds`
+
+The `:bound (pred_binds pred oldbound)` field (line 47 of `lab7.lsp`) answers
+one question: *"once the predicates in `:plan` have executed, which
+variables now hold a concrete value?"* This matters because the *next*
+predicate's binding pattern (`bindadornpat`) is decided entirely by which
+variables are already bound — that's literally how the optimizer picks `+`
+(free — needs to be searched/produced) vs. `-` (bound — already known, can
+be looked up) for each argument position.
+
+Worked example, confirmed against a real `lisp;` session:
+
+```
+pred     = (#[OID 1516 "P_TOURNAMENT.YEAR->INTEGER"] _V2 _V3)   ; year(tournament) = _V3
+oldbound = (_V3)                                                 ; year is already known (e.g. 1950)
+
+(pred_binds pred oldbound)  =>  (_V2 _V3)
+```
+
+Reasoning: once `year(_V2) = _V3` runs with `_V3` already fixed, the result
+hands back `_V2` (the specific tournament with that year) — so `_V2`
+becomes newly bound, while `_V3` stays bound. `pred_binds` computes exactly
+this: the union of every variable mentioned anywhere in `pred` (`_V2`,
+`_V3`) with whatever was already in `oldbound` (`_V3`), giving `(_V2 _V3)`.
+
+`pred_binds` doesn't try to reason about *which* argument became bound by
+*which* mechanism — it takes the simplifying shortcut that any variable
+appearing in a predicate that just executed is now bound, whether it was
+already bound going in or was free and got resolved as a side effect of
+running that predicate. This is valid because `bindadornpat`/
+`substbindadorned` already guarantee the predicate only runs in a binding
+pattern AMOS II actually knows how to execute (e.g. via an index) — so if it
+ran at all, every one of its variables must now have a value.
+
+This new `:bound` value then becomes `oldbound` on the *next* loop
+iteration, when some other remaining predicate is considered — e.g.
+`played_in(match)->tournament(M, _V2)` can now run with `_V2` bound (the
+tournament is known), leaving `M` (the match) free — exactly the chain of
+reasoning the PDF's worked `matches_in_1950` query follows
+(year → tournament → match → spectators).
+
+**Gotcha caught while testing this at the `lisp;` prompt:** `pred_binds`'s
+second argument must be a proper **list**, not a bare symbol. Calling
+`(pred_binds pred '_V3)` (bare atom, no parens) instead of
+`(pred_binds pred '(_V3))` (one-element list) produces a malformed **dotted
+list**, e.g. `(_V3 _V2 . _V3)` — the `.` right before the last element is
+Lisp's way of showing "this doesn't end in `nil` like a normal list; the
+final slot holds the atom `_V3` directly." This happens because `pred_binds`
+conses new variables onto the front of whatever `vars` you gave it — consing
+onto a proper list keeps it a proper list, but consing onto a bare atom
+produces a dotted chain instead. Not a bug in `pred_binds` or in
+`lab7.lsp` itself — `oldbound` is always a proper list by construction
+(threaded from `bnd`, which the function's own doc comment specifies as "a
+list of the initially bound variables") — just a reminder to always pass
+list literals (`'(_v3)`), not bare symbols (`'_v3`), when calling
+`pred_binds` interactively for debugging.
+
+**Two more gotchas caught testing `bindadornpat` the same way** (full
+transcripts in [`run-log.md`](run-log.md)):
+
+- **Quote whole predicate literals, not just symbols.** Writing a predicate
+  directly as an unquoted argument, e.g.
+  `(bindadornpat (#[OID 1516 ...] _V2 _V3) '(_V3))`, makes Lisp treat the
+  parenthesized list as a **function call** (unquoted parens always mean
+  "call"), producing `Error 15, Undefined function: #[OID 1516 ...]`. The
+  fix is the same quoting rule as `'_v2` for a single symbol, just applied
+  to the whole list: `'(#[OID 1516 ...] _V2 _V3)`.
+- **`bindadornpat` has no semantic awareness of what a variable means** —
+  it only checks whether an argument's variable is *present* in the given
+  bound-list, not whether it's the *right* variable. A hand-built
+  `played_in(match)->tournament(M, _V3)` (using `_V3`, the *year* variable,
+  instead of `_V2`, the *tournament* variable it should join on) still
+  returned a plausible-looking `(+ -)` when tested against a bound-list
+  that was mistakenly built to match. This is a general trap when unit-
+  testing helper functions in isolation: it's easy to accidentally
+  construct a self-consistent-but-wrong test. Always keep join variables
+  named consistently with the predicate they came from (here: `_V2` for
+  "the tournament," used identically in both the `year` and `played_in`
+  predicates, matching the PDF's own worked ObjectLog program). A follow-up
+  test confirmed extra, irrelevant bound variables in the bound-list are
+  harmless (`'(_V2)` and `'(_V2 _V3)` give the same answer when the
+  predicate doesn't mention `_V3`) — confirming it's always safe for
+  `dynprogsort`'s real loop to pass the full accumulated `oldbound` to
+  `bindadornpat`, with no need to filter it down per-predicate.
 
 Once all 10 are filled in, the plan is to `(load "lab7.lsp")` inside a real
 `lisp;` session against `wc.dmp`, `(trace dynprogsort)` it, run

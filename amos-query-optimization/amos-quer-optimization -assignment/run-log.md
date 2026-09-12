@@ -455,3 +455,73 @@ with one numeric discrepancy worth flagging:
   without a prior `defvar`/`let` — harmless for interactive debugging, but
   `dynprogsort` itself avoids this by binding `pred` inside a `let`/`dolist`
   rather than with a bare top-level `setq`.
+
+**Setup:** older build, `wc.dmp` loaded, inside `lisp;`. Testing
+`bindadornpat`/`pred_binds` interactively while working out blank 8/9/10
+context and the `:bound` field for `lab7.lsp`.
+
+**Command(s) and output (chronological):**
+
+    Lisp 1> (bindadornpat pred '(_V3))
+    (+ -)
+    Lisp 1> (bindadornpat (#[OID 1516 "P_TOURNAMENT.YEAR->INTEGER"] _V2 _V3) '(_V3))
+    Error 15, Undefined function: #[OID 1516 "P_TOURNAMENT.YEAR->INTEGER"]
+    When evaluating: (#[OID 1516 "P_TOURNAMENT.YEAR->INTEGER"] _V2 _V3)
+    (FAULTEVAL BROKEN)
+    At *BOTTOM* brk>(bindadornpat '(#[OID 1516 "P_TOURNAMENT.YEAR->INTEGER"] _V2 _V3) '(_V3))
+    (+ -)
+    (FAULTEVAL BROKEN)
+    At *BOTTOM* brk>
+
+    (setq pred2 (list (getfunctionnamed 'P_MATCH.PLAYED_IN->TOURNAMENT) 'M '_V3))
+    WARNING! Setting undeclared global variable: PRED2
+    (#[OID 1550 "P_MATCH.PLAYED_IN->TOURNAMENT"] M _V3)
+    Lisp 1> (bindadornpat '(#[OID 1550 "P_MATCH.PLAYED_IN->TOURNAMENT"] M _V3) '(_V3))
+    (+ -)
+
+    Lisp 2> (bindadornpat '(#[OID 1550 "P_MATCH.PLAYED_IN->TOURNAMENT"] M _V2) '(_V2))
+    (+ -)
+    Lisp 2> (bindadornpat '(#[OID 1550 "P_MATCH.PLAYED_IN->TOURNAMENT"] M _V2) '(_V2 _V3))
+    (+ -)
+    Lisp 2>
+
+**Takeaways:**
+- **Unquoted predicate literal → "Undefined function" error.** Writing a
+  predicate list directly as an argument without quoting it,
+  `(bindadornpat (#[OID 1516 ...] _V2 _V3) '(_V3))`, makes the Lisp reader
+  treat `(#[OID 1516 ...] _V2 _V3)` as a *function call* (parens always mean
+  "call" unless quoted) — it tries to call the OID reference as a function
+  name and fails with `Error 15, Undefined function`. Fix: quote the whole
+  list, `'(#[OID 1516 ...] _V2 _V3)`, exactly the same quoting rule already
+  established for bare symbols (`'_v2`) — it applies to whole lists too.
+  Evaluating a corrected, quoted expression *inside* the resulting
+  break-loop (`brk>`) works fine and returns the right answer (`(+ -)`),
+  but the session stays in `FAULTEVAL BROKEN` until `:c` (continue) or `:r`
+  (reset) is issued — evaluating successfully inside a break-loop does not
+  itself clear it.
+- **Wrong join variable slips through undetected by `bindadornpat` alone.**
+  `pred2` was built with `_V3` (the *year* variable, from the earlier
+  `year(tournament)->integer(_V2, _V3)` predicate) instead of `_V2` (the
+  *tournament* variable) as `played_in`'s second argument — semantically
+  wrong, since `played_in(match)->tournament` should join to the same
+  tournament the year predicate resolved, not to the year value itself.
+  `bindadornpat` still happily returned `(+ -)` for this wrong predicate,
+  because it only checks "is this argument's variable present in the given
+  bound-list," with zero semantic awareness of what a variable represents —
+  a self-consistent but wrong test (bound-list `'(_V3)` was hand-picked to
+  match the mistake) will still "pass." Corrected version uses `_V2`
+  throughout, matching the PDF's own worked ObjectLog program
+  (`(P_MATCH.PLAYED_IN->TOURNAMENT M _V2)` alongside
+  `(P_TOURNAMENT.YEAR->INTEGER _V2 1950)`).
+- **Extra, irrelevant bound variables are harmless.**
+  `(bindadornpat '(...M _V2) '(_V2))` and
+  `(bindadornpat '(...M _V2) '(_V2 _V3))` both return `(+ -)` — adding
+  `_V3` to the bound-list changes nothing, since `pred2` (correct version)
+  never mentions `_V3` at all. Confirms it's always safe to pass the full,
+  accumulated `oldbound` (every variable bound by every predicate placed so
+  far in the plan) to `bindadornpat` for whichever candidate predicate is
+  being considered next — no need to filter `oldbound` down to only the
+  variables a given predicate cares about; this is exactly what the real
+  `dynprogsort` loop does (line 25's `(bindadornpat pred oldbound)`, with
+  `oldbound` being the full accumulated set from `(planinfo-bound
+  bestplan)`).

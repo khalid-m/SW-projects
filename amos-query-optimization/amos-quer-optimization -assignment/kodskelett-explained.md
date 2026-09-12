@@ -175,6 +175,36 @@ fanout would need `(car (cdr ...))` (i.e. `(cadr ...)`) instead of a plain
 because the function always returns exactly two related values, never a
 variable-length sequence.
 
+**`cons` builds a list by prepending one item.** Where `car`/`cdr` take a
+list apart, `cons` builds one up — it sticks a single item onto the *front*
+of an existing list, leaving the rest untouched:
+
+```lisp
+(cons 1 '(2 3))   ; => (1 2 3)
+```
+
+(This is also literally how `car`/`cdr` and cons cells relate: `(car (cons
+a b))` → `a`, `(cdr (cons a b))` → `b` — `cons` builds the same two-part box
+`car`/`cdr` take apart.)
+
+**`sort` reorders a list, `:key` says what to compare by.** `sort` takes a
+list and a comparison function, e.g. `(sort '(3 1 2) '<)` → `(1 2 3)`. When
+the list holds structs (like `planinfo`) rather than bare numbers, comparing
+two whole structs directly wouldn't make sense — `:key` tells `sort` to
+first run a function on each element and compare *those* results instead:
+
+```lisp
+(sort queue '< :key 'planinfo-cost)
+```
+
+means "sort `queue`, lowest to highest, by each element's `planinfo-cost`
+field" — `sort` calls `(planinfo-cost x)` on each element `x` before
+comparing, rather than comparing the `planinfo` structs themselves. Note
+`'<` and `'planinfo-cost` are both quoted here — passing the *functions
+themselves* as values for `sort` to call later, not invoking them
+immediately (same quoting principle as `'_v2`, just applied to function
+names instead of data symbols).
+
 **`#[OID ...]` is how ALisp prints a database object reference**, not
 something you type yourself. It's the same family of idea as Common Lisp's
 `#<...>` unreadable-object syntax — the leading `#` signals "this is a

@@ -26,7 +26,8 @@
                     ; e.g. from assignment description (page 81): 
                         ; pred:  => (#[OID 356 P_TOURNAMENT.YEAR->INTEGER] _V2 _V3)
                         ; oldbound: '(_v3)
-                        ; bpat: (+ -)          
+                        ; bpat: (+ -)  
+                        ; run as:  (bindadornpat '(#[OID 1516 "P_TOURNAMENT.YEAR->INTEGER"] _V2 _V3) '(_V3))        
 		  (setq predcost-fanout (simple-pred-cost pred bpat)); the cost of executing PRED
 					; with the binding pattern (e.g., (+ -))
 					; BPAT, NIL if not executable
@@ -37,25 +38,40 @@
 					; PRED with the binding
 					; pattern BPAT
                         ; (50 . 1.78571) => cdr takes 1.78571
-		  (cond (predcost
+		  (cond (predcost ; Only proceed to build/enqueue an extended plan 
+                          ; if predcost is non-nil — i.e. pred is actually 
+                          ; executable under this binding pattern. This is the guard that discards impossible orderings instead of ever pricing them.
 			 (setq newplaninfo 
 			       (make-planinfo
 				:plan (append oldplan 
 					      (list (substbindadorned 
 						     pred bpat)))
 					; the new, extended (partial) plan
+                    ; For example:
+                    ; if pred = (#[OID 1516 "P_TOURNAMENT.YEAR->INTEGER"] _V2 _V3)
+                    ; bpat = (+ -) 
+                    ; (list (substbindadorned  pred bpat)))) will be:
+                        ;(#[OID 1516 "P_TOURNAMENT.YEAR->INTEGER"] _V2 _V3) 
 				:bound (pred_binds pred oldbound)
 					; the variables that are bound
 					; after PRED has been executed
-				:rem (removeeq pred oldrem) 
+                    ; if pred = (#[OID 1516 "P_TOURNAMENT.YEAR->INTEGER"] _V2 _V3)
+                    ; and  = '(_V3)
+                    ; so the output of  (pred_binds pred oldbound) will be:
+                        ; this: (_V2 _V3), meaning both of _V2 and _V3 is bound becomes => oldbound
+                        ; This is because before running year(_V2) = _V3, only _V3 = 1950 is bound
+                        ; but after running both _V3(1950) and _V2(a specific tournamnet) is bound
+                    ; NOTE: passing the full, accumulated oldbound (e.g. (_V2 _V3), everything 
+                        ; bound by every predicate placed so far) is always safe — you never need to trim it down
+				:rem (removeeq pred oldrem) ; removeeq presumably removes pred from the list by eq identity,
 					; the remaining predicates
-				:cost ( ###### )    
+				:cost (+ oldcost (* oldfanout predcost))    
 					; the cost after PRED 
 					; has been executed
-				:fanout ( ###### ) 
+				:fanout (* oldfanout predfanout) 
 					; the fanout after PRED
 					; has been executed
 				))
-			 (setq queue ( ###### newplaninfo queue))
+			 (setq queue ( cons newplaninfo queue))
 					; put extended plan into queue
 			 )))))))
