@@ -7,15 +7,19 @@
       (let (queue			; Priority queue of cost investigated (partial) plans.
 	    bestplan oldplan oldbound oldrem oldcost oldfanout 
 	    bpat predcost predfanout predcost-fanout newplaninfo)
-	(setq queue ###### )		; Create queue and initialize it to contain
-					; a node with cost 0 and fanout 1
+    (setq queue (list (make-planinfo :plan nil  ; Create queue and initialize it to contain
+                                  :bound bnd
+                                  :rem (cdr l)
+                                  :cost 0       ; a node with cost 0 and fanout 1
+                                  :fanout 1)))					
 	(while t
 	  (cond 
-	   ( ######			; If the queue is empty, then...
+	   ( null queue			; If the queue is empty, then...
 	    (amos-error "Query not executable" (andify l))))
-	  (setq bestplan ######)	; The plan in the queue with lowest total cost
-	  (setq queue ###### )		; Remove BESTPLAN from priority queue
-	  ( ###### )			; If BESTPLAN is a complete plan, return that plan.
+	  (setq bestplan (car (sort queue '< :key 'planinfo-cost)))	; The plan in the queue with lowest total cost
+	  (setq queue (removeeq bestplan queue) )		; Remove BESTPLAN from priority queue
+	  (if (null (planinfo-rem bestplan)) ; If BESTPLAN is a complete plan, return that plan.
+          (return (planinfo-plan bestplan)))			
 	  (setq oldplan (planinfo-plan bestplan))
 	  (setq oldbound (planinfo-bound bestplan))
 	  (setq oldrem (planinfo-rem bestplan))
@@ -32,12 +36,12 @@
 					; with the binding pattern (e.g., (+ -))
 					; BPAT, NIL if not executable
                     ; e.g. page 81: (simple-pred-cost pred '(+ -))
-                        ; (50 . 1.78571) => car takes 50
+                        ; => (50 . 1.78571), a dotted pair: (car ...) is 50
           (setq predcost (car predcost-fanout))  ; the cost of executing
 		  (setq predfanout (cdr predcost-fanout)) ; the fanout of executing
 					; PRED with the binding
 					; pattern BPAT
-                        ; (50 . 1.78571) => cdr takes 1.78571
+                        ; (cdr ...) on the same (50 . 1.78571) pair is 1.78571
 		  (cond (predcost ; Only proceed to build/enqueue an extended plan 
                           ; if predcost is non-nil — i.e. pred is actually 
                           ; executable under this binding pattern. This is the guard that discards impossible orderings instead of ever pricing them.
@@ -49,22 +53,31 @@
 					; the new, extended (partial) plan
                     ; For example:
                     ; if pred = (#[OID 1516 "P_TOURNAMENT.YEAR->INTEGER"] _V2 _V3)
-                    ; bpat = (+ -) 
-                    ; (list (substbindadorned  pred bpat)))) will be:
-                        ;(#[OID 1516 "P_TOURNAMENT.YEAR->INTEGER"] _V2 _V3) 
+                    ; and bpat = (+ -)
+                    ; then (substbindadorned pred bpat) will be:
+                        ; (#[OID 1516 "P_TOURNAMENT.YEAR->INTEGER"] _V2 _V3)
+                    ; (unchanged here since year->integer needs no physical
+                    ; rewrite for this binding pattern; contrast with `>`,
+                    ; which substbindadorned rewrites into (CALL GT-- ...)
+                    ; once its binding pattern is known — see run-log.md)
 				:bound (pred_binds pred oldbound)
 					; the variables that are bound
 					; after PRED has been executed
                     ; if pred = (#[OID 1516 "P_TOURNAMENT.YEAR->INTEGER"] _V2 _V3)
-                    ; and  = '(_V3)
-                    ; so the output of  (pred_binds pred oldbound) will be:
-                        ; this: (_V2 _V3), meaning both of _V2 and _V3 is bound becomes => oldbound
-                        ; This is because before running year(_V2) = _V3, only _V3 = 1950 is bound
-                        ; but after running both _V3(1950) and _V2(a specific tournamnet) is bound
-                    ; NOTE: passing the full, accumulated oldbound (e.g. (_V2 _V3), everything 
-                        ; bound by every predicate placed so far) is always safe — you never need to trim it down
-				:rem (removeeq pred oldrem) ; removeeq presumably removes pred from the list by eq identity,
-					; the remaining predicates
+                    ; and oldbound = '(_V3)
+                    ; then (pred_binds pred oldbound) will be:
+                        ; (_V2 _V3) — meaning _V2 and _V3 are both bound now;
+                        ; this becomes the new oldbound for the next iteration.
+                        ; Before running year(_V2) = _V3, only _V3 (= 1950) was
+                        ; bound; after running it, _V2 (a specific tournament)
+                        ; becomes bound too, so both are now known.
+                    ; Confirmed by a real run: (pred_binds pred '(_V3)) => (_V2 _V3)
+                    ; (see run-log.md).
+                    ; NOTE: passing the full, accumulated oldbound (e.g. (_V2 _V3),
+                        ; everything bound by every predicate placed so far) is
+                        ; always safe — you never need to trim it down.
+				:rem (removeeq pred oldrem) ; removeeq removes pred from oldrem
+					; by eq identity, leaving the remaining predicates
 				:cost (+ oldcost (* oldfanout predcost))    
 					; the cost after PRED 
 					; has been executed

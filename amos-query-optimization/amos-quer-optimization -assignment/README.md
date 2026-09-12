@@ -268,22 +268,102 @@ simpler to write but does more work than necessary (fully orders the list
 just to take its first element, then discards that order immediately since
 new inserts aren't kept sorted).
 
-**Still open:**
+### Blank 1 — initializing `queue`
 
-- **Blank 1** — initialize `queue` to a single-element list holding one
-  `planinfo` with an empty `plan`, `bound = bnd`, `rem` = `l`'s predicate
-  list (i.e. `(cdr l)`, stripping the leading `AND`), `cost = 0`,
-  `fanout = 1`.
-- **Blank 2** — the empty-queue test (`(null queue)`) guarding the
-  "query not executable" error.
-- **Blanks 3 and 4** — given blank 10 is `cons`-only (Approach B above),
-  these must find the minimum-cost `planinfo` in `queue` (not just
-  `(car queue)`) and remove that specific element via `removeeq` (not
-  `cdr`, since it may not be at the front).
-- **Blank 5** — the completion check: if `(planinfo-rem bestplan)` is empty,
-  `return` `(planinfo-plan bestplan)` as the final answer, relying on the
-  cost model's monotonicity (see the "Dynamic programming" section of the
-  Linköping PDF) to guarantee this is the cheapest plan overall.
+Filled in as:
+
+```lisp
+(setq queue (list (make-planinfo :plan nil
+                                  :bound bnd
+                                  :rem (cdr l)
+                                  :cost 0
+                                  :fanout 1)))
+```
+
+This builds the single root `planinfo` the whole search starts from — an
+empty `plan`, cost `0`, fanout `1` (per the PDF: "a node with cost 0 and
+fanout 1") — and wraps it in a one-element list so `queue` starts life as a
+list of `planinfo`s, matching what blanks 3/4/10 all expect to operate on.
+
+An early draft had three bugs worth documenting since each is a distinct,
+generalizable Lisp mistake:
+
+- **`(list make-planinfo :plan ...)` instead of
+  `(list (make-planinfo :plan ...))`** — missing parens around the
+  `make-planinfo` call itself. Without them, `make-planinfo` is a bare,
+  unquoted symbol passed as one of `list`'s arguments — Lisp tries to
+  evaluate it as a **variable reference** ("look up the value stored in a
+  variable called `make-planinfo`") rather than calling it as a function,
+  since parentheses are what make something a function call. No such
+  variable exists, so this fails the same way `(setq m xy)` did earlier
+  when `xy` was never assigned. The constructor call needs its own
+  wrapping parens: `(list (make-planinfo :plan nil ...))`.
+- **`:bound 'nil` instead of `:bound bnd`** — hardcoding an empty bound-set
+  silently discards the function's own second parameter, `bnd`, which the
+  doc comment explicitly defines as *"a list of the initially bound
+  variables in L"*. A caller invoking `dynprogsort` with some variables
+  already bound (not always empty) would have that information dropped on
+  the floor. Should be `:bound bnd`.
+- **`:rem l` instead of `:rem (cdr l)`** — `l` is the *entire* expression
+  including its `AND` tag, shaped like `(AND pred1 pred2 pred3 ...)` (see
+  the PDF's `l1` example). Setting `:rem` to `l` directly means the first
+  loop iteration would treat the symbol `AND` itself as one of "the
+  predicates that remain to order" — `bindadornpat`/`simple-pred-cost`
+  would then be asked to compute a binding pattern and cost for the literal
+  symbol `AND`, which isn't a predicate at all. `(cdr l)` strips the
+  leading `AND` tag, leaving just the actual predicate list.
+- (`'nil` vs. plain `nil` is not a bug — `nil` evaluates to itself either
+  way — just redundant quoting.)
+
+**Done — blanks 2, 3, 4, and 5** (all filled in, closing out the remaining
+gaps in the skeleton):
+
+```lisp
+(cond
+ ((null queue)                                          ; blank 2
+  (amos-error "Query not executable" (andify l))))
+(setq bestplan (car (sort queue '< :key 'planinfo-cost)))  ; blank 3
+(setq queue (removeeq bestplan queue))                     ; blank 4
+(if (null (planinfo-rem bestplan))                          ; blank 5
+    (return (planinfo-plan bestplan)))
+```
+
+- **Blank 2** — `(null queue)`, guarding the "query not executable" error.
+- **Blank 5** — completion check: if `bestplan` has no predicates left in
+  `rem`, `return` its `plan` field as the final, cheapest answer, relying on
+  the cost model's monotonicity (see the "Dynamic programming" section of
+  the Linköping PDF) to guarantee correctness.
+- **Blanks 3 and 4** — implement the "search-for-minimum-at-pop-time" half
+  of the queue design (Approach B, paired with blank 10's plain `cons`
+  insert, as laid out above): `(car (sort queue '< :key 'planinfo-cost))`
+  finds the cheapest `planinfo` by fully sorting `queue` and taking the
+  first element, and `(removeeq bestplan queue)` removes that specific
+  element by identity (needed instead of a plain `cdr`, since — unlike a
+  kept-sorted queue — the minimum isn't guaranteed to sit at the front).
+
+  **This is correct but not efficient**, and is worth flagging explicitly:
+  every single iteration of the main `while` loop **fully sorts the entire
+  `queue`** (`O(n log n)`) just to read off its first element, then
+  immediately discards that ordering, since new entries are inserted
+  unsorted (blank 10's plain `cons`) and will need re-sorting from scratch
+  next iteration too. The manual `dolist`-based min-scan discussed earlier
+  in this section (`O(n)`, no full ordering computed) would do less
+  redundant work for the same result — the `sort`-based version was kept
+  here for simplicity/readability, which the PDF explicitly permits for
+  this exercise's scale ("it is OK to use ordinary LISP-lists to represent
+  a queue"), but it's not the efficient choice and shouldn't be mistaken
+  for one. A real implementation, per the PDF, would want neither of
+  these — "some efficient storage structure... such as an indexed tree" —
+  precisely because both approaches here redo more work than necessary on
+  every iteration.
+
+All 10 blanks are now filled in `lab7.lsp`. Parenthesis balance was checked
+mechanically (stripping comments first, since several comments contain
+example Lisp data like `(50 . 1.78571)` that would otherwise be
+miscounted as code) and confirmed to close out evenly. Next step is to
+actually `(load "lab7.lsp")` inside a real `lisp;` session against `wc.dmp`
+and verify it against a real query — see the plan at the end of this
+section.
 
 ### Understanding `:bound` and `pred_binds`
 
