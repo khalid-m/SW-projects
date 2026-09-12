@@ -1,4 +1,5 @@
 (setq _use_dnf_ t); make sure predicates are in disjunctive normal form before optimization!!!!
+(defstruct planinfo plan bound rem cost fanout)
 (defun dynprogsort (l bnd)
 ;;; L is an AND predicate to be optimized.
 ;;; BND is a list of the initially bound variables in L.
@@ -14,12 +15,12 @@
                                   :fanout 1)))					
 	(while t
 	  (cond 
-	   ( null queue			; If the queue is empty, then...
+	   ( (null queue)			; If the queue is empty, then...
 	    (amos-error "Query not executable" (andify l))))
 	  (setq bestplan (car (sort queue '< :key 'planinfo-cost)))	; The plan in the queue with lowest total cost
 	  (setq queue (removeeq bestplan queue) )		; Remove BESTPLAN from priority queue
 	  (if (null (planinfo-rem bestplan)) ; If BESTPLAN is a complete plan, return that plan.
-          (return (planinfo-plan bestplan)))			
+          (return (andify (planinfo-plan bestplan))))
 	  (setq oldplan (planinfo-plan bestplan))
 	  (setq oldbound (planinfo-bound bestplan))
 	  (setq oldrem (planinfo-rem bestplan))

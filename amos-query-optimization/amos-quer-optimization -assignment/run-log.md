@@ -525,3 +525,170 @@ context and the `:bound` field for `lab7.lsp`.
   `dynprogsort` loop does (line 25's `(bindadornpat pred oldbound)`, with
   `oldbound` being the full accumulated set from `(planinfo-bound
   bestplan)`).
+
+**Setup:** older build, fresh session (`amos2 wc.dmp`). First attempt at
+actually running `dynprogsort` for real, after all 10 blanks were filled
+in `lab7.lsp`.
+
+**Command(s) and output (chronological):**
+
+    C:\Users\klmah\Desktop\Amos-related\older-amos2\bin>amos2 wc.dmp
+    Amos II Release 8, v2
+    Amos 1> lisp;
+    lisp 1> (objlog "select m from match m where spectators(m)>100000 and
+    year(played_in(m))=1950;")
+    ----------------------------
+    Original definition of NIL:
+    (CREATE-FUNCTION *TRANSIENT* NIL
+       ((OBJECT _V1))
+       AS
+       (M)
+       FOREACH
+       ((MATCH M))
+       WHERE
+       (AND (> (SPECTATORS M)
+               100000)
+            (= (YEAR
+                  (PLAYED_IN M))
+               1950)))
+
+    Simplified:
+    (NIL M+) <-
+    (AND (MATCH.SPECTATORS->INTEGER M _V2)
+         (MATCH.PLAYED_IN->TOURNAMENT M _V3)
+         (TOURNAMENT.YEAR->INTEGER _V3 1950)
+         (OBJECT.OBJECT.>->BOOLEAN _V2 100000))
+
+    Normalized and simplified:
+    (NIL M+) <-
+    (AND (P_MATCH.SPECTATORS->INTEGER M _V2)
+         (P_MATCH.PLAYED_IN->TOURNAMENT M _V3)
+         (P_TOURNAMENT.YEAR->INTEGER _V3 1950)
+         (OBJECT.OBJECT.>->BOOLEAN _V2 100000))
+
+    Coerced: same
+
+    Decomposed (TBR):
+    (NIL M+) <-
+    (AND (P_TOURNAMENT.YEAR->INTEGER _V3 1950)
+         (P_MATCH.PLAYED_IN->TOURNAMENT M _V3)
+         (P_MATCH.SPECTATORS->INTEGER M _V2)
+         (CALL GT-- #[OID 121 "OBJECT.OBJECT.>->BOOLEAN"] _V2 100000))
+    #[OID TRANSIENT 3407504]
+    0.036 s
+    lisp 2> :osql
+    Amos 2> optmethod('ranksort');
+    "RANKSORT"
+    0.012 s
+    Amos 3> lisp;
+    lisp 3> (load "lab7.lsp")
+    Loading "lab7.lsp"
+    (DYNPROGSORT REDEFINED)
+    "lab7.lsp"
+    0.037 s
+    lisp 3> :osql
+    Amos 3> optmethod('exhaustive');
+    "RANKSORT"
+    Amos 4> create function matches_in_1950() -> Match as select m
+    from match m
+    where spectators(m)>100000
+    and year(played_in(m))=1950;
+    Error 15, Undefined function: MAKE-PLANINFO
+    0.01 s
+    Amos 4>
+
+**Takeaways:**
+- **`objlog` at the very start doesn't reveal the current `optmethod`
+  setting** — it only shows whatever the currently-active optimizer
+  produces, never which mode it's in. `optmethod` has no separate
+  "just tell me" query form; the only way to learn the current setting is
+  to call it (which also sets a new value) and read the *old* value it
+  returns.
+- **`optmethod('ranksort');` returned `"RANKSORT"`** — confirming a fresh
+  `amos2 wc.dmp` session starts on the documented default
+  (`"ranksort"`), exactly as the manual states, before any switch was ever
+  made.
+- **`(load "lab7.lsp")` succeeded** — printed `(DYNPROGSORT REDEFINED)`,
+  confirming the function loaded and replaced any prior definition, with no
+  load-time syntax/paren errors (consistent with the mechanical paren-
+  balance check done earlier on the file).
+- **`optmethod('exhaustive');` returned `"RANKSORT"`** — confirms the mode
+  really did just switch from ranksort to exhaustive by this call (matches
+  the earlier check, since nothing else had changed it in between).
+- **`create function matches_in_1950() ...` failed:
+  `Error 15, Undefined function: MAKE-PLANINFO`.** This is the first real
+  invocation of `dynprogsort` (creating/optimizing the function under
+  exhaustive mode triggers it) — and it reveals that **the `planinfo`
+  struct itself was never defined** in this session. `defstruct` is what
+  auto-generates `make-planinfo` and the field accessors
+  (`planinfo-plan`, etc.) — but only once
+  `(defstruct planinfo plan bound rem cost fanout)` has actually been
+  evaluated. The PDF documents the struct's *shape* as a reference, but
+  does not supply it as a pre-loaded built-in on this build, and
+  `lab7.lsp`/`kodskelett.lsp` never included the `defstruct` form itself.
+  None of the earlier interactive tests (`bindadornpat`, `pred_binds`,
+  `simple-pred-cost`) ever called `make-planinfo`, which is why this gap
+  went unnoticed until the first real end-to-end run.
+- **Fix identified (not yet applied/verified):** add
+  `(defstruct planinfo plan bound rem cost fanout)` to `lab7.lsp`, before
+  `dynprogsort` is defined (or at least before it's ever called), then
+  reload and retry `create function matches_in_1950() ...`.
+
+**Setup:** older build, fresh session (`amos2 wc.dmp`). Retried after two
+fixes to `lab7.lsp`: (1) added
+`(defstruct planinfo plan bound rem cost fanout)` right after the
+`_use_dnf_` line, before `dynprogsort` is defined; (2) fixed a second,
+separate bug found along the way — blank 2's `cond` clause was
+`( null queue (amos-error ...))`, missing an inner pair of parens around
+`null queue`, so `null` was being evaluated as a bare, unbound *variable*
+reference rather than called as a function — producing
+`Error 1, Unbound variable: NULL` on the very next attempt (not shown
+verbatim here, but between the two logged transcripts). Fixed to
+`((null queue) (amos-error ...))`.
+
+**Command(s) and output:**
+
+    C:\Users\klmah\Desktop\Amos-related\older-amos2\bin>amos2 wc.dmp
+    Amos II Release 8, v2
+    Amos 1> optmethod('ranksort');
+    "RANKSORT"
+    0.008 s
+    Amos 2> lisp;
+    lisp 2> (load "lab7.lsp")
+    Loading "lab7.lsp"
+    (DYNPROGSORT REDEFINED)
+    "lab7.lsp"
+    0.002 s
+    lisp 2> :osql
+    Amos 2> optmethod('exhaustive');
+    "RANKSORT"
+    Amos 3> create function matches_in_1950() -> Match as select m
+    from match m
+    where spectators(m)>100000
+    and year(played_in(m))=1950;
+    #[OID 1234 "MATCHES_IN_1950->MATCH"]
+    0.006 s
+    Amos 4>
+
+**Takeaway:** **First clean, error-free run of `dynprogsort` end-to-end.**
+`create function matches_in_1950() ...` — which triggers query
+optimization at creation time (as seen in every earlier `pc()` transcript,
+where the "Decomposed (TBR)" stage was already present immediately after
+`create function`) — completed with no error under `optmethod('exhaustive')`
+and the fully-filled-in `dynprogsort` loaded. Both structural bugs found
+along the way (`MAKE-PLANINFO` undefined, then `null` unbound) are now
+fixed and confirmed not to recur.
+
+This does **not yet prove** `dynprogsort` was actually the code path that
+ran, just that nothing crashed — it's possible (if unlikely, given
+`optmethod('exhaustive')` was just confirmed active) that some other
+codepath handled this silently. **Next verification step:** run
+`(trace dynprogsort)` before creating/reoptimizing the function, to get
+direct, unambiguous confirmation it was invoked, and compare
+`pc("matches_in_1950")`'s resulting plan — note this particular query's
+predicate order (`year → played_in → spectators → GT--`) was already found
+by the *default* greedy optimizer in every earlier run (see the
+`matches_in_1950`/`pc()` transcripts above), so a matching plan here
+wouldn't by itself prove exhaustive search changed anything — only the
+`trace` output (or a query where greedy and exhaustive plausibly disagree)
+gives real evidence `dynprogsort` specifically produced this result.
