@@ -1,0 +1,264 @@
+Accessing external data sources using TBR-rewrite rules
+=======================================================
+
+1. Introduction
+
+Amos II has a mechanism for accessing external data structures and
+functions implemented in C or Lisp. This document describes how to
+combine the foreign function interfaces of Amos II with 'TBR-rewrite
+rules' in order to access foreign data structures transparently from
+AmosQL. The purpose of the TBR-rewrite rules is to allow the query
+optimizer to automatically transform data access predicates into
+special accessing routines for each external data structure.
+
+External data sources can be accessed from Amos II by writing
+'wrappers' for a class of data sources. In general one may say that a
+wrapper consists of two subsystems:
+
+1) An INTERFACE that accesses the external data source through a set
+of foreign functions. For example, ODBC requires some foreign
+functions to manage connections and to execute SQL commands as
+strings. Typically the query interface accepts parameters as an input
+and delivers the result as a bag (or stream) of vectors representing
+tuples.
+
+2) A TRANSLATOR that translates the internal S-expression-based
+predicate TBR representation in Amos II to calls to the interface
+functions.  Often query strings in the query language of the data
+source are generated as arguments of the interface functions. For
+example, JDBC sources require translation of predicates as
+S-expressions to parameterized SQL query strings passed as argument to
+a foreign function executing an SQL query though JDBC.
+
+Currently there is a built-in wrapper system for JDBC (relational)
+databases. The relational wrapper has knowledge of capabilities,
+costs, and other properties of external relational databases in order
+to make them accessible from Amos II.
+
+A problem with the built-in relational wrapper mechanism is that it is
+based on the principle that every data source has a number of
+supported functions (its CAPABILITIES) and the 'translator' must
+always be able to generate a complete query over any combination of
+calls to these capability functions. If you have a source that can
+handle certain capabilities but not all combinations of these in a
+conjunction, the query optimizer will fail when a query contains an
+illegal combination of predicates. For example, a B-tree data
+structure supports conjuctions of the predicates =, >, <, >=, and <=
+but only implements certain combinations of these (interval queries).
+
+The TBR-rewrite rule system allows easy addition of access to external
+data structures while providing a mechanism to split and transform
+query predicates to call the data structure access paths.
+
+2. Example of implementation of index structure using TBR-rewrite rules
+
+Main memory B-trees are supported in the current system. 
+
+To handle indexing by B-trees a query accessing a B-tree is rewritten
+into a part that can be handled by interfacing a main memory B-tree
+manager written in C and a part that must be handled by the wrapping
+Amos II query processor.
+
+The Lisp-based TBR-rewrite subsystem for B-trees rewrites a
+conjunctive query into a part handled by interfacing the external
+B-tree data structure and a part handled as rewrites by Amos II.
+
+As an example, assume we have defined the following stored function
+with two indexes (see
+http://www.csd.uu.se/~udbl/amos/doc/amos_users_guide.html#61941).
+
+create function foo(integer x)->integer y key;
+create_index("foo","x","mbtree",'unique');
+create_index("foo","y","mbtree",'unique');
+
+Here the strings 'mbtree' indicate that we have put two main-memory
+B-tree indexes on the argument (x) and result (y) of foo. ('unique'
+means that the column is a key).
+
+Let's populate FOO with:
+
+set foo(1)=4;
+set foo(2)=3;
+set foo(3)=2;
+set foo(4)=0;
+
+Now, assume we ask the query
+
+select foo(i) from integer i where i>1 and i<=4 and i!=2;
+
+The problem here is that the B-tree implementation can only handle
+closed range queries, i.e. including the end points of the query
+interval. We can write the query as
+
+select foo(i) from integer i where i>=1 and i<=4 
+                             and i!=1 and i!=2;
+
+where the first line can be handled by the B-tree index for the
+argument of FOO and the second line must be tested by the wrapping
+Amos II query processor. The TBR-rewrite rule system for MBTREE has a
+rewrite rule for this (implemented by the Lisp function
+REWRITE-MBTINDEX).
+
+The steps to implement a B-tree search involves the following:
+
+i) An internal foreign AmosQL function to access B-tree intervals:
+
+   MBT-SELECT-RANGE(function f, integer pos, object low, object high) -> ... 
+     as foreign ...
+
+This foreign function accesses the rows of a B-tree index associated
+with position POS of the stored AmosQL function F in the closed
+interval [LOW,UP]. Open-ended intervals are handled by a special
+marking.
+
+ii) There are two re-writes rule associated with the index definitions
+of FOO for the argument and the result. They split the internal
+S-expression representation of a query predicate calling
+MBT-SELECT-RANGE differently depending on whether the argument or the
+result is bound in a query situation.
+
+In the example the B-tree is applied on the argument index. The
+original S-expression representation of the query predicate looks like
+this:
+
+(AND (#[OID 630 "P_INTEGER.FOO->INTEGER"] I _V1) ; table FOO
+     (#[OID 115 "OBJECT.OBJECT.>->BOOLEAN"] I 1) ; predicate >
+     (#[OID 114 "OBJECT.OBJECT.<=->BOOLEAN"] I 4); predicate <=
+     (#[OID 97 "OBJECT.OBJECT.!=->BOOLEAN"] I 2)); predicate !=
+
+After the TBR-rewrite we get the following optimized predicate:
+
+(AND (CALL MBT-SELECT-RANGE ; foreign Lisp function MBT-SELECT-RANGE
+        #[OID 407 "FUNCTION.INTEGER.OBJECT.OBJECT.MBT-SELECT-RANGE->BOOLEAN"]
+        #[OID 630 "P_INTEGER.FOO->INTEGER"] ; the table
+        0                                   ; index position in table
+        1                                   ; low range
+        4                                   ; upper range
+        I                                   ; argument of FOO returned
+        _V1)                                ; result of FOO returned
+     (CALL OBJECT.!=-- #[OID 97 "OBJECT.OBJECT.!=->BOOLEAN"] I 1) ;postfilter
+     (CALL OBJECT.!=-- #[OID 97 "OBJECT.OBJECT.!=->BOOLEAN"] I 2));postfilter
+
+This transformation is done by the Lisp function REWRITE-MBTINDEX.
+
+3. The TBR-rewrite rule system interface
+
+The TBR-rewrite rule system is called by the cost-based optimizer. It
+is currently applied on conjuctions only and only for the RANKSORT
+optimization.  The main entry to rewrite a conjuction is
+
+(REWRITE-PREDS THIS REST BND)
+
+where THIS is a is one simple TR-predicate (see Litwin&Risch 1992) in
+a conjunction. REST are the remaining predicates in the
+conjunction. BND is a list of the free variables bound when the
+rewrite rule is applied. If there is no TBR rewrite rule for THIS then
+REWRITE-PRED will translate THIS into the corresponding default
+TBR-predicate. The default TBR-predicate is identical to THIS for
+stored tables and for foreign functions a CALL statement is generated.
+
+A TBR rewrite rule may do one of the following:
+
+1. It may do a customized translation of THIS by updating THIS.
+2. It may combine a customized translation of THIS with an update of
+REST.
+
+For example, the TR-predicate
+ (#[OID 97 "OBJECT.OBJECT.!=->BOOLEAN"] I 2)
+is by default (with no TBR rule) rewritten to
+ (CALL #extpred "NE--"#                      ; a C function implementing != 
+       #[OID 97 "OBJECT.OBJECT.!=->BOOLEAN"] ; the OID for !=
+       I 2)                                  ; the arguments
+
+Here != is implemented as a foreign Amos II function in C.
+
+3.1 Definition of TBR-rewrite rules
+
+A TBR-rewrite rule is a Lisp function with prefix REWRITE- and a
+single argument bound to a structure named REWRITE describing the
+context:
+
+(DEFSTRUCT REWRITE 
+  THIS ; The current predicate being translated
+  BPAT ; The binding pattern in call to THIS
+  BND ; The variables bound AFTER the call to THIS
+  REST ; The remaining TR predicates
+  TRANSLATED ; The TBR predicate THIS is translated into
+)
+
+The rewriter must return a control switch indicating what the rewrite
+system should do with the rewritten structure:
+
+i)  SUBSTITUTE: do the default TR->TBR substitution of THIS
+ii) NIL:        skip this rule; it does not apply.
+iii)SUCCESS:	This rule was applied. 
+                It has tranlated THIS and perhaps changed REST.
+
+The rewriter often modifies REST, e.g. in the case of B-trees to
+combine ranges with an index.
+
+It is possible to associate rewrite rules with foreign functions and
+given binding patterns, for example:
+
+create function fie(integer x)->real y as multidirectional
+        ("bf" foreign "fiebf" cost "fiebfcost" rewriter "fiebf")
+        ("fb" foreign "fiefb" cost "fiefbcost" rewriter "fiefb");
+
+
+In this example we define a multi-directional foreign function FIE
+(see http://www.csd.uu.se/~udbl/amos/doc/external.pdf) with different
+implementations in the forward direction (Lisp function FIEBF) and
+inverse direction (Lisp function FIEFB).  The forward implementation
+has a cost function defined by AmosQL function FIEBFCOST
+(http://www.csd.uu.se/~udbl/amos/doc/amos_users_guide.html#62191) and
+a TBR-rewrite rule in Lisp called REWRITE-FIEBF. Analogous for the
+inverse inmplementation.
+
+Notice that the TBR rewrite system assumes that the predicates are
+processed by the query rewrite system before they are applied. This
+means that all views are expanded when the TBR-rules are applied. Also
+all stored functions are expressed in terms of the corresponding
+'predicate functions' (predicate functions are explained in
+lispfunctions.txt). New TR expressions that are inseted in REST by a
+TBR-rule cannot reference derived functions (since TBR-rules work on
+view expanded expressions not containing any calls to derived
+functions). Use TBR-rules when the rewrite has to be on a low level
+and when the binding pattern influences the rule (as for B-trees).
+
+Interface functions for TBR-rules:
+
+(GET-TR-REWRITER FNO)
+   Get the TR rewriter for a function or its generic function
+
+(ADD-REWRITER FN BPAT REWRITER)
+   Declare query rewriter for AMOSQL function FN under binding pattern BPAT
+
+(GET-REWRITERS FN BPAT)
+   Returns a list of the rewriters for FN with binding pattern BPAT
+
+(REWRITE-ASSERT PRED RW)
+   Assert new fact among remaining predicates in TBR rewriter
+
+(REWRITE-RETRACT PRED RW)
+   Retract fact from remaining predicates in TBR rewriter
+
+4. TR-rewriters
+
+If you need to rewrite TR-expressions, there is another mechanism
+called 'TR-rewriters' where you define condition-transformation
+function over declarative predicate expressions per generic function
+OID without using binding patterns. 
+
+(DEFINE-TR-REWRITER FNO TESTFN ACTIONFN) If the a predicate P in a
+conjunction C has FNO as generic function and (TESTFN P C) returns
+non-NIL value V then call (ACTIONFN P C V) to return a new conjunction
+C' that replaces C (i.e rule C->C').
+
+Notice that TR-rewriters simply transform predicates to other
+equivalent predicates without considering any binding patterns. The
+TR-rewriters are applied repeatedly until a fix point is reached.
+
+If your rewrite rule depends on what is bound, you need to use TBR
+rules. Also notice that TBR rules will be applied extensively since
+many different binding patterns will tried by the optimizer.
+

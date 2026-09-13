@@ -39,6 +39,23 @@ any) prompted the exploration.
   compiler or driver program, which makes it the practical route for extending
   the system in this environment.
 
+- [`cost-based-vs-rule-based-optimization.md`](cost-based-vs-rule-based-optimization.md)
+  — AMOS II's cost-based optimizer compared with Polars' rule-based lazy
+  optimizer: where each gets its estimates, and where each breaks down.
+
+- [`query-rewrite/`](query-rewrite/) — TBR-rewrite rules, the mechanism that lets
+  the optimizer turn ordinary predicates into calls to specialised access
+  routines.
+  - [`rewrite.txt`](query-rewrite/rewrite.txt) — the official AMOS II document.
+  - [`README.md`](query-rewrite/README.md) — notes on it, plus the resolved
+    investigation into **why `mbtree` range access fails on this build**: the
+    rewrite rule is present and fires, but `MBT-SELECT-RANGE`'s generic function
+    carries no implementation. Includes the `optmethod` A/B that pins the failure
+    to the rewrite path rather than the index.
+  - [`building-a-rewrite-rule.md`](query-rewrite/building-a-rewrite-rule.md) — a
+    rewrite rule and its Lisp access routine built from nothing, one verified
+    step at a time, ending with three predicates collapsed into a single `CALL`.
+
 ## Reference material
 
 Official AMOS II documentation is kept locally as a sibling directory,
