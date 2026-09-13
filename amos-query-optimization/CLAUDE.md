@@ -19,7 +19,7 @@ any) prompted the exploration.
 ## Repository contents
 
 - [`tutorial-index-execution-plans.md`](tutorial-index-execution-plans.md) — the
-  main (and currently only) tutorial. Walks through a small `Charstring->Number`
+  index/execution-plan tutorial. Walks through a small `Charstring->Number`
   stored function (`asci_map`) and a `Person` type with `dept`/`age` attributes,
   building up:
   1. `HASH-INDEX-GET` — unique-key forward lookup.
@@ -30,6 +30,14 @@ any) prompted the exploration.
   4. `MBTREE-INDEX-SCAN` — an ordered index type that supports equality lookups
      like a multi-value hash index, but (on the AMOS II release tested) does **not**
      support `>`/`<` range predicates out of the box.
+
+- [`lisp-foreign-functions.md`](lisp-foreign-functions.md) — how to implement an
+  AmosQL function in ALisp (the `callout` interface) and call AmosQL back from
+  Lisp (`callin`). Protocol, `osql-result`, multi-directional declarations, the
+  `osql`/`AMOS_` embedded-query interface, and the traps: built-in name
+  shadowing, coercion warnings, generic vs. resolvent function objects. Needs no
+  compiler or driver program, which makes it the practical route for extending
+  the system in this environment.
 
 ## Reference material
 
@@ -46,8 +54,16 @@ https://www.it.uu.se/research/group/udbl/amos/), containing:
 - `javaapi.pdf` — "Amos II Java Interfaces" (D. Elin and T. Risch), documenting the
   `callin`/`callout` Java foreign-function API (`CallContext`, `Tuple`, etc.) used
   to implement foreign functions like the ones this repo's tutorial calls.
-- `external.pdf` — reference on external/foreign functions and wrappers in AMOS II
-  (binding non-AmosQL implementations, e.g. Java/C, into the query engine).
+- `external.pdf` — "Amos II External Interfaces" (T. Risch). The reference for
+  binding non-AmosQL implementations into the query engine. **§3.2 and §3.2.1
+  cover the ALisp callout interface** — the only foreign-function route that
+  needs no compiler — and §2.2 the ALisp callin interface. Note that its code
+  examples contain errors (its `sqrt2` references an unbound variable); trust the
+  prose over the snippets.
+- `alisp.pdf` — the ALisp interpreter manual. **Despite the name, this is not the
+  document for writing AmosQL functions in Lisp** — its "foreign function"
+  chapter covers the opposite direction, C functions callable *from* ALisp. Use
+  `external.pdf` §3.2 instead.
 
 Consult these before assuming AMOS II syntax or behavior — but per the working
 convention below, still verify against a real `Javaamos`/`amos2` run before writing
