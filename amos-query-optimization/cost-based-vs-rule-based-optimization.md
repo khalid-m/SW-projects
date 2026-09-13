@@ -33,6 +33,12 @@ two — algebra trees like Polars, global cost-based search like AMOS II.
 > nor estimates cardinality. The official list contradicts both. The claims
 > have been corrected below — a reminder that the repo's rule of checking
 > primary sources applies to comparisons as much as to AMOS II runs.
+>
+> A second round of corrections follows the TBR-rewrite work in
+> [`query-rewrite/`](query-rewrite/). AMOS II's rule-based layer turns out to
+> be larger than described here, it is **mutually exclusive** with the
+> cost-based search, and AMOS II's inability to drive an index from a range
+> is a property of the tested build rather than of the system.
 
 ## At a glance
 
@@ -41,6 +47,7 @@ two — algebra trees like Polars, global cost-based search like AMOS II.
 | Era / purpose | 1990s research mediator over heterogeneous sources | modern columnar DataFrame engine |
 | Internal representation | **ObjectLog** — object-oriented Datalog | **algebra tree** — Scan / Filter / Join / … |
 | Optimizer family | rule-based rewrites, then **cost-based search** (`optmethod('exhaustive')`) | rule-based rewrites, plus **targeted estimates** |
+| Rule-based rewrite layer | simplification passes, **plus TBR-rewrite rules** — but those fire only under `ranksort` | the primary mechanism — eight passes, always on |
 | Global cost model | yes — `(cost . fanout)` per predicate per binding pattern | **no** — no whole-plan cost function |
 | Does it estimate? | yes — cardinality and fanout, for every predicate | yes, but narrowly: group-by strategy, join branch order |
 | Statistics used | live cardinality, index uniqueness | Parquet row-group min/max, Hive paths, sortedness |
@@ -181,7 +188,7 @@ The [official list](https://docs.pola.rs/user-guide/lazy/optimizations/):
 
 | Polars pass | What it does | AMOS II analogue |
 |---|---|---|
-| **Predicate pushdown** | apply filters as early as possible, at scan level | *emergent* — cheap selective predicates sort to the front because the cost model prices them that way |
+| **Predicate pushdown** | apply filters as early as possible, at scan level | **both** — *emergent* under `exhaustive` (cheap selective predicates sort to the front because the cost model prices them that way); **rule-based** under `ranksort`, where TBR-rewrite rules fold predicates into an index access call |
 | **Projection pushdown** | read only the columns needed, at scan level | **none** — no columns to prune; a stored function's tuples are its extent |
 | **Slice pushdown** | load only the required slice; don't materialise sliced output | **none** in the plan model |
 | **Common subplan elimination** | cache subtrees / file scans used by multiple subtrees | **none** in `dynprogsort` — it orders one conjunction |
@@ -216,6 +223,50 @@ search over `n!` alternatives, priced by a cost function. Polars treats
 ordering either as a rule (push filters down, always) or as a local,
 single-objective heuristic (which join branch first, to limit memory) — it
 never enumerates whole plans and compares their costs.
+
+### The third rule layer: TBR-rewrite rules
+
+The diagram above is incomplete. Besides the simplification passes, AMOS II
+has a rewrite mechanism that is **structurally the same thing Polars does**:
+TBR-rewrite rules, documented in
+[`query-rewrite/README.md`](query-rewrite/README.md).
+
+A TBR rule pattern-matches a predicate, absorbs neighbouring predicates out
+of the conjunction, and replaces them with a call to a specialised access
+routine. The shipped example turns
+
+    foo(i) ∧ i>1 ∧ i<=4
+
+into a single B-tree range call plus a post-filter for what the index cannot
+express. That is predicate pushdown in the Polars sense — recognise a
+predicate the storage layer can serve natively, hand it over, filter the
+remainder afterwards. No costing is involved; it fires on shape alone.
+
+Crucially, **no ordering of predicates can produce this result.** The
+cost-based search permutes a conjunction; a rewrite rule changes what the
+conjunction *contains*. They are different powers, and AMOS II has both.
+
+#### But not at the same time
+
+`rewrite.txt` §3 restricts TBR rewrites to RANKSORT, and a controlled A/B
+confirms it behaviourally — the same query fails under `ranksort` and
+succeeds under `exhaustive`, because the rewrite fires in one and not the
+other ([transcript](query-rewrite/README.md#test-switching-the-optimizer-switches-the-failure)).
+
+| Optimizer | TBR-rewrite rules | Cost-based search |
+|---|---|---|
+| `ranksort` (default) | ✓ | ✗ — greedy heuristic only |
+| `exhaustive` | ✗ | ✓ |
+
+So the two mechanisms are **mutually exclusive**, which is a sharper
+statement than "AMOS II is a hybrid." Enabling `dynprogsort` — the whole
+point of the assignment — *disables* the layer that lets an index serve a
+range. You choose Selinger-style search or Polars-style rewriting, not both.
+
+Polars has no such constraint: its eight passes and its two local estimates
+run together on every query. Whether AMOS II's restriction is fundamental or
+an artifact of how the two paths were implemented is not stated in the
+document.
 
 ### How Polars' two estimates are actually used
 
@@ -363,14 +414,22 @@ is a promise you are required to keep.
 | Hive partition pruning | **none** — no partitioning concept |
 | Sortedness flag | partial — `mbtree` *is* an ordered structure |
 
-That last row carries an irony worth noting, given this repo's own verified
-finding: `mbtree` maintains order yet supports `=` and **not** `>`/`<` (see
-[`tutorial-index-execution-plans.md`](tutorial-index-execution-plans.md)).
-AMOS II therefore has the ordered structure and still cannot exploit
-ordering for ranges — precisely the case where Polars' min/max bounds are
-strongest. The two systems are mirror images here: **Polars finds ranges
-easier than equality** on the skipping side, while **AMOS II finds ranges
-harder than equality** on the access-path side.
+That last row needs care. On the tested build, `mbtree` maintains order yet
+serves `=` and **not** `>`/`<` (see
+[`tutorial-index-execution-plans.md`](tutorial-index-execution-plans.md)) —
+so AMOS II has the ordered structure and cannot exploit it for ranges,
+precisely the case where Polars' min/max bounds are strongest.
+
+**That is a build artifact, not a design property.** AMOS II was built to
+drive an index from a range: `MBT-SELECT-RANGE` exists for exactly that, and
+the rewrite rule targeting it is registered and does fire. What is missing on
+this build is an implementation binding under one generic function — traced
+in [`query-rewrite/README.md`](query-rewrite/README.md#why-mbtree-ranges-fail-on-this-build--resolved).
+
+So the mirror-image framing holds for *this installation*, not for the
+architecture. By design both systems exploit ordering for ranges; they differ
+in where — Polars skips blocks it never reads, AMOS II selects an access
+path.
 
 ## 3. Constraints beat statistics — in both systems
 
@@ -430,11 +489,10 @@ this; it needs a *histogram*, which AMOS II does not have.
 
 - **Equality** with the result side free is a **generator** — it produces
   tuples, and its fanout feeds the multiplication.
-- **Ranges cannot drive an index at all.** AMOS II's `mbtree` supports `=`
-  but not `>`/`<` (verified — see
+- **Ranges do not drive an index on this build.** `mbtree` serves `=` but
+  not `>`/`<` (verified — see
   [`tutorial-index-execution-plans.md`](tutorial-index-execution-plans.md)),
-  so a range predicate always becomes a boolean filter with both arguments
-  bound:
+  so a range predicate becomes a boolean filter with both arguments bound:
 
   ```
   (CALL GT-- #[OID 121 "OBJECT.OBJECT.>->BOOLEAN"] _V2 100000)
@@ -443,11 +501,18 @@ this; it needs a *histogram*, which AMOS II does not have.
   Its fanout is a pure selectivity guess — *what fraction survives?* — and
   with no histogram it can only be a fixed constant.
 
-AMOS II sidesteps range-selectivity estimation by never letting a range
-choose an access path, filtering afterwards instead. Polars, by contrast,
-finds ranges *easier* than equality on the skipping side: min/max row-group
-statistics are exactly range bounds, so `col > 100` prunes blocks that an
-equality on an unsorted column could not.
+So on this build AMOS II sidesteps range-selectivity estimation by never
+letting a range choose an access path, filtering afterwards instead.
+
+Note this is a consequence of the missing `MBT-SELECT-RANGE` binding, not of
+the design. Had the rewrite been able to complete, a range *would* select an
+access path — and AMOS II would then need exactly the range-selectivity
+estimate it currently avoids. The gap in the cost model is hidden by the gap
+in the access path.
+
+Polars, by contrast, finds ranges *easier* than equality on the skipping
+side: min/max row-group statistics are exactly range bounds, so `col > 100`
+prunes blocks that an equality on an unsorted column could not.
 
 ### One thing AMOS II structurally cannot get wrong
 
@@ -587,11 +652,70 @@ is an unbound generator with a large `predcost` and a multiplier of 1. The
 search prices both. The rule's inversion cannot occur.
 
 The standing caveat: right *shape* is not right *numbers*. Whether
-`simple-pred-cost` reports a realistic cost for a **foreign** predicate (a
-Java or C function — see `external.pdf`) depends on whether that function
-carries a cost annotation. An unannotated one presumably gets a default, at
-which point the model is confidently wrong in the same way a rule would be.
-*(Untested — a concrete experiment worth running.)*
+`simple-pred-cost` reports a realistic cost for a **foreign** predicate
+depends on whether that function carries a cost annotation.
+
+That annotation mechanism is now identified. `rewrite.txt` §3.1 attaches a
+cost function **per binding pattern**, alongside the implementation and the
+rewriter:
+
+```sql
+create function fie(integer x)->real y as multidirectional
+        ("bf" foreign "fiebf" cost "fiebfcost" rewriter "fiebf")
+        ("fb" foreign "fiefb" cost "fiefbcost" rewriter "fiefb");
+```
+
+**The default is now measured, and it is a flat constant.** `bar_range` in
+[`query-rewrite/building-a-rewrite-rule.md`](query-rewrite/building-a-rewrite-rule.md)
+is a foreign function declared with **no** `cost` clause:
+
+```lisp
+(setq bp (list (getfunctionnamed 'integer.integer.bar_range->integer.integer)
+               2 3 'x 'y))
+(simple-pred-cost bp '(- - + +))
+=> (100 . 100)
+```
+
+Compare stored functions, where the numbers are derived from the data:
+
+```lisp
+(setq bp2 (list (getfunctionnamed 'p_integer.bar->integer) 'x 'y))
+(simple-pred-cost bp2 '(+ +))
+=> (6 . 3)
+```
+
+| Predicate | `(cost . fanout)` | Where the numbers come from |
+|---|---|---|
+| `tournament.year`, 14 tuples | `(28 . 1.0)` | `2 × 14`; fanout 1.0 from index uniqueness |
+| `bar`, 3 tuples | `(6 . 3)` | `2 × 3`; fanout 3 — the whole extent, both sides free |
+| `bar_range`, unannotated foreign | `(100 . 100)` | neither |
+
+Both stored functions track their actual size: change the row count and the
+numbers change. `bar_range` returns **at most three tuples** — it scans the
+same `bar` — and is priced at 100. The number is not a measurement of
+anything.
+
+*(Inference, on one sample: that `(100 . 100)` is a fixed default rather than
+a computation. A second unannotated foreign function returning the same pair
+would confirm it. Note the fanout is an integer here where `tournament.year`
+gave a float, so fanout type carries no information either way.)*
+
+**This materially qualifies the argument above.** The claim that
+`dynprogsort`'s formula makes the pushdown inversion structurally impossible
+holds only while the cost inputs are real. For an unannotated foreign
+predicate, AMOS II is in precisely the position it was contrasted against:
+
+- It cannot tell an expensive foreign predicate from a cheap one — every one
+  is priced at 100, exactly the gap Polars has with expressions.
+- The fanout is worse than the cost. `bar_range(2,3)` returns at most three
+  tuples; the optimizer believes 100. Per the compounding rule above, a
+  fanout error in an early predicate scales *everything* after it.
+
+So the cost model's advantage is real but **conditional on annotation**. A
+foreign function with a proper `cost` function gets priced honestly; one
+without is a confident guess wearing the costume of a measurement — arguably
+worse than Polars' position, which at least does not claim to have priced
+anything.
 
 ## 6. Execution models, and why the cost models differ
 
@@ -621,11 +745,24 @@ defensible choice there rather than merely a missing feature.
 
 **Polars could extend estimation from operators to plans.** It already
 estimates cardinality — for group-by strategy — and already reorders join
-branches. What it lacks is a **per-expression cost attribute** (PostgreSQL's
-`COST`), which is exactly what would fix the pushdown inversion: knowing a
-regex is 100× a comparison is what lets an optimizer decline to push it. The
-machinery for whole-plan costing is closer than the "no cost model" framing
-suggests; the missing pieces are expression costs and a comparison step.
+branches. What it lacks is a **per-expression cost attribute**, which is
+exactly what would fix the pushdown inversion: knowing a regex is 100× a
+comparison is what lets an optimizer decline to push it. The machinery for
+whole-plan costing is closer than the "no cost model" framing suggests; the
+missing pieces are expression costs and a comparison step.
+
+On that specific feature the three systems rank the other way round from the
+overall comparison:
+
+| System | Cost annotation granularity |
+|---|---|
+| Polars | none |
+| PostgreSQL | per function (`CREATE FUNCTION … COST 10000`) |
+| AMOS II | **per function, per binding pattern** (`cost "fiebfcost"`) |
+
+AMOS II's is the finest of the three, and necessarily so: a multi-directional
+predicate has a different cost in each direction, so one number per function
+would be meaningless.
 
 **AMOS II could use exact metadata.** It estimates where Polars proves.
 Histograms would fix its skew blindness on `"multiple"` indexes, and range
@@ -659,6 +796,12 @@ provable category alone could not support.
   cost-based search for predicate ordering. Polars rewrites by rule and
   estimates only for two local decisions (group-by strategy, join-branch
   order). Neither is pure.
+- **AMOS II's two mechanisms are mutually exclusive.** Besides the
+  simplification passes it has TBR-rewrite rules, which fold predicates into
+  specialised access calls exactly as Polars' pushdown does — something no
+  reordering can achieve. But they fire only under `ranksort`, so enabling
+  `dynprogsort` disables them. You get Selinger-style search or Polars-style
+  rewriting, not both. Polars runs all its passes together, always.
 - **The real distinction is what an estimate is *for*.** Polars estimates to
   choose **how to execute one operator**; AMOS II estimates to choose
   **which of n! plans to run**. Only the second needs a whole-plan cost
@@ -671,10 +814,20 @@ provable category alone could not support.
   over the plan versus a **max** over it — and `dynprogsort` already computes
   the number needed for both, since `oldfanout` *is* the intermediate size. A
   plan can be cheap in total cost and still run out of memory.
-- **The two systems are mirror images on ranges.** Polars finds `>`/`<`
-  *easier* than equality on the skipping side, because min/max bounds are
-  literally range bounds. AMOS II finds ranges *harder*, because `mbtree`
-  supports `=` but not `>`/`<`, so a range degrades into a post-filter.
+- **The two systems look like mirror images on ranges — but only on this
+  build.** Polars finds `>`/`<` *easier* than equality on the skipping side,
+  because min/max bounds are literally range bounds. On the tested AMOS II
+  release a range degrades into a post-filter, since `mbtree` serves `=` but
+  not `>`/`<`. That is a missing implementation binding, not a design choice:
+  `MBT-SELECT-RANGE` and its rewrite rule both exist, and the rule fires. By
+  design both systems exploit ordering for ranges.
+- **Cost annotations run the other way.** Polars has none, PostgreSQL has one
+  per function, AMOS II has one **per function per binding pattern** — the
+  finest of the three, because a multi-directional predicate costs differently
+  in each direction. But the annotation must actually be written: an
+  unannotated foreign function prices at a flat `(100 . 100)` regardless of
+  what it does, so the cost model's advantage is conditional on someone
+  supplying the number.
 - **Constraints beat statistics in both.** Uniqueness in AMOS II,
   provable sortedness in Polars — where a property can be proven, no
   estimate is needed.
@@ -697,6 +850,9 @@ provable category alone could not support.
   [`amos-query-optimization-assignment/README.md`](amos-query-optimization-assignment/README.md).
 - W. Litwin and T. Risch, *Main Memory Oriented Optimization of OO Queries
   Using Typed Datalog with Foreign Predicates*, IEEE TKDE 4(6), 1992.
+- TBR-rewrite rules, and a worked construction of one:
+  [`query-rewrite/README.md`](query-rewrite/README.md) and
+  [`query-rewrite/building-a-rewrite-rule.md`](query-rewrite/building-a-rewrite-rule.md).
 - Polars' official list of optimization passes:
   <https://docs.pola.rs/user-guide/lazy/optimizations/>
 - Polars predicate pushdown and data skipping:
