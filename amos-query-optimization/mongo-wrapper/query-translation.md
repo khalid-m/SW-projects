@@ -388,6 +388,71 @@ registered **per data source**, and they see the whole conjunction.
 
 # Part 1 — `mongo_query_processor.amosql`
 
+Twelve function definitions in four groups, plus a registration tail. The
+table is a lookup; the sections after it explain the ones that need it.
+
+## Every function in the file
+
+### Stored metadata — facts, no logic
+
+| Function | Holds | Set by | Read by |
+|---|---|---|---|
+| `mongo_connid(Datasource) -> Integer` | the C-level connection slot | `connect` | `mongo_connid_named`, **and the Lisp finalizer**, which emits it as a plan predicate |
+| `mongo_database(Function sp) -> Charstring` | which database a source predicate reads | `import_mongo_collection` | Lisp `mongo-database` |
+| `mongo_collection(Function sp) -> Charstring` | which collection | `import_mongo_collection` | Lisp `mongo-collection` |
+
+The last two are the annotation trick described
+[above](#per-source-predicate-metadata): a stored function keyed on a
+**`Function`** object, and the only thread joining a predicate in a
+conjunction back to a specific collection.
+
+### Connection runtime
+
+| Function | Purpose |
+|---|---|
+| `connect(Mongo m, Charstring host) -> Integer` | overload of AMOS II's generic `connect`, so it fires when a `Mongo` data source is connected; calls foreign `mongo_connect` and stores the slot |
+| `mongo_connid_named(Charstring ds) -> Number` | data-source **name** → connection. Exists because generated bodies are *text*, which can only name a source by string |
+
+### Code generators — run once, at import
+
+All five build AmosQL source as a string and `eval` it.
+
+| Function | Generates | Purpose |
+|---|---|---|
+| `create_mongo_sourcepred(ds, db, coll)` | `<coll>_sourcepred()` with `bf`/`fb`/`ff` | the source predicate — three access paths into the collection |
+| `create_mongo_accessor(typename)` | `vref(<T> r, Charstring a) -> Object` | makes `p["age"]` work on the proxy type |
+| `create_mongo_replacer(ds, db, coll, typename)` | `replace_value(<T> m, Record r)` | write a whole document back |
+| `create_mongo_setter(typename)` | `set_property(<T> p, prop, val)` | one-field update, built on the replacer |
+| `create_mongo_destructor(ds, db, coll, typename)` | `mongo_destructor(<T> m)` | delete the document when the proxy object is deleted |
+
+**Which ones take connection coordinates is not arbitrary.** The accessor and
+setter take only `typename`, because they never reach MongoDB directly — the
+accessor goes through `value(r)`, the setter delegates to `replace_value`.
+The other three embed `ds`, `db` and `coll` in their generated text because
+they issue real calls.
+
+The destructor uses `_decode_(m)` to recover the `_id` from the proxy object
+before calling `mongo_delete_id`.
+
+### The scan helper
+
+| Function | Purpose |
+|---|---|
+| `mongo_kvp(conn, db, coll) -> Bag of (Literal id key, Record value key)` | the `ff` implementation: query with `empty_record()` and project `_id` alongside the whole document |
+
+Both positions free, nothing to look up by — this is the full collection scan
+the cost model prices at 100000. Unlike the generators it is an ordinary
+parameterised function, because `ff` needs no per-collection specialisation.
+
+### The entry point
+
+| Function | Purpose |
+|---|---|
+| `import_mongo_collection(Mongo ds, Charstring db, Charstring mongocoll, Charstring typename) -> Type` | the only function here a user calls |
+
+It runs everything above in order — see
+[Tying it together](#tying-it-together).
+
 ## Declaring the wrapper
 
 ```sql
