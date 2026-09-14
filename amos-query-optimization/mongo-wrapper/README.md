@@ -55,6 +55,10 @@ this pushes an AmosQL conjunction into a MongoDB filter document.
 | **Wrapper / mediator glue** | `mongo_query_processor.amosql` | `new_wrapper`, connections, source predicates, mapped types |
 | **Translator (Lisp)** | `mongo_optimizer.lsp` | extractor, cost model, finalizer — the optimizer extensions |
 
+**Deep dive:** [`query-translation.md`](query-translation.md) walks the last
+two rows function by function — how an AmosQL conjunction is split, priced,
+and turned into a BSON filter document.
+
 Two further files sit outside that stack:
 
 | File | Role |
