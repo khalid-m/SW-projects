@@ -7,11 +7,28 @@ than fetching everything and filtering locally.
 Authored at UDBL, Uppsala: Khalid Mahmood (C interface, 2013) and Tore Risch
 (query processor and optimizer extensions, 2014).
 
-> **Status.** This page is a **reading of the source**, not a verified run.
-> Exercising it needs a MongoDB server, the MongoDB C driver, and
-> `MongoForeign.c` compiled against `amos2.lib` — none of which is set up
-> here. Per [`../CLAUDE.md`](../CLAUDE.md)'s convention, treat the behavioural
-> claims below as *what the code says it does*, not as observed output.
+> **Status: unverified, and blocked.** This page is a **reading of the
+> source**, not a run. Per [`../CLAUDE.md`](../CLAUDE.md)'s convention, treat
+> every behavioural claim below as *what the code says it does*, not as
+> observed output.
+>
+> The wrapper is installed in the tested build at
+> `AmosNT_floq\wrappers\Mongo`, but **it cannot be loaded.**
+> `load_extension("Mongo_wrapper")` needs a DLL built from `MongoForeign.c`
+> against `amos2.lib` and `mongo_driver.lib`, and no C toolchain is available
+> in this environment. Every `.amosql` file here begins with that
+> `load_extension` call, so nothing downstream of it runs — not the
+> interface, not `new_wrapper("Mongo")`, not the optimizer registrations.
+>
+> **This is the one component in the repo that Lisp cannot rescue.** The
+> TBR-rewrite work in [`../query-rewrite/`](../query-rewrite/) was blocked the
+> same way and turned out to have a Lisp-only path —
+> [`../lisp-foreign-functions.md`](../lisp-foreign-functions.md) documents
+> foreign functions needing no compiler. That does not help here: the
+> MongoDB C driver is a native library, and nothing in ALisp can speak the
+> wire protocol to a MongoDB server.
+>
+> See [Open: what a working build would settle](#open-what-a-working-build-would-settle).
 
 ## Why it matters to this repo
 
@@ -324,6 +341,38 @@ This wrapper pushes the *same shape* of predicate — `$gt`, `$lte` — into
 MongoDB, through a completely different path, with no such gap. Range
 pushdown is not something AMOS II cannot do; it is something one particular
 access routine on one build cannot do.
+
+## Open: what a working build would settle
+
+Blocked on compiling `MongoForeign.c` into `Mongo_wrapper.dll`. Recorded
+here so the gap is explicit rather than implied.
+
+**Needs only the DLL, no MongoDB server:**
+
+- Does `load_extension("Mongo_wrapper")` resolve, and does `master.amosql`
+  load cleanly on this release? The source is from 2013–14 and the build is
+  Release 16 v11; a decade of drift could have broken something.
+- Do the three registrations take? `set_extractor` / `set_finalizer` /
+  `set_costmodel` are undocumented in `rewrite.txt`, and probing what they
+  store would document the wrapper API the way `ADD-REWRITER` returning an
+  `#(TBR …)` struct documented the rewriter one.
+
+**Needs a MongoDB server as well:**
+
+- The payoff: `pc()` on a query over an imported collection, showing a
+  `mongo_query` call carrying a generated BSON filter. That would make the
+  central claim of this page — that AMOS II pushes predicates into MongoDB —
+  an observed fact rather than a code reading, exactly as `bar_range` did for
+  the rewrite work.
+- Whether `mongo-costmodel`'s tiers (10 / 100 / 1000 / 100000) actually steer
+  the optimizer toward an equality access path over a collection scan.
+
+**Possibly reachable now, untested:** `mongo_optimizer.lsp` is pure Lisp and
+does not itself call `load_extension`. `load_lisp` on it alone may succeed,
+which would at least confirm the translator half parses and its helper
+functions resolve on this build. Its `defglobal` forms call `theresolvent` on
+system functions at load time, so this may fail on the first line — worth one
+attempt.
 
 ## Related
 
