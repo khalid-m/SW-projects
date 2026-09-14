@@ -345,9 +345,41 @@ access routine on one build cannot do.
 ## Open: what a working build would settle
 
 Blocked on compiling `MongoForeign.c` into `Mongo_wrapper.dll`. Recorded
-here so the gap is explicit rather than implied.
+here so the gap is explicit rather than implied, in three tiers by what each
+one needs.
 
-**Needs only the DLL, no MongoDB server:**
+### Tier 0 — reachable now, with no compiler and no server
+
+**Does the translator half load on its own?**
+
+```lisp
+(load_lisp "mongo_optimizer.lsp")
+```
+
+`mongo_optimizer.lsp` is pure Lisp and never calls `load_extension` itself,
+so it may load even though every `.amosql` file in this directory cannot.
+Success would confirm that the 2013–14 translator still parses on Release 16
+v11 and that its helper functions — `leaf-predicate-p`, `variables-in-predl`,
+`make-record1`, `getcalledpred` and the rest — still resolve. That is half
+the wrapper verified with no toolchain at all.
+
+It may equally fail on the first line. The file opens with
+
+```lisp
+(defglobal _record-vref_ (theresolvent 'record.charstring.vref->object))
+```
+
+and `theresolvent` runs at **load** time, so a missing function there aborts
+immediately. Either outcome is informative, and it costs one command:
+
+- **Loads** → the translator is intact; only the C interface is missing.
+- **Fails on a `defglobal`** → shows exactly which system function has moved
+  or been renamed in the intervening decade.
+- **Fails elsewhere** → a genuine incompatibility worth recording.
+
+*(Untested. This is the single cheapest probe available on this directory.)*
+
+### Tier 1 — needs the DLL, no MongoDB server
 
 - Does `load_extension("Mongo_wrapper")` resolve, and does `master.amosql`
   load cleanly on this release? The source is from 2013–14 and the build is
@@ -357,7 +389,7 @@ here so the gap is explicit rather than implied.
   store would document the wrapper API the way `ADD-REWRITER` returning an
   `#(TBR …)` struct documented the rewriter one.
 
-**Needs a MongoDB server as well:**
+### Tier 2 — needs the DLL *and* a MongoDB server
 
 - The payoff: `pc()` on a query over an imported collection, showing a
   `mongo_query` call carrying a generated BSON filter. That would make the
@@ -366,13 +398,6 @@ here so the gap is explicit rather than implied.
   the rewrite work.
 - Whether `mongo-costmodel`'s tiers (10 / 100 / 1000 / 100000) actually steer
   the optimizer toward an equality access path over a collection scan.
-
-**Possibly reachable now, untested:** `mongo_optimizer.lsp` is pure Lisp and
-does not itself call `load_extension`. `load_lisp` on it alone may succeed,
-which would at least confirm the translator half parses and its helper
-functions resolve on this build. Its `defglobal` forms call `theresolvent` on
-system functions at load time, so this may fail on the first line — worth one
-attempt.
 
 ## Related
 
