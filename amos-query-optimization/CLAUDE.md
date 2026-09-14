@@ -39,6 +39,13 @@ any) prompted the exploration.
   compiler or driver program, which makes it the practical route for extending
   the system in this environment.
 
+- [`litwin-risch-1992-objectlog.md`](litwin-risch-1992-objectlog.md) — notes on
+  the 1992 IEEE TKDE paper describing WS-IRIS, the HP Labs prototype AMOS II
+  descends from. The primary source for ObjectLog, the TR/TBR representation,
+  the cost-and-fanout model, the rank formula `optmethod('ranksort')` is named
+  after, and multi-directional foreign predicates. Useful when a modern
+  behaviour needs explaining rather than just recording.
+
 - [`cost-based-vs-rule-based-optimization.md`](cost-based-vs-rule-based-optimization.md)
   — AMOS II's cost-based optimizer compared with Polars' rule-based lazy
   optimizer: where each gets its estimates, and where each breaks down.

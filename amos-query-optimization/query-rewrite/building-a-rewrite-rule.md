@@ -78,9 +78,12 @@ known, at the instant a direction is chosen. That is why it receives `BPAT`,
 and why `REST` arrives still in TR form — siblings are uncommitted, so they
 can still be absorbed.
 
-*(Inferred, not stated in the document: **TR** = type-resolved, **TBR** =
-type- and binding-resolved, following the Litwin & Risch 1992 terminology
-`rewrite.txt` cites. The behaviour above is what is actually verified.)*
+*(The acronyms are not expanded in `rewrite.txt`, but the paper it cites
+states them outright: **TR** = Type Resolved, **TBR** = Type and Binding
+Pattern Resolved — Litwin & Risch 1992 §2.3, summarised in
+[`../litwin-risch-1992-objectlog.md`](../litwin-risch-1992-objectlog.md).
+There is also an earlier **TA**, Type Adorned, stage before overload
+resolution.)*
 
 ## Step 0 — read the working example first
 
