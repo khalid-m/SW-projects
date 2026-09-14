@@ -1,0 +1,143 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2014 Tore Risch, UDBL
+ * $RCSfile: mongo_query_processor.amosql,v $
+ * $Revision: 1.3 $ $Date: 2014/03/29 13:29:46 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: MongoDB wrapper query processor
+ ****************************************************************************
+ * $Log: mongo_query_processor.amosql,v $
+ * Revision 1.3  2014/03/29 13:29:46  torer
+ * Transparent Mongo proxy object deletion
+ *
+ * Revision 1.2  2014/02/17 19:25:33  torer
+ * New methods generated for each mongo proxy type TP
+ *  replace_value(TP m, Record v) -> Literal
+ *  set_property(TP m, Charstring prop, Object val) -> Literal
+ *
+ * Revision 1.1  2014/02/07 11:28:58  torer
+ * MongoWrapper 1st version
+ *
+ ****************************************************************************/
+
+new_wrapper("Mongo");
+
+/*********************
+ Connection management
+**********************/
+
+create function mongo_connid(Datasource c) -> Integer
+  /* The connection identifier to a MongoDB data source */
+  as stored;
+
+create function connect(Mongo m, Charstring host) -> Integer
+    /* Connect a MongoDB data source to a MongoDB server at 'host' */
+    as begin set mongo_connid(m) = mongo_connect(host);
+             return mongo_connid(m);
+       end;
+
+create function mongo_connid_named(Charstring ds) -> Number
+  /* Get the connection to MongoDB datasource named ds */
+  as mongo_connid(datasource_named("Mongo",ds));
+
+/*******************
+ MongoDB collections
+********************/
+
+create function mongo_database(Function sp) -> Charstring
+  /* The database of a MongoDB source predicate */
+  as stored; 
+
+create function mongo_collection(Function sp) -> Charstring
+  /* The collection of a MongoDB source predicate */
+  as stored; 
+
+/**********************************
+ MongoDB source predicate generator
+***********************************/
+
+create function mongo_kvp (Number conn, Charstring db, Charstring coll) 
+                         -> Bag of (Literal id key, Record value key)
+  /* Retrieve the key/value pairs of a MongoDB database collection */
+  as select r['_id'], r from Record r
+     where r in mongo_query(conn, db, coll, empty_record());
+
+create function create_mongo_sourcepred(Charstring ds, Charstring db, 
+                                        Charstring collection)
+                                      -> Function
+  /* Generate the source predicate for a MongoDB collection */
+ as eval("
+ create function "
+    +collection+"_sourcepred () -> Bag of (Object id key, Record v key)
+    as multidirectional
+       ('fb' key select r['_id'] from Record r where
+                   r in mongo_query(mongo_connid_named('"+ds+"'),
+                                    '"+db+"', '"+collection+"',v))
+       ('bf' key select mongo_get(mongo_connid_named('"+ds+"'),
+                                  '"+db+"', '"+collection+"', id))
+       ('ff' select mongo_kvp(mongo_connid_named('"+ds+"'), 
+                              '"+db+"', '"+collection+"'));");
+
+create function create_mongo_accessor(Charstring typename) -> Function
+  as eval("
+create function vref("+typename+" r,Charstring a) -> Object
+  as value(r)[a];");
+
+create function create_mongo_replacer(Charstring ds, Charstring db,
+                                      Charstring coll, Charstring typename)
+                                    -> Function
+  as eval("
+create function replace_value("+typename+" m,Record r) -> Literal
+  as return mongo_replace(mongo_connid_named('"+ds+"'),'"+db+"','"
+     +coll+"',r);");
+
+create function create_mongo_setter(Charstring typename) -> Function
+  as eval("
+create function set_property("+typename+
+         " p, Charstring prop, Object val) -> Literal
+  as replace_value(p, put_record(value(p),prop,val));");
+
+create function create_mongo_destructor(Charstring ds, Charstring db,
+                                        Charstring coll, Charstring typename)
+                                      -> Function
+  as eval("
+create function mongo_destructor("+typename+" m) -> Boolean
+  as return mongo_delete_id(mongo_connid_named('"+ds+"'),'"+db+"','"
+     +coll+"',_decode_(m));");
+
+create function import_mongo_collection(Mongo ds, Charstring db,
+                                        Charstring mongocoll, 
+                                        Charstring typename)
+                                      -> Type
+  /* Import a MongoDB collection as an Amos mapped type */
+  as begin declare Function extfn;
+           set extfn = create_mongo_sourcepred(name(ds), db, mongocoll);
+           create_mapped_type(typename, {"rkey"}, {"rkey", "value"}, 
+                              name(extfn));
+           create_mongo_accessor(typename);
+           create_mongo_replacer(name(ds), db, mongocoll, typename);
+           create_mongo_setter(typename);
+           set_destructor(typenamed(typename),
+                          create_mongo_destructor(name(ds), db, mongocoll, 
+                                                  typename));
+           set datasource(extfn) = ds;
+           set mongo_database(extfn) = db;
+           set mongo_collection(extfn) = mongocoll;
+     end;
+
+/********************************
+ Optimizer extensions for MongoDB
+*********************************/
+
+load_lisp("mongo_optimizer.lsp");
+
+set_extractor('Mongo', 'mongo-extractor');
+set_finalizer('Mongo', 'mongo-finalizer');
+set_costmodel('Mongo', 'mongo-costmodel');
+
+parteval("make_record");
+parteval("vector");
+
+commit;

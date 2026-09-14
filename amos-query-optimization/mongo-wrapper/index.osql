@@ -1,0 +1,32 @@
+create function current_index_connection() ->  Integer connid
+  /* The connection id of the current index database named db */
+  as stored;
+
+create function current_index_database() ->  Charstring db
+  /* The connection id of the current index database named db */
+  as stored;
+
+create function set_index_database(Charstring host, Charsting db) -> Integer
+  as begin set current_index_connection() = mongo_connect(host);
+           return current_index_connection();
+           set current_index_database() = db;
+     end;
+
+create function mongoIndexName(Integer id) -> Charstring name
+  /* Maps between mongo collection representing indexes and the corresponding 
+     mexima identifier */
+  as stored;
+
+create function mongoIndexLastId() -> Integer
+  as stored;
+set mongoIndexLastId()=0;
+
+create function mongoIndex_make() -> Integer
+  as begin set mongoIndexName(mongoIndexLastId())= "I"+mongoIndexLastId();
+           return mongoIndexLastId();
+           set mongoIndexLastId() = mongoIndexLastId()+1;
+     end;
+
+create function mongoIndex_put(Integer indx, Object k, Object v) -> Object
+  as mongo_add(current_index_connection(), current_index_database(),
+               mongoIndexName(indx), {"key":k, "val":v});
