@@ -163,6 +163,17 @@ Both the pattern and the rewriter name are **quoted**. Unquoted,
 Registering on all three patterns avoids having to predict which one the
 optimizer will try — the printed `BPAT` then reports it.
 
+**Registration binds the symbol, not the definition.** `ADD-REWRITER` stores
+the name `REWRITE-SPY` and looks the function up when it needs it. So these
+three calls are the **only** registration in this entire document: every
+later step redefines `rewrite-spy` with `defun` and the new body takes effect
+immediately, on the same three patterns, with nothing to re-register.
+
+That is worth knowing in both directions. It makes iteration fast — edit,
+redefine, recompile the query, read the new plan. It also means a rule stays
+installed after you stop thinking about it; `REWRITE-SPY` is still attached
+to `bar` at the end of this document.
+
 *Undocumented detail:* `ADD-REWRITER` returns an internal `#(TBR …)` struct
 — six slots, of which slot 1 is the binding pattern and slot 5 the rewriter
 list. Not mentioned in `rewrite.txt`. It shows rewriters are stored per
@@ -764,18 +775,256 @@ Every earlier step only *read* struct fields. Writing one was unverified:
           (t 'substitute))))
 ```
 
-| Part | Purpose |
-|---|---|
-| `xv` / `yv` | `X` and `_V2`, pulled out of `THIS` |
-| the `dolist` | walk `REST` for comparisons on `X` against a numeric constant |
-| inner `cond` | normalise to closed bounds: `>k`→`k+1`, `<k`→`k-1` |
-| `(equal … '(+ +))` | fire only when both positions are free — the scan case a range helps |
-| `(and lo hi …)` | require **both** bounds, else decline with `SUBSTITUTE` |
-| `setf` + `'success` | replace `THIS` with the `CALL` |
+### Walked through with `q5`
 
-Because integers make `>1` and `>=2` equivalent, the normalisation is exact
-— unlike `rewrite.txt` §2, no widening occurs and no compensating `!=`
-predicates need asserting back.
+Take the query the rule was built for:
+
+```sql
+create function q5() -> Bag of Integer as
+  select bar(x) from integer x where x>1 and x<=3;
+```
+
+Its conjunction is `bar(x)=_V2 ∧ x>1 ∧ x<=3`. When the optimizer reaches the
+`bar` predicate it hands the rule a `REWRITE` struct holding:
+
+| Field | Value |
+|---|---|
+| `THIS` | `(#[OID 1771 "P_INTEGER.BAR->INTEGER"] X _V2)` |
+| `BPAT` | `(+ +)` |
+| `BND` | `(_V2 X)` |
+| `REST` | `((#[OID 202 "…>->BOOLEAN"] X 1) (#[OID 200 "…<=->BOOLEAN"] X 3))` |
+| `TRANSLATED` | — empty on entry |
+
+The first four are **inputs**: the struct arrives carrying them and the rule
+reads them. `TRANSLATED` is the **output** — §3.1's "the TBR predicate THIS is
+translated into". It is the field the rule fills in when it wants to replace
+`THIS` itself, and the only one written here.
+
+Note what is **not** there: `q5` is never mentioned. Nothing ever binds a
+rewriter to a query. The only command that connected this rule to anything
+was run back in [Step 1](#registration), long before `q5` existed:
+
+```lisp
+(add-rewriter (getfunctionnamed 'p_integer.bar->integer) '(+ +) 'rewrite-spy)
+```
+
+That names a **function** — `bar`'s predicate function — and a **binding
+pattern**. `q5` reaches the rule only by *containing* a `bar` call, which
+becomes the TR predicate `(#[OID 1771 "P_INTEGER.BAR->INTEGER"] X _V2)`; when
+the optimizer goes to translate it, it looks up the rewriters registered for
+that function at that pattern and finds `REWRITE-SPY`.
+
+The same rule fired on `q1` and `q2` for the same reason, and would fire on
+any future query mentioning `bar`. That is why Step 3c's guards matter: a
+rule is offered every matching predicate in every query, indefinitely.
+
+#### The variables
+
+| Variable | Holds | Value for `q5` |
+|---|---|---|
+| `rw` | the whole `REWRITE` struct — the rule's only parameter | — |
+| `this` | `THIS`, the predicate being translated | `(#[OID 1771 "P_INTEGER.BAR->INTEGER"] X _V2)` |
+| `gt` `ge` `lt` `le` | function objects for `>` `>=` `<` `<=`, looked up once so the loop can compare against them | `>` is OID 202, `>=` 204, `<=` 200 |
+| `br` | the **resolvent** of `bar_range` — what the emitted `CALL` must name | `#[OID 1788 …BAR_RANGE…]` |
+| `xv` | `bar`'s **argument** variable | `X` |
+| `yv` | `bar`'s **result** variable | `_V2` |
+| `lo` / `hi` | the computed closed bounds; `nil` until found | `2` / `3` |
+| `lop` / `hip` | the *predicates* those bounds came from | the `>` and `<=` predicates |
+
+The `lo`/`lop` pairing is the part worth pausing on. Two different things are
+needed from one sibling: the **number** to put in the call, and the
+**predicate object** to hand to `rewrite-retract`. `lo` is `2`; `lop` is the
+whole `(#[OID 202 "…>->BOOLEAN"] X 1)` expression. Retracting `2` would mean
+nothing.
+
+`yv` is never searched for in `REST` — it is read straight out of `THIS` and
+passed through to the call, because `bar_range` returns it.
+
+#### Step by step
+
+**1. Take the predicate apart.** A TR predicate is a flat list, so `car`/`cdr`
+peel positions off it:
+
+```lisp
+(setq xv (car (cdr this)))          ; X
+(setq yv (car (cdr (cdr this))))    ; _V2
+```
+
+**2. Walk `REST`.** For each sibling `p`, two guards decide whether it is
+usable:
+
+```lisp
+(eq (car (cdr p)) xv)               ; does it constrain X, not some other variable?
+(numberp (car (cdr (cdr p))))       ; is the bound a literal number?
+```
+
+The first matters more than it looks. A conjunction may contain conditions on
+entirely unrelated variables, and folding one of those into a range over `x`
+would silently change the query's meaning.
+
+**3. Classify and normalise.** `(car p)` is the sibling's function object, so
+comparing it against `gt`/`ge`/`lt`/`le` identifies the operator, and each
+branch converts to a **closed** bound:
+
+| Sibling | Branch | Sets |
+|---|---|---|
+| `x>1` | `(eq op gt)` | `lo = 1+1 = 2`, `lop` = that predicate |
+| `x<=3` | `(eq op le)` | `hi = 3`, `hip` = that predicate |
+
+`ge` and `lt` never fire for `q5`; they are there for `x>=1` and `x<3` forms.
+The `dolist` handles both siblings regardless of order, which is why it walks
+the list rather than indexing into it the way Steps 2 and 3 did — nothing
+promises `>` comes before `<=`.
+
+**4. Decide whether to act.**
+
+```lisp
+(and lo hi (equal (rewrite-bpat rw) '(+ +)))
+```
+
+Both bounds must be present — a half-open range is not something `bar_range`
+can serve — and the binding pattern must be `(+ +)`, the scan case where a
+range helps. Anything else falls through to `'substitute` and the query
+compiles normally.
+
+**5. Absorb and replace.**
+
+```lisp
+(rewrite-retract lop rw)            ; REST loses  x>1
+(rewrite-retract hip rw)            ; REST loses  x<=3
+(setf (rewrite-translated rw)
+      (list 'CALL 'BAR-RANGE-FN br lo hi xv yv))
+'success
+```
+
+Which builds exactly what the transcript below shows:
+
+```lisp
+(CALL BAR-RANGE-FN #[OID 1788 …BAR_RANGE…] 2 3 X _V2)
+        │              │                   │ │  │  │
+        │              │                   │ │  └──┴─ results: bar's x and y
+        │              │                   └─┴─────── arguments: lo, hi
+        │              └───────────────────────────── the resolvent
+        └──────────────────────────────────────────── the Lisp implementation
+```
+
+Four value positions — `2 3 X _V2` — matching `bar_range(lo,hi) -> <x,y>`:
+arity 2 plus width 2, the same counting rule `osql-result` obeys. They are
+preceded by the implementation name and the function object.
+
+*Why both of those?* A single resolvent can carry several implementations —
+Step 5a's two plans show `SQRTBF` and `SQRTFB` under the **same** OID 1780 —
+so the function object alone cannot say which code to run. The object
+identifies *which AmosQL function*, the symbol *which implementation of it*.
+That object is also what arrives as `fno`, the first parameter of the Lisp
+function being called.
+
+*Why retract at all?* Leaving `x>1` and `x<=3` in `REST` would not be wrong —
+`bar_range(2,3)` returns only tuples those filters accept, so the answer is
+unchanged. It would just re-test every returned tuple against conditions the
+call already guarantees, leaving a join and two post-filters in a plan that
+should have one operator: an index access path added and none of the old work
+removed. Retraction is a **transfer of responsibility** — retract exactly what
+the new call enforces. Retract more and the answer is silently wrong, which is
+what [Step 2](#step-2--a-rule-that-changes-the-plan) demonstrated; retract less
+and the rewrite buys nothing. `rewrite.txt` §2 splits the difference: its
+widened `MBT-SELECT-RANGE(1,4)` enforces *less* than `i>1`, so the rule asserts
+a compensating `i!=1` to cover the gap.
+
+#### The three quoted symbols, and `t`
+
+```lisp
+           (print (list 'translated (rewrite-translated rw)))
+           'success)
+          (t 'substitute))))
+```
+
+Three quoted symbols doing three different jobs.
+
+**`'translated` is a label.** Quoting it means "the symbol, literally" — do
+not look for a variable by that name. It is there purely so the printed line
+reads `(TRANSLATED (CALL …))` instead of an unlabelled blob, the same trick
+Step 1's spy used with `'this`, `'bpat`, `'bnd` and `'rest`. It has no
+connection to the `TRANSLATED` struct field beyond being spelled the same;
+the field is read by `(rewrite-translated rw)` right next to it.
+
+**`'success` and `'substitute` are the return value.** A Lisp function
+returns its last expression, and here that last expression is whichever
+`cond` branch ran — so the rule returns one of the two control switches from
+§3.1:
+
+| Branch | Returns | Means |
+|---|---|---|
+| guard passed | `'success` | *I translated `THIS` myself — use my `TRANSLATED`* |
+| guard failed | `'substitute` | *translate `THIS` the default way* |
+
+Both are quoted for the same reason as `'translated`: unquoted, `success`
+would be read as a variable and fail with `Unbound variable: SUCCESS`.
+
+**`t` is the catch-all.** `cond` tries each clause's test in order and runs
+the first that is true. `t` is Lisp's true constant, so a clause beginning
+with `t` always matches — it is the `else` at the end of the chain:
+
+```lisp
+(cond ((and lo hi …)  … 'success)     ; when the guard passes
+      (t              'substitute))   ; otherwise
+```
+
+Without it, a failing guard would leave `cond` with no matching clause,
+`cond` would return `NIL`, and `NIL` is the third control switch — the one
+[Step 1](#the-first-run-failed--and-the-failure-is-instructive) showed breaks
+the query. The `t` clause is what keeps a declined rewrite harmless.
+
+#### Why the second firing does nothing
+
+The rule fires twice, but the transcript shows only one `TRANSLATED` print.
+Nothing guards against re-entry explicitly — the retraction does it. By the
+second firing `REST` no longer holds the two bounds, so `lo` and `hi` stay
+`nil`, `(and lo hi …)` fails, and the rule returns `'substitute`.
+
+That is a different idempotence mechanism from Step 3c, which compared
+operators to avoid eating its own output. Here the rule simply cannot find
+the ingredients twice. Both work; neither keeps state.
+
+#### On the exactness of the bounds
+
+Because integers make `>1` and `>=2` equivalent, the normalisation loses
+nothing — unlike `rewrite.txt` §2, no widening occurs and no compensating
+`!=` predicates need asserting back. On a `Real` argument this arithmetic
+would be wrong: `x>1.0` is not `x>=2.0`, and the rule would need the
+widen-and-compensate approach the B-tree rule uses.
+
+*(One inference: the exact contents and ordering of `REST` for `q5` were not
+printed — this rule prints only `TRANSLATED`. That both bounds were present
+follows from `lo` and `hi` both being set, since the guard requires it. Adding
+`(print (list 'rest (rewrite-rest rw)))` would show the list directly.)*
+
+### Where this rule is registered
+
+Nowhere new. It inherits the three `ADD-REWRITER` calls from
+[Step 1](#registration), which bound the **symbol** `REWRITE-SPY` to
+`P_INTEGER.BAR->INTEGER` under `(+ -)`, `(+ +)` and `(- +)`. Redefining the
+function is enough; the registration is unchanged.
+
+If you are reproducing only this step, you still need those calls first:
+
+```lisp
+(add-rewriter (getfunctionnamed 'p_integer.bar->integer) '(+ +) 'rewrite-spy)
+```
+
+`(+ +)` alone suffices here, since the rule's own guard declines every other
+pattern.
+
+Two consequences of registering once and redefining repeatedly:
+
+- **The name is now a misnomer.** `rewrite-spy` was apt for an observer; this
+  rule folds range predicates into an index call. Renaming it would mean
+  re-registering under the new symbol — a fair trade in real work, avoided
+  here so the transcripts stay comparable across steps.
+- **Guards are what actually scope the rule**, not the registration. It is
+  attached to all three patterns but acts on one, because
+  `(equal (rewrite-bpat rw) '(+ +))` rejects the others. Registration decides
+  where a rule is *offered*; the rule itself decides where it *applies*.
 
 ### First attempt failed: generic vs resolvent
 
