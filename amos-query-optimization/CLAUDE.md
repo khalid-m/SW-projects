@@ -84,6 +84,14 @@ https://www.it.uu.se/research/group/udbl/amos/), containing:
   needs no compiler — and §2.2 the ALisp callin interface. Note that its code
   examples contain errors (its `sqrt2` references an unbound variable); trust the
   prose over the snippets.
+- `papers/OO-query-optimization-92.pdf` — W. Litwin and T. Risch, "Main Memory
+  Oriented Optimization of OO Queries using Typed Datalog with Foreign
+  Predicates," IEEE TKDE 4(6), Dec 1992. The origin paper: WS-IRIS, ObjectLog,
+  TR/TBR, the cost-and-fanout model, multi-directional foreign predicates.
+  Summarised in [`litwin-risch-1992-objectlog.md`](litwin-risch-1992-objectlog.md).
+  **It describes a 1992 prototype**, so treat it as authoritative for design
+  and terminology, not for a current release's numbers — at least one default
+  cost has changed since. Has no extractable text layer (Type3 fonts).
 - `alisp.pdf` — the ALisp interpreter manual. **Despite the name, this is not the
   document for writing AmosQL functions in Lisp** — its "foreign function"
   chapter covers the opposite direction, C functions callable *from* ALisp. Use

@@ -421,6 +421,24 @@ Two caveats to address before hand-in:
    **correct**, not that exhaustive search found anything greedy missed. A
    query with more predicates / more viable join orderings would show it
    doing distinctive work.
+
+   What `ranksort` is competing with here is not arbitrary. Litwin & Risch
+   1992 §4.2.2 — the paper this system descends from — defines the heuristic
+   as repeatedly choosing the executable literal with the lowest
+
+   ```
+   R_Pi = (F_Pi − 1) / C_Pi
+   ```
+
+   and argues that repeatedly minimising `R` also minimises the total cost
+   `C`. On a small conjunction where one predicate is obviously cheapest and
+   most selective, greedy and exhaustive will agree — which is exactly what
+   the transcripts show. Exhaustive search earns its cost only where a local
+   choice is not the globally best one.
+
+   *(The formula is from the 1992 paper. Whether this build's `ranksort` is
+   still that exact heuristic is not established — see
+   [`../litwin-risch-1992-objectlog.md`](../litwin-risch-1992-objectlog.md).)*
 2. **Nothing yet proves `dynprogsort` is the code path that ran.** With
    `trace` unavailable, a `(print ...)` inside the function is the only
    direct evidence — worth capturing for the report, since "show the

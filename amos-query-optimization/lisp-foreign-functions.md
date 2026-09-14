@@ -97,6 +97,19 @@ create function mysqrt(real x) -> real as multidirectional
 > For each binding pattern of a multi-directional foreign function you must
 > implement separate Lisp functions.
 
+**You may not need every binding pattern.** Litwin & Risch 1992 §5.3
+describes a *completion algorithm*: a binding pattern with fewer bindings
+**covers** one with more, and the optimizer substitutes the cover plus an
+equality test rather than requiring both. `plus^bbf` covers `plus^bbb`, so
+testing `Plus(1,2) = 3` computes `plus(1,2,V)` and then checks `V = 3`.
+
+The paper's guidance on when to implement a covered pattern anyway: only when
+it is *significantly faster* than its cover. Their example is `typesof` —
+`typesof^ff` covers every pattern but is prohibitively expensive, so the
+bound-argument directions were implemented separately with cost functions,
+while `typesof^bb` was left out because no faster implementation than its
+cover existed. *(1992 design; not verified against this build.)*
+
 `rewrite.txt` §3.1 extends the same syntax with cost functions and rewrite
 rules per direction:
 

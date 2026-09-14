@@ -5,15 +5,15 @@ main-memory functional mediator — and the optimizer in **Polars**, a 2020s
 columnar analytics engine.
 
 They are separated by thirty years, by a data model, and by an execution
-strategy. The sharpest contrast, though, is narrower: **AMOS II prices whole
-plans against each other and picks the cheapest; Polars rewrites a plan it
-was given.** Almost everything else follows from that, and from the
-representation choice underneath it.
+strategy. The sharpest contrast, though, is narrower: **AMOS II prices
+alternatives and picks the cheapest; Polars rewrites a plan it was given.**
+Almost everything else follows from that, and from the representation choice
+underneath it.
 
 Neither is a pure case, and the document is careful about this. AMOS II
-applies rule-based rewrites *before* its cost-based search; Polars uses
-estimates for a few targeted decisions. The difference is **where each draws
-the line**, not that one estimates and the other doesn't.
+applies rule-based rewrites *before* costing; Polars uses estimates for a few
+targeted decisions. The difference is **where each draws the line**, not that
+one estimates and the other doesn't.
 
 PostgreSQL and MySQL appear as reference points, since they sit between the
 two — algebra trees like Polars, global cost-based search like AMOS II.
@@ -46,7 +46,8 @@ two — algebra trees like Polars, global cost-based search like AMOS II.
 |---|---|---|
 | Era / purpose | 1990s research mediator over heterogeneous sources | modern columnar DataFrame engine |
 | Internal representation | **ObjectLog** — object-oriented Datalog | **algebra tree** — Scan / Filter / Join / … |
-| Optimizer family | rule-based rewrites, then **cost-based search** (`optmethod('exhaustive')`) | rule-based rewrites, plus **targeted estimates** |
+| Optimizer family | **cost-based**, with rule-based pre-passes — *both* `optmethod` settings price predicates | **rule-based**, plus targeted estimates; no whole-plan cost function |
+| What `optmethod` selects | **search strategy**, not whether costs are used: `ranksort` greedy, `exhaustive` full search | n/a |
 | Rule-based rewrite layer | simplification passes, **plus TBR-rewrite rules** — but those fire only under `ranksort` | the primary mechanism — eight passes, always on |
 | Global cost model | yes — `(cost . fanout)` per predicate per binding pattern | **no** — no whole-plan cost function |
 | Does it estimate? | yes — cardinality and fanout, for every predicate | yes, but narrowly: group-by strategy, join branch order |
@@ -58,6 +59,63 @@ two — algebra trees like Polars, global cost-based search like AMOS II.
 | Optimizes for | tuples visited | bytes read, memory pressure, parallel throughput |
 
 Both are genuinely "query optimizers." They solve different problems.
+
+## Is AMOS II rule-based or cost-based?
+
+**Cost-based** — at every setting. `optmethod` is easy to misread as a switch
+between the two families, and it is not.
+
+Both methods consult the *same* `simple-pred-cost` numbers. They differ only
+in how much of the ordering space they search:
+
+| | `ranksort` (default) | `exhaustive` |
+|---|---|---|
+| Uses cost and fanout | **yes** | **yes** |
+| Search | greedy — rank each candidate, take the best, repeat | prices whole orderings |
+| Complexity | quadratic | exponential (the assignment's `dynprogsort`) |
+| Picks the optimum | often, not guaranteed | yes, for the given cost model |
+
+`ranksort` ranks by
+
+```
+  R_Pi = (F_Pi − 1) / C_Pi
+```
+
+— `C` and `F` are cost and fanout, the very numbers `dynprogsort` accumulates.
+A rule-based optimizer has no such quantities to consult. So the axis
+`optmethod` selects is **greedy versus exhaustive search**, not **rule versus
+cost**.
+
+Two axes, kept separate:
+
+| Axis | Question | AMOS II | Polars |
+|---|---|---|---|
+| Rule vs. cost | is there a cost function used to choose between alternatives? | **cost** | **rule** — no whole-plan cost function |
+| Greedy vs. exhaustive | how much of the space is searched? | user's choice | n/a — nothing to search |
+
+### Then where are AMOS II's rules?
+
+It has them, but none of them choose an ordering:
+
+| Rule layer | When | What it does |
+|---|---|---|
+| `Simplified`, `Normalized and simplified`, `Coerced` | always | constant folding, normalisation, type coercion |
+| **TBR-rewrite rules** | `ranksort` only | replace a predicate group with a specialised access call |
+
+So the accurate description is **a cost-based optimizer with rule-based
+pre-passes**, one of which is switched off when exhaustive search is selected.
+
+A practical consequence for anyone reporting on this work: selecting
+`optmethod('exhaustive')` does not make AMOS II cost-based. It makes it
+*exhaustive*. The cost model was already running.
+
+It also explains a result recorded in
+[`amos-query-optimization-assignment/`](amos-query-optimization-assignment/):
+`ranksort` and `exhaustive` produced an **identical plan** for the test query.
+Two search strategies optimising one objective with one set of numbers
+agreeing is unremarkable — greedy found the optimum and exhaustive confirmed
+it. Demonstrating a difference requires a query where the locally cheapest
+first choice is not globally best.
 
 ## 1. Representation decides the job
 
@@ -147,6 +205,49 @@ cost'   = cost + predcost × fanout
 fanout' = fanout × predfanout
 ```
 
+### The model is 1992, and documented
+
+This is not folklore reconstructed from transcripts. Litwin & Risch 1992
+§4.2.2 defines both quantities — `C_P` as "the number of visited tuples" and
+`F_P` as the estimated output tuples per input tuple — and gives the same
+accumulation:
+
+```
+        n         i-1
+  C  =   Σ  ( C_Pi  Π  F_Pj )
+       i=1        j=1
+```
+
+See [`litwin-risch-1992-objectlog.md`](litwin-risch-1992-objectlog.md).
+
+The paper also explains where `ranksort` gets its name. Because exhaustive
+search is exponential in the number of literals, the **default** is a
+quadratic-time heuristic that repeatedly picks the executable literal with
+the lowest rank:
+
+```
+  R_Pi = (F_Pi − 1) / C_Pi
+```
+
+So AMOS II's out-of-the-box behaviour is *greedy*, and the cost-based search
+this document contrasts with Polars is the opt-in path — which is why
+implementing it was a student exercise in the first place.
+
+Its published default estimates, used before a database is populated:
+
+| Case | F_P | C_P |
+|---|---|---|
+| unique index on the input | 1 | = F_P |
+| non-unique index | 2 | = F_P |
+| unindexed | 4 | 100 (assumed table size — a full scan) |
+| **foreign predicate** | **1** | **1** |
+
+**Thirty years separate that paper from the tested build, and at least one
+default has moved.** An unannotated foreign predicate prices at `(100 . 100)`
+on `AmosNT_floq` (Release 16 v11), not the `(1 . 1)` the paper specifies. Read
+the paper for the *shape* of the model, which the transcripts here confirm,
+and the transcripts for the *numbers*.
+
 ### Fanout errors compound; cost errors don't
 
 `fanout` is a **multiplier on everything downstream**. A 10× fanout
@@ -202,8 +303,15 @@ Two things jump out of that table.
 **First, AMOS II has rule-based passes too.** They are visible by name in
 real `pc()` output — `Simplified`, `Normalized and simplified`, `Coerced`
 all run *before* the cost-based reordering stage (`Decomposed (TBR)`). So
-AMOS II is a hybrid as well: rules for simplification and type work, search
-only for ordering.
+AMOS II is a hybrid as well: rules for simplification and type work, cost for
+ordering.
+
+Worth stating plainly, since `optmethod` invites the wrong reading: **AMOS II
+is a cost-based optimizer under both settings.** `ranksort` and `exhaustive`
+consult the same `simple-pred-cost` numbers and differ only in how much of
+the ordering space they search — greedy versus exhaustive. Neither is a
+rule-based optimizer. What the rules do here is simplify, coerce, and (under
+`ranksort`) rewrite access paths; none of them choose an ordering.
 
 **Second, the passes with no AMOS II analogue are all columnar or
 file-format concerns** — projection pushdown, slice pushdown, common subplan
@@ -558,9 +666,11 @@ reaches pushdown as a **result of arithmetic**, not as a rule — and could in
 principle *decline* to push something down when the numbers say otherwise,
 which a rule-based optimizer structurally cannot.
 
-Note that AMOS II's own default mode, `ranksort`, is much closer to Polars
-in spirit: heuristic, no search. Exhaustive search is the exception, not the
-norm — which is why implementing it was an exercise in the first place.
+Note that AMOS II's default mode, `ranksort`, is heuristic rather than
+exhaustive — but it is **still cost-based**. It ranks predicates by
+`(F−1)/C`, the same cost and fanout numbers `dynprogsort` sums. It is greedy
+about *searching*, not innocent of *pricing*, which is the opposite of
+Polars' position: Polars has the rule without the numbers.
 
 ### When the rule is *illegal*
 
@@ -790,12 +900,16 @@ provable category alone could not support.
   requiring binding patterns for multi-directional predicates. Polars'
   algebra tree fixes order structurally, so its optimizer transforms rather
   than searches.
+- **AMOS II is cost-based at every setting.** `optmethod` selects a *search
+  strategy*, not whether costs are consulted: `ranksort` ranks predicates by
+  `(F−1)/C` and picks greedily, `exhaustive` prices whole orderings. Same
+  cost model, different budgets. Polars, by contrast, has no whole-plan cost
+  function at all — that is the real rule-versus-cost line.
 - **Both are hybrids; the line is drawn at plan ordering.** AMOS II runs
   rule-based passes first — `Simplified`, `Normalized and simplified`,
-  `Coerced` are visible stages in real `pc()` output — and reserves
-  cost-based search for predicate ordering. Polars rewrites by rule and
-  estimates only for two local decisions (group-by strategy, join-branch
-  order). Neither is pure.
+  `Coerced` are visible stages in real `pc()` output — and uses cost for
+  predicate ordering. Polars rewrites by rule and estimates only for two
+  local decisions (group-by strategy, join-branch order). Neither is pure.
 - **AMOS II's two mechanisms are mutually exclusive.** Besides the
   simplification passes it has TBR-rewrite rules, which fold predicates into
   specialised access calls exactly as Polars' pushdown does — something no

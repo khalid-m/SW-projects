@@ -152,10 +152,24 @@ TR predicates  →  [ TBR-rewrite rules ]  →  TBR predicates  →  execution p
 (declarative)     (binding-pattern aware)   (access routines + CALLs)
 ```
 
-*(Inferred, not stated in the document: **TR** appears to mean the typed
-declarative predicate form from Litwin & Risch 1992, and **TBR** the form
-after binding patterns are resolved — consistent with TBR predicates being
-the ones carrying `CALL` forms and binding-specific implementations.)*
+`rewrite.txt` never expands the acronyms, but the paper it cites does, in
+§2.3: **TR** = *Type Resolved*, **TBR** = *Type and Binding Pattern
+Resolved*, with an earlier **TA** = *Type Adorned* stage before overload
+resolution. See
+[`../litwin-risch-1992-objectlog.md`](../litwin-risch-1992-objectlog.md).
+
+**But note what the paper does *not* contain.** It describes cost-based rule
+reordering, rule substitution, and the completion algorithm for inferring
+unimplemented binding patterns — *not* the TBR-rewrite rule system this
+document is about. There is no `REWRITE` struct, no `ADD-REWRITER`, no
+user-registered rewriters in the 1992 design. The mechanism described in
+`rewrite.txt` appears to be a later addition layered on top of the TBR
+representation the paper defines. *(Absence from one paper is not proof of
+later origin, but it is the only dating evidence available here.)*
+
+That matters when reading the paper as a source: it is authoritative for the
+**representation** — TR, TBR, binding patterns, cost and fanout — and silent
+on the rewrite machinery.
 
 ### The connection to `substbindadorned`
 
