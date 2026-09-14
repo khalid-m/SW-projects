@@ -62,7 +62,9 @@ Two further files sit outside that stack:
 | `index.osql` | a Mexima-style extensible index whose storage is a MongoDB collection |
 | `MongoWrapper.osql` | an earlier standalone meta-data file, superseded by `mongo_interface.amosql` |
 | `master.amosql` | the loader — reads the interface then the query processor |
-| `readme2.txt` | generic build instructions for **any** AMOS II C extender; not MongoDB-specific. Renamed from `readme.txt` so it is not mistaken for this page. |
+| `readme.txt` | **setup guide** — build the driver, install MongoDB 2.4.8, start `mongod`, run a tutorial session |
+| `readme2.txt` | generic build instructions for **any** AMOS II C extender; not MongoDB-specific. Renamed from `readme.txt` to leave that name to the setup guide. |
+| `examples/test.osql` | a longer worked session: inserts, queries, custom `_id`s, bulk insert, error cases |
 
 ## Loading
 
@@ -176,6 +178,85 @@ paths, the optimizer choosing between them by cost.
 Around it, `import_mongo_collection` also generates an attribute accessor
 (`vref`), a replacer, a property setter, and a destructor — so Mongo
 documents appear as ordinary AMOS II objects with a type.
+
+## Setup, and two stale examples
+
+`readme.txt` is the MongoDB-specific setup guide:
+
+1. `installMongo.cmd` — compile the MongoDB driver and the wrapper.
+2. Download MongoDB **2.4.8** (a 2013 release) from a UDBL-hosted URL.
+3. Create `%HOMEDRIVE%%HOMEPATH%\data\db`.
+4. Start the server: `mongod --dbpath …/data/db`.
+5. In another shell: `amos2 MongoWrapper.dmp`.
+
+Two things in that list are worth noticing.
+
+**`installMongo.cmd` is not in this directory.** It is the script that would
+produce the DLL, and it is exactly what the load blocker above needs. If it
+exists in the installed copy at `AmosNT_floq\wrappers\Mongo`, the Tier 1
+items below may be closer than they look.
+
+**Step 5 starts from a saved image, not from source.** `MongoWrapper.dmp` is
+an AMOS II database dump with the wrapper already loaded — see
+[Tier 1](#tier-1--needs-the-dll-no-mongodb-server).
+
+### The examples disagree with the shipped interface
+
+Both example files predate `mongo_interface.amosql` (last revised
+2014-03-29), and the API moved underneath them. Running either as written
+would produce `Cannot resolve function call`.
+
+| `readme.txt` | `examples/test.osql` | `mongo_interface.amosql` (current) |
+|---|---|---|
+| `mongo_put(c, "tutorial.person", r)` | `mongo_add(c, "tutorial", "person", r)` | `mongo_add(c, db, coll, r)` |
+| `mongo_get(c, "tutorial.person", q)` | `mongo_get(c, "tutorial", "person", q)` | **`mongo_query(c, db, coll, q)`** |
+| — | `mongo_bulk_add(c, db, coll, v)` | `mongo_add_batch(c, db, coll, v)` |
+| — | `mongo_collections(c, db)` | `mongo_collNameSpaces(c, db)` |
+
+Three generations are visible:
+
+1. **`readme.txt`** — oldest. `mongo_put`, and database and collection
+   combined into one `"db.collection"` namespace string.
+2. **`examples/test.osql`** — database and collection split into separate
+   arguments, `mongo_put` renamed to `mongo_add`. Still calls `mongo_get`
+   with a **filter record**.
+3. **`mongo_interface.amosql`** — filter queries become `mongo_query`, and
+   the name `mongo_get` is reused for lookup **by key**:
+
+   ```sql
+   create function mongo_get(Number conn_no, Charstring database,
+                             Charstring collection, Object k) -> Record
+     as mongo_query(conn_no, database, collection, {"_id": k});
+   ```
+
+The RCS log in `mongo_interface.amosql` dates that last change precisely:
+
+```
+Revision 1.7  2014/01/18  torer
+  mongo_get() -> mongo_query()
+```
+
+So `examples/test.osql` is from before 2014-01-18. The rename is the
+awkward kind — `mongo_get` still exists and still takes four arguments, so
+a stale call fails on the *type* of the fourth (a `Record` where an `Object`
+key is expected) rather than on a missing name.
+
+**Useful anyway.** `test.osql` is the best description here of what the
+wrapper is for, and its content survives the rename:
+
+```sql
+set :c = mongo_connect("127.0.0.1");
+mongo_add(:c, "tutorial", "person", {"Name": "Ville", "age": 54});
+mongo_add(:c, "tutorial", "person", {"_id":"abc", "Name": "Ulla", "age": 55});
+```
+
+It shows that `_id` may be supplied by the caller as an integer, string or
+real; that a record can be bound into an AmosQL variable and its `_id`
+extracted with `:kalle["_id"]`; and that queries against a non-existent
+database or collection are expected to return empty rather than error. The
+file ends on an explicit to-do — *"Make sure errors with proper error
+messages are raised when mongodb raises error"* — so error handling was
+unfinished at the time of writing.
 
 ## The translator: `mongo_optimizer.lsp`
 
@@ -381,9 +462,22 @@ immediately. Either outcome is informative, and it costs one command:
 
 ### Tier 1 — needs the DLL, no MongoDB server
 
+- **Is there a `MongoWrapper.dmp` in the installed copy?** `readme.txt` step 5
+  starts AMOS II from a saved image rather than loading the sources, which
+  means the wrapper meta-data, the `new_wrapper("Mongo")` registration and
+  the loaded `mongo_optimizer.lsp` may already be *inside* that image. If so,
+  much of Tier 1 could be answered by `amos2 MongoWrapper.dmp` with no
+  compiler — the DLL would only be needed once a foreign function is actually
+  *called*. Untested, and it is unclear whether `load_extension` is replayed
+  on image restore.
+- **Is `installMongo.cmd` present?** `readme.txt` step 1 names it as the
+  build script, but it is not in this directory. It is the missing piece for
+  everything below.
 - Does `load_extension("Mongo_wrapper")` resolve, and does `master.amosql`
   load cleanly on this release? The source is from 2013–14 and the build is
-  Release 16 v11; a decade of drift could have broken something.
+  Release 16 v11; a decade of drift could have broken something — the API
+  churn visible between the two example files shows it was already moving
+  fast in 2014.
 - Do the three registrations take? `set_extractor` / `set_finalizer` /
   `set_costmodel` are undocumented in `rewrite.txt`, and probing what they
   store would document the wrapper API the way `ADD-REWRITER` returning an
