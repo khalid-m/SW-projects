@@ -62,7 +62,7 @@ Two further files sit outside that stack:
 | `index.osql` | a Mexima-style extensible index whose storage is a MongoDB collection |
 | `MongoWrapper.osql` | an earlier standalone meta-data file, superseded by `mongo_interface.amosql` |
 | `master.amosql` | the loader — reads the interface then the query processor |
-| `readme.txt` | generic build instructions for **any** AMOS II C extender; not MongoDB-specific |
+| `readme2.txt` | generic build instructions for **any** AMOS II C extender; not MongoDB-specific. Renamed from `readme.txt` so it is not mistaken for this page. |
 
 ## Loading
 
