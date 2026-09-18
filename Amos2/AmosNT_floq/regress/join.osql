@@ -1,0 +1,191 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Tore Risch, UDBL
+ * $RCSfile: join.osql,v $
+ * $Revision: 1.7 $ $Date: 2012/02/15 08:50:15 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Join methods as stored procedures
+ *
+ ****************************************************************************
+ * $Log: join.osql,v $
+ * Revision 1.7  2012/02/15 08:50:15  torer
+ * 'original' removed
+ *
+ * Revision 1.6  2011/02/16 18:47:30  torer
+ * 1. Correct signature for evalv and eval
+ * 2. tuples_in -> tuples
+ *
+ * Revision 1.5  2011/02/16 09:28:39  torer
+ * *** empty log message ***
+ *
+ * Revision 1.4  2011/02/14 19:47:57  torer
+ * Added fast nested-loop-join and hash-join implemented without scans
+ *
+ * Revision 1.3  2011/02/13 19:52:52  torer
+ * hash join as procedural function
+ *
+ * Revision 1.2  2011/02/13 16:31:17  torer
+ * merge join corrected
+ * added nested loop join
+ *
+ * Revision 1.1  2011/02/13 16:00:52  torer
+ * merge join as procedural function
+ *
+ ****************************************************************************/
+
+create function allthis(Scan c, Number pos) -> Bag of Vector
+  /* Returns bag of all next rows in scan 
+     equal to current row on position pos */
+  as loop return this(c);
+          if nomore(c) then leave;
+          if(peek(c)[pos]!=this(c)[pos]) then leave;
+          next(c);
+     end loop;
+
+create function mergejoin(Bag b1, Bag b2, Number pos) -> Bag of Vector
+  /* Join bags b1 and b2 on position pos */
+  as begin declare Scan c1, Scan c2;
+      open c1 for b1; next(c1);
+      open c2 for b2; next(c2);
+      loop if notany(this(c1)) then leave;
+           if notany(this(c2)) then leave;
+           if this(c1)[pos]<this(c2)[pos] then next(c1) 
+           else if this(c1)[pos]>this(c2)[pos] then next(c2)
+           else begin
+                   return
+                    (select concat(x,y)
+                     from Vector x, Vector y
+                     where x in materialize(allthis(c1,pos)) and
+                           y in materialize(allthis(c2,pos)));
+                   next(c1);
+                   next(c2);
+                end;
+      end loop;
+      close c1;
+      close c2;
+     end;
+
+create function nestedloopjoin(Bag b1, Bag b2, Number pos) -> Bag of Vector
+  /* Slow nested-loop-join based on scans */
+  as begin declare Scan s1, Scan s2;
+           open s1 for b1; 
+           loop next(s1);
+                if notany(this(s1)) then leave;
+                open s2 for b2;
+                loop next(s2);
+                     if notany(this(s2)) then leave;
+                     if this(s1)[pos] = this(s2)[pos]
+                        then return concat(this(s1),this(s2));
+                end loop;
+                close s2;
+           end loop;
+           close s1;
+      end;
+
+create function fastnestedloopjoin(Bag b1, Bag b2, Number pos) -> Bag of Vector
+  /* Single threaded nested-loop-join based on mapping */
+  as for each Vector x where x in tuples(b1)
+         for each Vector y where y in tuples(b2)
+                                    and y[pos] = x[pos]
+            return concat(x,y);
+
+lisp;
+
+;;; For hash join we need a new collection datatype Hashtab
+
+(createliteraltype (quote hashtab) (quote (collection)) (quote hashtab))
+
+(defun newHashtab- (fno r)
+  (osql-result (make-hash-table :test (function equal))))
+
+(defun addHashtab--- (fno h k v)
+  (push v (gethash k h))
+  (osql-result h k v))
+
+(defun getHashtab--+ (fno h k r)
+  (dolist (res (gethash k h))
+    (osql-result h k res)))
+
+:osql
+
+create function newHashtab()->Hashtab h
+  as foreign 'newHashtab-';
+
+create function addHashtab(Hashtab h, Object k, Object v)->Boolean
+  as foreign 'addHashtab---';
+
+create function getHashtab(Hashtab h, Object k)->Bag of Object r
+  as foreign 'getHashtab--+';
+
+create function hashjoin(Bag b1, Bag b2, Number pos) -> Bag of Vector
+  /* Hash join based on scans */
+  as begin declare Hashtab h, Scan s, Vector r1, Vector r2;
+           set h = newHashtab();
+           open s for b1; 
+           while more(s) do
+                 set r1 = next(s);
+                 addHashtab(h, r1[pos], r1);
+           end while;
+           close s;
+           open s for b2;
+           while more(s) do 
+                 set r2 = next(s);
+                 return (select concat(r0,r2)
+                         from Vector r0
+                         where r0 in getHashtab(h, r2[pos]));
+           end while;
+           close s;
+     end;
+
+create function fasthashjoin(Bag b1, Bag b2, Number pos) -> Bag of Vector
+  /* Single threaded hash join based on mapping */
+  as begin declare Hashtab h;
+           set h = newHashtab();
+           for each Vector r1 where r1 in tuples(b1)
+                 addHashtab(h, r1[pos], r1);
+           for each Vector r2, Vector r0 where r2 in tuples(b2) and
+                                                  r0 in getHashTab(h, r2[pos]) 
+                return concat(r0,r2);
+     end;
+
+/* Test case */
+
+create function f1()->Bag of (Number,Number) as stored;
+create function f2()->Bag of (Number,Number) as stored;
+add f1()=(0,1);
+add f1()=(1,1);
+add f1()=(1,2);
+add f1()=(2,1);
+add f2()=(1,3);
+add f2()=(1,6);
+add f2()=(2,4);
+add f2()=(2,5);
+add f2()=(3,5);
+
+lisp;
+
+(checkequal 
+ "Join methods as procedural functions"
+ ((sorttuples (osql "mergejoin(f1(),f2(),0);"))
+  '((#(1 1 1 3)) (#(1 1 1 6)) (#(1 2 1 3)) (#(1 2 1 6)) 
+    (#(2 1 2 4)) (#(2 1 2 5))))
+					; order insignificant
+ ((sorttuples (osql "nestedloopjoin(f1(),f2(),0);"))
+  '((#(1 1 1 3)) (#(1 1 1 6)) (#(1 2 1 3)) (#(1 2 1 6)) 
+    (#(2 1 2 4)) (#(2 1 2 5))))
+ ((sorttuples (osql "fastnestedloopjoin(f1(),f2(),0);"))
+  '((#(1 1 1 3)) (#(1 1 1 6)) (#(1 2 1 3)) (#(1 2 1 6)) 
+    (#(2 1 2 4)) (#(2 1 2 5))))
+ ((sorttuples (osql "hashjoin(f1(),f2(),0);"))
+  '((#(1 1 1 3)) (#(1 1 1 6)) (#(1 2 1 3)) (#(1 2 1 6)) 
+    (#(2 1 2 4)) (#(2 1 2 5))))
+ ((sorttuples (osql "fasthashjoin(f1(),f2(),0);"))
+  '((#(1 1 1 3)) (#(1 1 1 6)) (#(1 2 1 3)) (#(1 2 1 6)) 
+    (#(2 1 2 4)) (#(2 1 2 5))))
+ )
+
+:osql
+
+rollback;

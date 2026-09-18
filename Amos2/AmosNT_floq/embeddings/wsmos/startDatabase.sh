@@ -1,0 +1,1 @@
+cd  WEB-INF && java -Djava.library.path=$AMOS_HOME/bin/ -cp classes:lib/wsdl4j-1.5.1.jar:$AMOS_HOME/bin/javaamos.jar JavaAMOS ./wsmos.dmp src/amosql/start_server.osql

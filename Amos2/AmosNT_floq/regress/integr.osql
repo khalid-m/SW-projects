@@ -1,0 +1,171 @@
+enable_dt(true);
+latebinding("OR"); /* IUT works only with DTR off ! */
+/* First test: All function names unique: */
+create type student properties
+   (ssn integer key,
+    sname charstring,
+    loan integer);
+create type employee properties
+  (ssn integer key,
+   ename charstring,
+   salary integer);
+create student(ssn,sname,loan) instances
+  (1,"Tore",10),(2,"Kalle",15),(3,"Ulla",10),(4,"Viktor",14);
+create employee(ssn,ename,salary) instances
+  (2,"Kalle",10),(4,"Vicke",50),(5,"Rudolf",40);
+
+create derived type se
+  key integer dummy
+  supertype of 
+    student s = ssn(s),
+    employee e = ssn(e)
+  functions
+    (namex charstring)
+    case s:
+       namex = sname(s);
+    case e:
+       namex = ename(e);
+    case s,e:
+       namex = sname(s);
+  end functions;
+
+lisp;
+(checkequal "IUT. All attributes unique"
+ ((sorttuples(osql "select namex(s) from se s;"))
+  '(("Kalle") ("Rudolf") ("Tore") ("Ulla") ("Viktor")))
+ )
+(checkequal "IUT meta-type test"
+  ((osql "select name(t) from iut t;") '(("SE")))
+)
+:osql
+delete type se;
+
+
+/* Integrated attribute as sum of base attributes */
+create derived type se
+  key integer dummy
+  supertype of 
+    student s = ssn(s),
+    employee e = ssn(e)
+  functions
+    (income integer)
+    case s:
+       income = loan(s);
+    case e:
+       income = salary(e);
+    case s,e:
+       income = salary(e)+loan(s);
+  end functions;
+lisp;
+(checkequal "IUT. Combined reconciled unique attributes."
+ ((sorttuples (osql "select income(s) from se s;"))
+  '((10) (10) (25) (40) (64)))
+ )
+:osql
+rollback;
+enable_dt(true);
+latebinding("OR"); /* IUT works only with DTR off ! */
+/* First test: All function names unique: */
+lisp;
+(foreign-lispfn mknumber((charstring x))((number))
+  (let ((res (mkatom x)))
+    (if (numberp res)(foreign-result res))))
+:osql
+
+create type student properties
+   (ssn charstring key,
+    sname charstring,
+    loan integer);
+create type employee properties
+  (ssn integer key,
+   ename charstring,
+   salary integer);
+create student(ssn,sname,loan) instances
+  ("1","Tore",10),("2","Kalle",15),("3","Ulla",10),("4","Viktor",14);
+create employee(ssn,ename,salary) instances
+  (2,"Kalle",10),(4,"Vicke",50),(5,"Rudolf",40);
+
+create derived type se
+  key integer sekey
+  supertype of 
+    student s = mknumber(ssn(s)),
+    employee e = ssn(e)
+  functions
+    (namex charstring)
+    case s:
+       namex = sname(s);
+    case e:
+       namex = ename(e);
+    case s,e:
+       namex = sname(s);
+  end functions;
+
+lisp;
+(checkequal "IUT. All attributes unique. Key conversion"
+ ((sorttuples(osql "select namex(s) from se s;"))
+  '(("Kalle") ("Rudolf") ("Tore") ("Ulla") ("Viktor")))
+ )
+:osql
+rollback;
+enable_dt(true);
+latebinding("OR"); /* IUT works only with DTR off ! */
+/* next test: Same name in both integrated types */
+create type student properties
+   (ssn integer key,
+    name charstring,
+    loan integer);
+create type employee properties
+  (ssn integer key,
+   name charstring,
+   salary integer);
+create student(ssn,name,loan) instances
+  (1,"Tore",10),(2,"Kalle",15),(3,"Ulla",10),(4,"Viktor",14);
+create employee(ssn,name,salary) instances
+  (2,"Kalle",10),(4,"Vicke",50),(5,"Rudolf",40);
+
+create derived type se
+  key integer dummy
+  supertype of 
+    student s = ssn(s),
+    employee e = ssn(e)
+  functions
+    (namex charstring)
+    case s:
+       namex = name(s);
+    case e:
+       namex = name(e);
+    case s,e:
+       namex = name(s);
+  end functions;
+
+lisp;
+(checkequal "IUT. Same attribute names in reconciled attributes."
+ ((sorttuples(osql "select namex(s) from se s;"))
+  '(("Kalle") ("Rudolf") ("Tore") ("Ulla") ("Viktor")))
+ )
+:osql
+delete type se;
+
+
+create derived type se
+  key integer sekey
+  supertype of 
+    student s = ssn(s),
+    employee e = ssn(e)
+  functions
+    (name charstring)
+    case s:
+       name = name(s);
+    case e:
+       name = name(e);
+    case s,e:
+       name = name(s);
+  end functions;
+
+lisp;
+(checkequal "IUT. Same attribute names in reconciled attributes and integrated attribute."
+ ((sorttuples(osql "select name(s) from se s;"))
+  '(("Kalle") ("Rudolf") ("Tore") ("Ulla") ("Viktor")))
+ )
+:osql
+rollback;

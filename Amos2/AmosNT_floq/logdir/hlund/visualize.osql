@@ -1,0 +1,38 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: visualize.osql,v $
+ * $Revision: 1.1 $ $Date: 2012/10/24 12:44:42 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: <description>
+ *
+ ****************************************************************************
+ * $Log: visualize.osql,v $
+ * Revision 1.1  2012/10/24 12:44:42  torer
+ * *** empty log message ***
+ *
+ * Revision 1.1  2006/02/12 20:01:08  torer
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+
+create logdirectory (name,folder,timeout,startseq) 
+       instances ('d3',pwd()+'/realdata/',10,0);
+
+create function q1a(Charstring dirname) -> Bag of Vector
+  as select {timestamp(e), variable(e), value(e)}
+  from Logevent e
+  where e in simlogeventstream(dirnamed(dirname));
+
+create function q2a(Charstring dirname, Charstring var)
+                                      -> Bag of Vector of Number
+  as select {timestamp(e), value(e)}
+  from Logevent e
+  where e in simlogeventstream(dirnamed(dirname))
+  and variable(e) = var;
+
+select distinct q1a('d3')[1];
+
+plot(vectorof(q2a('d3', 'REG407')));

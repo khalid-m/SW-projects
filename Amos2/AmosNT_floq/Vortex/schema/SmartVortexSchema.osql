@@ -1,0 +1,119 @@
+/*-*-sql-*-*******************************************************************
+ * SVALI
+ *
+ * Author: 2012 Mikael Lax, Minpeng Zhu, Tore Risch, UDBL
+ * Description: General Smart Vortex semantic schema
+ ****************************************************************************
+ * $Log: SmartVortexSchema.osql,v $
+ * Revision 1.3  2012/11/08 16:14:48  torer
+ * New milling model
+ *
+ * Revision 1.2  2012/10/30 15:13:18  torer
+ * *** empty log message ***
+ *
+ * Revision 1.1  2012/10/29 14:13:29  torer
+ * Added subschemas
+ ****************************************************************************/
+
+create type SVDataSource;
+
+/* The type DataStream are continuously growing streams of data of different
+   kinds */
+create type DataStream under SVDataSource
+       properties (streamID Charstring, 
+                   description Charstring);
+
+/* The DerivedStream are computed by a Data Stream Management System */
+create type DerivedStream under DataStream
+       properties (definingCQ Charstring);
+
+/* The simulation stream are derived streams computed by the
+   DSMS, usually by calling some computational system */
+create type SimulationStream under DerivedStream;
+
+/* The validation stream are derived streams computed by the DSMS for 
+   detecting significant deviations between observed streaming data and
+   simulated streams or other data. */
+create type ValidationStream under DerivedStream
+       properties (alerts Charstring);
+
+/* The type RawDataStream are measurements from equipment-in-use, 
+   usually provided by sensors on equipment, e.g temperature readings, 
+   pressure readings, power consumption */
+create type RawDataStream under DataStream properties
+   (port Integer,    /* Port number for data stream */
+    host Charstring, /* Host name for data stream */
+    receivesFrom Object /* The artefact producing the stream */
+   );
+
+/* The storedstream are data streams that are saved in a file system
+   or other repository */
+create type StoredStream under DataStream;
+
+/* The StreamTuple type models the attributes of the values of the data 
+   streams. A stream tuple has a time stamp recording when it was produced 
+   by a sensor */
+create type StreamTuple 
+       properties (timeStamp Number);
+
+create function streamTuples(DataStream datastream) -> Stream of Record
+  /* Returns the data stream tuples.
+     This has to be developed before the 7th of November 2012 
+     together with Cheng! */
+;
+
+/* The type Machine stores general data about industrial machines */
+create type Machine
+       properties (name Charstring,
+                   description Charstring, 
+                   manufacturer Charstring);
+
+/* The type Location represents the geographical location of a machine 
+   installed in a geographic area or climate zone of a sensor */
+create type Location
+       properties (name Charstring,
+                   country Charstring, 
+                   region Charstring, 
+                   latitude Number,
+                   longitude Number,
+                   climateZone Charstring,
+                   continent Charstring);
+
+create type Operator
+       properties (name Charstring);
+
+/* The type MachineInstallation represents machines located at a location */
+create type MachineInstallation
+       properties (locatedAt Location,
+                   machineModel Machine,
+                   operator Operator
+                  );
+
+/* The type Sensor stores general data about sensors */
+create type Sensor   
+       properties (name Charstring,  /* Torque sensor */
+                   manufacturer Charstring,
+                   version Charstring,
+                   hystereses Number,
+                   sensorprecision Number);
+                   
+/* The type SensorInstallation represents sensors installed 
+   in a particular machine and produces raw data stream*/
+create type SensorInstallation
+       properties (calibrationTime Charstring,
+                   name Charstring,
+                   onMachine MachineInstallation,
+                   producesRawDataStream RawDataStream,
+                   sampleFrequency Number,
+                   sensorPlace Charstring,
+                   sensorModel Sensor,
+                   serialNumber Charstring);
+
+/*** Helping functions for database population ***/
+
+create function sensorInstallation(RawDataStream s) 
+                                 -> SensorInstallation si
+  /* Inverse of produceRawDataStream */
+  as select si where producesRawDataStream(si)=s;
+
+

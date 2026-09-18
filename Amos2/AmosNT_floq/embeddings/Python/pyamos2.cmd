@@ -1,0 +1,1 @@
+bin\pyamos2 pyamos2.dmp

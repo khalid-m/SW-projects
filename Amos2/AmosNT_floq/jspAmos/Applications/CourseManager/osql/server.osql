@@ -1,0 +1,57 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Tore Risch, UDBL
+ * $RCSfile: server.osql,v $
+ * $Revision: 1.10 $ $Date: 2007/03/23 10:23:44 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Script to create the server database image
+ *              for the Course Manager
+ *
+ ****************************************************************************
+ * $Log: server.osql,v $
+ * Revision 1.10  2007/03/23 10:23:44  udbl
+ * - email is sent to students when assignment status is updated
+ * - all assignment status updates are logged in worksOn(student, assignment)-><status,timeval>
+ *
+ * Revision 1.9  2007/03/18 10:53:21  torer
+ * Moved Lisp code to server.lsp
+ *
+ ****************************************************************************/
+
+load_lisp("server.lsp");
+
+create function println(Charstring str, Charstring file, Charstring mode) 
+                -> Boolean
+  as foreign 'println---';
+
+create function CourseId()->Charstring 
+  /* The ID of the current course database */
+  as stored; 
+
+create function unloadCM()->Charstring script
+  /* Unload the current course database to its recover script */
+  as begin set script = "courses/"+courseID()+"_unload.osql";
+           unload(script);
+           result script;
+     end;
+
+create function smtp_sendmail(Charstring smtp_server, Charstring f, 
+                              Charstring r, Charstring subject, 
+                              Charstring message) -> Charstring 
+  /* Sendmail from AmosQL */
+  as foreign 'amosql-sendmail';
+
+create function generate_server(Charstring id, Charstring home, 
+                                Charstring option) -> Boolean
+  /* Generate server database image named ID.
+     The database image is located in folder WEB-INF under folder HOME.
+     If OPTION='recover' the unloaded database named ID will be reloaded,
+        othewise an empty database is created */
+  as foreign "generate-server";
+
+< 'CourseManager.osql';
+/*< 'CM_printer.osql';*/
+
+autosave(true); /* Make database disk persistent */

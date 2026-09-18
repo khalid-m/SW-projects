@@ -1,0 +1,38 @@
+register("WSBench");
+
+create function getJDBC()->JDBC as stored;
+
+set getJDBC()= jdbc("ibds", "com.mysql.jdbc.Driver");
+
+connect(getJDBC(), "jdbc:mysql://localhost:3306/benchmark", "regress", "regress");
+
+
+create function new_function(Charstring o_name, Charstring o_query)->Vector as foreign "JAVA:New_function/create_amossql";
+
+
+
+create function new_function_load()-> Boolean as begin 
+                 load_amosql(getenv('AMOS_HOME')+'wsmed/WSBench/src/amosql/user_defined.amosql'); 
+                 end;
+
+
+create function check_type(Charstring tname, Charstring cname)->
+                   charstring as (sql(getJDBC(),"SELECT DATA_TYPE FROM information_schema.COLUMNS WHERE table_name ='"+tname+"' AND COLUMN_NAME ='"+cname+"';"))[0];
+
+
+create function check_type1(Charstring tname)->
+                   charstring as (sql(getJDBC(),"SELECT DATA_TYPE FROM information_schema.COLUMNS WHERE table_name ='"+tname+"';"))[0];
+
+
+listen();
+
+
+
+
+
+
+
+
+
+
+

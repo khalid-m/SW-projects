@@ -1,0 +1,138 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2007 Ruslan Fomkin, UDBL
+ * $RCSfile: distribution.osql,v $
+ * $Revision: 1.2 $ $Date: 2007/08/08 12:55:53 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Script for studying data distribution and which statistics to use on
+ * main memory implementation.
+ *
+ ****************************************************************************
+ * $Log: distribution.osql,v $
+ * Revision 1.2  2007/08/08 12:55:53  ruslan
+ * code for experiments
+ *
+ * Revision 1.1  2007/07/20 15:18:13  ruslan
+ * files for investigating statistics sampling
+ *
+ ****************************************************************************/
+
+
+create function myprint(integer id, integer electrons, integer muons,
+			integer jetbs) -> boolean as foreign 'myprint';
+create function myprint(integer value, integer frequency) -> boolean 
+							as foreign 'myprint';
+
+create function particlesPerEvent(charstring filename, integer n) -> boolean as
+begin
+	openwritefile(filename);
+	for each event e, integer i, integer nre, integer nrm, integer nrj 
+		where i=iota(0,n) and i=id(e) and 
+		nre=count(select el from electron el where e=event(el)) and 
+		nrm=count(select m from muon m where e=event(m)) and 
+		nrj=count(select j from jetb j where e=event(j)) 
+		myprint(i,nre,nrm,nrj);
+	closewritefile();
+end;
+
+create function distribution(charstring particle, integer value) -> 
+	integer frequency as stored;
+
+create function distributions(charstring filename) -> boolean as
+begin
+	declare integer fr;
+	openwritefile(filename);
+	for each event ev, integer nre, integer nrm, integer nrj
+	where nre=count(select e from electron e where ev=event(e)) and
+		nrm=count(select m from muon m where ev=event(m)) and
+		nrj=count(select j from jetb j where ev=event(j))
+	begin
+		if notany(select distribution("electron",nre))
+		then set distribution("electron",nre) = 1
+		else set distribution("electron",nre) = 
+			distribution("electron",nre) + 1;
+		if notany(select distribution("muon",nrm))
+		then set distribution("muon",nrm) = 1
+		else set distribution("muon",nrm) =
+			distribution("muon",nrm) + 1;
+		if notany(select distribution("jetb",nrj))
+		then set distribution("jetb",nrj) = 1
+		else set distribution("jetb",nrj) =
+			distribution("jetb",nrj) + 1;
+	end;
+	print("electron");
+	for each integer nr, integer minnr, integer maxnr
+	where minnr=minagg(select nrm from integer nrm, integer val 
+				where val=distribution("electron",nrm)) and
+		maxnr=maxagg(select nrm from integer nrm,integer val 
+				where val=distribution("electron",nrm)) and
+		nr=iota(minnr,maxnr)
+	myprint(nr,distribution("electron",nr));
+	print("muon");
+	for each integer nr, integer minnr, integer maxnr
+	where minnr=minagg(select nrm from integer nrm, integer val
+				where val=distribution("muon",nrm)) and
+		maxnr=maxagg(select nrm from integer nrm, integer val
+				where val=distribution("muon",nrm)) and
+		nr=iota(minnr,maxnr)
+	myprint(nr,distribution("muon",nr));
+	print("jetb");
+	for each integer nr, integer minnr, integer maxnr
+	where minnr=minagg(select nrm from integer nrm, integer val
+				where val=distribution("jetb",nrm)) and
+		maxnr=maxagg(select nrm from integer nrm, integer val
+				where val=distribution("jetb",nrm)) and
+		nr=iota(minnr,maxnr)
+	myprint(nr,distribution("jetb",nr));
+	closewritefile();
+end;
+
+
+create function myprint(integer nr, charstring electronname, integer ecalls,
+	integer eresults, real emean, real evariance, 
+	charstring muonname, integer mcalls, integer mresults, 
+	real mmean, real mvariance, charstring jetbname, integer jcalls,
+	integer jresults, real jmean, real jvariance) -> boolean as 
+							foreign 'myprint';
+
+create function meanANDvariance(charstring filename, integer n) -> boolean as
+begin
+	declare real esq, real msq, real jsq, integer eresults, 
+		integer mresults, integer jresults;
+	set esq = 0.0;
+	set msq = 0.0;
+	set jsq = 0.0;
+	set eresults = 0;
+	set mresults = 0;
+	set jresults = 0;
+	openwritefile(filename);
+	for each event e, integer id, integer nre, integer nrm, integer nrj 
+	where id=iota(0,n) and id=id(e) and 
+	nre=count(select el from electron el where e=event(el)) and 
+	nrm=count(select m from muon m where e=event(m)) and 
+	nrj=count(select j from jetb j where e=event(j))
+	begin
+		declare real evariance, real mvariance, real jvariance,
+			real emean, real mmean, real jmean, integer calls;
+		set calls  = id + 1;
+		set eresults = eresults + nre;
+		set emean = eresults/calls;
+		set esq = esq + nre*nre;
+		set evariance = esq/calls - emean*emean;
+		set mresults = mresults + nrm;
+		set mmean = mresults/calls;
+		set msq = msq + nrm*nrm;
+		set mvariance = msq/calls - mmean*mmean;
+		set jresults = jresults + nrj;
+		set jmean = jresults/calls;
+		set jsq = jsq + nrj*nrj;
+		set jvariance = jsq/calls - jmean*jmean;
+		myprint(id,"electron",calls,eresults,emean,evariance,
+			"muon",calls,mresults,mmean,mvariance,
+			"jetb",calls,jresults,jmean,jvariance);
+	end;
+	closewritefile();
+end;

@@ -1,0 +1,56 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Cheng Xu, Tore Risch, UDBL
+ * $RCSfile: OtherWrapper.osql,v $
+ * $Revision: 1.2 $ $Date: 2012/11/08 18:24:03 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: The wrapper converting other equipment data from Sandvik
+ *
+ ****************************************************************************
+ * $Log: OtherWrapper.osql,v $
+ * Revision 1.2  2012/11/08 18:24:03  chexu484
+ * integrating smart vortex semantic model with the "other" scenario from Sandvik done!
+ *
+ * Revision 1.1  2012/11/08 16:14:47  torer
+ * New milling model
+ *
+ ****************************************************************************/
+
+create function id(Record r) -> Number
+  as select atoi(s)
+     from Vector of Record v, Charstring s
+     where v = r["data"] and
+           s = v[1]["value"];
+
+create function flag(Record r) -> Number
+  as select atoi(s)
+     from Vector of Record v, Charstring s
+     where v = r["data"] and
+           s = v[2]["value"];
+
+create function timestampOther(Record r) -> Number
+  as select atoi(s)
+     from Vector of Record v, Charstring s
+     where v = r["data"] and
+           s = v[3]["value"];
+
+create function powerConsumptionOther(Record r) -> Number
+  as select atoi(s)
+     from Vector of Record v, Charstring s
+     where v = r["data"] and
+           s = v[4]["value"];
+
+create type OtherStream under CorenetStream;
+
+create function theOtherStream(Charstring coreid)-> OtherStream
+  as theCorenetStream(coreid);
+
+create function streamTuples(OtherStream s) -> Stream of Record
+  as streamof(select record({"id",id(r),
+                             "flag",flag(r),
+                             "powerConsumption",powerConsumptionOther(r),
+                             "timestamp",timestampOther(r)})
+              from Record r, CorenetStream c
+              where r in rawStreamTuples(c) and s = c);

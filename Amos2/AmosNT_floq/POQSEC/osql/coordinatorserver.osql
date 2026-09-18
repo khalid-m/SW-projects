@@ -1,0 +1,678 @@
+/*****************************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2005 Ruslan Fomkin, UDBL
+ * $RCSfile: coordinatorserver.osql,v $
+ * $Revision: 1.17 $ $Date: 2005/08/09 12:56:27 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  
+ *
+ ****************************************************************************/
+<'nginteract.osql';
+<'getload.osql';
+load_lisp("../lsp/coordinatorserver.lsp");
+
+declare cluster :beppe, cluster :bluesmoke, cluster :hagrid,
+	cluster :hive, cluster :ingrid, cluster :sigrid, cluster :ng, 
+	cluster :swegrid;
+/*
+	set :beppe=clusternamed("beppe");
+	set :bluesmoke=clusternamed("bluesmoke");
+	set :hagrid=clusternamed("hagrid");
+	set :hive=clusternamed("hive");
+	set :ingrid=clusternamed("ingrid");
+	set :sigrid=clusternamed("sigrid");
+	set :ng=clusternamed("NorduGrid");
+	set :swegrid=clusternamed("swegrid");
+*/
+
+create function createjobs(submission, integer, integer, integer) -> boolean 
+	as foreign 'create-jobs';
+
+declare charstring :location; /* this variable necessary for determining path to binaries depending on current location: either Hagrid (default) or Ingrid */
+set :location= "Hagrid";
+
+create function resultvalue(job) -> charstring as stored;
+
+create function getResultValue(job j) -> job as
+begin
+	openreadfile(resultdir(j)+"/"+resultfile(j));
+	set resultvalue(j) = readfile();
+	closereadfile();
+	result j;
+end;
+
+create function getResultValue(bag of job jobs) -> job as
+begin
+	for each job j where j=in(jobs)
+	begin
+		openreadfile(resultdir(j)+"/"+resultfile(j));
+		set resultvalue(j) = readfile();
+		closereadfile();
+		result j;
+	end;
+end;
+
+create function timechar(timeval t) -> charstring str as
+begin
+	result itoa(year(t))+itoa(month(t))+itoa(day(t))+
+		itoa(hour(t))+itoa(minute(t))+itoa(second(t));
+end;
+/*
+create function createQueryFile(charstring query, bag of EventData evfiles, 
+	charstring QueryFile, charstring outputFile) -> charstring as
+begin
+	openwritefile(QueryFile);
+	for each EventData evF where evF=in(evfiles)
+		print("load_root_file(\""+name(evF)+"\");");
+	print("openwritefile(\""+outputfile+"\");");
+	print("print("+query+");");
+	print("closewritefile();");
+	print("quit;");
+	closewritefile();
+	result QueryFile;
+end;
+*/
+create function createQueryFile(job j, charstring query) -> charstring as
+begin
+	openwritefile(queryfile(j));
+	for each vector v where v=data(j)
+		print("load_root_file(\""+name(cast(v[0] as eventdata))+"\","
+								+itoa(cast(v[1] as integer))+","
+								+itoa(cast(v[2] as integer))+");");
+	print("openwritefile(\""+resultfile(j)+"\");");
+	print("print("+query+");");
+	print("closewritefile();");
+	print("quit;");
+	closewritefile();
+	result QueryFile(j);
+end;
+/*
+create function createAJobFile(cluster c, charstring QueryFile, 
+	bag of EventData evfiles, charstring xrslFile, charstring Executable, 
+	charstring Image, integer CPUtime, charstring fileOut) -> charstring as
+begin
+	openwritefile(xrslFile);
+	prinx("&");
+	prinx("(executable="+Executable+")");
+	prinx("(arguments=\""+Image+"\")");
+	prinx("(inputfiles=");
+	prinx("	("+Executable+" \""+binarypath(c)+Executable+"\")");
+	prinx("	("+Image+" \""+binarypath(c)+Image+"\")");
+	prinx("	("+QueryFile+" \""+QueryFile+"\")");
+	for each EventData evF where evF=in(evfiles)
+		prinx("	("+name(evF)+" \""+path(evF)+name(evF)+"\")");
+	prinx(")");
+	prinx("(outputfiles=("+fileOut+" \"\"))");
+	prinx("(cputime="+itoa(CPUtime)+")");
+	prinx("(runtimeenvironment="+rootRE(c)+")");
+	prinx("(stdin=\""+QueryFile+"\")");
+	prinx("(middleware>=\"nordugrid\")");
+	prinx("(stdout=\"outGen.out\")");
+	prinx("(stderr=\"errGen.err\")");
+	prinx("(gmlog=\"grid.debug\")");
+	prinx("(jobName=\"POQSEC: "+xrslFile+"\")");
+	closewritefile();
+	result xrslFile;
+end;
+*/
+/* create a job file to submit to NG. NG broker will choose the cluster 
+   to run */
+/* current implementation needs to be improved for generality */
+/*
+create function createAJobFile(charstring QueryFile, 
+	bag of EventData evfiles, charstring xrslFile, charstring Executable, 
+	charstring Image, integer CPUtime, charstring fileOut) -> charstring as
+begin
+	openwritefile(xrslFile);
+	prinx("&");
+	prinx("(executable="+Executable+")");
+	prinx("(arguments=\""+Image+"\")");
+	prinx("(inputfiles=");
+	prinx("	("+Executable+" \""+binarypath(clusternamed("ingrid"))+Executable+"\")");
+	prinx("	("+Image+" \""+binarypath(clusternamed("ingrid"))+Image+"\")");
+	prinx("	("+QueryFile+" \""+QueryFile+"\")");
+	for each EventData evF where evF=in(evfiles)
+		prinx("	("+name(evF)+" \""+path(evF)+name(evF)+"\")");
+	prinx(")");
+	prinx("(outputfiles=("+fileOut+" \"\"))");
+	prinx("(cputime="+itoa(CPUtime)+")");
+	prinx("(|");
+	for each cluster site
+		prinx("(runtimeenvironment="+rootRE(site)+")");
+	prinx(")");
+	prinx("(stdin=\""+QueryFile+"\")");
+	prinx("(middleware>=\"nordugrid\")");
+	prinx("(stdout=\"outGen.out\")");
+	prinx("(stderr=\"errGen.err\")");
+	prinx("(gmlog=\"grid.debug\")");
+	prinx("(jobName=\"POQSEC: "+xrslFile+"\")");
+	closewritefile();
+	result xrslFile;
+end;
+*/
+create function createAJobFile(job j, charstring Executable, 
+	charstring Image) -> charstring as
+begin
+	openwritefile(xrslFile(j));
+	prinx("&");
+	prinx("(executable="+Executable+")");
+	prinx("(arguments=\""+Image+"\")");
+	prinx("(inputfiles=");
+	prinx("	("+Executable+" \""+binarypath(cluster(j))+Executable+"\")");
+	prinx("	("+Image+" \""+binarypath(cluster(j))+Image+"\")");
+	prinx("	("+QueryFile(j)+" \""+QueryFile(j)+"\")");
+	for each vector evF where evF=data(j)
+		prinx("	("+name(cast(evF[0] as eventdata))+" \""
+					+path(cast(evF[0] as eventdata))
+					+name(cast(evF[0] as eventdata))+"\")");
+	prinx(")");
+	prinx("(outputfiles=("+resultfile(j)+" \"\"))");
+	prinx("(cputime="+itoa(CPUtime(j))+")");
+	if (nickname(cluster(j))="swegrid")
+	then begin
+		prinx("(|");
+		for each cluster site where site=clusters(cast(cluster(j) as grid))
+			prinx("(runtimeenvironment="+rootRE(site)+")");
+		prinx(")");
+	end else
+		prinx("(runtimeenvironment="+rootRE(cast(cluster(j) as cluster))+")");
+	if (nickname(cluster(j))="swegrid")
+	then begin
+		prinx("(|");
+		for each cluster site where site=clusters(cast(cluster(j) as grid))
+			prinx("(cluster="+name(site)+")");
+		prinx(")");
+	end else
+		prinx("(cluster="+name(cast(cluster(j) as cluster))+")");
+	prinx("(stdin=\""+QueryFile(j)+"\")");
+	prinx("(middleware>=\"nordugrid\")");
+	prinx("(stdout=\"outGen.out\")");
+	prinx("(stderr=\"errGen.err\")");
+	prinx("(gmlog=\"grid.debug\")");
+	prinx("(jobName=\"POQSEC: "+xrslFile(j)+"\")");
+	closewritefile();
+	result xrslFile(j);
+end;
+/*
+create function createjob(cluster site, charstring query, 
+	bag of eventdata datafiles) -> job as
+begin
+	declare job j;
+	create job instances j;
+	set cluster(j) = site;
+	for each eventdata ev where ev=in(datafiles)
+		add data(j) = ev;
+	set queryfile(j) = "query"+timechar(now())+itoa(getIxrsl())+".osql";
+	set xrslfile(j) = nickname(site)+timechar(now())+itoa(getIxrsl())+".xrsl";
+	set resultfile(j)="result.out";
+	set status(j)="NEW";
+	createQueryFile(query, data(j), queryfile(j),resultfile(j));
+	if (nickname(site)="swegrid")
+	then begin
+		set cputime(j) = cputime(clusternamed("ingrid"),count(datafiles));
+		createAJobFile(queryfile(j),data(j),xrslfile(j),"aleh","aleh.dmp",
+			cputime(j),resultfile(j));
+	end else begin
+		set cputime(j) = cputime(site,count(datafiles));
+		createAJobFile(site,queryfile(j),data(j),xrslfile(j),"aleh","aleh.dmp",
+			cputime(j),resultfile(j));
+	end;
+	result j;
+end;
+*/
+/* create a job to submit to NG. NG broker will choose the cluster to run */
+/* current implementation needs to be improved for generality */
+/*
+create function createjob(charstring query, 
+	bag of eventdata datafiles) -> job as
+begin
+	declare job j;
+	create job instances j;
+	set cputime(j) = cputime(clusternamed("ingrid"),count(datafiles));
+	set cluster(j) = clusternamed("NorduGrid");
+	for each eventdata ev where ev=in(datafiles)
+		add data(j) = ev;
+	set queryfile(j) = "query"+timechar(now())+itoa(getIxrsl())+".osql";
+	set xrslfile(j) = "ng"+timechar(now())+itoa(getIxrsl())+".xrsl";
+	set resultfile(j)="result.out";
+	set status(j)="NEW";
+	createQueryFile(query, data(j), queryfile(j),resultfile(j));
+	createAJobFile(queryfile(j),data(j),xrslfile(j),"aleh","aleh.dmp",
+		cputime(j),resultfile(j));
+	result j;
+end;
+*/
+create function fileslist2(integer first, integer last) -> eventdata as
+	select ev from eventdata ev, integer i
+	where i=iota(first,last) and like(name(ev),"bkg*0"+itoa(i)+".root");
+/*
+create function generalsubmit(cluster site, integer files, integer jobs) ->
+ submission as
+begin
+	declare integer freecpus, integer queuedjobs, submission statjobs,
+		integer startfile, integer endfile, integer filesperjob;
+	create submission instances statjobs;
+	set query(statjobs) = "count(optallcuts(:g))";
+	set cluster(statjobs) = site;
+	set time(statjobs) = now();
+	if (nickname(site)!="swegrid")
+	then begin
+		select (t-u), q into freecpus, queuedjobs 
+			from integer t, integer u, integer q, integer j
+			where {t,u,q,j}=currentload(site);
+		set load_freecpus(statjobs)=freecpus;
+		set load_queuedjobs(statjobs)=queuedjobs;
+	end;
+	if mod(files,jobs)>0
+		then set filesperjob = div(files,jobs)+1
+		else set filesperjob = div(files,jobs);
+	for each integer i where i=iota(0, cast((jobs-1) as integer))
+	begin
+		set startfile=i*filesperjob;
+		if i=(jobs-1)
+		then set endfile=files-1
+		else set endfile=(i+1)*filesperjob-1;
+		add jobs(statjobs) = 
+			createjob(site, query(statjobs),
+			(select ev from eventdata ev 
+				where ev=filesList2(startfile,endfile)));
+	end;
+	if count(ngsubmit(jobs(statjobs)))<count(jobs(statjobs))
+	then print("Submission failed, needs to resubmit rest jobs");
+	result statjobs;
+end;
+*/
+create function printResult(bag of job jobs) -> boolean as
+begin
+	for each job j, charstring c where j=in(jobs) and c=resultdir(j)
+		tosystem("cat "+lower(c)+"/outGen.out");
+end;
+
+create function printResult(job j) -> boolean as
+begin
+	tosystem("cat "+lower(resultdir(j))+"/outGen.out");
+end;
+
+create function cleanup(bag of job jobs) -> job as
+begin
+	for each job j, charstring c where j=in(jobs) and c=resultdir(j)
+	begin
+		tosystem("rm -r "+c);
+		remove resultdir(j)=resultdir(j);
+		result j;
+	end;
+end;
+
+create function cleanup(job j) -> job as
+begin
+	tosystem("rm -r "+resultdir(j));
+	remove resultdir(j)=resultdir(j);
+	result j;
+end;
+
+create function runningclusters() -> cluster site as
+	select site where some(select j from job j 
+		where cluster(j)=site and notany(like_i(status(j),"downloaded"))
+			and notany(like_i(status(j),"not")));
+
+create function finishedsubmissions() -> submission as
+	select s from submission s 
+		where notany(select j from job j where j=in(jobs(s))
+			and status(j)!="DOWNLOADED");
+
+create function deletesubmission(submission s) -> boolean as
+begin
+	for each job j where j=jobs(s)
+	begin
+		if xrslfile(j)
+			then tosystem("rm "+xrslfile(j));
+		if queryfile(j)
+			then tosystem("rm "+queryfile(j));
+		if resultdir(j)
+			then tosystem("rm -r "+resultdir(j));
+		delete j;
+	end;
+	delete s;
+end;
+
+create function deletesubmission(bag of submission submissions) -> boolean as
+begin
+	for each submission s where s=in(submissions)
+	begin
+		for each job j where j=jobs(s)
+		begin
+			if xrslfile(j)
+				then tosystem("rm "+xrslfile(j));
+			if queryfile(j)
+				then tosystem("rm "+queryfile(j));
+			if resultdir(j)
+				then tosystem("rm -r "+resultdir(j));
+			delete j;
+		end;
+		delete s;
+	end;
+end;
+
+create function latestjob(bag of job jobs) -> job res as
+begin
+	select j into res from job j where j=in(jobs);
+	for each job j where j=in(jobs)
+		if 	year(resulttime(j))>year(resulttime(res))
+		then set res = j
+		else if	year(resulttime(j))=year(resulttime(res)) and
+			month(resulttime(j))>month(resulttime(res))
+		then set res = j
+		else if	year(resulttime(j))=year(resulttime(res)) and
+			month(resulttime(j))=month(resulttime(res)) and
+			day(resulttime(j))>day(resulttime(res))
+		then set res = j
+		else if	year(resulttime(j))=year(resulttime(res)) and
+			month(resulttime(j))=month(resulttime(res)) and
+			day(resulttime(j))=day(resulttime(res)) and
+			hour(resulttime(j))>hour(resulttime(res))
+		then set res = j
+		else if	year(resulttime(j))=year(resulttime(res)) and
+			month(resulttime(j))=month(resulttime(res)) and
+			day(resulttime(j))=day(resulttime(res)) and
+			hour(resulttime(j))=hour(resulttime(res)) and 
+			minute(resulttime(j))>minute(resulttime(res))
+		then set res = j
+		else if	year(resulttime(j))=year(resulttime(res)) and
+			month(resulttime(j))=month(resulttime(res)) and
+			day(resulttime(j))=day(resulttime(res)) and
+			hour(resulttime(j))=hour(resulttime(res)) and 
+			minute(resulttime(j))=minute(resulttime(res)) and
+			second(resulttime(j))>second(resulttime(res))
+		then set res = j;
+	result res;
+end;
+
+create function runovertime(submission s) -> <time, integer> as 
+	select timespan(resulttime(latestjob(jobs(s))),time(s));
+
+create function status(submission s) -> charstring status as
+begin
+	select status(j) into status from job j where j=jobs(s) 
+		and status(j)="NEW";
+	if status=nil
+	then begin
+		select status(j) into status from job j where j=jobs(s) 
+			and status(j)="NOT";
+		if status=nil
+		then begin
+			select status(j) into status from job j where j=jobs(s)
+				and status(j)!="DOWNLOADED";
+			if status=nil
+			then set status="DOWNLOADED";
+		end;
+	end;
+	result status;
+end;
+
+create function statusnonordered(cluster site) -> <submission s, integer jobs,
+	integer totalfiles, charstring status, integer noexecuted> as
+	select s, count(jobs(s)), count(data(jobs(s))), status(s), 
+			count(executiontime(jobs(s)))
+		from submission s where cluster(s)=site;
+
+create function status(cluster site) -> vector as
+	select in(sort((select s, count(jobs(s)), count(data(jobs(s))), status(s), 
+			count(executiontime(jobs(s)))
+		from submission s where cluster(s)=site),3));
+
+create function status2(cluster site) -> vector as
+	select in(sort((select s, count(jobs(s)), count(data(jobs(s))), status(s), 
+			totaltime(s), count(executiontime(jobs(s)))
+		from submission s where cluster(s)=site),3));
+
+create function status() -> <submission s, charstring cluster, integer jobs,
+	integer totalfiles, charstring status, integer noexecuted> as
+	select s, nickname(cluster(s)), count(jobs(s)), count(data(jobs(s))), 
+		status(s), count(executiontime(jobs(s)))
+		from submission s;
+
+create function status2() -> <submission s, charstring cluster, integer jobs,
+	integer totalfiles, charstring status, integer totaltime, 
+	integer noexecuted> as
+	select s, nickname(cluster(s)), count(jobs(s)), count(data(jobs(s))), 
+		status(s), totaltime(s), count(executiontime(jobs(s)))
+		from submission s;
+
+create function updateELtime(job j) -> job as
+begin
+	declare integer i;
+	if resultdir(j)
+	then begin
+	select it into i from integer it
+		where itoa(it)=getEtime(resultdir(j)+"/outGen.out");
+	set executiontime(j) = i;
+	set loadtime(j) = sum(select it from integer it 
+			where itoa(it)=getLtime(resultdir(j)+"/outGen.out"));
+	if executiontime(j)
+	then
+		result j;
+	end;
+end;
+
+create function updatecompleted() -> submission as
+begin
+	declare integer ti;
+	for each submission s where status(s)="DOWNLOADED" and notany(totaltime(s))
+	begin
+		select hour*60+min into ti  from integer hour, integer min, 
+			time t, integer i
+			where hour=hour(t) and min=minute(t) and <t,i> = runovertime(s);
+		set totaltime(s) = ti;
+		result s;
+	end;
+end;
+
+create function clearcompleted() -> job as
+begin
+	for each job j where status(j)="DOWNLOADED" and notany(executiontime(j))
+		and some(resultdir(j))
+	begin
+		updateeltime(j);
+		if executiontime(j)>0
+		then cleanup(j);
+		result j;
+	end;
+end;
+
+create function statustofile(charstring file) -> charstring as 
+begin
+	declare integer m;
+	openwritefile(file);
+	for each submission s where totaltime(s)>0 and 
+		count(select j from job j where executiontime(j)>0 and j=jobs(s))=
+			count(jobs(s))
+	begin
+		select i into m from integer i where i=maxagg(cputime(jobs(s)));
+		print(nickname(cluster(s))+", "+itoa(count(jobs(s)))+", "+
+			itoa(count(data(jobs(s))))+", "+itoa(m)+
+			", "+itoa(load_freecpus(s))+", "+itoa(load_queuedjobs(s))+", "+
+			itoa(totaltime(s)));
+	end;
+	closewritefile();
+end;
+
+create function currentload() -> 
+	<charstring sitename, integer freeCPUs, integer queuedJobs> as
+	select nickname(site), (t-u), q 
+		from integer t, integer u, integer q, integer j, cluster site
+		where {t,u,q,j}=currentload(site) and nickname(site)!="NorduGrid" and 
+			nickname(site)!="swegrid";
+
+create function faster(submission s1, submission s2) -> boolean as
+	select TRUE where totaltime(s1) < totaltime(s2);
+
+/*******************************************************
+ * Submission part
+ *******************************************************/
+/*
+create function submit(cluster site, integer files, integer jobs) ->
+ submission as
+begin
+	declare integer freecpus, integer queuedjobs, submission statjobs,
+		integer startfile, integer endfile, integer filesperjob;
+	create submission instances statjobs;
+	set query(statjobs) = "count(optallcuts(:g))";
+	set cluster(statjobs) = site;
+	if (nickname(site)!="swegrid")
+	then begin
+		select (t-u), q into freecpus, queuedjobs 
+			from integer t, integer u, integer q, integer j
+			where {t,u,q,j}=currentload(site);
+		set load_freecpus(statjobs)=freecpus;
+		set load_queuedjobs(statjobs)=queuedjobs;
+		add currentload(statjobs)= {site,freecpus,queuedjobs};
+	end else begin
+		for each charstring site, integer free, integer queued 
+				where <site,free,queued> = currentload()
+			add currentload(statjobs)= {site,free,queued};
+	end;
+	set time(statjobs) = now();
+	if mod(files,jobs)>0
+		then set filesperjob = div(files,jobs)+1
+		else set filesperjob = div(files,jobs);
+	for each integer i where i=iota(0, cast((jobs-1) as integer))
+	begin
+		set startfile=i*filesperjob;
+		if i=(jobs-1)
+		then set endfile=files-1
+		else set endfile=(i+1)*filesperjob-1;
+		add jobs(statjobs) = 
+			createjob(site, query(statjobs),
+			(select ev from eventdata ev 
+				where ev=filesList2(startfile,endfile)));
+	end;
+	result statjobs;
+end;
+*/
+/* Submission to the Grid */
+/*
+create function submit(integer files, integer jobs) ->
+ submission as
+begin
+	declare integer freecpus, integer queuedjobs, submission statjobs,
+		integer startfile, integer endfile, integer filesperjob;
+	create submission instances statjobs;
+	set query(statjobs) = "count(optallcuts(:g))";
+	set cluster(statjobs) = clusternamed("NorduGrid");
+	set time(statjobs) = now();
+	if mod(files,jobs)>0
+		then set filesperjob = div(files,jobs)+1
+		else set filesperjob = div(files,jobs);
+	for each integer i where i=iota(0, cast((jobs-1) as integer))
+	begin
+		set startfile=i*filesperjob;
+		if i=(jobs-1)
+		then set endfile=files-1
+		else set endfile=(i+1)*filesperjob-1;
+		add jobs(statjobs) = 
+			createjob(query(statjobs),
+			(select ev from eventdata ev 
+				where ev=filesList2(startfile,endfile)));
+	end;
+	result statjobs;
+end;
+
+create function submit(charstring site, integer files, integer jobs) ->
+ submission as
+	select submit(clusternamed(site),files,jobs);
+*/
+create function resubmit(submission s) -> job as
+	for each job j where j=jobs(s) and status(j)="NOT"
+	begin
+		set status(j)="NEW";
+		result j;
+	end;
+
+
+/*******************************************************
+ * Interface to the Clients
+ *******************************************************/
+
+create function submit(charstring query, vector files, 
+	integer jobs, integer cputime, charstring site) ->
+ submission as
+begin
+	declare submission statjobs, integer sumFileSize, integer currentfile,
+		integer positionInFile;
+	set sumFileSize=0;
+	create submission instances statjobs;
+	set query(statjobs) = query;
+	set cluster(statjobs) = clusternamed(site);
+	set time(statjobs) = now();
+	for each eventdata evfile where name(evfile)=in(files)
+	begin
+		set sumFileSize = sumFileSize + size(evfile);
+		add data(statjobs) = evfile;
+	end;
+	set currentfile = 0;
+	set positionInFile = 0;
+	createjobs(statjobs,jobs,sumFileSize,count(files));
+	for each job j where j=jobs(statjobs)
+	begin
+		set cputime(j) = cputime;
+		set cluster(j) = clusternamed(site);
+		set queryfile(j) = "query"+timechar(now())+itoa(getIxrsl())+".osql";
+		set xrslfile(j) = site+timechar(now())+itoa(getIxrsl())+".xrsl";
+		set resultfile(j)="result.out";
+		set status(j)="NEW";
+		createQueryFile(j, query(statjobs));
+		createAJobFile(j,"aleh","aleh.dmp");
+	end;
+	result statjobs;
+end;
+
+/**************************************************************
+ * Printing statistics part
+ **************************************************************/
+
+create function statistics() -> <charstring site, integer jobs,
+	integer expectedCPUtime, integer freeCPUs, integer queuedjobs, 
+	integer totaltime> as
+	select nickname(cluster(s)), count(jobs(s)), maxagg(cputime(jobs(s))),
+		load_freecpus(s), load_queuedjobs(s), totaltime(s) from submission s
+	where status(s)="DOWNLOADED";
+
+create function statistics(integer n) -> vector as
+/*<charstring site, integer jobs,
+	integer expectedCPUtime, integer freeCPUs, integer queuedjobs, 
+	integer totaltime> as*/
+	select in(sort((select nickname(cluster(s)), count(jobs(s)), 
+					maxagg(cputime(jobs(s))), load_freecpus(s), 
+					load_queuedjobs(s), totaltime(s) from submission s
+					where status(s)="DOWNLOADED"),n));
+
+create function statistics(charstring file) -> charstring as
+begin
+	openwritefile(file);
+	print("cluster, jobs, totfiles, maxcputime, freecpus, queuedjobs, totaltime");
+	for each submission s where status(s)="DOWNLOADED"
+		print(nickname(cluster(s))+", "+itoa(count(jobs(s)))+", "+
+			itoa(count(data(jobs(s))))+", "+
+			itoa(cast(maxagg(cputime(jobs(s))) as integer))+", "+
+			itoa(load_freecpus(s))+	", "+itoa(load_queuedjobs(s))+
+			", "+itoa(totaltime(s)));
+	closewritefile();
+	result file;
+end;
+
+create function statistics(charstring file, cluster site) -> charstring as
+begin
+	openwritefile(file);
+	print("cluster, jobs, totfiles, maxcputime, freecpus, queuedjobs, totaltime");
+	for each submission s where status(s)="DOWNLOADED" and cluster(s)=site
+		print(nickname(cluster(s))+", "+itoa(count(jobs(s)))+", "+
+			itoa(count(data(jobs(s))))+", "+
+			itoa(cast(maxagg(cputime(jobs(s))) as integer))+", "+
+			itoa(load_freecpus(s))+	", "+itoa(load_queuedjobs(s))+
+			", "+itoa(totaltime(s)));
+	closewritefile();
+	result file;
+end;

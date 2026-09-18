@@ -1,0 +1,64 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Johan Petrini, UDBL
+ * 
+ * Description: Regression testing queries to a complete RDFS view over the 
+ *              Company relational database with strategy END-P.
+ *
+ * The following queries are tested:
+ *
+ *  Content queries accessing the relational database data.
+ *  1. Give me the quantity of every part in each order and the 
+ *     name of the customer placing that order. 
+ ******************************************************************************/
+/* Load SWARD master regression setup  
+ */		
+<'company_setup.amosql';
+
+assignPropID("LINEITEM","LINENUMBER","CompI","http://udbl.it.uu.se/schemas/company#LineNumber");
+assignPropID("LINEITEM","LORDERID","CompI","http://udbl.it.uu.se/schemas/company#LineNumberOrderID");
+assignPropID("LINEITEM","PARTID","CompI","http://udbl.it.uu.se/schemas/company#PartID");
+assignPropID("LINEITEM","QUANTITY","CompI","http://udbl.it.uu.se/schemas/company#Amount");
+
+assignCRID("LINEITEM","LORDERID","ORDERS","CompI","http://udbl.it.uu.se/schemas/company#BelongsTo");
+
+assignClassID("LINEITEM","CompI","http://udbl.it.uu.se/schemas/company#LineItem");
+
+<'../src/AmosQL/complete.amosql';
+
+/* Generate the UPVs
+ */
+dispatch("END","CompI");
+
+/* SPARQL queries 
+ */
+set :sparql_content_9 = 
+"SELECT ?part ?qty ?clerk
+ FROM <http://udbl.it.uu.se/upv/comp/>
+ WHERE {?lineitem <http://udbl.it.uu.se/schemas/company#PartID> ?part .
+        ?lineitem <http://udbl.it.uu.se/schemas/company#Amount> ?qty .
+        ?lineitem <http://udbl.it.uu.se/schemas/company#BelongsTo> ?order  .
+        ?order <http://udbl.it.uu.se/schemas/company#Clerk> ?clerk .}";
+
+
+/* Defining the results of and evaluating the example queries
+ */
+lisp;
+(defglobal _content_9_res_ 
+ (list 
+  (list (listtoarray 
+	(list "Semiconductors" "150" "Doe")))))
+
+(checkequal "SPARQL content query Q9 with END-P"
+	    ((osql "sparql(:sparql_content_9);")
+		 _content_9_res_))
+
+
+:osql
+
+DSDisconnect("CompI");
+
+
+
+

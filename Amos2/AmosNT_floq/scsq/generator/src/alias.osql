@@ -1,0 +1,235 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Erik Zeitler, UDBL
+ * $RCSfile: alias.osql,v $
+ * $Revision: 1.19 $ $Date: 2012/05/15 20:41:13 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Alias (reuse) vehicle identifiers
+ *
+ ****************************************************************************
+ * $Log: alias.osql,v $
+ * Revision 1.19  2012/05/15 20:41:13  torer
+ * result -> return
+ *
+ * Revision 1.18  2012/05/11 14:14:01  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.17  2012/05/04 22:03:00  zeitler
+ * Fixed transfer percentage
+ *
+ * Revision 1.16  2012/04/26 21:39:42  zeitler
+ * limited size reservoir
+ *
+ * Revision 1.15  2012/03/13 10:35:33  zeitler
+ * Type warnings eliminated by casting
+ *
+ * Revision 1.14  2010/02/11 17:40:15  zeitler
+ * introducing first() and some() avoids unnecessary iterations
+ *
+ * Revision 1.13  2010/02/11 14:02:41  zeitler
+ * simplifications
+ *
+ * Revision 1.12  2009/02/26 20:50:01  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.11  2009/02/26 09:31:06  zeitler
+ * Bug fixed?
+ *
+ * Revision 1.10  2009/02/25 21:50:58  zeitler
+ * Numarray used in ezgen
+ *
+ * Revision 1.9  2009/02/09 13:08:18  zeitler
+ * index on vids_out
+ *
+ * Revision 1.8  2008/09/07 08:18:35  zeitler
+ * individual postfilter on each sp in an spv
+ *
+ * Revision 1.7  2008/09/01 12:38:43  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.6  2008/08/29 15:02:20  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.5  2008/07/22 12:54:27  zeitler
+ * Scalable LR input data generator
+ *
+ * Revision 1.4  2008/07/21 23:20:15  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.3  2008/07/21 16:52:44  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.2  2008/07/21 12:07:11  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.1  2008/07/20 22:53:31  zeitler
+ * Re-use vids that left an xway
+ *
+ ****************************************************************************/
+
+create function vids_out(integer vid)->integer leavetime;
+
+create_index("vids_out", "leavetime", "mbtree", "multiple");
+
+create function vidsoutres() -> function;
+set vidsoutres() = theresolvent("vids_out");
+
+create function nvidsout()->integer as 
+count(select vids_out(v) from integer v);
+
+create function vidalias(integer old)->integer new;
+
+create function nvidalias()->integer as
+count(select vidalias(o) from integer o);
+
+create function oldest_vid_out()->integer as
+select minagg(select s from integer s, integer v where s = vids_out(v));
+
+create function vids_left_at_sec(integer s)->integer as
+select vid from integer vid
+where s = vids_out(vid);
+
+create function add_vidalias(vector v)->boolean as begin
+declare integer secout, integer vidout;
+set secout = oldest_vid_out();
+if (second(v) > secout) then begin
+  set vidout = first(vids_left_at_sec(secout));
+  set vidalias(vid(v)) = vidout;
+  remove vids_out(vidout) = secout;
+end;
+end;
+
+/* Note to self: 
+   Vi har upptäckt en til parameter som vi vill tune:a:
+   Hur lång tid ska det typiskt ta mellan återbesöken?
+
+   TODO: Byt ut oldest_vid_out() mot en som varit ute minst 60 sek plus ev. en slumpterm
+*/
+
+create function add_vidalias_prob(vector v, integer migr_perc)->boolean as begin
+declare integer secout, integer vidout;
+set secout = oldest_vid_out();
+if ((second(v) > secout) and
+   (migr_perc > rand(100))) then begin
+  set vidout = first(vids_left_at_sec(secout));
+  set vidalias(vid(v)) = vidout;
+end;
+remove vids_out(vidout) = secout;
+end;
+
+create function is_vid_aliased(integer vidfrom)->boolean as
+select
+from integer tovid
+where tovid = vidalias(vidfrom);
+
+create function alias(vector v)->vector as
+select concat({v[0], v[1], vidalias(vid(v))}, w)
+from vector w
+where w = vectorof(
+select v[i] from integer i where i > 2);
+
+create function vids_out_before(integer sec)->boolean as
+some(select
+from integer vid
+where vids_out(vid) < sec);
+
+create function on_onramp(vector v)->boolean as
+select
+where lane(v) = 0
+and posrep(v);
+
+create function stands_onramp()->integer;
+
+create function not_seen_before(vector v)->boolean as
+select
+where notany(select where stands_onramp() = vid(v)); 
+
+create function on_the_road(vector v)->boolean as
+select
+where lane(v) > 0
+and posrep(v);
+
+create function just_entered(vector v)->boolean as
+select
+where lane(v) = 0
+and posrep(v);
+
+create function just_left(vector v)->boolean as
+select
+where lane(v) = 4
+and posrep(v);
+
+create function traceenterleave(Vector v, Integer min_time_outside)
+ -> vector of Integer as
+begin
+if (just_left(v)) then
+  if (is_vid_aliased(vid(v))) then
+    set vids_out(vidalias(vid(v))) = second(v)
+  else
+    set vids_out(vid(v)) = second(v);
+if (on_onramp(v) and not_seen_before(v)
+    and (vids_out_before(integer(second(v) - min_time_outside)))) then
+  add_vidalias(v);
+if (on_onramp(v)) then add stands_onramp() = vid(v);
+if (on_the_road(v)) then remove stands_onramp() = vid(v);
+if (is_vid_aliased(vid(v))) then return alias(v) else return v;
+end;
+
+/* Conditional on size of reservoir */
+
+create function cond_add_vids_out(Integer vid, Integer second, Integer res_size)
+ -> Integer as
+set vids_out(vid) = second
+where function_cardinality(vidsoutres()) < res_size;
+
+create function traceenterleave_res(Vector v, Integer min_time_outside, 
+Integer res_size, Integer migr_perc) -> vector of Integer as
+begin
+if (just_left(v)) then
+  if (is_vid_aliased(vid(v))) then
+    cond_add_vids_out(vidalias(vid(v)), second(v), res_size)
+  else
+    cond_add_vids_out(vid(v), second(v), res_size);
+if (on_onramp(v) 
+    and not_seen_before(v)
+    and (vids_out_before(integer(second(v) - min_time_outside)))) then
+  add_vidalias_prob(v, migr_perc);
+if (on_onramp(v)) then add stands_onramp() = vid(v);
+if (on_the_road(v)) then remove stands_onramp() = vid(v);
+if (is_vid_aliased(vid(v))) then return alias(v) else return v;
+end;
+
+
+/* Top level functions */
+
+create function smjv(vector of sp spv, integer attrib) -> vector as
+select v from vector v where v = smj(spv, attrib);
+
+create function smjsv(vector of sp spv, integer attrib) -> stream of vector as
+select streamof(smjv(spv, attrib));
+
+create function all(integer nxways, integer time_out, vector of sp inp)
+-> vector of integer as select v
+from vector v
+where v = traceenterleave(smjv(inp, 1), time_out);
+
+create function all_limit(Integer nxways, Integer time_out, Integer res_size, 
+Integer migr_perc, Vector of Sp inp)
+-> Vector of Integer as select v
+from Vector v
+where v = traceenterleave_res(smjv(inp, 1), time_out, res_size, migr_perc);
+
+create function initgen()->boolean as
+/* clear all state before start */
+begin
+  clear_function("vids_out");
+  clear_function("vidalias");
+  clear_function("stands_onramp");
+  return asserteq(nvidalias(), 0, "Failed to clear alias table")
+    and 
+    asserteq(nvidsout(), 0, "Failed to clear vids_out table")
+    and
+    asserteq(count(stands_onramp()), 0, "Failed to clear stands_onramp table");
+end;

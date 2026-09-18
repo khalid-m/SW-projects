@@ -1,0 +1,69 @@
+
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Silvia Stefanova, UDBL
+ * $RCSfile: sard.amosql,v $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: SARD master file
+ *
+ ****************************************************************************
+ *
+ ****************************************************************************/
+/*<'src/AmosQL/URI.amosql';*/
+lisp;
+(load "src/lsp/patch.lsp")
+(load "src/lsp/URI.lsp")
+:osql
+
+<'src/AmosQL/foreign.amosql';
+/*<'src/AmosQL/importtable.amosql';*/
+<'src/AmosQL/RDBschema.amosql';
+<'src/AmosQL/rowid_compK.amosql';
+<'src/AmosQL/mapTables.amosql';
+<'src/AmosQL/s_view.amosql';
+<'src/AmosQL/exportSW_SARD.amosql';
+<'src/AmosQL/export_DPS.amosql';
+<'src/AmosQL/ddescribe.amosql';
+<'src/AmosQL/unloadRDB_asNT.amosql';
+<'src/AmosQL/distinct.amosql';
+/*<'src/AmosQL/restoreRDB_fromNT.amosql';*/
+/*<'src/AmosQL/reloadfromNT.amosql';*/
+lisp;
+;;(load "src/lsp/pullCoreCluster.lsp")
+;;(load "src/lsp/newimport.lsp")
+(load "src/lsp/purge1.lsp")
+(load "src/lsp/small_rewrites.lsp")
+;;(load "src/lsp/replace_literal.lsp")
+(load "src/lsp/gct.lsp")
+(load "src/lsp/unif.lsp")
+:osql
+/*<'src/AmosQL/viewDBasRDF.amosql';*/
+
+/* Set SARD system image size to 200M
+ */
+
+imagesize 200000000;
+
+/* Partial evaluation of predicates in SARD system
+ */
+parteval('pmap');
+parteval('cmap');
+/*parteval('rmap');*/
+parteval('rcmap');
+parteval('rmmMap');
+parteval('typeMap');
+parteval('xsd_Shortmap');
+parteval('rowid');
+parteval("valueid");
+parteval('like');
+parteval("OBJECT.OBJECT.!=->BOOLEAN");
+parteval("TEVEXTENT2");
+
+
+
+
+
+
+

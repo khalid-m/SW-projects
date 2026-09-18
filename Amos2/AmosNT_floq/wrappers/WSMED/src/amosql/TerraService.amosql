@@ -1,0 +1,102 @@
+/*load_lisp("C:/amosnt/wrappers/wsmed/src/qplan.lsp");*/
+
+/*create function GetPlaceList(charstring placephrase,integer maxitems,charstring imagepresence)-><charstring placename,charstring state, charstring country,real lon, real lat,integer availablethememask,charstring placetypeid,integer population>
+	as select res[0],res[1],res[2],res[3],res[4],res[5],res[6],res[7] 
+	   from vector out, vector res
+	  where out =cwo("C:/AmosNT/wrappers/WSMED/wsdl/TerraService2.wsdl","TerraService","GetPlaceList",{'GetPlaceList',{'placeName',placephrase,'MaxItems',maxitems,'imagePresence',imagepresence}},"testquery/terraservice_sdef.xq")and res=elementOf(out);*/
+
+create function GetPlaceList(charstring placephrase,integer maxitems,charstring imagepresence)-><charstring placename,charstring state, charstring country,real lon, real lat,integer availablethememask,charstring placetypeid,integer population>
+	as select res[0],res[1],res[2],res[3],res[4],res[5],res[6],res[7] 
+	   from vector out, vector res
+	  where out =cwo("http://www.terraserver.microsoft.com/TerraService2.asmx?WSDL","TerraService","GetPlaceList",{'GetPlaceList',{'placeName',placephrase,'MaxItems',maxitems,'imagePresence',imagepresence}},"testquery/placelist_sdef.xq")and res=elementOf(out);
+
+/*create function GetPlaceFacts(charstring placename,charstring state,charstring country)-><charstring placename1,charstring state1, charstring country1,real lon, real lat,integer availablethememask,charstring placetypeid,integer population>
+	as select res[0],res[1],res[2],res[3],res[4],res[5],res[6],res[7] 
+	   from vector out, vector res
+	  where out =cwo("http://www.terraserver.microsoft.com/TerraService2.asmx?WSDL","TerraService","GetPlaceFacts",{'GetPlaceFacts',{'place',{'City',placename,'State',state,'Country',country}}},"testquery/placefacts_sdef.xq")and res=elementOf(out);*/
+
+create function GetPlaceFacts(charstring placename,charstring state,charstring country)-><real lon, real lat,integer availablethememask,charstring placetypeid,integer population>
+	as select res[3],res[4],res[5],res[6],res[7] 
+	   from vector out, vector res
+	   where out =cwo("http://www.terraserver.microsoft.com/TerraService2.asmx?WSDL","TerraService","GetPlaceFacts",{'GetPlaceFacts',{'place',{'City',placename,'State',state,'Country',country}}},"testquery/placefacts_sdef.xq")and res=elementOf(out);
+
+
+create function ConvertPlaceToLonLatPt(charstring placename,charstring state,charstring country)-><real lon, real lat>
+	as select res[0],res[1] 
+	   from vector out, vector res
+	  where out =cwo("http://www.terraserver.microsoft.com/TerraService2.asmx?WSDL","TerraService","ConvertPlaceToLonLatPt",{'ConvertPlaceToLonLatPt',{'place',{'City',placename,'State',state,'Country',country}}},"testquery/convertplacetolonlat_sdef.xq")and res=elementOf(out);
+
+create function ConvertLonLatPtToNearestPlace(real lon, real lat)-><charstring placename>
+	as select res[0] 
+	   from vector out, vector res
+	 where out =cwo("http://www.terraserver.microsoft.com/TerraService2.asmx?WSDL","TerraService","ConvertLonLatPtToNearestPlace",{'ConvertLonLatPtToNearestPlace',{'point',{'Lon',lon,'Lat',lat}}},"testquery/convertlonlatpttonearestplace_sdef.xq")and res=elementOf(out);
+
+create function GetLatLong(charstring zipcode)-><charstring placename, charstring state, real lon, real lat>
+	as select res[0],res[1],res[2],res[3] 
+	   from vector out, vector res
+	 where out =cwo("http://ws.cdyne.com/ziptogeo/zip2geo.asmx?wsdl","Zip2Geo","GetLatLong",{'GetLatLong',{'zipcode',zipcode,'LicenseKey','0'}},"testquery/getlatlong_sdef.xq")and res=elementOf(out);
+
+/*create function CitytoZipcode(charstring placename,charstring)-><charstring placename, charstring state, real lon, real lat>
+	as select res[0],res[1],res[2],res[3] 
+	   from vector out, vector res
+	 where out =cwo("http://ws.cdyne.com/ziptogeo/zip2geo.asmx?wsdl","Zip2Geo","GetLatLong",{'GetLatLong',{'zipcode',zipcode,'LicenseKey','0'}},"testquery/getlatlong_sdef.xq")and res=elementOf(out);*/
+
+/**********helping function ***********/
+
+lisp;
+(defun GetPlaceList_f (fno placephrase maxitems imagepresence placename state country lon lat availablethememask placetypeid population)
+	(mapfunctionres 'GetPlaceList (list placephrase maxitems imagepresence) nil
+		  (f/l (row)
+		       (osql-result  placephrase maxitems imagepresence (nth 0 row)(nth 1 row)(nth 2 row)(nth 3 row)(nth 4 row)(nth 5 row)(nth 6 row)(nth 7 row)))))
+
+(defun GetPlaceFacts_f (fno placename state lon lat)
+	(mapfunctionres 'GetPlaceFacts (list placename state "") nil
+		  (f/l (row)
+		       (osql-result  placename state (nth 3 row)(nth 4 row)))))
+
+(defun  ConvertPlaceToLonLatPt_f (fno placename state country lon lat)
+	(mapfunctionres 'ConvertPlaceToLonLatPt (list placename state country) nil
+		  (f/l (row)
+		       (osql-result  placename state country (nth 0 row)(nth 1 row)))))
+
+(defun  GetLatLong_f (fno placename state lon lat zipcode)
+	(mapfunctionres 'GetLatLong (list zipcode) nil
+		  (f/l (row)
+		       (osql-result (nth 0 row)(nth 1 row)(nth 2 row)(nth 3 row) zipcode))))
+
+:osql
+create function GetPlaceList_cc()-><charstring placephrase,integer maxitems,charstring imagepresence,charstring placename, charstring state, charstring country, real lon, real lat,integer availablethememask, charstring placetypeid,integer population> as foreign "GetPlaceList_f";
+
+create function GetPlaceFacts_cc()-><charstring placename,charstring state,charstring country,charstring placename1, charstring state1, charstring country1, real lon, real lat,integer availablethememask, charstring placetypeid,integer population> as foreign "GetPlaceFacts_f";
+
+create function  ConvertPlaceToLonLatPt_cc()-><charstring placename,charstring state,charstring country,real lon, real lat> as foreign "ConvertPlaceToLonLatPt_f";
+create function  GetLatLong_cc()-><charstring placename,charstring state,real lon, real lat, charstring zipcode> as foreign "GetLatLong_f";
+
+create function place_cc()-><charstring placename, charstring state, real lon, real lat,charstring zipcode>
+			 as multidirectional ("ffffb" select placename,state,lon,lat where GetLatLong(zipcode)=<placename,state,lon,lat>);
+
+/*create function GetPlaceList_cc()-><charstring placephrase,integer maxitems,charstring imagepresence,charstring placename, charstring state, charstring country, real lon, real lat,integer availablethememask, charstring placetypeid,integer population> as select placephrase,maxitems,imagepresence,placename,state,country,lon,lat, availablethememask,placetypeid,population where GetPlaceList(placephrase,maxitems,imagepresence)=<placename,state,country,lon,lat, availablethememask,placetypeid,population>;*/
+
+/********** WSMED view defintion ***********/
+
+create function #PlaceList(charstring placephrase,charstring placename,charstring state, charstring country)-><integer maxitems,charstring imagepresence,real lon, real lat,integer availablethememask,charstring placetypeid,integer population> as select maxitems, imagepresence,lon,lat,availablethememask,placetypeid,population where GetPlaceList_cc()=<placephrase, maxitems,imagepresence,placename, state, country, lon, lat, availablethememask, placetypeid,population>; 
+create function #PlaceFacts(charstring placename,charstring state, charstring country)-><charstring placename1,charstring state1, charstring country1,integer maxitems,charstring imagepresence,real lon, real lat,integer availablethememask,charstring placetypeid,integer population> as select placename1,state1,country1,maxitems, imagepresence,lon,lat,availablethememask,placetypeid,population where GetPlaceFacts_cc()=< placename,state,country,placename1, state1, country1, lon, lat, availablethememask, placetypeid,population>; 
+
+create function #GetLonLat(charstring placename,charstring state, charstring country)-><real lon, real lat> as select lon,lat where ConvertPlaceToLonLatPt_cc()=< placename,state,country, lon, lat>;
+
+create function #GetLatLong(charstring placename,charstring state, charstring country)-><real lon, real lat> as select lon,lat where ConvertPlaceToLonLatPt_cc()=< placename,state,country, lon, lat>; 
+
+/*create function #Place(real lat, real lon) -><charstring placename,charstring state,charstring zipcode>
+	                               select placename*/
+/***************************************/
+
+
+
+
+
+
+
+
+
+
+

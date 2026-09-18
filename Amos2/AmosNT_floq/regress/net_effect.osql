@@ -1,0 +1,72 @@
+
+create function last_counter()->integer as stored;
+
+create function counter()-> integer as
+  begin
+    declare integer res;
+    select last_counter() into res;
+    set last_counter() = 1 + res;
+    return res;
+  end;
+
+create function check_counter(integer i)->boolean
+as 
+     if last_counter()!= i then print("Counter is "+itoa(last_counter())+
+                                      ", should be "+itoa(i));
+
+create function notify_change(integer i) -> boolean
+as
+   begin
+      counter();
+   end;
+
+create function foo(integer nonkey)->integer;
+create rule fie() as
+  from integer i
+  on updated(foo(i))
+  do notify_change(i);
+
+activate rule fie();
+
+set last_counter()=0;
+
+set foo(1)=1;
+rulecheck();
+check_counter(1); 
+
+set foo(1)=1;
+set foo(1)=1;
+set foo(1)=2;
+set foo(1)=3;
+rulecheck();
+check_counter(2);
+
+set foo(1)=1;
+rulecheck();
+check_counter(3); /* Change from 3 to 1 */
+
+set foo(1)=1;
+rulecheck();
+check_counter(3); /* No net effect */
+
+remove foo(1)=1;
+add foo(1)=1;
+rulecheck(); 
+check_counter(3); /* No net effect */
+
+add foo(1)=2;
+rulecheck(); 
+check_counter(4);  /* Change from 1 to bag(1, 2) */
+
+remove foo(1)=2;
+rulecheck();
+check_counter(5); /* Change from bag(1,2) to 1 */
+
+lisp;
+(checkequal "Net effect"
+  ((osql "last_counter();") '((5)))
+)
+:osql
+rollback;
+
+

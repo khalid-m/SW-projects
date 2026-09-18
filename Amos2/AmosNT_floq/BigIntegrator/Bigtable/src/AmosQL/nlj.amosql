@@ -1,0 +1,6 @@
+create function fastnestedloopjoin(Bag b1, Bag b2, Number pos1, Number pos2) -> Bag of Vector
+  /* Single threaded nested-loop-join based on mapping */
+  as for each original Vector x where x in b1
+         for each original Vector y where y in b2
+                                    and y[pos2] = x[pos1]
+            return concat(x,y);

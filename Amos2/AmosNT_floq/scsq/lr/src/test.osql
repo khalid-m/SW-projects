@@ -1,0 +1,997 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Tore Risch, Mårten Svensson, UDBL
+ * $RCSfile: test.osql,v $
+ * $Revision: 1.106 $ $Date: 2012/09/18 15:32:02 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Regression test for Linear Road system
+ *
+ ****************************************************************************/
+
+/* 2: vehicle
+   3: v
+   4: x
+   6: d
+   7: s
+*/
+
+dribble("logs");
+
+init_stat(1);
+add_stat({0,0,101,30,0,0,1,39,210675,-1,-1,-1,-1,-1,-1},1);
+
+lisp;
+
+(checkequal "lread"
+  ((osql "count(in(snoheralds(lread({'data/ultralite1.out', 'data/ultralite2.out'}, 
+                         1))));")
+   '((11))))
+
+(checkequal "binary lread"
+((progn (osql "
+  writefile('data/u2.bin', iarray(vreadfile('data/ultralite2.out')));
+  writefile('data/u1.bin', iarray(vreadfile('data/ultralite1.out')));")
+(let ((ts (time-spent (osql "set :count = 
+    count(in(lreadbinsadj({'data/u1.bin', 'data/u2.bin'}, -1.0, 1)));"))))
+  (princ (concat " [" (roundto ts 3) " seconds] "))
+  (>= ts 3.0)))
+ t)
+((osql ":count;")
+'((11))))
+
+(checkequal "custom broadcast fraction"
+  ((mapcar (f/l (b) (round (corr-bcast b)))
+            '(0.5 0.3 0.2 0.1 0.05 0.01 0.005 0.001 0))
+'(198 85 50 22 10 2 1 0 0)))
+
+(checkequal "binary lread with custom broadcast fraction"
+((progn (osql "writefile('data/lite15.bin', 
+in(vstream2iastream(section(lreadfast('data/cdp_lite15.out',15),1,1000))));")
+(let ((ts (time-spent (osql "set :count = 
+count(in(lreadbinsadj({'data/lite15.bin'}, 0.0, 1)));"))))
+  (princ (concat " [" (roundto ts 3) " seconds] "))
+  (>= ts 4.0)))
+ t)
+((osql ":count;")
+'((987)))
+((osql "count(in(lreadbinsadj({'data/lite15.bin'}, -1.0, 0)));")
+'((1000)))
+((osql "count(select v from iarray v where v in lreadbins0adj({'data/lite15.bin'}, 0.1, 0) and v[0]=2);")
+'((286))))
+
+(checkequal "logfilter"
+  ((osql "count(lrlogfilter(vreadfile('data/hist_lite40.osql'), 909, 0));")
+   '((69))))
+
+(checkequal "historyfilter"
+  ((osql "count(select from integer i, vector v 
+where <i, v> = historyfilter(h_annotate(getenv('AMOS_HOME')
+                              + '/scsq/lr/data/hist_lite40.osql', 4), 4)
+and i = 1);")
+   '((345))))
+
+(checkequal "split into partial history dumpfiles"
+ ((osql "lrhistorysplit(getenv('AMOS_HOME') + '/bin', 'lrhistory-',
+                        getenv('AMOS_HOME') + '/scsq/lr/data/hist_lite40.osql',
+                         4);")
+   '((#(69 345 276 69)))))
+
+(checkequal "partial history dump files are written"
+  ((osql "count(dir(getenv('AMOS_HOME') + '/bin','lrhistory*.dmp'));")
+  '((4))))
+
+(checkequal "read partial history dump files"
+((osql "select merge(v) 
+from vector of sp v 
+where v=spvflex(
+(vselect streamof(count(history()))
+ from integer i where i in iota(0,3)),
+ make_record({'dump', {'lrhistory-0.dmp', 'lrhistory-1.dmp', 
+                       'lrhistory-2.dmp', 'lrhistory-3.dmp'}}));")
+   '((#(69 345 276 69)))))
+
+:osql
+
+create function dexpinput()->vector;
+add dexpinput() = {3,30,412006,-1,3,-1,-1,-1,-1,360139,-1,-1,-1,-1,41};
+add dexpinput() = {3,30,1,-1,3,-1,-1,-1,-1,360140,-1,-1,-1,-1,54};
+add dexpinput() = {3,33,137392,-1,4,-1,-1,-1,-1,480532,-1,-1,-1,-1,8};
+add dexpinput() = {3,66,137342,-1,0,-1,-1,-1,-1,12,-1,-1,-1,-1,1};
+add dexpinput() = {3,66,137393,-1,0,-1,-1,-1,-1,12,-1,-1,-1,-1,1};
+
+lisp;
+(checkequal "streaming partitioning expfilter L=5"
+  ((osql "sort(select i, 
+          count(expfilter(dexpinput(), i, 5))
+          from integer i where i in iota(0, 5 - 1));")
+   '((#(#(0 2) #(1 2) #(2 1) #(3 0) #(4 0))))))
+
+:osql
+lisp;
+(checkequal "streaming partitioning expfilter L=2"
+  ((osql "sort(select i, 
+          count(expfilter(dexpinput(), i, 2))
+          from integer i where i in iota(0, 2 - 1));")
+   '((#(#(0 3) #(1 1))))))
+
+(checkequal "Degenerate case, sdiv"
+  ((osql "avgv(39, 0, 1, 0);") '((-1))))
+
+:osql
+add_stat({0,0,101,30,0,0,1,39,210675,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,0,102,27,0,0,1,65,348022,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,0,106,27,0,0,1,42,226600,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,0,137371,34,1,0,0,24,127303,119736,-1,-1,-1,-1,-1},1);
+add_stat({0,0,137372,32,1,0,0,0,535,119736,-1,-1,-1,-1,-1},1);
+add_stat({0,0,137373,28,1,0,0,26,137751,119736,-1,-1,-1,-1,-1},1);
+add_stat({0,0,137374,26,1,0,0,52,274988,119736,-1,-1,-1,-1,-1},1);
+add_stat({0,0,137375,23,1,0,0,11,58460,119736,-1,-1,-1,-1,-1},1);
+add_stat({0,0,137376,28,1,0,1,83,443055,119736,-1,-1,-1,-1,-1},1);
+add_stat({0,0,137377,26,1,0,1,62,332212,119736,-1,-1,-1,-1,-1},1);
+add_stat({0,0,137378,30,1,0,1,89,474703,119736,-1,-1,-1,-1,-1},1); 
+
+lisp;
+(checkequal "basic segment statistics"
+  ((osql "count_visited(89, 1, 1, 1);") '((1)))
+  ((osql "avgv(89, 1, 1, 1);") '((30.0)))
+  ((osql "avgv(62, 1, 1, 1);") '((26.0))))
+:osql
+init_stat(1);
+
+add_stat({0,58,138148,34,1,0,0,50,264554,119736,-1,-1,-1,-1,-1},1);
+add_stat({0,58,138148,35,1,0,0,50,264554,119736,-1,-1,-1,-1,-1},1);
+add_stat({0,58,138147,30,1,0,0,50,264554,119736,-1,-1,-1,-1,-1},1);
+add_stat({0,58,138147,35,1,0,0,50,264554,119736,-1,-1,-1,-1,-1},1);
+add_stat({0,58,138147,37,1,0,0,50,264554,119736,-1,-1,-1,-1,-1},1);
+add_stat({0,58,138149,41,1,0,0,50,264554,119736,-1,-1,-1,-1,-1},1);
+
+lisp;
+(checkequal "segment statistics with count > 1"
+  ((osql "count_visited(50, 1, 0, 1);") '((3)))
+  ((osql "avgv(50, 1, 0, 1);") '((36.5))))
+
+:osql
+
+init_stat(1);
+add_stat({0,58,138148,34,1,0,0,50,264554,119736,-1,-1,-1,-1,-1},1);
+add_stat({0,58,138148,35,1,0,0,50,264554,119736,-1,-1,-1,-1,-1},1);
+add_stat({0,58,138147,30,1,0,0,50,264554,119736,-1,-1,-1,-1,-1},1);
+add_stat({0,58,138147,35,1,0,0,50,264554,119736,-1,-1,-1,-1,-1},1);
+
+lisp;
+(checkequal "new statistics after drop"
+  ((osql "count_visited(50, 1, 0, 1);") '((2)))
+  ((osql "avgv(50, 1, 0, 1);") '((33.5))))
+:osql
+
+
+/* Test toll for a crowded segment */
+
+lrinit();
+set current_second() = 0;
+set rtime()=now();
+init_stat(1);
+
+add_stat({0,59,813,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,814,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,815,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,816,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,817,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,818,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,819,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,820,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,821,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,822,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,823,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,824,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,825,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,826,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,827,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,828,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,829,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,830,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,831,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,832,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,833,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,834,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,835,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,836,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,837,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,838,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,839,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,840,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,841,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,842,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,843,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,844,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,845,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,846,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,847,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,848,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,849,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,850,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,851,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,852,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,853,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,854,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,855,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,856,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,857,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,858,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,859,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,860,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,861,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,862,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,863,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+add_stat({0,59,864,32,0,0,1,27,147319,-1,-1,-1,-1,-1,-1},1);
+lisp;
+(checkequal "Segment statistics: Low avg speed, high car count"
+  ((osql "count_visited(89, 0, 1, 1);") '((0)))
+  ((osql "count_visited(27, 0, 1, 1);") '((52)))
+  ((osql "avgv(27, 0, 1, 1);") '((32.0))))
+:osql
+
+set_current_minute(2);
+
+lisp;
+
+(checkequal "toll alert"
+ ((osql "select r[0], r[1], r[2], r[4], r[5]
+         from vector r
+         where r = toll_calc(62, 5555, 0, 147319, 27, 1, 37, 2);")
+             '((0 5555 62 32.0 8))))
+
+:osql
+
+/* Add an accident in a this segment to enable test of toll-free region. */
+
+add_accident(0,27,1,65,1);
+
+set_current_minute(4);
+
+lisp;
+(checkequal "toll alert inside accident area"
+ ((osql "select r[0], r[1], r[2], r[4], r[5]
+         from vector r
+         where r = toll_calc(242, 5556, 0, 147319, 27, 1, 37, 2);")
+ '((0 5556 242 32.0 0.0))))
+
+:osql
+
+clear_function("accident");
+
+lrinit();
+set current_second() = 0;
+set rtime()=now();
+count(in(lr(lreadfast("data/accident_test.out", 1))));
+
+
+/* One accident on xway 0, one accident on xway 1.
+   Look at all vehicles involved, in the smashed_car() table.
+
+   Once a vehicle has started moving, its xway and minute of clearance
+   (current_minute() + 2) is added to accident_remove_order(). 
+   All accidents in accident_remove_order() will be cleared at minute of
+   clearance.
+
+   Some of the seconds in the test data are empty. 
+*/
+
+lisp;
+(checkequal "accidents"
+  ((osql "accident();") '((0 69 1 301 6) (1 62 1 276 5))))
+
+(checkequal "smashed_car()"
+  ((osql "smashed_car();") '((8 364320 0 69 1 1) (76 364320 0 69 1 1)
+			(5555 328673 1 62 1 2) (5556 328673 1 62 1 2))))
+
+(checkequal "accident_remove_order()"
+ ((osql "select i, accident_remove_order(i) from integer i;") 
+ '((0 8) (0 8) (1 8) (1 8))))
+:osql
+
+set_current_minute(8);
+select check_kill_accident(xways)
+	            from Integer xways
+	           where xways in iota(0,1);
+
+lisp;
+(checkequal "accidents after remove order"
+  ((osql "accident();") '()))
+
+(checkequal "smashed_car after remove order"
+  ((osql "smashed_car();") '()))
+
+(checkequal "accident_remove_order after remove order"
+  ((osql "select accident_remove_order(i) from integer i;") '()))
+
+
+;;; There should not be an accident here (seg is arbitrarily chosen).
+
+(checkequal "non-accident area"
+  ((osql "is_accident_area(0,10,1);") '()))
+:osql
+
+set_current_second(140);
+set_current_minute(3);
+add_accident(0,10,1,140,3);
+set_current_minute(7);
+
+lisp;
+(checkequal "accident area"
+  ((osql "is_accident_area(0,10,1);") '((TRUE)))
+  ((osql "is_accident_area(0,11,1);") '((TRUE)))
+  ((osql "is_accident_area(0,9,1);") '()))
+:osql
+
+remove_accident(0);
+
+lisp;
+(checkequal "accident area after removal"
+  ((osql "is_accident_area(0,10,1);") '())
+  ((osql "is_accident_area(0,11,1);") '())
+  ((osql "is_accident_area(0,9,1);") '()))
+
+:osql
+lrfinalize();
+
+/* accbalfuse */
+
+lisp;
+(checkequal "lrfuse (fusing account balance)"
+((osql "sort(select lrlogfilter(lrfuse(suall(proc), 2),
+                                2, 0)
+from sp src, vector of sp proc, integer L
+where proc = spv(
+  vectorof(
+    select lr(s)
+    from integer i, stream of vector of integer s
+    where i in iota(0, L - 1)
+    and s = stract(src)))
+and src = newsp(lreadfast(
+             {getenv('AMOS_HOME') + '/scsq/lr/data/crowded.out' }, L),
+             L, #'lrdistrib2')
+and L = 2);") 
+'((#(#(2 63 0 1000 63 8.0) #(2 70 0 1001 65 10.0) #(2 80 0 1002 65 10.0))))))
+
+
+; Do a regression test on a moderately sized data set.
+; testlr() is used for the regression test 
+; on the local node, which re-initializes all tables 
+; used in LR.
+; lr() is used directly without any initialization in
+; the distributed extract(newsp(...)) test below.
+
+(checkequal "Conventional L=1.5"
+  ((osql "loadhistory(readintstream('data/hist_lite.out'));
+
+set last_clock() = real(now());
+add lroutput() = testlr('data/cdp_mid15.out', 2);
+print({'duration CONVENTIONAL = ', duration(last_clock())});
+
+add actual0(v[0], v[1], v[2]) = <v[4], v[5]>
+from vector v
+where v = lrlogfilter(lroutput(), 0, 0);
+add actual1() = {v[0], v[1], v[3], v[4]} 
+  from vector v
+  where v = lrlogfilter(lroutput(), 1, 0);
+add actual2() = {v[0],v[3],v[5]}
+  from vector v
+  where v = lrlogfilter(lroutput(), 2, 0);
+add actual3() = {v[0],v[1],v[3],v[4]} 
+  from vector v
+  where v = lrlogfilter(lroutput(), 3, 0);
+count(select actual0(i,j,k) from integer i, integer j, integer k);")
+   (osql "count(select expected0(i,j,k) 
+                from integer i, integer j, integer k);"))
+  ((osql "count(actual1());") (osql "count(expected1());"))
+  ((osql "count(actual2());") (osql "count(expected2());"))
+  ((osql "count(actual3());") (osql "count(expected3());")))
+
+(checkequal "full L=1.5 output CONVENTIONAL"
+ ((osql "count(
+   select a_lav, a_toll
+   from integer i, integer j, integer k, 
+     real a_lav, real a_toll, real e_lav, real e_toll
+   where <a_lav, a_toll> = actual0(i,j,k)
+     and <e_lav, e_toll> = expected0(i,j,k)
+     and roundto(a_lav, 5) = roundto(e_lav, 5)
+     and roundto(a_toll, 5) = roundto(e_toll, 5));")
+  (osql "count(select expected0(i,j,k) from integer i, integer j,
+         integer k);"))
+ ((osql "sort(actual1());")
+  (osql "sort(expected1());"))
+ ((osql "sort(actual2());")
+  (osql "sort(expected2());"))
+ ((osql "sort(actual3());")
+  (osql "sort(expected3());")))
+;'
+
+(checkequal "binary writefile"
+ ((osql
+   "set last_clock() = real(now());
+    writefile('data/cdp_mid15.bin',
+               iarray(vreadfile('data/cdp_mid15.out')));
+    print({'duration write = ', duration(last_clock())});
+    create function iadiff(iarray ia, vector of number v)->real as
+    sum(select abs(ia[i] - v[i])
+    from integer i where i in iota(0,dim(ia)-1));
+    set last_clock() = real(now());
+    set :diff = sum(select iadiff(i, v)
+    from iarray i, vector of integer v, vector m
+    where m = merge({newsp(streamof(readfile(getenv('AMOS_HOME') + 
+                                             '/scsq/lr/data/cdp_mid15.out'))),
+                     newsp(streamof(readfile(getenv('AMOS_HOME') + 
+                                             '/scsq/lr/data/cdp_mid15.bin')))})
+    and v = m[0]
+    and i = m[1]);
+    print({'duration read = ', duration(last_clock())});
+    :diff;")
+ '((0))))
+
+;'"
+
+(checkequal "Binary L=1.5"
+  ((osql "clear_function('actual0');
+clear_function('actual1');
+clear_function('actual2');
+clear_function('actual3');
+clear_function('lroutput');
+clear_function('abtime');
+clear_function('abanswer');
+set last_clock() = real(now());
+add lroutputbin() = testlrbin('data/cdp_mid15.bin', 2);
+print({'duration BINARY = ', duration(last_clock())});
+
+add actual0(integer(v[0]), integer(v[1]), integer(v[2])) = <v[4], v[5]>
+from vector of number v
+where v = lrbinlogfilter(lroutputbin(), 0, 0);
+add actual1() = {integer(v[0]), integer(v[1]), integer(v[3]), integer(v[4])} 
+  from vector of number v
+  where v = lrbinlogfilter(lroutputbin(), 1, 0);
+add actual2() = {integer(v[0]), integer(v[3]), v[5]}
+  from vector of number v
+  where v = lrbinlogfilter(lroutputbin(), 2, 0);
+add actual3() = {integer(v[0]), integer(v[1]), integer(v[3]), integer(v[4])} 
+  from vector of number v
+  where v = lrbinlogfilter(lroutputbin(), 3, 0);
+count(select actual0(i,j,k) from integer i, integer j, integer k);")
+   (osql "count(select expected0(i,j,k) 
+                from integer i, integer j, integer k);"))
+  ((osql "count(actual1());") (osql "count(expected1());"))
+  ((osql "count(actual2());") (osql "count(expected2());"))
+  ((osql "count(actual3());") (osql "count(expected3());")))
+
+(checkequal "full L=1.5 output BINARY"
+ ((osql "count(
+   select a_lav, a_toll
+   from integer i, integer j, integer k, 
+     real a_lav, real a_toll, real e_lav, real e_toll
+   where <a_lav, a_toll> = actual0(i,j,k)
+     and <e_lav, e_toll> = expected0(i,j,k)
+     and roundto(a_lav, 5) = roundto(e_lav, 5)
+     and roundto(a_toll, 5) = roundto(e_toll, 5));")
+  (osql "count(select expected0(i,j,k) from integer i, integer j,
+         integer k);"))
+ ((osql "sort(actual1());")
+  (osql "sort(expected1());"))
+ ((osql "sort(actual2());")
+  (osql "sort(expected2());"))
+ ((osql "sort(actual3());")
+  (osql "sort(expected3());")))
+
+(checkequal "Textual timestamp tslr()"
+ ((osql "
+set :a = {1, 1, 1, 1};
+set :b = tslr(:a);
+sleep(0.1);
+set :c = roundto(rnow() - :b[2], 3);
+:a;")
+  (osql "{1, 1, 1, 1};"))
+ ((formatl t "[time diff " amos_c "] ") nil)
+ ((and (< amos_c 1.0) (>= amos_c 0.1))
+  t))
+
+(checkequal "Binary timestamp timestamplrbin()"
+ ((osql "
+set :abin = realify({1, 1, 1, 1});
+set :bbin = timestamplrbin(:abin);
+sleep(0.1);
+set :cbin = roundto(rnow() - :bbin[2], 3);
+na2vec(:abin);")
+  (osql "{1.0, 1.0, 1.0, 1.0};"))
+ ((formatl t "[time diff " amos_cbin "] ") nil)
+ ((and (< amos_cbin 1.0) (>= amos_cbin 0.1))
+  t))
+
+(checkequal "L=4, // per xway, distrib main mem dailyexp db. [split|map|merge]"
+ ((osql "clear_function('history');
+clear_function('expected0');
+clear_function('expected1');
+clear_function('expected2');
+clear_function('expected3');
+clear_function('actual0');
+clear_function('actual1');
+clear_function('actual2');
+clear_function('actual3');
+clear_function('lroutputbin');
+clear_function('abtime');
+clear_function('abanswer');
+set last_clock() = real(now());
+add lroutput() = lrfuse(all, 4)
+from vector of stream src, vector of stream proc, stream all
+where all = mergestreams(proc)
+and proc = mapflex(src, #'lr',
+                   make_record({'dump', {'lrhistory-0.dmp', 'lrhistory-1.dmp', 
+                                'lrhistory-2.dmp', 'lrhistory-3.dmp'}}))
+and src = splitstream(lreadfast(
+                getenv('AMOS_HOME') + '/scsq/lr/data/cdp_lite40.out', 4),
+                4, #'lrdistrib2');
+print({'duration L=4 // = ', duration(last_clock())});
+add actual0(v[0], v[1], v[2]) = <v[4], v[5]>
+from vector v
+where v = lrlogfilter(lroutput(), 0, 0);
+add actual1() = lrlogfilter(lroutput(), 1, 0);
+add actual2() = {v[0],v[3],v[5]} 
+  from vector v
+  where v = lrlogfilter(lroutput(), 2, 0);
+add actual3() = {v[0],v[1],v[3],v[4]} 
+  from vector v
+  where v = lrlogfilter(lroutput(), 3, 0);
+add expected0(v[0], v[1], v[2]) = <v[4], v[5]>
+from vector v
+where v in readfile('data/o40-0-expected.out');
+create_index('expected0', 'carid', 'hash', 'multiple');
+create_index('expected0', 'time', 'hash', 'multiple');
+add expected1() = readfile('data/o40-1-expected.out');
+add expected2() = {v[0],v[3],v[5]}
+  from vector v
+  where v in readfile('data/o40-2-expected.out');
+add expected3() = {v[0],v[1],v[3],v[4]}
+  from vector v
+  where v in readfile('data/o40-3-expected.out');
+count(select actual0(i,j,k) from integer i, integer j, integer k);")
+  (osql "count(select expected0(i,j,k) from integer i, integer j, 
+               integer k);"))
+ ((osql "count(actual1());") (osql "count(expected1());"))
+ ((osql "count(actual2());") (osql "count(expected2());"))
+ ((osql "count(actual3());") (osql "count(expected3());")))
+
+(checkequal "full L=4.0 output CONVENTIONAL"
+ ((osql "count(
+   select a_lav, a_toll
+   from integer i, integer j, integer k, 
+     real a_lav, real a_toll, real e_lav, real e_toll
+   where <a_lav, a_toll> = actual0(i,j,k)
+     and <e_lav, e_toll> = expected0(i,j,k)
+     and roundto(a_lav, 5) = roundto(e_lav, 5)
+     and roundto(a_toll, 5) = roundto(e_toll, 5));")
+  (osql "count(select expected0(i,j,k) from integer i, integer j,
+         integer k);"))
+ ((osql "sort(actual1());")
+  (osql "sort(expected1());"))
+ ((osql "sort(actual2());")
+  (osql "sort(expected2());"))
+ ((osql "sort(actual3());")
+  (osql "sort(expected3());")))
+
+(checkequal "L=4, BINARY"
+ ((osql "clear_function('history');
+clear_function('actual0');
+clear_function('actual1');
+clear_function('actual2');
+clear_function('actual3');
+clear_function('lroutput');
+clear_function('lroutputbin');
+clear_function('abtime');
+clear_function('abanswer');
+writefile('data/cdp_lite40.bin', iarray(vreadfile('data/cdp_lite40.out')));
+set last_clock() = real(now());
+add lroutputbin() = lrfusebin(all, 4)
+from vector of stream src, vector of stream proc, stream of darray all
+where all = mergestreams(proc)
+and proc = mapflex(src, #'lrbin',
+                   make_record({'dump', {'lrhistory-0.dmp', 'lrhistory-1.dmp', 
+                                'lrhistory-2.dmp', 'lrhistory-3.dmp'}}))
+and src = splitstream(lreadfast(
+                getenv('AMOS_HOME') + '/scsq/lr/data/cdp_lite40.bin', 4),
+                4, #'lrdistrib2bin');
+print({'duration L=4 // = ', duration(last_clock())});
+add actual0(integer(v[0]), integer(v[1]), integer(v[2])) = <v[4], v[5]>
+from vector of number v
+where v = lrbinlogfilter(lroutputbin(), 0, 0);
+add actual1() = {integer(v[0]), integer(v[1]), integer(v[3]), integer(v[4])} 
+  from vector of number v
+  where v = lrbinlogfilter(lroutputbin(), 1, 0);
+add actual2() = {integer(v[0]), integer(v[3]), v[5]}
+  from vector of number v
+  where v = lrbinlogfilter(lroutputbin(), 2, 0);
+add actual3() = {integer(v[0]), integer(v[1]), integer(v[3]), integer(v[4])} 
+  from vector of number v
+  where v = lrbinlogfilter(lroutputbin(), 3, 0);
+count(select actual0(i,j,k) from integer i, integer j, integer k);")
+  (osql "count(select expected0(i,j,k) from integer i, integer j, 
+               integer k);"))
+ ((osql "count(actual1());") (osql "count(expected1());"))
+ ((osql "count(actual2());") (osql "count(expected2());"))
+ ((osql "count(actual3());") (osql "count(expected3());")))
+
+(checkequal "full L=4.0 output BINARY"
+ ((osql "count(
+   select a_lav, a_toll
+   from integer i, integer j, integer k, 
+     real a_lav, real a_toll, real e_lav, real e_toll
+   where <a_lav, a_toll> = actual0(i,j,k)
+     and <e_lav, e_toll> = expected0(i,j,k)
+     and roundto(a_lav, 5) = roundto(e_lav, 5)
+     and roundto(a_toll, 5) = roundto(e_toll, 5));")
+  (osql "count(select expected0(i,j,k) from integer i, integer j,
+         integer k);"))
+ ((osql "sort(actual1());")
+  (osql "sort(expected1());"))
+ ((osql "sort(actual2());")
+  (osql "sort(expected2());"))
+ ((osql "sort(actual3());")
+  (osql "sort(expected3());")))
+
+
+;; account balance answers are on the form
+;; {eventtype, time t, emit time t', QID, lastupdated \tau, balance}
+
+(checkequal "lrf0d account balance stream fusion"
+ ((osql "lrf0d(smallaccbalresults());")
+  (cons (cons (init-darray #(2.0 10.0 11.0 10000.0 11.0 600.0)))))
+ ((osql "set last_clock() = real(now());set :a=count(lrf0d(accbalresults()));
+         print({'duration 1000 accbals @ L=64 = ', duration(last_clock())});
+         :a;")
+  '((1000))))
+
+(checkequal "lrfd account balance on a set of streams"
+ ((osql "count(in(mergestreams(mapstreams({zipstreams(abrproc(4, 5))}, #'lrfd'))));")
+  '((5000))))
+
+(checkequal "lrfd in a zipstream tree"
+((osql "count(in(zipstreams(zipmaplayer(abrproc(5, 2), 2, #'lrfd'))));")
+ '((2000))))
+
+(checkequal "lrf0d of nahmerge of mergestreams"
+((osql "count(select lrf0d(nahmerge(in(sna), 3, L))
+from stream of numarray sna, integer L, integer rep
+where sna = mergestreams(abrproc(L, rep))
+and L = 3
+and rep = 2);")
+'((2000))))
+
+
+
+;;(checkequal "L=4, BINARY + abagg node. separate split + mapstreams"
+;;  ((osql "clear_function('history');
+;; clear_function('actual0');
+;; clear_function('actual1');
+;; clear_function('actual2');
+;; clear_function('actual3');
+;; clear_function('lroutputbin');
+;; clear_function('abtime');
+;; clear_function('abanswer');
+;; writefile('data/cdp_lite40.bin', iarray(vreadfile('data/cdp_lite40.out')));
+;; set last_clock() = real(now());
+;; add lroutputbin() = in(mergestreams(concat({abagg}, alla)))
+;; from vector of stream src, vector of stream proc, vector of stream postproc,
+;; vector of stream alla, stream abagg
+;; where abagg = ostream(newsp(lrf(zipstreams(vectorize(select i, postproc[i*2+1]
+;;   from integer i where i in iota(0, dim(postproc)/2))))), 0)
+;; and alla = vectorize(select i, postproc[i*2]
+;;   from integer i where i in iota(0, dim(postproc)/2))
+;; and postproc = splitstreams(proc, 2, #'accbalsplit')
+;; and proc = mapflex(src, #'lrbin',
+;; make_record({'dump', {'lrhistory-0.dmp', 'lrhistory-1.dmp', 
+;; 'lrhistory-2.dmp', 'lrhistory-3.dmp'}, 'imgsz', 100000000}))
+;; and src = splitstream(lreadfast(
+;;                 getenv('AMOS_HOME') + '/scsq/lr/data/cdp_lite40.bin', 4),
+;;                 4, #'lrdistrib2bin');
+;; print({'duration L=4 // = ', duration(last_clock())});
+;; add actual0(integer(v[0]), integer(v[1]), integer(v[2])) = <v[4], v[5]>
+;; from vector of number v
+;; where v = lrbinlogfilter(lroutputbin(), 0, 0);
+;; add actual1() = {integer(v[0]), integer(v[1]), integer(v[3]), integer(v[4])} 
+;;   from vector of number v
+;;   where v = lrbinlogfilter(lroutputbin(), 1, 0);
+;; add actual2() = {integer(v[0]), integer(v[3]), v[5]}
+;;   from vector of number v
+;;   where v = lrbinlogfilter(lroutputbin(), 2, 0);
+;; add actual3() = {integer(v[0]), integer(v[1]), integer(v[3]), integer(v[4])} 
+;;   from vector of number v
+;;   where v = lrbinlogfilter(lroutputbin(), 3, 0);
+;; count(select actual0(i,j,k) from integer i, integer j, integer k);")
+;;   (osql "count(select expected0(i,j,k) from integer i, integer j, 
+;;                integer k);"))
+;;  ((osql "count(actual1());") (osql "count(expected1());"))
+;;  ((osql "count(actual2());") (osql "count(expected2());"))
+;;  ((osql "count(actual3());") (osql "count(expected3());")))
+
+(checkequal "count lrdistrib2bin"
+((osql "select in(zipstreams(mapstreams(s, #'stream.scount->stream')))
+from vector of stream of iarray s 
+where s = splitstream(lreadfast(getenv('AMOS_HOME') +
+'/scsq/lr/data/cdp_lite40.bin', 4), 4, #'lrdistrib2bin');")
+'((#(2635 2473 2590 2491)))))
+
+; Expected counts are correct here. eventtype 3 are disregarded by lrproute.
+; 11 type 3 events => 2635-2624; 2590-2579; 2473-2462; 2491-2480.
+
+(checkequal "count hpartstream #'lrproute' output, fanout 2"
+((osql "select in(zipstreams(mapstreams(s, #'stream.scount->stream')))
+from vector of stream of iarray s 
+where s = hpartstream(lreadfast(getenv('AMOS_HOME') + 
+'/scsq/lr/data/cdp_lite40.bin', 4), #'lrproute', 4, 2, 0);") 
+'((#(2624 2579 2462 2480)))))
+
+(checkequal "count hpartstream #'lrproute' output, fanout 4"
+((osql "select in(zipstreams(mapstreams(s, #'stream.scount->stream')))
+from vector of stream of iarray s 
+where s = hpartstream(lreadfast(getenv('AMOS_HOME') + 
+'/scsq/lr/data/cdp_lite40.bin', 4), #'lrproute', 4, 4, 0);") 
+'((#(2624 2462 2579 2480)))))
+
+(checkequal "count rbhpartstreamv lrprfn + q2bfn fanout {2, 2}"
+((osql "select in(zipstreams(mapstreams(s, #'stream.scount->stream')))
+from vector of stream of iarray s 
+where s = rbhpartstreamv(lreadfast(getenv('AMOS_HOME') + 
+'/scsq/lr/data/cdp_lite40.bin', 4), #'lrprfn', #'q2bfn', 4, {2,2}, 0);")
+'((#(2624 2579 2462 2480)))))
+
+(checkequal "count qdsplit"
+((osql "select in(zipstreams(mapstreams(s, #'stream.scount->stream')))
+from vector of stream of iarray s 
+where s = splitstream(lreadfast(getenv('AMOS_HOME') +
+'/scsq/lr/data/cdp_lite40.bin', 2), 2, #'qdsplit');")
+'((#(9877 67)))))
+
+(checkequal "count qdsplit-[bcast+dsplit]"
+((osql "select in(zipstreams(
+  mapstreams(concat(sposrep, squeries), #'stream.scount->stream')))
+from vector of stream of iarray s,
+vector of stream of iarray sposrep,
+vector of stream of iarray squeries
+where sposrep = splitstream(s[0], 4, #'dsplit')
+and squeries = splitstream(s[1], 4, #'bcast')
+and s = splitstream(lreadfast(getenv('AMOS_HOME') +
+'/scsq/lr/data/cdp_lite40.bin', 2), 2, #'qdsplit');")
+'((#(2557 2395 2512 2413 67 67 67 67)))))
+
+;;(checkequal "count merge qdsplit-[bcast+dsplit]"
+;;((osql "select in(zipstreams(proc))
+;;from vector of stream of iarray s,
+;;vector of stream of iarray sposrep,
+;;vector of stream of iarray squeries,
+;;vector of stream of darray proc
+;;where proc = mapstreams(
+;;  (vselect mergestreams({sposrep[i], squeries[i]}) from integer i),
+;;  #'stream.scount->stream')
+;;and sposrep = splitstream(s[0], 4, #'dsplit')
+;;and squeries = splitstream(s[1], 4, #'bcast')
+;;and s = splitstream(lreadfast(getenv('AMOS_HOME') +
+;;'/scsq/lr/data/cdp_lite40.bin', 2), 2, #'qdsplit');")
+;;'((#(2624 2462 2579 2480)))))
+
+;;(checkequal "out of band LR, L=4"
+;;((osql "select in(zipstreams(countproc))
+;;from vector of stream of iarray s,
+;;vector of stream of iarray sposrep,
+;;vector of stream of iarray squeries,
+;;vector of stream of darray proc,
+;;vector of stream of darray postproc,
+;;vector of stream of integer countproc
+;;where countproc = mapstreams(
+;;  vselect mergestreams(
+;;    vselect postproc[3*i + j] from integer i where i in iota(0,3))
+;;  from integer j where j in iota(0, 2), #'stream.scount->stream')
+;;and postproc = splitstreams(proc, 3, #'oesplit')
+;;and proc = mapstreams(
+;;  (vselect mergestreams({sposrep[i], squeries[i]}) from integer i),
+;;  #'lrbin')
+;;and sposrep = splitstream(s[0], 4, #'dsplit')
+;;and squeries = splitstream(s[1], 4, #'bcast')
+;;and s = splitstream(lreadfast(getenv('AMOS_HOME') +
+;;'/scsq/lr/data/cdp_lite40.bin', 2), 2, #'qdsplit');")
+;;'((#(5010 0 268)))))
+
+(checkequal "hybrid test data"
+((osql "count(in(i_hybrid(64, 0, 1)));")
+'((1000)))
+((osql "count(select distinct xway(w) from iarray w
+where w in i_hybrid(64, 0, 1));")
+'((64)))
+((osql "count(select distinct xway(w) from iarray w
+where w in i_hybrid(64, 5, 1));")
+'((65)))
+((osql "count(select
+from iarray w
+where w in i_hybrid(64, 5, 1)
+and eventtype(w) = 0);")
+'((995))))
+
+(checkequal "coarse enum hybrid test data"
+((osql "select distinct w[1] from iarray w
+where w in i_hybrid_enumc(64, 0, 0);")
+nil)
+((osql "select distinct w[1] from iarray w
+where w in i_hybrid_enumc(64, 0, 1);")
+'((0)))
+((osql "select distinct w[1] from iarray w
+where w in i_hybrid_enumc(64, 10, 5);")
+'((0) (1) (2) (3) (4))))
+
+(checkequal "multiarray coarse enum hybrid test data"
+((osql "select distinct w[1] from iarray w
+where w in i_multihybrid_enumc(64, 5, 10, 1);")
+'((0) (1) (2) (3) (4) (5) (6) (7) (8) (9)))
+((osql "count(in(i_multihybrid_enumc(64, 5, 10, 1)));")
+'((10000)))
+((osql "count(in(i_multihybrid_enumc(64, 5, 10, 20)));")
+'((500)))
+((osql "select distinct 
+dim(multi2na(in(i_multihybrid_enumc(64, 5, 1, 20)), 15));")
+'((15))))
+
+(checkequal "clrmultiply"
+((osql "count(clrmultiply(in(i_hybrid(64, 0, 1)), 64, 1));")
+'((1000)))
+((osql "count(clrmultiply(in(i_hybrid(64, 0, 1)), 64, 3));")
+'((3000)))
+((osql "count(select distinct xway(in(i_hybrid(64, 0, 1))));")
+'((64)))
+((osql "count(select distinct
+xway(clrmultiply(in(i_hybrid(64, 0, 1)), 64, 8)));")
+'((512)))
+((osql "count(select distinct
+xway(clrmultiply(in(i_hybrid(64, 5, 1)), 64, 8)));")
+'((513))))
+
+;; clrmultiplyf tests taken out because they fail EZ/2010-07-23
+;; (checkequal "clrmultiplyf"
+;; ((osql "count(clrmultiplyf(in(i_hybrid(64, 0, 1)), 64, 1.0 ) );")
+;; '((1000)))
+;; ((osql "count(clrmultiplyf(in(i_hybrid(64, 0, 1)), 64, 2.25));")
+;; '((2257)))
+;; ((osql "count(clrmultiplyf(in(i_hybrid(64, 0, 1)), 64, 0.625));")
+;; '((633))) )
+
+(checkequal "clrmultiply on multiarray coarse enum hybrid"
+((osql "count(multi2na(clrmultiply(in(
+i_multihybrid_enumc(64, 0, 1, 1)), 64, 1), 15));")
+'((1000)))
+((osql "count(multi2na(clrmultiply(in(
+i_multihybrid_enumc(64, 0, 1, 10)), 64, 1), 15));")
+'((1000)))
+((osql "count(select distinct xway(w) from iarray w where w in
+multi2na(clrmultiply(in(i_multihybrid_enumc(64, 0, 1, 1)), 64, 1), 15));")
+'((64)))
+((osql "count(select distinct xway(w) from iarray w where w in
+multi2na(clrmultiply(in(i_multihybrid_enumc(64, 0, 1, 10)), 64, 1), 15));")
+'((64)))
+((osql "count(multi2na(clrmultiply(in(
+i_multihybrid_enumc(64, 0, 1, 1)), 64, 8), 15));")
+'((8000)))
+((osql "count(multi2na(clrmultiply(in(
+i_multihybrid_enumc(64, 0, 1, 10)), 64, 8), 15));")
+'((8000)))
+((osql "count(select distinct xway(w) from iarray w where w in
+multi2na(clrmultiply(in(i_multihybrid_enumc(64, 0, 1, 1)), 64, 8), 15));")
+'((512)))
+((osql "count(select distinct xway(w) from iarray w where w in
+multi2na(clrmultiply(in(i_multihybrid_enumc(64, 0, 1, 10)), 64, 8), 15));")
+'((512))))
+
+(checkequal "multiarray file generation"
+((osql "writefile('data/cdp40_multi.bin', 
+na2multi(in(lreadfastbin('data/cdp_lite40.bin')), 20));
+count(readfile('data/cdp40_multi.bin'));")
+'((500))))
+
+(checkequal "clrmultiply on multiarray file"
+((osql "count(multi2na(clrmultiply(
+in(lreadfastbin('data/cdp40_multi.bin')), 4, 1), 15));")
+'((10000)))
+((osql "count(multi2na(clrmultiply(
+in(lreadfastbin('data/cdp40_multi.bin')), 4, 8), 15));")
+'((80000)))
+((osql "count(select distinct xway(w) from iarray w where w in multi2na(
+clrmultiply(in(lreadfastbin('data/cdp40_multi.bin')), 4, 8), 15));")
+'((33))))
+
+(checkequal "readfile|clrmultiply|randrobin|fsplit|premerge+count|zip"
+((osql "sp_flush_freq(0.01);
+select cnt
+from integer cnt, real time
+where <time, cnt> = aggstat(readfastmulti_rr_fsplit_mergecount(
+getenv('AMOS_HOME') + '/scsq/lr/data/cdp40_multi.bin', 4, 3, 4))
+and print({'duration: ', time});")
+'((32043))))
+
+(checkequal "clrmultiply|TOS on L=4 input: mul=2, rrfo=4, fo=8"
+((osql "readfastmulti_rr_fsplit_lr(getenv('AMOS_HOME') + 
+'/scsq/lr/data/cdp40_multi.bin', 4, 2, 4, 8);")
+'((11092))))
+
+;; NB cdp_lite40.out contains 67 account balance events
+;; multiout-2-0 should contain twice that many acc bal events = 134
+
+(checkequal "clrmultiply|TOS|LRmerge on L=4 input: mul=2, rrfo=4"
+((let ((times (osql "rr_fsplit_lr_mrg_opt(
+{getenv('AMOS_HOME') + '/scsq/lr/data/cdp40_multi.bin'}, 4, 2, 4,
+getenv('AMOS_HOME') + '/scsq/lr/data/multiout');")))
+ (length times))
+3)
+((osql "count(readfile(getenv('AMOS_HOME') + '/scsq/lr/data/multiout-0-0'));")
+'((10020)))
+((osql "count(readfile(getenv('AMOS_HOME') + '/scsq/lr/data/multiout-2-0'));")
+'((134))))
+
+(checkequal "destructive time stamping of lr output"
+ ((osql "set last_clock() = real(now());
+set :count = count(select dtslrbin(d)from darray d where d in 
+   stract(newsp(streamof(realify(iastream2v(i_hybrid(64, 5, 10)))))));
+print({'duration ', real(now()) - last_clock()});
+:count;")
+'((10000))))
+
+(formatl t "(Duration "
+(roundto (time-spent (checkequal
+ "clrmult|randr TOS|tree mrg|unpack|tcount (inL=4 mul=2 rrfo=4 postmul=8)"
+  ((osql "sort(rr_fsplit_lrmulti_mrg_tzip_unpack_tcount(
+  {getenv('AMOS_HOME') + '/scsq/lr/data/cdp40_multi.bin'}, 4, 2, 4, 8,
+  'dummy')[3]);")
+'((#(0 134 10020)))))) 2) ")" t)
+
+(formatl t "(Duration "
+(roundto (time-spent (checkequal
+ "clrmult|rsplit TOS|tree mrg|unpack|tcount (inL=4 mul=2 rrfo=4 postmul=8)"
+  ((osql "sort(rsplit_fsplit_lrmulti_mrg_tzip_unpack_tcount(
+  {getenv('AMOS_HOME') + '/scsq/lr/data/cdp40_multi.bin'}, 4, 2, 4, 8,
+  'dummy')[3]);")
+'((#(0 134 10020)))))) 2) ")" t)
+
+(formatl t "(Duration "
+(roundto (time-spent (checkequal
+ "clrmult|rsplit TOS|sqtree mrg|unpack|tcount (inL=4 mul=2 rrfo=4 postmul=8)"
+  ((osql "sort(rsplit_fsplit_lrmulti_mrg_sqzip_unpack_tcount(
+  {getenv('AMOS_HOME') + '/scsq/lr/data/cdp40_multi.bin'}, 4, 2, 4, 8,
+  'dummy')[3]);")
+'((#(0 134 10020)))))) 2) ")" t)
+
+(formatl t " (Duration "
+(roundto (time-spent (checkequal "rsplit_fsplit_lrbin_bguallall_tcount"
+((osql "rsplit_fsplit_lrbin_bguallall_tcount(
+{getenv('AMOS_HOME') + '/scsq/lr/data/cdp40_multi.bin'}, 4,1,2)[3];")
+'((5278))))) 2) ")" t)
+
+(formatl t " (Duration "
+(roundto (time-spent (checkequal "rsplit_fsplit_lrbin_bguall_tcount"
+((osql "sort(rsplit_fsplit_lrbin_bguall_tcount(
+{getenv('AMOS_HOME') + '/scsq/lr/data/cdp40_multi.bin'}, 4,1,2)[3]);")
+'((#(0 268 5010)))))) 2) ")" t)
+
+(formatl t " (Duration "
+(roundto (time-spent (checkequal "rs_fs_lrbinmulti_bguazipup_tcount"
+((osql "sort(rs_fs_lrbinmulti_bguazipup_tcount(
+{getenv('AMOS_HOME') + '/scsq/lr/data/cdp40_multi.bin'}, 4,1,2, 10)[3]);")
+'((#(0 67 5010)))))) 2) ")" t)
+
+
+
+; signature (file, inl, mult, rsplitfo)
+
+:osql
+rollback;
+
+q();
+
+/* TODO: Test the recursively defined zip+map tree zipmmaprecm()
+
+select multi2na(r,6) from darray r 
+where r in zipmmaprecm(abrprocm(8, 1, 16), 3, 6, 16, #'lrfd');
+count(in(zipmmaprec(abrprocm(4, 1, 16), 2, 6)));
+*/

@@ -1,0 +1,147 @@
+<html>
+    <head>
+        <title>Assistant Home</title>
+        <script type="text/javascript" src="scripts/utility.js"></script>
+        <script type="text/javascript" src="scripts/cookies.js"></script>
+        <script type="text/javascript" src="scripts/SOAPClient.js"></script>
+        <script type="text/javascript" language="javascript">
+            var AssistantName,courseName,error;
+            var authority = false;
+
+            function checkAuthority(userName){
+                error = null;
+                SOAPClient.invoke("CHECKAUTHORITY", [userName], false, checkAuthority_callBack, error_callBack);
+            }
+
+            function checkAuthority_callBack(o, xmlDoc)
+            {
+                var soapRes = o;
+                if ("ASSISTANT"==soapRes){
+                    authority = true;
+                }
+            }
+
+            function error_callBack(e, errorCode){
+                if (e != null){
+                    error = e;
+                    document.getElementById("authorityDiv").style.display='none';
+                    document.getElementById("errorDiv").innerHTML="Error callBack:<br>" + error + "<br><br>Error code:<br>" + errorCode;
+                }
+            }
+
+            function aSelectStudent_onclick(){
+                var myObject = new Object();
+                myObject.courseName = courseName;
+                var regSucc = window.showModalDialog('SelectStudent.html',myObject,'dialogWidth:800px; dialogHeight:600px; center:Yes; resizable: Yes; help: No;');
+                if (!((regSucc == 'none')||(regSucc == '')||(regSucc == undefined ))){
+                    aUpdateAssignment_onclick(regSucc);
+                    return false;
+                }else if ((regSucc == 'none')|| (regSucc == '')||(regSucc == undefined)){
+                    return false;
+                }
+            }
+    
+            function aUpdateAssignment_onclick(studentName){
+                if ((studentName == "") || (studentName == null)){
+                    alert("select a student first.");
+                    aSelectStudent_onclick();
+                    return false;
+                }else if (!(studentName == "")){
+                    var myObject = new Object();
+                    myObject.selectedName = studentName;
+                    myObject.courseName = courseName;
+                    var regSucc = window.showModalDialog('UpdateAssignment.html',myObject,'dialogWidth:800px; dialogHeight:600px; center:Yes; resizable: Yes; help: No;');
+                    return false;
+                }
+            }
+
+            function aListStudentsFull_onclick(){
+                var myObject = new Object();
+                myObject.courseName = courseName;
+                var regSucc = window.showModalDialog('ListStudentsFull.html',myObject,'dialogWidth:800px; dialogHeight:600px; center:Yes; resizable: Yes; help: No;');
+                return false;
+            }
+
+            function atodo_onclick(){
+                var regSucc = window.showModalDialog('todo.html',regSucc,'dialogWidth:800px; dialogHeight:600px; center:Yes; resizable: Yes; help: No;');
+                return false;
+            }
+
+            function aQuery_onclick(){
+                var regSucc = window.showModalDialog('Query.html',regSucc,'dialogWidth:800px; dialogHeight:600px; center:Yes; resizable: Yes; help: No;');
+                return false;
+            }
+
+            function logout_onclick(){
+                deleteCookie("name");
+                document.all.aLogout.href='index.html';
+                document.all.aLogout.click();
+            }
+
+            function getCourse()
+            {
+                var urlInfo =  window.location.href;
+                var len = urlInfo.length;
+                var offset = urlInfo.indexOf("?");
+                var strKeyValue = urlInfo.substr(offset,len);
+                var arrParam = strKeyValue.split("=");
+                courseName = arrParam[1];
+            }
+
+            function window_onload(){
+                var userName = getCookie("name");
+                if (userName==""||userName==null){
+                    document.getElementById("authorityDiv").style.display='block';
+                }else{
+                    checkAuthority(userName);
+                }
+                if (authority){
+                    getCourse();
+                    document.getElementById("AHomeBody").style.display='block';
+                    AssistantName = userName;
+                    document.getElementById("loginName").innerHTML = "You are logged as: <b>" + AssistantName + "</b>";
+                }else{
+                    document.getElementById("authorityDiv").style.display='block';
+                }
+            }
+        </script>
+    </head>
+
+    <body onload="return window_onload();">
+        <div id="authorityDiv" style="display:none;">
+            <h2>You don't have authority to view this page.</h2>
+            Go back to the Course Manege <a id="aindex" href="index.html">Homepage</a>
+        </div>
+        <div id="AHomeBody" style="display:none;">
+            <hr>
+            <table width="80%" border="0">
+                <tr><td colspan="10%"><a id="aindex" href="index.html">Main</a></td>
+                    <td colspan="15%"><a id="aAssistantHome" href="AssistantHome.html">Assistant Home</a></td>
+                    <td colspan="15%"><a id="aSelectStudent" href=""
+                                         onclick="return aSelectStudent_onclick();">Select student</a></td>
+                    <td colspan="20%"><a id="aUpdateAssignment" href=""
+                                         onclick="return aUpdateAssignment_onclick('');">Update assignment status</a></td>
+                    <td colspan="10%"><a id="aQuery" href="" onclick="return aQuery_onclick();">AmosQL</a></td>
+                    <td colspan="10%"><a id="aLogout" href="" onclick="return logout_onclick();">Logout</a></td>
+                    <td colspan="20%" id="loginName"></td>
+            </table>
+            <hr>
+            <h2>Assistant Home</h2>
+            <ul>
+                <li><a id="aSelectStudent" href=""
+                       onclick="return aSelectStudent_onclick();">Select student</a><br>
+                <li><a id="aUpdateAssignment" href=""
+                       onclick="return aUpdateAssignment_onclick('');">Update the
+	assignment status of students</a><br>
+                <li><a id="aListStudentsFull" href=""
+                       onclick="return aListStudentsFull_onclick();">View the status of
+	students</a><br>
+                <li><a id="atodo" href="" onclick="return atodo_onclick();">Register
+	a new assignment.</a><br>
+                <li><a id="aQuery" href="" onclick="return aQuery_onclick();">Execute
+	arbitrary AmosQL</a><br>
+            </ul>
+        </div>
+        <div id="errorDiv"></div>
+    </body>
+</html>

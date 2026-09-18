@@ -1,0 +1,119 @@
+diff -uw validator-orig/accountBalanceAnswer.pl validator/accountBalanceAnswer.pl
+--- validator-orig/accountBalanceAnswer.pl	2004-09-03 03:32:03.000000000 +0200
++++ validator/accountBalanceAnswer.pl	2009-06-24 15:01:01.000000000 +0200
+@@ -75,15 +75,15 @@
+ $sth->execute;
+ 
+ writeToLog ( $logfile, $logvar, "Deleting from above calculation any cars already appearing in answer");
+-$dbquery="DELETE FROM accountBalancetime60 WHERE accountBalancetime60.qid=accountBalancetime0.qid;";
++$dbquery="DELETE FROM accountBalancetime60 WHERE accountBalancetime60.qid IN ( SELECT accountBalancetime0.qid FROM accountBalancetime0);";
+ $sth=$dbh->prepare("$dbquery") or die $DBI::errstr;
+ $sth->execute;
+ 
+-$dbquery="DELETE FROM accountBalancetime60 WHERE accountBalancetime60.qid=accountBalancetime10.qid;";
++$dbquery="DELETE FROM accountBalancetime60 WHERE accountBalancetime60.qid IN ( SELECT accountBalancetime10.qid FROM accountBalancetime10 );";
+ $sth=$dbh->prepare("$dbquery") or die $DBI::errstr;
+ $sth->execute;
+ 
+-$dbquery="DELETE FROM accountBalancetime60 WHERE accountBalancetime60.qid=accountBalancetime2.qid;";
++$dbquery="DELETE FROM accountBalancetime60 WHERE accountBalancetime60.qid IN ( SELECT accountBalancetime2.qid FROM accountBalancetime2);";
+ $sth=$dbh->prepare("$dbquery") or die $DBI::errstr;
+ $sth->execute;
+ 
+@@ -93,25 +93,25 @@
+ $sth->execute;
+ 
+ writeToLog ( $logfile, $logvar, "Calculating queries that have no tollAccAlerts.");
+-$dbquery="DELETE FROM accountBalancetime60 WHERE accountBalanceancient.qid=accountBalancetime60.qid;";
++$dbquery="DELETE FROM accountBalancetime60 WHERE accountBalancetime60.qid IN ( SELECT accountBalanceancient.qid FROM accountBalanceancient);";
+ $sth=$dbh->prepare("$dbquery") or die $DBI::errstr;
+ $sth->execute;
+ 
+ writeToLog ( $logfile, $logvar, "Setting balance to zero for carids that have a type 2 request but no previous tollAccAlerts.");
+-$dbquery="SELECT t2.carid, t2.time as querytime, min (tollAccAlerts.time) as resulttime,  t2.qid,  integer '0' AS toll INTO accountBalancequeryatenterance FROM  accountBalancerequests as t2, tollAccAlerts WHERE  t2.carid=tollAccAlerts.carid	GROUP BY t2.carid, t2.time, t2.qid ORDER BY t2.carid, t2.time;";
++$dbquery="SELECT t2.carid, t2.time as querytime, t2.time as resulttime,  t2.qid,  integer '0' AS toll INTO accountBalancequeryatenterance FROM  accountBalancerequests as t2 GROUP BY t2.carid, t2.time, t2.qid ORDER BY t2.carid, t2.time;";
+ $sth=$dbh->prepare("$dbquery") or die $DBI::errstr;
+ $sth->execute;
+ 
+-$dbquery="DELETE FROM accountBalancequeryatenterance WHERE querytime<>resulttime;";
++$dbquery="DELETE FROM accountBalancequeryatenterance as t2 WHERE t2.carid IN( SELECT ta.carid FROM tollAccAlerts ta);";
+ $sth=$dbh->prepare("$dbquery") or die $DBI::errstr;
+ $sth->execute;
+ 
+-$dbquery="DELETE FROM accountBalancetime2 WHERE accountBalancelast.qid=accountBalancetime2.qid;";
++$dbquery="DELETE FROM accountBalancetime2 WHERE accountBalancetime2.qid IN ( SELECT accountBalancelast.qid FROM accountBalancelast);";
+ $sth=$dbh->prepare("$dbquery") or die $DBI::errstr;
+ $sth->execute;
+ 
+ writeToLog ( $logfile, $logvar, "Creating answer in accountBalanceanswer table.");
+-$dbquery="SELECT * into accountBalanceanswer from accountBalancenow UNION select * from accountBalancemiddle UNION select * from accountBalancelast UNION select * from accountBalanceancient UNION select * from accountBalancequeryatenterance UNION select * FROM accountBalancetime2 UNION select * from accountBalancetime60;";
++$dbquery="SELECT * into accountBalanceanswer from accountBalancenow UNION (SELECT * from accountBalancemiddle) UNION (SELECT * from accountBalancelast) UNION (SELECT * from accountBalanceancient) UNION (SELECT * from accountBalancequeryatenterance) UNION (SELECT * FROM accountBalancetime2) UNION (SELECT * from accountBalancetime60);";
+ $sth=$dbh->prepare("$dbquery") or die $DBI::errstr;
+ $sth->execute;
+ writeToLog ( $logfile, $logvar, "Type 2: Finished Calculating accountBalanceanswer except for special cases too expensive to calculate.");
+diff -uw validator-orig/accountBalanceValidation.pl validator/accountBalanceValidation.pl
+--- validator-orig/accountBalanceValidation.pl	2004-09-03 16:22:00.000000000 +0200
++++ validator/accountBalanceValidation.pl	2009-06-24 15:02:48.000000000 +0200
+@@ -33,7 +33,7 @@
+ $sth->execute;
+ 
+ #Deleting all of the right answers from wrong answer table
+-$dbquery="DELETE FROM accountBalancewronganswers WHERE accountBalancewronganswers.qid=accountBalanceanswer.qid and accountBalancewronganswers.bal=accountBalanceanswer.toll and accountBalancewronganswers.resulttime=accountBalanceanswer.resulttime;";
++$dbquery="DELETE FROM accountBalancewronganswers WHERE ( qid, resulttime, bal) IN( SELECT accbalanswer.qid, accbalanswer.resulttime,accbalanswer.toll FROM accountBalanceanswer accbalanswer);";
+ $sth=$dbh->prepare("$dbquery") or die $DBI::errstr;
+ $sth->execute;
+ 
+@@ -54,7 +54,7 @@
+ 	$sth=$dbh->prepare("$dbquery") or die $DBI::errstr;
+ 	$sth->execute;
+ 	
+-	$dbquery="delete from accountBalancewronganswers where accountBalancewronganswers.qid=temp2.qid and temp2.time=accountBalancewronganswers.resulttime";
++	$dbquery="delete from accountBalancewronganswers where (qid, resulttime) IN ( SELECT temp2.qid, temp2.time FROM temp2)";
+ 	$sth=$dbh->prepare("$dbquery") or die $DBI::errstr;
+ 	$sth->execute;	
+ 
+@@ -68,7 +68,7 @@
+ @accountBalancecomparison = $sth->fetchrow_array;
+ 
+ # If wrong answer table isn't empty, it'll print to log
+-if ( !@accountBalancecomparison){
++if ( @accountBalancecomparison){
+ 
+         print "   *** Account Balance Validation failed All incorrect results are stored in accountBalancewronganswers table.\n";
+ 
+diff -uw validator-orig/compareAlerts.pl validator/compareAlerts.pl
+--- validator-orig/compareAlerts.pl	2004-09-03 19:40:59.000000000 +0200
++++ validator/compareAlerts.pl	2009-06-24 15:31:48.000000000 +0200
+@@ -382,7 +382,7 @@
+    if ($row[0] > 0) {
+       $isDifferent = 1;
+       print "     * There are more toll alerts in the original\n";
+-      writeToLog($logFile, $logVar,"     * There are more toll alerts in the original. Wrong answers stored in tollAlertsNotInValidator table\n");
++      writeToLog($logFile, $logVar,"     * There are more toll alerts in the original. Wrong answers stored in tollAlertNotInValidator table\n");
+ 
+    }
+ 
+@@ -394,7 +394,7 @@
+    if ($row[0] > 0) {
+       $isDifferent = 1;
+       print "     * There are more toll alerts in the validator\n";
+-      writeToLog($logFile, $logVar, "     * There are more toll alerts in the validator. . Wrong answers stored in accAlertsNotInOriginal table\n");
++      writeToLog($logFile, $logVar, "     * There are more toll alerts in the validator. . Wrong answers stored in tollAlertNotInOriginal table\n");
+    }
+ 
+    if ( $isDifferent) {
+diff -uw validator-orig/dailyExpenditureValidation.pl validator/dailyExpenditureValidation.pl
+--- validator-orig/dailyExpenditureValidation.pl	2004-09-03 19:52:58.000000000 +0200
++++ validator/dailyExpenditureValidation.pl	2009-04-01 14:27:15.000000000 +0200
+@@ -52,7 +52,7 @@
+ 	$sth=$dbh->prepare("$dbquery") or die $DBI::errstr;
+ 	$sth->execute;
+ 	
+-	$dbquery="DELETE FROM dailyExpenditurewronganswers WHERE dailyExpenditurewronganswers.qid=outputdailyExpenditure.qid and dailyExpenditurewronganswers.bal=outputdailyExpenditure.bal;";
++	$dbquery="DELETE FROM dailyExpenditurewronganswers WHERE (dailyExpenditurewronganswers.qid, dailyExpenditurewronganswers.bal) IN ( SELECT outputdailyExpenditure.qid, outputdailyExpenditure.bal FROM outputdailyExpenditure WHERE dailyExpenditurewronganswers.qid=outputdailyExpenditure.qid and dailyExpenditurewronganswers.bal=outputdailyExpenditure.bal);";
+ 	$sth=$dbh->prepare("$dbquery") or die $DBI::errstr;
+ 	$sth->execute;
+ 
+Endast i validator/: db
+Endast i validator/: validate.0.5-config
+Endast i validator/: validate.config-scsq

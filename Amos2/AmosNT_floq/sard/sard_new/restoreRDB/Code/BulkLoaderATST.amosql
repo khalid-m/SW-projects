@@ -1,0 +1,91 @@
+
+create function CSVwriterATST(Charstring filename, Charstring baseURI)->Boolean
+as
+begin
+	declare Charstring fname,Charstring t,Charstring tu,Charstring tableURI,Bag of Charstring ct,Charstring c1, Charstring c2,Bag of Charstring colURIs;
+	set t="";
+	set tableURI="";
+	for each Charstring s, Charstring p, Charstring v,Charstring i where readTuples1(filename)=(s,p,v,i)
+	begin 
+		if(p in valueofCT()) then 
+		begin
+		/*Inserting the last record before parsing the connecting table.*/
+			if (t!="") then 
+			begin 	
+				addValue(ret_pkURIfromRowID2(tu),ret_pkVal(baseURI,t));
+				print(concatagg(inject(valueofattr1(),",")));
+			end;
+			set t="";
+		/* Inserting values in connecting tables.*/
+             		if tableURI!=p then 
+               		begin 
+                            	set fname=clearURI(p,baseURI)+".csv";
+                             	openwritefile(fname);
+ 	             	end;	
+			set c1=ret_pkVal(baseURI,s);
+			set c2=ret_pkVal(baseURI,v);
+   			print(c1+","+c2); 
+			set tableURI=p;
+  		end	
+		else if(p!="<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>") then
+		/* Generating values for each column for regular tables.*/
+  		begin 
+			if(s!=t) then
+			/*Checking whether the previous row ID(t) is same as the current ID (s)*/
+	      		begin 	
+			/* Producing a concatenated string with all the values of the attributes seperated by comma.*/
+				if (t!="")then
+				begin  
+                                        addValue(ret_pkURIfromRowID2(tu),ret_pkVal(baseURI,t));
+					print(concatagg(inject(valueofattr1(),",")));
+					clean_tableVal();
+				end;
+				set t=s;
+			/*Adding columns in the Stored table*/
+				set tu=ret_tableURIfromRowID1(baseURI,t);
+				if(tableURI!=tu) then 
+				begin 
+			 	        set fname=str_exp1(clearURI(t,baseURI),'/')+".csv";
+                                        openwritefile(fname);
+					remove_attr();
+					addcolumn(tu);
+				end; 
+				set tableURI=tu;
+			end;
+			if(v!="") then
+			begin 	if like(clearURI(p,baseURI),"*/*")then begin 
+					addValue(p,v);end
+				else begin set c1=ret_pkVal(baseURI,v); 
+					addValue(ret_fkMap(p),c1);end;
+			end;
+		end;
+	end;
+	if notany(tableURI in valueofCT()) then 
+	begin	addValue(ret_pkURIfromRowID2(tu),ret_pkVal(baseURI,t));
+	    	print(concatagg(inject(valueofattr1(),",")));end;
+	closewritefile();
+end;
+
+create function bulkload_dataM(JDBC jd,Charstring baseURI)
+->Boolean
+as
+begin
+	declare Charstring tname;
+	for each Charstring tableURI where ret_tableURIs()=tableURI
+	begin
+		set tname=clearURI(tableURI,baseURI);
+		sql(jd, "LOAD DATA LOCAL INFILE "+"'"+ tname+".csv'"+" INTO TABLE  "+ tname+" FIELDS TERMINATED BY  ',' LINES TERMINATED BY  '\\r\\n';");
+	end;	
+end;
+
+
+create function BulkInsertLoaderATST(JDBC jd,Charstring filename,Charstring baseURI)->Boolean
+as begin
+	declare Number time, Number total;
+	set total=0;
+	CSVwriterATST(filename,baseURI);
+	set time=real(now());
+		bulkload_dataM(jd,baseURI);
+	set total=real(now())-time;
+	print(total);
+end;

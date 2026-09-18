@@ -1,0 +1,1 @@
+amos2 regress.lsp -o "quit;"

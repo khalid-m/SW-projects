@@ -1,0 +1,226 @@
+/*-*-sql-*-*******************************************************************/
+
+/* Stored functions to store the datapoints and the cluster centroids */ 
+create function datapoint(Integer d)->Vector of Number as stored;
+
+create function datapoints()->Bag of Vector of Number 
+/* Selects all data points */
+  as select datapoint(i) from Integer i;
+
+create function enumerate(Bag of Vector bv) ->Bag of <Integer i, Vector>
+/* Enumerates a bag of vectors bv from  1 to count(b) */
+as 
+begin
+  set i = 0;
+  for each original Vector w where w  in bv
+  begin
+    set i = i + 1;
+    result <i, w>;
+  end;
+end;
+
+create function load_vdp(Charstring file)->Boolean
+/* Loads stored function datapoint from a file that
+   contains amos Vectors */
+  as add datapoint(i) = v
+     from Integer i, Vector v, Bag of Vector bv
+     where <i, v> in enumerate(bv)
+       and bv = (read_ntuples(file));
+
+load_vdp("./data/patterns.nt");
+
+create function rand_id(Bag of Object b) ->Bag of <Integer i, Object>
+/* Assigns random ids to elements of a bag */
+  as for each Object o where o in b result <rand(1000000), o>;
+
+create function rand_sample(Bag of Object b, Integer k)->Bag of Object 
+/* Selects a random k-sized sample of a bag */  
+  as select vo[i][1]
+     from Integer i, Vector of Vector vo
+     where vo = sortbagby(rand_id(b), 1, 'inc')
+       and i < k;
+
+create function init_centroids(Integer k)->Bag of <Integer, Vector of Number>
+/* Initializes stored function centroid to cointain k
+   randomly selected points from stored function datapoint */
+  as select i, v
+     from Integer i, Vector v, Bag of Vector bv
+     where <i, v> in enumerate(bv)
+       and bv = rand_sample(datapoints(), k)
+       and dp("Called init_centroids", 1000);
+
+create function p2c_distances(Bag of <Integer, Vector of Number> bc)->Bag of <Integer, Integer, Number>
+/* Calculates the Euclidean distance between every point in datapoint() 
+   and every centroid in the bag of centroids bc */
+  as select p, c, d
+     from Integer p, Integer c, Vector of Number cv, Number d
+     where d = euclid(datapoint(p), cv)
+       and <c, cv> in bc
+       and dp("Called p2c_distances", 1000);
+
+create function argminv(Bag of Vector bkvv) -> Object
+/* Returns the key (argument) k for which the value v is minimal
+   among the bag of key(argument)-value vectors bkvv. */
+ as {leastK((select v, k
+             from Object k, Object v
+             where {k, v} in bkvv), 1)}[1];
+
+create function calc_cluster_assignment(Bag of <Integer, Integer, Number> 
+                                        p2c_dist)
+                                        -> Bag of <Integer, Integer>
+/* Calculates the cluster assignmment of datapoints based on centroids */
+  as groupby((select p, {c,d} 
+              from Integer p, Integer c, Number d
+              where <p,c,d> in p2c_dist),
+             #'argminv');
+
+create function print_clustering_bag(Bag of <Integer, Integer> ca)->Bag of Vector
+/* Prints a clustering of the datapoints according to ca*/ 
+  as select {c, p, datapoint(p)} 
+     from Integer c, Integer p
+     where <p,c> in ca;
+
+create function print_clustering(Bag of <Integer, Vector of Number> bc)
+                                 ->Bag of Vector
+/* Prints a clustering of the datapoints according to the current 
+   assignment, i.e., current position of the centroids */ 
+  as print_clustering_bag(calc_cluster_assignment(p2c_distances(bc)));
+
+create function col_means(Bag of Vector of Number bv)
+                          -> Vector of Number
+/* Calculates the columns-wise mean of a bag of vectors */
+  as aggv(bv, #'avg');
+
+create function calc_cluster_means(Bag of <Integer, Integer> ca)
+                                   ->Bag of <Integer, Vector of Number>
+/* Calculates the means of clusters */
+  as groupby((select c, datapoint(p)
+              from Integer c, Integer p
+              where <p,c> in ca),
+             #'col_means');
+
+/* GYG: From todays discussion with Tore, it is evident that the 
+   current version of (t)tclose to bypass Daplex semantics one
+   must encapsulate the bag as an element of a vector. Note that
+   the bag must not be converted into vector of vectors. This
+   actually works. In the future this may not be necessary when
+   is generalized to work for "aggregate functions", i.e., functions
+   taking a bag as argument. Currently however this is not the case. 
+   However, bag equality is not checked hence a bag argument cannot 
+   be used to "guide" tclose. Hence, an SSE function, or alike, 
+   must be defined to check for convergence. */
+
+create function SSE(Bag of <Integer, Vector of Number> n, 
+                    Bag of <Integer, Vector of Number> o)
+                    -> Number
+/* Sum of Squared Error (SSE) between two identically enumarated bag 
+   of vectors where error is according to the L2-Euclidean-norm. */
+  as sum(select d*d
+         from Number d, 
+              Integer ni, Vector of Number nv,  
+              Integer oi, Vector of Number ov  
+         where <ni, nv> in n
+           and <oi, ov> in o
+           and ni = oi
+           and d = euclid(nv, ov)); 
+
+create function kmeans_tcf(Number n, Vector iv)-><Number, Vector>
+/* k-means iteration step in form a transitive closure function */
+  as select SSE(newbc, mbc), {newbc} 
+     from Bag of <Integer, Vector of Number> bc, 
+          Bag of <Integer, Vector of Number> mbc,
+          Bag of <Integer, Vector of Number> newbc 
+     where {bc}=iv
+       /* Materialization is key, not only because of recomputation
+          but also because of repeaded random re-initializations that
+          leads to divergence! Even as it is init_centroids is called
+          twice in the beginning. The number of calls to the subfunction 
+          p2c_distances still seems to excessive 3 per iteration, except 
+          for the first iteration. There shjould really be one call to 
+          init_centroids and one call per iteration to p2c_distances. 
+          This must be achieved! */ 
+       and mbc = materialize(bc) 
+       and newbc = materialize(select calc_cluster_means
+                                        (calc_cluster_assignment
+                                           (p2c_distances(mbc))));
+
+
+create function kmeans_tcf_nomat(Number n, Vector iv)-><Number, Vector>
+/* k-means iteration step in form a transitive closure function */
+  as select SSE(newbc, bc), {newbc}
+     from Bag of <Integer, Vector of Number> bc, 
+          Bag of <Integer, Vector of Number> newbc 
+     where {bc}=iv 
+       and newbc = (select calc_cluster_means
+                             (calc_cluster_assignment
+                                (p2c_distances(bc))));
+
+/* This is what we would like to have. But tclose doesn't seem to
+   accept bags of tuples. */
+create function kmeans_tclose(Function tcf, 
+                              Bag of <Integer, Vector of Number> ib)
+                              -> Bag of <Integer, Vector of Number, Number>
+/* Iterative k-means clustering based on convergence of centroids */
+   as select c, cv, sse
+      from Bag of <Integer, Vector of Number> ob, Integer c, 
+           Vector of Number cv, Number sse
+      where <sse, {ob}> = tclose(tcf, 0, {ib})
+        /*and sse = 0.0*/
+	/*and ob = ib */ /* this calles init_centroids 3 times!!! Why? */
+        and <c, cv> in ob;
+
+/* ... because we cannot do this:
+
+select c, cv, s 
+from Integer c, Vector of Number cv, Bag of <Integer, Vector of Number> newcb, Number s
+where <s, {newcb}> = kmeans_tcf(0, {(select init_centroids(3))})
+  and <c, cv> in newcb;
+
+kmeans_tclose(#'kmeans_tcf', materialize(init_centroids(3)));
+
+kmeans_tclose(#'kmeans_tcf_nomat', init_centroids(3));
+
+
+*/
+
+/* Instead, we do the vector-of-vector-workaround: */
+ 
+create function v2b(Vector of Vector vc)
+                    ->Bag of <Integer i, Vector of Number vn>
+  as select i, vn
+     from Vector iv
+     where iv in vc
+       and {i, vn} = iv;
+
+create function kmeans_tcfv(Vector of Vector vc) 
+                            ->Vector of Vector 
+  as sortbagby
+       (calc_cluster_means
+          (calc_cluster_assignment
+             (p2c_distances(v2b(vc)))),
+       1, 'dec');
+
+/* This is a working side effect free k means implementation. 
+   However, the use of vector of vectors makes it hard (counter intuitive)
+   to implement. */
+create function kmeans_tclosev(Vector of Vector input)
+                               ->Vector of Vector  
+  as select output
+     from vector of vector output    
+     where output = tclose(#'kmeans_tcfv', input)
+       and output != input;
+
+/* last() picks up the last element of a bag (opposite of first()) */
+
+/*
+
+last(
+
+select kmeans_tclosev(vv)
+     from vector of vector vv
+     where vv = sortbagby(init_centroids(3), 1, 'dec');
+
+
+);
+
+*/

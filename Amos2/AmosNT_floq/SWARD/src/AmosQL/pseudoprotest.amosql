@@ -1,0 +1,42 @@
+create function pMap(Charstring tn,Charstring cn,Charstring ont,
+                        Charstring prop)->Boolean
+  as stored;
+
+create function cMap(Charstring tn,Charstring ont,Charstring class)
+                        ->Boolean
+  as stored;
+
+declare_key(theresolvent('PMAP'),{'tn','cn','ont'});
+declare_key(theresolvent('PMAP'),{'ont','prop'});
+
+declare_key(theresolvent('CMAP'),{'tn','ont'});
+declare_key(theresolvent('CMAP'),{'ont','class'});
+
+/*** Wrapper for pMap stored fn.***/
+create function pMap(Charstring tn,Charstring cn,Charstring ont)
+                        ->Charstring prop
+  as select prop where pMap(tn,cn,ont,prop);
+
+/*** Wrapper for cMap stored fn.***/
+create function cMap(Charstring tn,Charstring ont)->Charstring class
+  as select class where cMap(tn,ont,class);
+
+parteval('PMAP');
+parteval('CMAP');
+parteval('PLUS');
+
+set pMap("ORDERS","ORDERID","udbl.it.uu.se/schemas/company")=
+  "udbl.it.uu.se/schemas/company#OrderID";
+set pMap("ORDERS","OCUSTID","udbl.it.uu.se/schemas/company")=
+  "udbl.it.uu.se/schemas/company#OrderCustomer";
+set cMap("ORDERS","udbl.it.uu.se/schemas/company")=
+  "udbl.it.uu.se/schemas/company#Orders";
+
+lisp;
+
+(load "pseudoprot.lsp")
+
+(load "pseudoprotest.lsp")
+
+:osql
+quit;

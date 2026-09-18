@@ -1,0 +1,374 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Silvia Stefanova UDBL
+ * $RCSfile: export_DPS.amosql,v $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Modifications of SWARD DPS functions 
+		needed for the DPS definitions
+ ******************************************************************************/
+
+
+create function TEVExtent2(Charstring cid ,Charstring pid, Charstring oid,Charstring upv, Function vd)->Boolean as stored;
+
+lisp;
+
+(defvar *expand-tevextent* t)
+
+(define-tr-rewriter (theresolvent 'P_CHARSTRING.CHARSTRING.CHARSTRING.CHARSTRING.FUNCTION.TEVEXTENT2->BOOLEAN) 'tevextent-test 'tevextent-transform)
+
+(defun tevextent-test (p c)(and *expand-tevextent* (osql-constantp (nth 4 p))))
+
+(defun tevextent-transform (p c v)
+  (let (res)
+    (maprelation (car p) (mapcar (f/l (x)(if (osql-constantp x) x '*)) (cdr p))
+		 (f/l (&rest row) (push row res)))
+    (orify (mapcar (f/l (row) (andify 
+			       (mapcar (f/l (var val)
+					    (cond ((equal var val) 'true)
+                                                  ((and (osql-constantp var)(osql-constantp val)) 'false)
+                                                  (t (list _=_ var val))))
+				       (cdr p) row)))
+		   res))))
+
+
+:osql
+
+
+create function TEVExtent2(Charstring cid ,Charstring pid, Charstring oid,Charstring upv)->Function vd
+as 
+  select vd 
+  where TEVExtent2(cid,pid,oid,upv,vd);
+
+create function TEVExtent2()->(Charstring cid,Charstring pid, Charstring oid,Charstring upv, Function vd)
+as 
+  select cid,pid,oid,upv,vd 
+  where TEVExtent2(cid,pid,oid,upv,vd)=true;
+
+create function findSTEVE(Charstring pid, Charstring upv)->Charstring 
+as
+	select cid from Charstring cid,Charstring oid, Function ff
+	where TEVExtent2(cid,pid,oid,upv)=ff;
+
+
+
+create function assignTEVExtent(Charstring tid,Charstring upv,Function fn)->Boolean
+as
+ begin
+   set TEVExtent(tid,upv)=fn;
+ end;
+
+
+
+
+create function genPVfunctions(Charstring upv,		
+	              Charstring tn,
+	              Charstring cn)-> Boolean
+as 
+/*Create a function representing the column view*/
+eval ("create function "+tn+"_"+cn +"()->(Charstring s,Charstring p,Charstring val) 
+	as select s,p,val from Charstring cid,
+	"+rel(upv,tn) + "
+	where "+ genRelcall(upv,tn) + " and 
+	cMap('" + tn + "','" + upv + "', cid) and 
+         pMap('" + tn + "','" + cn + "','" + upv + "', p) and 
+         s = rowID(cid,"+getKeyrr(DSofUPV(upv),tn)+") and 	 
+	 val = valueid(" + tn + "_" + cn + ",typeMap('"+tn+"','"+cn+"','"+upv+"'));");
+
+
+create function genPVsfunctions(Charstring up)->Charstring
+/*Defines a function for column cn in table tn if:
+	- cn is a column of tn
+	- cn is not a primary key in tn
+	- cn is not a foreign key column 
+	(neither in o-many nor in many-many relationship
+*/
+as begin
+   declare Charstring str;
+   set str="";
+   for each Charstring tn, Charstring cid where cMap(tn,up,cid)
+     for each Charstring cn,Charstring pid  where pMap(tn,cn,up,pid) 
+      begin
+       if (isColOf(JDBCOfDS(DSOfUPV(up)),tn,cn) 
+		and notany(isPrKOf(JDBCOfDS(DSOfUPV(up)),catalogOfDS(DSOfUPV(up)),schemaOfDS(DSOfUPV(up)),tn,cn))
+		and count(primary_keys(jdbcOfDS(DSOfUPV(up)),catalogOfDS(DSOfUPV(up)),schemaOfDS(DSOfUPV(up)),tn))>=1
+		and notany(is_in_rMap(up,tn,cn)) ) then	
+	  begin
+	    genPVfunctions(up,tn,cn);
+	     if (functionnamed(tn+"_"+cn)) then
+		set str=str + " or " + tn+"_"+cn+"()=(s,p,val)";
+	  end
+      end;
+	return substring(str,4,char_length(str)-1);
+   end;
+
+
+create function genCCVfunctions(Charstring upv,		
+	               Charstring tn)->Charstring clauseBoolean
+as 
+ eval ("create function "+tn+"_type()->(Charstring s,Charstring p,Charstring val) 
+	as select s,p,val from Charstring cid,
+	" + rel(upv,tn) + " where 
+	"+ genRelcall(upv,tn) + " and
+        cMap('" + tn + "','" + upv + "', cid) and         
+        s = rowid(cid,"+getKeyrr(DSofUPV(upv),tn)+") and 
+        p = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and 	
+        val = cid ;");
+
+
+create function genCCVsfunctions(Charstring up)->Bag of Charstring
+  as 
+ for each Charstring tn,Charstring cid 
+  where cMap(tn,up,cid) 
+  begin
+    if isTblOf(JDBCOfDS(DSOfUPV(up)),tn) then 
+	    return genCCVfunctions(up,tn) 
+   else error("No table named "+tn+" in data source");
+  end;
+
+
+
+
+/* Create fn for defining a one-to-many relationship view for a foreign key column  mapped to 
+ an RDF property; */
+create function genFPVfunctions(Charstring upv,		
+	                Charstring tn,
+                        Charstring cn,
+                        Charstring otn)->Boolean
+as eval ("create function "+tn+"_"+cn +"_"+otn+"()->(Charstring s,Charstring p,Charstring val) 
+	as select s,p,val from Charstring cid,
+	"+rel(upv,tn) + "
+	where "+ genRelcall(upv,tn) + " and 
+	cMap('" + tn + "','" + upv + "', cid) and 
+       	rMap('" + tn + "','" +cn +"','"+ otn +"','"+upv +"',p) and 
+        s = rowID(cid,"+getKeyrr(DSofUPV(upv),tn)+") and 	 
+	val = rowID(cMap('" + otn + "','" + upv + "'),{" + tn + "_"+cn+"}) ;");
+
+/* Fn for defining a many-to-many relationship view for pair of foreign key columns 
+ */
+create function genFMMPVfunctions(Charstring upv,		
+	                Charstring tn,
+                        Vector of Charstring cn1,
+			Vector of Charstring cn2,
+                        Charstring otn1,
+			Charstring otn2)->Boolean
+as  eval ("create function "+otn1+"_"+otn2+"()->(Charstring s,Charstring p,Charstring val) 
+	as select s,p,val from Charstring cid,
+	"+rel(upv,tn) + "
+	where "+ genRelcall(upv,tn) + " and 
+	cMap('" + otn1 + "','" + upv + "', cid) and 
+       	rmmMap('" + tn + "',"+cn1+","+cn2+",'" +otn1 +"','" +otn2 +"','"+upv+"',p) and
+        s = rowID(cid,{"+concat_cols(tn, cn1)+"}) and 
+	val = rowID(cMap('" + otn2 + "','" + upv + "'),{" + concat_cols(tn, cn2) + "});"); 
+
+
+
+
+/* Generate one-to-many relationship functions for each rMap-mapped relationship 
+between tables tn and otn.
+ */
+create function genFPVsfunctions(Charstring up)->Bag of Charstring
+  as 
+  for each Charstring tn, Charstring cid where cMap(tn,up,cid)
+  begin 
+   for each Charstring cn,Charstring otn,Charstring prop
+    where rMap(tn,cn,otn,up,prop)
+   begin
+    return genFPVfunctions(up,tn,cn,otn);
+   end;
+  end;
+
+
+/* Generate functions for many-to-many relationships for each rmmMap-mapped relationship 
+among the tables tn, and otn1 and otn2.
+ */
+create function genFMMPVsfunctions(Charstring up)->Bag of Charstring
+  as 
+    for each Charstring tn,Charstring otn1,Charstring otn2,Vector of Charstring cn1,Vector of Charstring cn2,Charstring prop
+	 where rmmMap(tn,cn1,cn2,otn1,otn2,up,prop)
+    return genFMMPVfunctions(up,tn,cn1,cn2,otn1,otn2);
+
+
+
+create function assignTEVEextent_ccv(Charstring upv )->Bag of Charstring
+/*Assigns necessary TEVE mappings corresponding the type-mappings*/
+as
+  for each Charstring tn,Charstring upv,Charstring cid where cmap(tn,upv)=cid
+ 	begin
+	    genCCVsfunctions(upv);
+	    set TEVExtent2(cid,'http://www.w3.org/1999/02/22-rdf-syntax-ns#type',cid,upv)=theresolvent(tn+"_type");
+	end;
+
+
+create function assignTEVEextent(Charstring upv )->Boolean
+/*Assigns necessary TEVE mappings corresponding the p-mappings*/
+as
+  for each Charstring tn,Charstring upv,Charstring cid where cmap(tn,upv)=cid
+	for each  Charstring tn1,Charstring cn,Charstring p where pmap(tn1,cn,upv)=p and tn=tn1
+		begin
+		    genPVfunctions(upv,tn,cn);
+		    set TEVExtent2(cid,p,'lit',upv)=theresolvent(tn+"_"+cn);
+		end;
+
+
+create function assignTEVEextent_rmap(Charstring upv)->Boolean
+/*Assigns necessary TEVE mappings corresponding the r-mappings*/
+as
+	for each Charstring tn,Charstring cn,Charstring otn,Charstring p
+		where rmap(tn,cn,otn,upv)=p
+	  begin
+	    genFPVfunctions(upv,tn,cn,otn);
+	    set TEVExtent2(cmap(tn,upv),p,cmap(otn,upv),upv)=theresolvent(tn+"_"+cn+"_"+otn);
+	  end;
+
+create function assignTEVEextent_rmmmap(Charstring upv)->Boolean
+/*Assigns necessary TEVE mappings corresponding the rmm-mappings*/
+as
+	for each Charstring tn,Vector of Charstring cn1,Vector of Charstring cn2,
+				Charstring otn1,Charstring otn2,Charstring p
+		where rmmMap(tn,cn1,cn2,otn1,otn2,upv)=p
+	  begin
+	    genFMMPVfunctions(upv,tn,cn1,cn2,otn1,otn2);
+	    set TEVExtent2(cmap(otn1,upv),p,cmap(otn2,upv),upv)=theresolvent(otn1+"_"+otn2);
+	  end;
+
+
+create function genTEVExtent2_PVs(Charstring up)->Bag of Charstring
+ as  for each Charstring tn, Charstring cid where cMap(tn,up,cid)
+  begin 
+   for each Charstring cn,Charstring pid  where pMap(tn,cn,up,pid) 
+   begin
+       if (isColOf(JDBCOfDS(DSOfUPV(up)),tn,cn) 
+		and notany(isPrKOf(JDBCOfDS(DSOfUPV(up)),catalogOfDS(DSOfUPV(up)),schemaOfDS(DSOfUPV(up)),tn,cn))
+		and count(primary_keys(jdbcOfDS(DSOfUPV(up)),catalogOfDS(DSOfUPV(up)),schemaOfDS(DSOfUPV(up)),tn))>=1
+		and notany(is_in_rMap(up,tn,cn)) ) then		
+	/*	and  notany(isForKOf(jdbcOfDS(DSOfUPV(up)),catalogOfDS(DSOfUPV(up)),schemaOfDS(DSOfUPV(up)),tn,cn)) ) then */
+     	return "(tevextent2(cid,p,oid,'"+up+"')=ff  and p='"+pid+"') ";
+   end;
+  end;
+
+create function gennTEVExtent2_DPV(Charstring upv)->Bag of Charstring
+  as 
+ return concatagg(inject( genTEVExtent2_PVs(upv)," or "));
+
+
+create function genTEVExtent2_FPVs(Charstring up)->Bag of Charstring
+  as 
+  for each Charstring tn, Charstring cid where cMap(tn,up,cid)
+  begin 
+   for each Charstring cn,Charstring otn,Charstring prop
+    where rMap(tn,cn,otn,up,prop)
+   begin
+    return "(tevextent2(cid,p,oid,'"+up+"')=ff  and p='"+prop+"') ";
+   end;
+  end;
+
+create function gennTEVExtent2_FPV(Charstring upv)->Bag of Charstring
+  as 
+ return concatagg(inject( genTEVExtent2_FPVs(upv)," or "));
+
+
+create function genTEVEextent2_FMMPVs(Charstring upv)->Bag of Charstring
+as
+	for each Charstring tn,Vector of Charstring cn1,Vector of Charstring cn2,
+				Charstring otn1,Charstring otn2,Charstring prop
+	where rmmMap(tn,cn1,cn2,otn1,otn2,upv)=prop
+	  return "(tevextent2(cid,p,oid,'"+upv+"')=ff  and p='"+prop+"') ";
+
+create function gennTEVExtent2_FMMPV(Charstring upv)->Bag of Charstring
+  as 
+ return concatagg(inject( genTEVEextent2_FMMPVs(upv)," or "));
+
+
+create function genTEVExtent2_CCVs(Charstring up)->Bag of Charstring
+  as 
+  for each Charstring tn, Charstring cid where cMap(tn,up,cid)
+      return "(tevextent2('"+cid+"',p,oid,'"+up+"')=ff  and p='http://www.w3.org/1999/02/22-rdf-syntax-ns#type') ";
+
+create function gennTEVExtent2_CCV(Charstring upv)->Bag of Charstring
+  as 
+ return concatagg(inject(  genTEVExtent2_CCVs(upv)," or "));
+
+
+create function concatAprFns(Charstring upv)-> Charstring
+as
+ 	begin	
+	  declare Charstring ch;
+	  set ch =  gennTEVExtent2_DPV(upv) + " or " +  gennTEVExtent2_CCV(upv);
+	  if (some(rMap())) then
+		set ch = ch + " or " + gennTEVExtent2_FPV(upv);
+	  if (some(rmmMap())) then
+		set ch = ch + " or " + gennTEVExtent2_FMMPV(upv);
+	 return ch;
+	end;
+
+  
+/* Fn for defining a union of property functions
+ */
+create function definefunctions_2(Charstring upv)->Boolean
+  as
+    eval("create function " + upv + "_fn()-> 
+          (Charstring s,Charstring p,Charstring val) 
+          as 
+          select s, p, val from Charstring s, Charstring p, Charstring val,
+	  Charstring cid, Charstring oid,Function ff 
+	  where (" + concatAprFns(upv) + ")
+	  and applytriplefn(ff)=(s,p,val);");
+
+
+create function definefunctions(Charstring upv)->Boolean
+  as
+    eval("create function " + upv + "_fn()-> 
+          (Charstring s,Charstring p,Charstring val) 
+          as 
+          select s, p, val from Charstring s, Charstring p, Charstring val,
+	  Charstring cid, Charstring oid,Function ff 
+	  where TEVExtent2(cid,p,oid,'"+upv+"')=ff 
+	  and applytriplefn(ff)=(s,p,val);");
+
+
+
+/* Automatic generation of UPVs with END, END-P. 
+ */
+create function FunRDB(Charstring upv)->Boolean 
+as
+ begin
+  declare Boolean pflg;
+	
+  /* Check if UPV already exists 
+   */
+  if(notany(functionnamed(upv+"_fn"))) then
+  begin
+
+   /* Never use partial evaluation during UPV creation
+    * when it is not further investigated 
+    */
+
+   /* Definition of schema view 
+    */
+   
+  /*SchemaViewMaterialize(upv);*/
+
+
+   /* Definition of property views 
+    */
+    assignTEVEextent_ccv(upv);
+    assignTEVEextent(upv);   
+    assignTEVEextent_rmap(upv);
+     assignTEVEextent_rmmmap(upv);
+
+/* Define functions 
+    */
+   
+   definefunctions(upv);
+
+   if (pflg = true) then
+    begin 
+     enable_parteval(true);  
+    end;
+	 
+ end;
+ return true;
+end;
+ 

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<topicMap xmlns="http://www.topicmaps.org/xtm/1.0/"
+          xmlns:xlink="http://www.w3.org/1999/xlink"
+          id="hamlettm">
+
+<topic id="hamlet">
+    <instanceOf><topicRef xlink:href="#play"/></instanceOf>
+    <baseName>
+      <baseNameString>Hamlet, Prince of Denmark</baseNameString>
+    </baseName>
+    <occurrence>
+      <instanceOf><topicRef xlink:href="#plain-text-format"/></instanceOf>
+      <resourceRef
+        xlink:href="ftp://www.gutenberg.org/pub/gutenberg/etext97/1ws2610.txt"/>
+    </occurrence>
+    <occurrence id="hamlet-in-xml">
+      <instanceOf>
+        <topicRef xlink:href="#xml-version"/>
+      </instanceOf>
+      <resourceRef
+        xlink:href="http://www.csclub.uwaterloo.ca/u/relander/XML/hamlet.xml"/>
+    </occurrence>
+  </topic>
+
+  <topic id="tempest">
+    <instanceOf><topicRef xlink:href="#play"/></instanceOf>
+    <baseName>
+      <baseNameString>The Tempest</baseNameString>
+    </baseName>
+    <occurrence>
+      <instanceOf><topicRef xlink:href="#plain-text-format"/></instanceOf>
+      <resourceRef
+        xlink:href="ftp://www.gutenberg.org/pub/gutenberg/etext97/1ws4110.txt"/>
+    </occurrence>
+  </topic>
+
+</topicMap>

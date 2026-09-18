@@ -1,0 +1,182 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2000 Tore Risch, UDBL
+ * $RCSfile: mbt.osql,v $
+ * $Revision: 1.6 $ $Date: 2012/01/10 08:22:03 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Main memory Btree indexes
+ *
+ ****************************************************************************/
+
+
+/* Simple test of main memory btree indexes. No mapped types but re-writes: */
+
+create function foo(Integer x)->Integer y key;
+set foo(1)=4;
+set foo(2)=3;
+set foo(3)=2;
+create_index("FOO","x","mbtree",'unique');
+create_index("FOO","y","mbtree",'unique');
+
+lisp; 
+(debugging t)
+(checkequal
+   "Main memory btree index 1"
+  ((osql "select foo(i) from Integer i where i>2;") '((2)))
+  ((sorttuples(osql "select i from Integer i where foo(i)>=3;")) '((1)(2)))
+  ((osql "select foo(i) from Integer i where i>1 and i<=3;") '((3)(2)))
+  ((osql "select foo(i) from Integer i;") '((4)(3)(2)))
+  ((osql "select i from Integer i,Integer j where foo(i)=j;") '((1)(2)(3)))
+)
+:osql
+
+/* More advanced example of btree index. We make two local core cluster 
+   functions, PERSON and DEPT, but we don't define them as mapped types yet.
+   Will utilize external B-tree indexing and rewriting */
+
+create function person(Integer ssn) -> (Charstring name, Integer age, 
+                                        Integer income)
+   as stored;
+create_index("PERSON","income","mbtree",'multiple');
+create_index("PERSON","ssn","mbtree",'unique');
+
+create function dept(Charstring name) -> (Integer budget, Charstring manager) 
+   as stored;
+
+create_index("DEPT","budget","mbtree",'multiple');
+create_index("DEPT","manager","mbtree",'multiple');
+create_index("DEPT","name","mbtree",'unique');
+
+
+set person(123)= ("Tore",50,12345);
+set person(124)= ("Kalle",51,19566);
+set person(125)= ("Ulla",34,18400);
+set person(126)= ("Vilhelm",45,18300);
+set person(127)= ("Britta",57,18600);
+set person(128)= ("Tor",32,17000);
+set person(129)= ("Karl-Alfred",20,18300);
+
+set dept("Toys")= (19000,"Britta");
+set dept("Food")= (45000,"Stina");
+set dept("Junk")= (46000,"Tore");
+
+lisp;
+
+(checkequal 
+ "Main memory btree index 2"
+ (
+  (osql "select name from Integer p, Charstring name, Integer age, 
+                          Integer income
+                     where person(p) = (name,age,income);")
+  '(("Tore") ("Kalle") ("Ulla") ("Vilhelm") ("Britta") ("Tor") ("Karl-Alfred")))
+ (
+  (osql "select name, age, income 
+               from Integer p, Charstring name, Integer age, Integer income
+               where person(p)= (name,age,income) and income = 19566;")
+  '(("Kalle" 51 19566)))
+ (
+  (osql "select name, age from Integer p, Charstring name, Integer age, 
+                               Integer income
+                          where person(p) = (name,age,income) and age=34;")
+  '(("Ulla" 34)))
+ ( (sorttuples
+    (osql "select name, age 
+               from Integer p, Charstring name, Integer age, Integer income
+               where income > 18000 and income <= 18500 and
+                     person(p) = (name,age,income);"))
+   '(("Karl-Alfred" 20) ("Ulla" 34) ("Vilhelm" 45)))
+ (
+  (osql "select name, budget 
+               from Charstring name, Integer budget, Charstring manager
+               where budget > 40000 and dept(name)= (budget,manager);")
+  '(("Food" 45000)("Junk" 46000)))
+ (
+  (osql "select name, budget 
+               from Charstring name, Integer budget
+               where budget > 40000 and dept(name)= (budget,'Stina');")
+  '(("Food" 45000)))
+ (
+  (sorttuples
+   (osql "select name2, budget
+               from Integer p, Charstring name1, Integer age, Integer income,
+                    Charstring name2, Integer budget, Charstring manager
+               where person(p)= (name1, age, income) and
+                     dept(name2)= (budget,manager) and
+                     manager = name1;"))
+  '(("Junk" 46000) ("Toys" 19000)))
+ (
+  (osql "select namep, named
+               from Integer p, Charstring namep, Integer age, Integer income,
+                    Charstring named, Integer budget, Charstring manager
+               where income > budget and
+                     person(p)= (namep, age, income) and
+                     dept(named)= (budget,manager);")
+  '(("Kalle" "Toys")))
+ )
+(defvar ro)
+(setq ro (getfunctionnamed 'P_INTEGER.PERSON->CHARSTRING.INTEGER.INTEGER))
+ 
+(checkequal "Index statistics 1"
+  ((relation-cardinality ro) 7)
+  ((mapcar (function index-cardinality) (getobject ro 'indexes))
+    '(7 6)) 
+)
+:osql
+/* This does not work:
+remove person(p)= (name, age, income) 
+               from Integer p, Charstring name, Integer age, Integer income
+               where p > 124;
+but this works: */
+for each Integer p, Charstring name, Integer age, Integer income
+    where p > 124 and person(p)= (name, age, income)
+    remove person(p)= (name,age,income);
+lisp;
+(checkequal "Btree deletion"
+  ((osql "select person(p) from integer p;")
+    '(("Tore" 50 12345) ("Kalle" 51 19566)))
+)
+(checkequal "Index statistics 2"
+  ((relation-cardinality ro)2)
+  ((mapcar (function index-cardinality) (getobject ro 'indexes))
+    '(2 2)) 
+)
+:osql
+/* Now we define PERSON and DEPT as mapped types and test them: */
+
+create function person_cc() -> (Integer ssn, Charstring name, Integer age, 
+                                Integer income)
+  as select ssn, name, age, income where person(ssn) = (name,age,income);
+
+create function dept_cc() -> (Charstring name, Integer budget, 
+                              Charstring manager)
+  as select name, budget, manager 
+     where dept(name)= (budget,manager);
+
+lisp;
+(create-mapped-type 'person nil
+		    '((integer ssn)(charstring name)(integer age)
+		      (integer income))
+		    '((integer ssn)) 'person_cc)
+
+(create-mapped-type 'dept nil
+	       '((charstring name)(integer budget)(charstring manager))
+	       '((charstring name)) 'dept_cc)
+
+
+(checkequal "Mapped btree type"
+  ((length (osql "select p from Person p;")) 2)
+  ((length (osql "select d from Dept d;")) 3)
+  ((sorttuples(osql "select name(d),budget(d) from Dept d;"))
+      '(("Food" 45000) ("Junk" 46000) ("Toys" 19000)))
+  ((sorttuples(osql "select name(d) from Dept d where budget(d)<=45000;"))
+   '(("Food") ("Toys")))
+  ((osql "select name(d) from Dept d where budget(d)>45000;")
+   '(("Junk")))
+  ((osql "select name(d) from Dept d, Person p where budget(d)<income(p);")
+   '(("Toys")))
+)
+:osql
+rollback;
+quit;

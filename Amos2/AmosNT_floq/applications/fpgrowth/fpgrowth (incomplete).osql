@@ -1,0 +1,130 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Andrej Andrejev, UDBL
+ * $RCSfile: fpgrowth\040(incomplete).osql,v $
+ * $Revision: 1.1 $ $Date: 2011/06/17 09:54:16 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: AmosQL reference implementation of FP-Growth algorithm
+ *
+ ****************************************************************************
+ * $Log: fpgrowth\040(incomplete).osql,v $
+ * Revision 1.1  2011/06/17 09:54:16  andan342
+ * Added reference implementations of FP-Growth algorithm
+ *
+ * Revision 1.1  2006/02/12 20:01:08  torer
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+/* Naming convenctions:
+    ItemCnt - stored functions (first uppercase)
+    getItemCnt - derived functions w/o side-effects (first lowercase)
+    count_items - DB updates implemented as functions (contain '_')
+*/
+
+/* Store count of each item */
+create function ItemCnt(Integer item) -> Integer cnt as stored;
+
+/* Count number of transactions item is in */
+create function getItemCnt(Bag of Vector d) -> Bag of(Integer item, Integer cnt) as
+  groupby((select tr[i], tr
+           from Integer i, Vector of Integer tr
+           where tr in d),#'count');
+
+/* 1st pass :count items */
+create function count_items(Bag of Vector d) -> Boolean as
+  set ItemCnt(item) = cnt
+  from Integer item, Integer cnt
+  where (item,cnt) in getItemCnt(d);
+
+/* Item order based on count */
+create function itemOrder(Integer i1, Integer i2) -> Boolean as
+  ItemCnt(i1) > ItemCnt(i2);
+
+/* Stored vector of sorted items */
+create function SortedItems() -> Vector of Integer as stored;
+
+/* populate SortedItems() */
+create function sort_items(Number minsupp) -> Boolean as
+  set SortedItems() = sortbag((select item 
+                               from Integer item, Integer cnt 
+                               where ItemCnt(item) = cnt
+                                 and cnt >= minsupp),'itemOrder');
+
+/* Item order based on SortedItems() */
+create function transactItemsOrder(Integer i1, Integer i2) -> Boolean as
+  select (k1 < k2) from Integer k1, Integer k2
+   where SortedItems()[k1] = i1 and SortedItems()[k2] = i2;
+
+/* Sort transaction based on SortedItems() */
+create function sortTransaction(Vector tr) -> Vector as
+  sortvector(tr,'transactItemsOrder');
+
+  
+/* FPTree node */
+create type FPNode properties (item Integer, cnt Integer, chld Bag of FPNode);
+
+/* Side-effects implemented as functions */
+
+/* Create new FPNode and update parent */
+create function newFPNode(Object item, FPNode parent) -> FPNode node as
+begin  
+  create FPNode (item, cnt) instances node (item, 1);
+  add chld(parent) = node;
+  return node;
+end;
+
+/* Update FPNode's item count */
+create function updateFPNode(FPNode node) -> FPNode as
+begin
+  set cnt(node) = cnt(node) + 1;
+  return node;
+end;
+
+/* Do simple CDR on transaction vector */
+create function vrest(Vector v) -> Vector
+  as project(v,vectorof(iota(1,dim(v)-1)));
+
+/*
+create function testcond(Integer i) -> Charstring as
+  ifsome((select true where i = 1), 'one', ifsome((select true where i = 2), 'two', 'something else'));
+
+create function testcond2(Integer i) -> (Charstring, Integer) as
+  ifsome((select true where i = 1), ('one',0), ifsome((select true where i = 2), ('two',0), ('something else',i)));
+*/
+
+/* Return (new or updated existing) child node of given node and CDR of transaction */
+create function add_transaction_rec(Vector tr, FPNode tree) -> (Vector tr_rest, FPNode subtree) as
+  select vrest(tr), subtree from Bag of FPNode itemnodes
+  where itemnodes = (select itemnode from FPNode itemnode 
+                      where item(itemnode) = tr[0] and itemnode in chld(tree))
+    and ((subtree = updateFPNode(first(itemnodes)))  /* bind SUBTREE to the found node */
+      or (subtree = newFPNode(tr[0],tree) and notany(itemnodes))); /* bind SUBTRE no new node, don't bind if TR is empty */
+  
+
+/* Build FPTree by traversing each transaction's vector */
+create function build_fptree(Bag of Vector data) -> Bag of (Vector, FPNode) as
+begin
+  declare FPNode root;
+  create FPNode (item, cnt) instances root (-1, 0);
+  for each Vector tr where tr in data /* Linear recursion with side-effect! */
+    return traverse(#'add_transaction_rec', sortTransaction(tr), root);
+end;
+
+create function get_nodes(Bag of Vector data) -> Bag of FPNode as
+  select distinct node from FPNode node, Vector v
+    where (v,node) = build_fptree(data);
+
+  
+
+/* Storage for (complete) FPTree */
+create function FPTree() -> Bag of FPNode;
+
+/* Populate FPTree() */
+create function store_fptree(Bag of Vector data) -> Boolean as
+begin
+  declare Vector dummy;
+  for each FPNode node where (dummy,node) = build_fptree(data)
+    add FPTree() = node;
+end;

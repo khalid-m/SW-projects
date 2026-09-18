@@ -1,0 +1,104 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 Erik Zeitler, UDBL
+ * $RCSfile: dprofile.osql,v $
+ * $Revision: 1.8 $ $Date: 2011/03/02 08:40:17 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Distributed profiling tools
+ *
+ ****************************************************************************
+ * $Log: dprofile.osql,v $
+ * Revision 1.8  2011/03/02 08:40:17  zeitler
+ * correct measurement of cpu usage
+ *
+ * Revision 1.7  2010/12/07 19:15:25  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.6  2010/11/27 11:23:50  zeitler
+ * dcpu re-definition removed
+ *
+ * Revision 1.5  2010/11/03 12:38:45  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.4  2010/10/27 12:20:26  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.3  2010/10/26 14:31:55  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.2  2010/03/04 17:13:17  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.1  2010/03/04 14:51:24  zeitler
+ * Distributed profiling
+ *
+ *
+ ****************************************************************************/
+
+lisp;
+(defun rgen-+ (fno r res) 
+  (let ((ret 
+    (with-textstream s 
+      (print (record-get r "generator") s) 
+      (textstreamstring s))))
+    (osql-result r ret)))
+:osql
+
+create function rgenerator(record r)->charstring as foreign 'rgen-+';
+
+create function dprofile(charstring sp)->bag of record
+as select r
+from charstring c, record r
+where <c, r> in dprofile()
+and c = sp;
+
+create function profiles()-><charstring, record>
+as select c, p
+from charstring c, record r, record p
+where <c, r> in dprofile()
+and p = r['profile'];
+
+create function cpureport() -> <charstring, real, charstring, integer> as
+select c, roundto(pt, 2), r['generator'], r['nsub']
+from charstring c, record r, real pt
+where <c, r> in dprofile()
+and pt = r['proctime'];
+
+create function cpureport(charstring c, record r)
+-> <charstring, real, charstring, integer> as
+select c, roundto(pt, 2), r['generator'], r['nsub']
+from real pt
+where pt = r['proctime'];
+
+create function dcpu(charstring c, record r) -> <real, charstring, integer> as
+select roundto(pt, 2), c, r['nsub']
+from real pt
+where pt = r['proctime'];
+
+create function splitcpu() -> <charstring, real, integer> as
+select c, roundto(pt, 2), r['nsub']
+from charstring c, record r, real pt
+where <c, r> in dprofile()
+and (some(r['sfn']) or some(r['rfn']))
+and pt = r['mappertime'];
+
+create function psum(bag of <charstring, real, integer> data) -> real
+as sum(select time
+from charstring c, real time, integer nsub 
+where <c, time, nsub> in data);
+
+create function profiles(charstring c, record r)-><charstring, number, record>
+as select c, cpu, p
+from record p, number cpu
+where p = r['profile']
+and cpu = r['mappertime'];
+
+create function flushes(charstring c, record r)->
+<charstring, number, number, number>
+as select c, forcedf, proactivef, interf
+from number forcedf, number proactivef, number interf
+where forcedf = r['forced flush']
+and proactivef = r['proactive flush']
+and interf = r['interrupt-flush'];

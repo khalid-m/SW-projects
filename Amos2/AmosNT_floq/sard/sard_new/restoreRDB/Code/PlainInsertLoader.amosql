@@ -1,0 +1,70 @@
+/*****************************************************************************/
+create function PlainInsertLoader(JDBC jd,Charstring filename2, charstring baseURI)
+->Boolean
+/*Generates CALL PROCEDURE statements to call the corresponding procedures to insert data ,given in Row order in NT, into the table.*/
+as begin
+	declare Number time,Number total,Charstring col1,Vector cn,Vector cnt,Vector t3,Vector t4,Charstring p1,
+		Charstring z,Charstring tname,Charstring t,Charstring fkV,Charstring c1,Charstring c2;
+	set t="";set col1="";set t3={};set t4={};set cnt={};set tname="";set total=0;
+	
+	for each charstring ch where ret_tableURIs_CT()=ch
+	/*Retrieves all connecting tables from the NT file and stores in a vector.*/
+		set cnt=concat(cnt,{ch});
+	for each charstring s, charstring p,charstring v, Charstring i where readtuples1(filename2)=<s,p,v,i>
+	begin	set p1=p;	if (p in cnt) then
+		/* Generatig CALL Procedure statements for connecting tables.*/
+		begin
+			set c1=concatagg(inject(vectorbag(ret_pkVal1(baseURI,v)),','));
+			set c2=concatagg(inject(vectorbag(ret_pkVal1(baseURI,s)),','));
+			set time=real(now());
+			sql(jd,"CALL SP_"+clearURI(p,baseURI)+"("+c1+","+c2+");");	
+			set time=real(now())-time;
+			set total=total+time;
+		end
+		else if(p!="<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>") then
+		/* Generatig CALL Procedure statements for regular tables.*/
+		begin	if(s!=t) then
+	    		begin 	if (t!="")then
+				begin 	for each Vector ch1, Vector ch2 where get_pkValRow(baseURI,t)=<ch1,ch2>
+					begin	set t3=concat(t3,ch1);	set t4=concat(t4,ch2);	end;		
+					set col1=sorting(cn,t3,t4);
+					set time=real(now());
+					sql(jd,"CALL SP_"+tname+"("+substring(col1,1,char_length(col1))+");");	
+					set time=real(now())-time;
+					set total=total+time;
+				end;
+				set t3={};set t4={};set t=s;
+				if(tname!=ret_tableNamefromRowID(baseURI,t)) then 
+				begin 	set cn={};
+					for each Charstring col,Charstring colURI where ret_columnURIs(ret_tableURIfromRowID(baseUri,t),baseURI)=<colURI,col>
+						set cn=concat(cn,{str_exp(col,'/')});
+				end; 	
+	 			set tname=ret_tableNamefromRowID(baseURI,t);
+			end;		
+			if(v!="") then
+			begin 	set z=clearURI(p,baseURI);
+				if(like(z,"*/*")) then 
+				begin 	set t3=concat(t3,{str_exp(clearURI(p,baseURI),'/')});	
+					set v="'"+v+"'";
+                                      	set t4=concat(t4,{v});
+				end
+				else
+				begin	for each Vector ch1, Vector ch2,Charstring ch3 where get_fkValRow(baseURI,v,p)=<ch1,ch2,ch3>
+					begin	set fkV=ch3;	set t3=concat(t3,ch1);	set t4=concat(t4,ch2);	end;
+				end;
+			end;end;end;
+	if notany(p1 in cnt) then begin
+	for each Vector ch1, Vector ch2 where get_pkValRow(baseURI,t)=<ch1,ch2>
+	begin	
+		set t3=concat(t3,ch1);	
+		set t4=concat(t4,ch2);	
+	end;
+	set col1=sorting(cn,t3,t4);
+	set time=real(now());
+	sql(jd,"CALL SP_"+tname+"("+substring(col1,1,char_length(col1))+");");	
+	set time=real(now())-time;
+	set total=total+time;end;
+	print(total);
+end;
+
+/*****************************************************************************/

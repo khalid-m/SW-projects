@@ -1,0 +1,38 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2002 Martin Hansson, UDBL
+ * $RCSfile: amosexport.osql,v $
+ * $Revision: 1.3 $ $Date: 2004/03/29 18:51:18 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: <description>
+ *
+ ****************************************************************************/
+create function amosexport(charstring name, charstring driver) -> amosexport
+as foreign 'amosexport--+';
+
+create function import_table(amosexport ae, 
+		             charstring table_name, 
+			     charstring typename, 
+	           	     boolean updateable,
+                             vector supertypes) -> mappedtype mt
+as foreign
+  'amosexport.charstring.charstring.boolean.vector.import_table-----+';
+
+/*
+create function most_specific_type(amosexport ae, integer id, mappedtype t)
+  -> mappedtype as 
+foreign 'most_specific_type---+';
+*/
+
+create function most_specific_type(amosexport ae, integer id, mappedtype mt) -> mappedtype
+  as select typenamed(typame)
+     from charstring typame, vector res
+     where typame = res[0] and
+           res = sql(ae, 'select original_type_name from userobject where oid=?',{id});
+
+
+
+create function isinstance(amosexport r, type t, integer id)-> boolean as
+  select sql(r,'select 1 from '+wrapped_type(r,t)+' where oid=?',{id})={1};

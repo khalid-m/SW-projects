@@ -1,0 +1,23 @@
+create function linksto(Integer x)->Bag of Integer y as stored;
+
+set linksto(1)=bag(2,3,4);
+set linksto(3)=bag(4,5);
+set linksto(4)=bag(1,6);
+set linksto(5)=bag(6,7);
+set linksto(6)=bag(6,7);
+
+create function selflink(Integer i)-> Boolean
+  as some(i in linksto(i));
+
+create function loopback(Integer i)->Boolean
+  as some(i in tclose(#'linksto', linksto(i)));
+
+select i 
+from Integer i 
+where i in iota(1,6) and selflink(i);
+
+select i 
+from Integer i 
+where i in iota(1,6) and loopback(i);
+
+

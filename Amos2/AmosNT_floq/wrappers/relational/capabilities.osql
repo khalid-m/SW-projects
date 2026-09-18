@@ -1,0 +1,22 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2002 Martin Hansson, UDBL
+ * $RCSfile: capabilities.osql,v $
+ * $Revision: 1.9 $ $Date: 2012/04/16 07:55:57 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: The capabilities for the translator part of the relational
+ * Wrapper. Serves as an example how a wrapper implementor will specify the
+ * capabilities of a translator.
+ *
+ ****************************************************************************/
+
+create_capability('Relational', '<', 'bb', 'relational-translate-comparison');
+create_capability('Relational', '>', 'bb', 'relational-translate-comparison');
+create_capability('Relational', '<=', 'bb','relational-translate-comparison');
+create_capability('Relational', '>=', 'bb','relational-translate-comparison');
+create_capability('Relational', '!=', 'bb', 'relational-translate-comparison');
+create_capability('Relational', 'like', 'bb', 'relational-translate-like');
+
+sqloperator("!=","<>",true,false,false);

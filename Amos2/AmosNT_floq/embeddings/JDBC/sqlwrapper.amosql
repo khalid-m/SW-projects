@@ -1,0 +1,30 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2005 Markus Jägerskogh, Tore Risch, UDBL
+ * $RCSfile: sqlwrapper.amosql,v $
+ * $Revision: 1.1 $ $Date: 2005/03/15 08:49:43 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Small example of how to access AmosQL from embedded SQL system
+ *
+ ****************************************************************************/
+
+create type person;
+create function name(Person)->Charstring n;
+create function age(Person)->Integer a;
+create function id(Person)->Integer i;
+create Person(id, name, age) instances 
+          :a(1, "Markus", 30), :b(2, "Fredrik", 33),
+          :c(3, "Daniel", 26), :d(4, "Elin", 26);
+
+create function #persons(Integer id)->
+   <Charstring name, Integer age> as
+      select name(p), age(p)
+      from Person p 
+      where id=id(p);
+
+sql("SELECT  age, name 
+FROM persons
+ORDER BY age DESC, name
+");

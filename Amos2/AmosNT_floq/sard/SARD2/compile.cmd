@@ -1,0 +1,1 @@
+javac -classpath %AMOS_HOME%\bin\javaamos.jar; src\Java\executeSQL.java  -d src\classes\

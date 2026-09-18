@@ -1,0 +1,74 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Johan Petrini, UDBL
+ * 
+ * Description: Regression test of handling of RDF resources. 
+ *****************************************************************************/
+set :r1 = uri("http://purl.org/dc/elements/1.1/Identifier/ABC1234H");
+set :r2 = uri("http://purl.org/dc/elements/1.1/Identifier/ABC1234H");
+set :r3 = lit("http://purl.org/dc/elements/1.1/Identifier/ABC1234H");
+set :r4 = lit("http://www.egov_project.org/GovMLSchema#Subject");
+set :r5 = uri("http://www.egov_project.org/GovMLSchema#Subject");
+set :r6 = lit("http://purl.org/dc/elements/1.1/Identifier/ABC1234H");
+
+create function foo(resource r)->charstring as stored;
+set foo(:r1) = "URI obj";
+set foo(:r3) = "RDF literal"; 
+
+lisp;
+(checkequal "Equality of resource"
+
+ ;Equality between URI obj
+ ((osql "select where :r1 = :r2;") '((true)))
+
+ ;Equality between URI obj and RDF literal
+ ((osql "select where :r1 = :r3;") nil)
+
+ ;Equality between URI obj		
+ ((osql "select where :r1 = :r5;") nil)
+		
+ ;Equality between RDF literals
+ ((osql "select where :r3 = :r4;") nil)
+		
+ ;Equality between RDF literals
+ ((osql "select where :r3 = :r6;") '((true)))
+	
+ ;Equality between URI obj and RDF literal
+ ((osql "select where :r1 = :r4;") nil))
+
+(checkequal "Hashindex on resources"
+	    ((osql "foo(:r1);") '(("URI obj")))
+	    ((osql "foo(:r3);") '(("RDF literal"))))
+
+(checkequal "Inverse uri fn"
+	    ((dotimes (n 100)(osql "select l from literal l where uri(l)=:r1; ")) 
+	     '(("http://purl.org/dc/elements/1.1/Identifier/ABC1234H"))))
+
+(checkequal "Inverse lit fn"	
+	    ((dotimes (n 100)(osql "select l from literal l where lit(l)=:r4; ")) 
+	     '(("http://www.egov_project.org/GovMLSchema#Subject"))))
+
+(checkequal "Forward rowID fn"
+	    ((dotimes (n 100)(osql "select uri from Charstring uri 
+		where rowID('http://purl.org/dc/elements/1.1/Identifier','ABC1234H')=uri; ")) 
+	     '(("http://purl.org/dc/elements/1.1/Identifier/ABC1234H"))))
+
+(checkequal "Invers rowID fn:"
+	    ((dotimes (n 100)(osql "select pre, data from Charstring pre,Literal data 
+		where rowID(pre,data)='http://purl.org/dc/elements/1.1/Identifier/ABC1234H'; ")) 
+	     '(("http://purl.org/dc/elements/1.1/Identifier" "ABC1234H"))))
+
+(checkequal "Forward serializeCk fn"
+	    ((dotimes (n 100)(osql "select sk from Charstring sk 
+		where serializeCk({'FID','FIID','PID'})=sk; ")) 
+	     '(("FID@FIID@PID"))))
+
+(checkequal "Inverse serializeCk fn"
+	    ((dotimes (n 100)(osql "select k from Vector k 
+		where serializeCk(k)='FID@FIID@PID';")) 
+	     '((#("FID" "FIID" "PID")))))
+
+:osql
+
+

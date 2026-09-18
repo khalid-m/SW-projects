@@ -1,0 +1,39 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2013 Andrej Andrejev, UDBL
+ * $RCSfile: utils.osql,v $
+ * $Revision: 1.1 $ $Date: 2013/07/27 18:42:42 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Utility functions used with SQL backend
+ *
+ ****************************************************************************
+ * $Log: utils.osql,v $
+ * Revision 1.1  2013/07/27 18:42:42  andan342
+ * Bulk-loading binary chunks into MS SQL Server,
+ * no longer using isHex parameter to register-proxy-tag,
+ * no longer duplicating :sql_dialect and :isHex variables with stored functions
+ *
+ *
+ ****************************************************************************/
+
+/* Return binding of top-level Amos variable */
+
+lisp;
+
+(foreign-lispfn tlvar ((Charstring v)) ((Object)) 
+	(foreign-result (eval (mksymbol (concat "amos_" v)))))
+
+:osql
+
+/* return options[0] if MySQL, options[1] if T-SQL */
+create function dialect_based(Vector of Charstring options) -> Charstring
+as begin
+  if (tlvar('sql_dialect') = 'tsql') then return options[1]
+  else return options[0];
+end;
+
+/* return options[0] if binary chunks, options[1] if hex chunks */
+create function hex_based(Vector of Charstring options) -> Charstring
+  as options[cast(tlvar('isHex') as Integer)];

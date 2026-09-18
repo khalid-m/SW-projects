@@ -1,0 +1,23 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> 2012 <author> Minpeng Zhu, UDBL
+ * $RCSfile: popapp.amosql,v $
+ * $Revision: 1.1 $ $Date: 2012/09/20 15:25:10 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: application scenario set up
+ ****************************************************************************/
+
+set :a = jdbc("ds1", "com.mysql.jdbc.Driver");
+
+set :dburl = "jdbc:mysql://localhost:"+getenv("PORTDB")+"/";
+
+connect(:a, :dburl + "regress", "regress", "regress");
+
+count(read_sql(:a, "dropappdb.sql"));
+count(read_sql(:a, "popappdb.sql"));
+
+disconnect(:a);
+
+quit;

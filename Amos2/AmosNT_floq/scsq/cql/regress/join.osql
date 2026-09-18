@@ -1,0 +1,137 @@
+/***************************************************************
+ *
+ *  AMOS2
+ *  
+ *  Author: (c) 2010 Robert Kajic, UDBL
+ *  $RCSfile: join.osql,v $
+ *  $Revision: 1.14 $ $Date: 2010/10/13 02:24:02 $
+ *  $State: Exp $ $Locker:  $
+ * 
+ *  Description: Regression tests of window stream joining. 
+ *  ============================================================
+ *  $Log: join.osql,v $
+ *  Revision 1.14  2010/10/13 02:24:02  roka4241
+ *  Changed the n-theta join to call its joining funtion with n arguments instead of a vector with n elements.
+ *
+ *  Revision 1.13  2010/09/21 13:29:33  roka4241
+ *  Started using more strict argument typing, for example Stream of Vector and Stream of Window instread of the ambiguous Stream.
+ *
+ *  Revision 1.12  2010/08/22 03:49:16  roka4241
+ *  Tests for union and union_all.
+ *
+ *  Revision 1.11  2010/08/10 02:54:32  roka4241
+ *  Updated tests to use new operator names and function signatures.
+ *
+ *
+ *  Revision 1.9  2010/07/22 00:31:17  roka4241
+ *  Updated stream join regression tests to use the new n-way join.
+ *
+ *  Revision 1.8  2010/07/14 06:12:37  roka4241
+ *  Adjusted all regression tests affected by the recent window operator changes. Fixed some bugs found by the regression tests.
+ *
+ *  Revision 1.7  2010/07/12 05:16:49  roka4241
+ *  Updated tuple window to a time driven model. I.e. it only emits at most one window for every time unit and the window will contain the latest tuples from each time unit. Note that the window still can contain tuples from several time units, if there is not enough tuples in one time unit to fill the window. Updated the regression tests for the new tuple window. Added a partition window (still untested).
+ *
+ *  Revision 1.6  2010/07/03 02:47:07  roka4241
+ *  Now using correct versions of extfunction. Wrote regress tests for stream group by and fixed some bugs. Refactored stream window datatype.
+ *
+ *  Revision 1.5  2010/07/01 13:19:09  roka4241
+ *  Added CVS header.
+ * 
+ **************************************************************/
+
+
+set :s32a = w_tuple(vstreamfile("data/lr32"), 5, 1, 1);
+set :s400a = w_tuple(vstreamfile("data/lr400"), 5, 5, 1);
+
+set :s32b = w_tuple(vstreamfile("data/lr32"), 5, 1, 1);
+set :s400b = w_tuple(vstreamfile("data/lr400"), 5, 5, 1);
+
+create function join_2 (Vector A, Vector B) -> Boolean as 
+       A[1] = B[2];
+
+create function join_3 (Vector A, Vector B, Vector C) -> Boolean as 
+       A[1] = B[2] and 
+       B[1] = C[2];
+
+lisp;
+
+(checkequal "if couroutines are correctly initialized for streams." 
+            ((let*
+                  ((stream-list (list amos_s32a amos_s400a amos_s32b amos_s400b))
+                   (stream-struct-list (stream-init-coroutines stream-list)))
+               (every
+                (f/l (stream)
+                     (let ((extracted-stream (car (stream-struct-memq stream stream-struct-list))))
+                       (not (null (stream-struct-cor extracted-stream)))))
+                stream-list))
+             t)) 
+
+(checkequal "if all couroutines return windows." 
+            ((let*
+                 ((stream-list (list amos_s32a amos_s400a amos_s32b amos_s400b))
+                  (stream-struct-list (stream-init-coroutines stream-list)))
+               (let ((windows (stream-resume-all stream-struct-list)))
+                 (length windows)))
+             4)) 
+
+(checkequal "n-join of two streams."
+            ((swinbag-in (osql "
+in(w_join(
+  {w_tuple(vstreamfile('data/auction'), 5, 5, 0), 
+   w_tuple(vstreamfile('data/bid'), 5, 5, 0)}, 
+  #'join_2'));"))
+             '(((#(0 1) #(1 1 1 100)) 
+                (#(0 1) #(1 2 1 120)) 
+                (#(0 1) #(1 3 1 140))) 
+               ((#(0 1) #(1 1 1 100)) 
+                (#(0 1) #(1 2 1 120)) 
+                (#(0 1) #(1 3 1 140)) 
+                (#(1 3) #(2 5 3 50)) 
+                (#(1 4) #(2 4 4 80))))))
+
+(checkequal "n-join of three streams."
+            ((swinbag-in (osql "
+set :bid_stream = w_tuple(vstreamfile('data/bid'), 5, 5, 0);
+in(w_join(
+  {w_tuple(vstreamfile('data/auction'), 5, 5, 0), 
+   :bid_stream, 
+   w_tuple(vstreamfile('data/bid_participant'), 5, 5, 0)}, 
+  #'join_3'));"))
+             '(((#(1 3) #(2 5 3 50) #(1 1 5)) 
+                (#(1 3) #(2 5 3 50) #(2 2 5))))))
+
+(checkequal "union of three window streams (duplicate data)."
+            ((swinbag-in (osql "
+  in(w_union(
+    {w_tuple(vstreamfile('data/union'), 5, 5, 0), 
+     w_tuple(vstreamfile('data/union'), 3, 3, 0), 
+     w_tuple(vstreamfile('data/union'), 2, 2, 0)}));"))
+             '((#(0 1) #(0 2) #(0 3) #(0 4) #(0 5)) 
+               (#(1 6) #(1 7) #(1 8) #(1 9) #(1 10)))))
+
+(checkequal "union of three window streams (unique data)."
+            ((swinbag-in (osql "
+  in(w_union(
+    {w_tuple(vstreamfile('data/union'), 5, 5, 0), 
+     w_tuple(vstreamfile('data/union2'), 3, 3, 0), 
+     w_tuple(vstreamfile('data/union3'), 2, 2, 0)}));"))
+             '((#(0 1) #(0 2) #(0 3) #(0 4) #(0 5) #(0 13) #(0 14) #(0 15) #(0 24) #(0 25)) 
+               (#(1 6) #(1 7) #(1 8) #(1 9) #(1 10) #(1 18) #(1 19) #(1 20) #(1 29) #(1 30)))))
+
+(checkequal "union all of three streams."
+            ((osql "
+  in(s_union_all(
+    {vstreamfile('data/union'), 
+     vstreamfile('data/union2'), 
+     vstreamfile('data/union3')}));")
+             '((#(0 1)) (#(0 11)) (#(0 21)) 
+               (#(0 2)) (#(0 12)) (#(0 22)) 
+               (#(0 3)) (#(0 13)) (#(0 23)) 
+               (#(0 4)) (#(0 14)) (#(0 24)) 
+               (#(0 5)) (#(0 15)) (#(0 25)) 
+               (#(1 6)) (#(1 16)) (#(1 26)) 
+               (#(1 7)) (#(1 17)) (#(1 27)) 
+               (#(1 8)) (#(1 18)) (#(1 28)) 
+               (#(1 9)) (#(1 19)) (#(1 29)) 
+               (#(1 10)) (#(1 20)) (#(1 30)))))

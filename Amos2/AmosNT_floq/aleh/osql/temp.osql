@@ -1,0 +1,38 @@
+create function PtisolatedLeptons(Event ev, parameters g) -> real r as
+	select r
+	where r=pt(leptonsWithinEta(ev,g)) and r > minPtL(g);
+
+create function threeLeptonCut (Event ev, parameters g) -> Event as
+	select ev
+	where count(ptisolatedLeptons(ev,g))=3 and
+		maxagg(PtisolatedLeptons(ev,g))>hardPtL(g);
+
+create function oppositeLeptons(Event ev) -> vector of Lepton as
+	select {l1, l2} from Lepton l1, Lepton l2
+	where l1 = particles(ev) and l2 = particles(ev) and Kf(l1)=-Kf(l2)
+		and typeof(l1)=typeof(l2) and id(l1)<id(l2);
+
+create function oppositeLeptons(Event ev) -> vector of Lepton as
+	select {l1, l2} from Lepton l1, Lepton l2
+	where l1 = particles(ev) and l2 = particles(ev) and Kf(l1)=-Kf(l2)
+		and id(l1)<id(l2);
+
+create function oppositeLeptons(Event ev) -> vector of Lepton as
+	select {l1, l2} from Lepton l1, Lepton l2
+	where l1 = particles(ev) and l2 = particles(ev) and Kf(l1)=-Kf(l2)
+		and typeof(l1)=typeof(l2);
+
+INDEX
+basic oppositLeptons 41.953
+With type >149
+With id< 41
+With both >1343.09
+
+NO INDEX
+basic oppositLeptons 363.203
+With type
+With id< >289.844
+With both
+
+MORE INDEXES
+With id< 43.375

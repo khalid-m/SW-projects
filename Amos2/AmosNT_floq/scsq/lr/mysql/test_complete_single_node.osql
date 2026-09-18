@@ -1,0 +1,1 @@
+writefile("d:/data/output-c11.txt", run_single_node('d:/data/lr-0.5.out', 'regress', 'localhost', 'regress', 'regress', 3306));

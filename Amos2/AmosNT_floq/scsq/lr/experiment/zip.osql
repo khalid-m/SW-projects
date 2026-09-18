@@ -1,0 +1,33 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 Erik Zeitler, UDBL
+ * $RCSfile: zip.osql,v $
+ * $Revision: 1.3 $ $Date: 2010/07/15 17:46:05 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Distributed splitstream experiments 
+ *
+ ****************************************************************************
+ * $Log: zip.osql,v $
+ * Revision 1.3  2010/07/15 17:46:05  zeitler
+ * Stream join tree experiments
+ *
+ * Revision 1.2  2010/07/06 00:13:58  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.1  2010/07/05 22:39:04  zeitler
+ * *** empty log message ***
+ ****************************************************************************/
+
+add ub_zipmapmatree_res(w, 16, integer(sqrt(w))) = 
+ub_zipmapmatree(w, 1, 16, integer(sqrt(w)))
+from integer w
+where w in {1024};
+
+write_ntuples(
+(select concat({i,j,k}, ub_zipmapmatree_res(i,j,k))
+from integer i, integer j, integer k),
+"tree_ma_zip_" + timestamp());
+
+q();

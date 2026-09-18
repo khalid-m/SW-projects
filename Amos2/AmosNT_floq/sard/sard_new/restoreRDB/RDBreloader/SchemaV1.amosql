@@ -1,0 +1,615 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Ekta Shrestha, 
+ * $RCSfile: SchemaV1.amosql,v $
+ * $Revision: 1.1 $ $Date: 2012/05/24 09:05:54 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Functions for restoring
+	relational schema and data from NT archives
+ *
+ ****************************************************************************
+ * $Log: SchemaV1.amosql,v $
+ * Revision 1.1  2012/05/24 09:05:54  eksh8896
+ * Testing for bulk loading with stored table.
+ *
+ * Revision 1.1  2012/05/10 14:08:22  eksh8896
+ * Final files
+ *
+ * Revision 1.2  2012/04/18 08:32:07  eksh8896
+ * Modified Version. Works Fine with row and column order
+ *
+ * Revision 1.1  2012/03/30 14:02:58  eksh8896
+ * *** empty log message ***
+ *
+ * Revision 1.3  2012/03/29 18:39:36  eksh8896
+ * Updates amosql files on 30th March.
+ *
+ * Revision 1.2  2012/03/27 08:51:41  eksh8896
+ * *** empty log message ***
+ *
+ * Revision 1.1  2012/02/28 14:01:25  eksh8896
+ * Restoring RDF data files taking consideration of primary and foreign key.
+ *
+ * Revision 1.1  2011/12/07 13:21:43  eksh8896
+ * Updated functions for parsing 'nt' schema and data files.
+ *
+ *  
+ * 
+ *
+ ****************************************************************************/
+
+
+/**********************************GENERAL FUNCTIONS**************************************************************************/
+
+
+create function clearURI(Charstring dbURI,Charstring baseURI)->Charstring
+as  
+	return substring(dbURI,char_length(baseURI)+2,char_length(dbURI)-2);
+   
+
+/************************************************************************************************************************/
+lisp;
+(defun str-exp (fno str del res)
+(osql-return str del (second(string-explode str del))))
+
+:osql
+create function str_exp(Charstring str,Charstring del)-> Charstring
+as foreign "str-exp";
+
+lisp;
+(defun str-exp1 (fno str del res)
+(osql-return str del (first(string-explode str del))))
+
+:osql
+create function str_exp1(Charstring str,Charstring del)-> Charstring
+as foreign "str-exp1";
+
+lisp;
+(defun str-exp3 (fno str del res)
+   (osql-return str del (listtoarray (string-explode str del))))
+
+:osql
+create function str_exp3(Charstring str,Charstring del)-> Vector
+as foreign "str-exp3";
+
+/************************************************************************************************************************/
+			/***FUNCTIONS FOR MANIPULATING SCHEMA FILES ***/
+/************************************************************************************************************************/
+
+/*Create a stored function in Amos*/
+
+create function schema(Charstring s, Charstring p, Charstring o, Charstring t)-> Boolean as stored;
+
+/* Function to clean the content of the stored function since if you import a new file it will add  new content to the the old one:*/
+
+create function cleanS()->Boolean
+   as for each Charstring s, Charstring p, Charstring o,Charstring t where schema(s,p,o,t)=true
+        set schema(s,p,o,t)=false;
+
+/* Function to import a schema file and populate the stored function*/
+
+create function importS(Charstring file)-> boolean
+as
+   for each Charstring s, Charstring p, Charstring o, Charstring t, Charstring d where {s,p,o,t,d} =read_ntuples(file)
+           or {s,p,o,t} =read_ntuples(file)
+       add schema(s,p,o,t)=true;
+
+
+create function readTuples1(Charstring filename1)
+->(Charstring,Charstring,Charstring,Charstring )
+/*Retrieves s,p,v from the given filename*/
+as
+	select v[0],v[1],v[2],v[3] from  Vector v 
+		where read_ntuples(filename1)=v;
+/************************************************************************************************************************/
+			/***RETRIEVING TABLES FROM GIVEN FILES ***/
+/************************************************************************************************************************/
+create function ret_tableURIs1()
+->Charstring 
+/*Retrieve URI  of the table in the file*/
+as select s from Charstring s , Charstring p, Charstring v,Charstring t where schema(s,p,v,t)=true and
+like(v,"*Class*");
+
+create function ret_fkInNT(Charstring tableURI)
+->charstring
+/* Retrieves the URI of foreign key column(review_of_person) that exists only in the RDF file for given table.*/
+as
+select v from Charstring s, Charstring p, Charstring v, Charstring t
+where schema(s,p,v,t)=true and like(p,"*FOREIGN_KEY*")and s=tableURI;
+
+ create function ret_fkInNT1()
+->charstring
+/* Retrieves all the URI of foreign key column(review_of_person) that exists only in the RDF file for given table.*/
+as
+select v from Charstring s, Charstring p, Charstring v, Charstring t
+where schema(s,p,v,t)=true and like(p,"*FOREIGN_KEY*")and s in ret_tableURIs1();
+
+create function ret_tableURIs_CT()->Charstring 
+/*Retrieve URIs of all the connecting table in the file*/
+as 
+select s from Charstring s,Charstring p, Charstring v,Charstring t
+where schema(s,p,v,t)=true and like(p,"*range*") and v in ret_tableURIs1() 
+and notany(s in ret_fkInNT1()) ;
+
+
+create function ret_tableURIs()->Charstring 
+as select t from Charstring t where (t=ret_tableURIs1() or t=ret_tableURIs_CT());
+
+create function ret_tableNameS(Charstring baseURI)
+->Charstring
+/*Retrieve all the tableURI and tableName in the file*/
+as
+select clearURI(s,baseURI) from Charstring s,Charstring p, Charstring v,Charstring t 
+where schema(s,p,v,t)=true and like(v,"*Class*");
+
+ 
+/************************************************************************************************************************/
+			/*** RETRIEVING COLUMNS FROM GIVEN FILE***/
+/************************************************************************************************************************/
+
+
+create function ret_columnURIs_woct1(Charstring tableURI)
+->Charstring
+/*Retrieve the URIs of the column (excluding column representing foreign keys in files) of given table except connecting table represented by tabelURI.*/
+as 
+select s from Charstring s,Charstring p, Charstring v,Charstring t
+where schema(s,p,v,t)=true and like(p,"*domain*") and v=tableURI
+and notany(s in ret_tableURIs_CT())and notany(s in ret_fkinNT1());
+
+
+create function ret_columnURIs_woct(Charstring tableURI,Charstring baseURI)
+->(Charstring,Charstring)
+/*Retrieve URI and Name of the column or property of given table represented by tabelURI*/
+as 
+select s,clearURI(s,baseURI) from Charstring s,Charstring p, Charstring v,Charstring t
+where schema(s,p,v,t)=true and like(p,"*domain*") and v=tableURI
+and notany(s in ret_tableURIs_CT())and notany(s in ret_fkinNT1());
+
+create function ret_pkURI_woct(Charstring tableURI)
+->Charstring
+/*Retrieve the URIs of the PK of the table except for the connecting table represented by tableURI*/
+as select v1 from Charstring s,Charstring p,Charstring v ,Charstring t, charstring s1, Charstring p1, Charstring v1,Charstring t1
+where schema(s,p,v,t)=true and like(p,"*PRIMARY_KEY*") and s=tableURI 
+and schema(s1,p1,v1,t1) and like(p1,"*rdf-syntax-ns#*") and s1=v and v1!="<http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq>";
+
+
+create function ret_columnURIs_withCT1(Charstring tableURI)
+->Charstring
+/*Retrieves URIs of the column for connecting table.*/
+as
+select ret_pkURI_woct(v) from Charstring s,Charstring p, Charstring v,Charstring t 
+	where schema(s,p,v,t)=true  and (like(p,"*range*") or like(p,"*domain*"))and  s=tableURI;
+
+create function ret_columnURIs_withCT(Charstring tableURI,Charstring baseURI)
+->(Charstring,Charstring)
+/*Retrieves URIs and Name of the column for connecting table.*/
+as
+select pk,clearURI(pk,baseURI) from Charstring pk,Charstring s,Charstring p, Charstring v,Charstring t 
+	where schema(s,p,v,t)=true  and (like(p,"*range*") or like(p,"*domain*"))and  s=tableURI and pk=ret_pkURI_woct(v);
+
+
+create function ret_columnURIs(Charstring tableURI,Charstring baseURI)
+->(Charstring,Charstring)
+/*Retrieves URIs and Name of the column for all the table.*/
+as
+begin
+	if (tableURI in ret_tableURIs_CT()) then
+		return ret_columnURIs_withCT(tableURI,baseURI)
+	else
+		return ret_columnURIs_woCT(tableURI,baseURI);
+end;
+
+create function ret_colURIs(Charstring tableURI,Charstring baseURI)
+->Charstring
+/*Retrieves only URIs of the column for given the table.*/
+as select colURI from Charstring colURI,Charstring col where ret_columnURIs(tableURI,baseURI)=(colURI,col);
+
+create function ret_colURIs1(Charstring tableURI,Charstring baseURI)
+->Bag of Charstring
+/*Retrieves only URIs of the column for given the table.*/
+as select colURI from Charstring colURI,Charstring col where ret_columnURIs(tableURI,baseURI)=(colURI,col);
+
+
+create function ret_references(Charstring tableURI)
+->Charstring 
+/* Rettrieves all the alias foreign keys (e.g.: review_person) in the given table.*/
+as 
+select s from Charstring s, Charstring p, Charstring v,Charstring t,Charstring s1,Charstring p1,Charstring v1,Charstring t1 
+where schema(s,p,v,t)=true and like(p,"*REFERENCES*") 
+and schema(s1,p1,v1,t1)=true and s1=s and like(p1,"*domain*") and v1=tableURI;
+
+create function ret_references1()
+->Charstring 
+/* Rettrieves all the alias foreign keys (e.g.: review_person) in all the table.*/
+as 
+select s from Charstring s, Charstring p, Charstring v,Charstring t,Charstring s1,Charstring p1,Charstring v1,Charstring t1 
+where schema(s,p,v,t)=true and like(p,"*REFERENCES*") 
+and schema(s1,p1,v1,t1)=true and s1=s and like(p1,"*domain*") and v1 in ret_tableURIs();
+
+
+create function ret_allcolumnURIs(Charstring tableURI)
+->Charstring
+/*Retrieve the URIs of the column (excluding product_producer) of given table except connecting table represented by tabelURI.*/
+as 
+select s from Charstring s,Charstring p, Charstring v,Charstring t
+where schema(s,p,v,t)=true and like(p,"*domain*") and v=tableURI;
+
+create function ret_colfk_data(Charstring tableURI,Charstring baseURI)
+->Charstring
+as
+	return ret_allcolumnURIs(tableURI);
+
+/************************************************************************************************************************/
+			/***RETRIEVING PRIMARY KEY FROM GIVEN FILE ***/
+/************************************************************************************************************************/
+create function ret_pkURIs(Charstring tableURI)
+->Charstring
+as
+/*Retrieves URIs of the primary Key for all the tables including connecting tables.*/
+begin
+	if (tableURI in ret_tableURIs_CT()) then
+		return ret_columnURIs_withCT1(tableURI)
+	else
+		return ret_pkURI_woCT(tableURI);
+end;
+
+create function ret_pkName(Charstring tableURI,Charstring baseURI)
+->Charstring
+/*Retrieve the name of the PK of the table represented by tableURI*/
+as select str_exp(clearURI(ch,baseURI),'/') from Charstring ch where ch=ret_pkURIs(tableURI);
+
+/************************************************************************************************************************/
+			/***RETRIEVING FOREIGN KEY FROM GIVEN FILE ***/
+/************************************************************************************************************************/
+create function ret_fkURI(Charstring tableURI)->Charstring
+/*Retrieve the URI of the FK of the table represented by tableURI*/
+as select v from Charstring s,Charstring p, Charstring v,Charstring t,Charstring s1,Charstring p1, Charstring v1,Charstring t1
+where schema(s1,p1,v1,t1)=true and like(p1,"*FOREIGN_KEY*") and s1=tableURI and
+schema(s,p,v,t)=true and s=v1 and p!="<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>"
+and like(p,"*rdf-syntax-ns#*");
+
+create function ret_fkURI11_woct(Charstring tableURI)
+->(Charstring,Charstring)
+/*Retrieve the URI of the FK along with its v(referenced table)  of the table represented by tableURI*/
+as select s,v from Charstring s,Charstring p, Charstring v,Charstring t,Charstring t1,Charstring s1,Charstring p1, Charstring v1
+where schema(s1,p1,v1,t1)=true and like(p1,"*FOREIGN_KEY*") and s1=tableURI and
+schema(s,p,v,t)=true and s=v1 and p!="<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>" 
+and like(p,"*rdf-syntax-ns#*");
+
+/*Retrieve the URI of the FK along with its v(referenced table)  of the connecting table represented by tableURI*/
+create function ret_fkURI11_withCT(Charstring tableURI)->(Charstring,Charstring)
+as
+select ret_pkURIs(v),v from Charstring s,Charstring p, Charstring v,Charstring t
+where schema(s,p,v,t) and s=tableURI and (like(p,"*range*") or like(p,"*domain*"));
+
+create function ret_fkURI11(Charstring tableURI)
+->(Charstring,Charstring)
+as if (tableURI in ret_tableURIs_CT()) then return ret_fkURI11_withCT(tableURI)
+   else	return ret_fkURI11_woCT(tableURI);
+
+create function ret_fkname(Charstring tableURI,Charstring baseURI)
+->Charstring
+/*Retrieve the URI of the FK of the table represented by tableURI*/
+as select clearURI(v,baseURI) from Charstring s,Charstring p, Charstring v,Charstring t, Charstring t1,Charstring s1,Charstring p1, Charstring v1
+where schema(s1,p1,v1,t1)=true and like(p1,"*FOREIGN_KEY*") and s1=tableURI and
+schema(s,p,v,t)=true and s=v1 and p!="<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>" and like(p,"*rdf-syntax-ns#*");
+
+create function ret_fkRef(Charstring colURI)
+-> charstring
+/* Retrieves the URI of corresponding column that references to the foreign key.*/
+as
+select v from Charstring s, Charstring p, Charstring v,Charstring t
+where schema(s,p,v,t)=true and like(p,"*REFERENCES*") 
+and s=colURI;
+
+create function ret_fkMap(Charstring fkURI)->Charstring
+/*Retrieve the URI of the Mapped Column for the foreign key (i.e. review_of_person is mapped to review_person) that is represented by FK in NT file*/
+as select v1 from Charstring s1,Charstring p1, Charstring v1,Charstring t1
+where schema(s1,p1,v1,t1)=true and s1=fkURI and p1!="<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>" and like(p1,"*rdf-syntax-ns#*") ;
+
+/************************************************************************************************************************/
+			/***RETRIEVING COLUMN SIZE FROM GIVEN FILE ***/
+/************************************************************************************************************************/
+
+create function ret_ColSize(Charstring colURI)->Charstring
+/*Retrieve the size  of data Size of column or attribute*/
+as select v from Charstring s, Charstring p, Charstring v,Charstring t 
+where schema(s,p,v,t)=true
+and s=colURI and like(p,"*size*");
+
+/************************************************************************************************************************/
+			/*** RETRIEVING COLUMN DATATYPE FROM GIVEN FILE***/
+/************************************************************************************************************************/
+create function xsd_typeMap()-><Charstring rdbtype, Charstring xsdtype,Charstring xsdabb > as stored;
+
+create function set_xsd_typeMap()->Boolean
+as
+ begin
+	set xsd_typeMap()=(NIL,NIL,NIL);
+	add xsd_typeMap()=<"varchar",'http://www.w3.org/2001/XMLSchema#string', 'xsd:string'>;
+	/*add xsd_typeMap()=<"char",'http://www.w3.org/2001/XMLSchema#string','xsd:string'>;*/
+        add xsd_typeMap()=<"float", 'http://www.w3.org/2001/XMLSchema#float','xsd:string'>;
+	add xsd_typeMap()=<"integer", 'http://www.w3.org/2001/XMLSchema#integer', 'xsd:integer'>;
+	add xsd_typeMap()=<"int", 'http://www.w3.org/2001/XMLSchema#int','xsd:int'>;
+	add xsd_typeMap()=<"datetime",'http://www.w3.org/2001/XMLSchema#dateTime','xsd:dateTime'>;
+	add xsd_typeMap()=<"date",'http://www.w3.org/2001/XMLSchema#date','xsd:date'>;
+	add xsd_typeMap()=<"time",'http://www.w3.org/2001/XMLSchema#time','xsd:time'>;
+	add xsd_typeMap()=<"decimal",'http://www.w3.org/2001/XMLSchema#decimal','xsd:decimal'>;
+	add xsd_typeMap()=<"numeric",'http://www.w3.org/2001/XMLSchema#double','xsd:double'>;
+ end;
+
+set_xsd_typeMap();
+
+create function ret_mappeddatatype(Charstring x)->Charstring 
+/*Retrieves only datatype from URI of datatype*/
+as 
+	select reltype from Charstring relType,Charstring xsd,Charstring short where
+        xsd_typeMap()=(reltype,xsd,short) and xsd=x;
+
+create function ret_ColDataType(Charstring colURI)->Charstring
+/*Retrieve the URI of datatype of column or attribute*/
+as select ret_mappeddatatype(substring(v,1,char_length(v)-2)) from Charstring s, Charstring p, Charstring v,Charstring t
+where schema(s,p,v,t) and s=colURI and like(p,"*rdf-schema#range*");
+
+/************************************************************************************************************************/
+	/*Retrieving column informations taking consideration of foreign key*/
+/************************************************************************************************************************/
+create function colInfo_mod(Charstring tableURI,Charstring baseURI)
+->(Charstring,Charstring,Charstring,Charstring,Charstring)
+as
+begin
+ for each Charstring ch1,Charstring ch2 where ret_columnURIs(tableURI,baseURI)=(ch1,ch2)
+	if(ret_ColSize(ch1)!="") then
+  	  return (clearURI(tableURI,baseURI),ch1,str_exp(ch2,"/"),ret_ColdataType(ch1),ret_ColSize(ch1))
+	else
+	  return (clearURI(tableURI,baseURI),ch1,str_exp(ch2,"/"),ret_ColdataType(ch1),"")
+
+end;
+/************************************************************************************************************************/
+	/*Retrieving the information of the column taking account of primary key and mapping datatype for foreign key.*/
+/************************************************************************************************************************/
+create function get_info(Charstring tableURI,Charstring baseURI)
+->Charstring
+as 
+begin 
+	declare charstring temp;
+	set temp="";
+	for each Charstring tname,Charstring dsize,Charstring colURI, Charstring colname, Charstring dtype 
+	 where <tname,colURI,colname,dtype,dsize> = colInfo_mod(tableURI,baseURI)
+		if dsize="" then
+			set temp = temp + colname + " " + dtype +","
+		else 
+			set temp = temp + colname + " " + dtype +"("+ dsize+")"+",";	 
+	return substring(temp,0,char_length(temp)-2);
+end;
+/************************************************************************************************************************/
+	/*Retrieving CREATE TABLE script for the given file*/
+/************************************************************************************************************************/
+create function makeTable(Charstring tableURI,Charstring baseURI)
+->Charstring
+as
+begin
+	declare charstring t1;
+	set t1="";
+	for each Charstring ch where ret_pkname(tableURI, baseURI)=ch
+		set t1=t1+","+ch;
+	 return "CREATE TABLE " + clearURI(tableURI,baseURI) + "(" + get_info(tableURI,baseURI) +",PRIMARY KEY(" +substring(t1,1,char_length(t1))+"));"
+end;
+
+
+create function makeAllTable(JDBC jd,Charstring baseURI)
+->Boolean 
+as 	
+	for each Charstring ch where ret_tableURIs()=ch
+		sql(jd,makeTable(ch,baseURI));
+
+	                 
+/************************************************************************************************************************/
+	/*Retrieving Constraints info to produce ALTER TABLE script*/
+/************************************************************************************************************************/
+create function ret_constraintInfo(Charstring tableURI,Charstring baseURI)
+->(Charstring,Charstring,Charstring,Charstring,Charstring)
+/*generates parametrs required to make constraints for the give tableURI.*/
+as
+begin
+	declare Charstring t1, charstring t2,charstring t3,charstring t, charstring tname, charstring tname_ref;
+	set t="";set t1="";set t2="";set t3="";	
+        for each charstring s,charstring v where ret_fkURI11(tableURI)=<s,v>
+	begin if(s!=t) then begin
+	 	if (t!="")then return (substring(t1,0,char_length(t1)-2),clearURI(tableURI,baseURI),substring(t3,1,char_length(t3)),substring(t2,0,char_length(t2)-2),tname_ref);
+		set t1="";set t2="";set t3="";set t=s;set tname_ref=str_exp1(clearURI(v,baseURI),'/');end;	
+		if(v!="") then begin if tableURI in ret_tableURIs_CT() then begin
+			set t2=str_exp(clearURI(s,baseURI),'/')+" ,"+t2;set t3=t3+"_"+str_exp(clearURI(s,baseURI),'/');	set t1=str_exp(clearURI(s,baseURI),'/')+" ,"+t1;end
+		else begin set t2=str_exp(clearURI(ret_fkref(v),baseURI),'/')+" ,"+t2;set t3=t3+"_"+str_exp(clearURI(v,baseURI),'/');set t1=str_exp(clearURI(v,baseURI),'/')+" ,"+t1;
+			set tname_ref=str_exp1(clearURI(ret_fkref(v),baseURI),'/') end; 
+  	end;end;
+	return (substring(t1,0,char_length(t1)-2),clearURI(tableURI,baseURI),substring(t3,1,char_length(t3)),substring(t2,0,char_length(t2)-2),tname_ref);
+end;
+/************************************************************************************************************************/
+
+create function makeConstraint(Charstring tableURI,Charstring baseURI)
+->Charstring
+as 
+for each Charstring ch1,Charstring ch2,Charstring ch3,Charstring ch4,Charstring ch5 where ret_constraintInfo(tableURI,baseURI)=<ch1,ch2,ch3,ch4,ch5>
+              if(ch1!="") then
+              return "ALTER TABLE " + ch2+ " ADD CONSTRAINT FK_"+ch2+"_"+ch3+" FOREIGN KEY("+ch1+") REFERENCES "+ch5+"("+ch4+");";
+
+create function makeAllConstraint(JDBC jd,Charstring baseURI)
+->Boolean 
+as 
+	for each Charstring ch where ret_tableURIs()=ch 
+		sql(jd, makeConstraint(ch,baseURI));
+			                 
+/************************************************************************************************************************/
+	/*DROP TABLE script*/
+/************************************************************************************************************************/
+create function dropTable(Charstring tableURI,Charstring baseURI)
+->Charstring
+as
+	return "DROP TABLE if exists "+ clearURI(tableURI,baseURI)+ ";"; 
+
+create function dropAllTable(JDBC jd,Charstring baseURI)
+-> Boolean
+as
+begin
+	sql(jd,"SET foreign_key_checks = 0;");
+	for each Charstring ch where ret_tableURIs()=ch
+		sql(jd,dropTable(ch,baseURI));
+end;
+
+create function dropTables_mod(jdbc j)-> Charstring as 
+/*Retrieves all table created on mysql*/
+	for each Charstring ch1,Charstring ch2, Charstring ch3, Charstring ch4 where tables(j)=(ch1, ch2, ch3 , ch4)
+		return "DROP TABLE if exists "+ ch1+ ";"; 
+/************************************************************************************************************************/
+create function ret_tableURIsCT()->Bag of Charstring 
+/*Retrieve URIs of all the connecting table in the file*/
+as 
+select s from Charstring s,Charstring p, Charstring v,Charstring t
+where schema(s,p,v,t)=true and like(p,"*range*") and v in ret_tableURIs1() 
+and notany(s in ret_fkInNT1()) ;
+
+create function ret_columnURIsCT(Charstring tableURI)
+->Bag of Charstring
+/*Retrieves URIs of the column for connecting table.*/
+as
+select ret_pkURI_woct(v) from Charstring s,Charstring p, Charstring v,Charstring t 
+	where schema(s,p,v,t)=true  and (like(p,"*range*") or like(p,"*domain*"))and  s=tableURI;
+/************************************************************************************************************************/
+/************************************************************************************************************************/
+/*Retrieve PK value with of the table for the given RowID*/
+create function ret_pkVal(Charstring baseURI,Charstring rowID)->Charstring 
+as select ch from Charstring ch,charstring t1 where ch=str_exp1(t1,"_") and t1=substring(str_exp(clearURI(rowID,baseURI),'/'),1,char_length(str_exp(clearURI(rowID,baseURI),'/')));
+
+/*Retrieve PK value(composite) with of the table for the given RowID*/
+create function ret_pkVal1(Charstring baseURI,Charstring rowID)->Vector 
+as select str_exp3(substring(str_exp(t,'/'),1,char_length(str_exp(t,'/'))),'_') from Charstring t where t=clearURI(rowID,baseURI);
+
+create function ret_tableNamefromrowID1(Charstring baseURI,Charstring rowID)
+->Charstring 
+/*Retrieves table name from the given rowID which is retrieved from the given file.*/
+as
+   return str_exp1(clearURI(rowID,baseURI),'/');
+
+create function ret_tableURIfromrowID1(Charstring baseURI,Charstring rowID)
+->Charstring 
+/*Retrieves table URI from the given rowID which is retrieved from the given file.*/
+as
+	return "<"+baseURI+'#'+ret_tableNamefromrowID1(baseURI,rowID)+">";
+
+
+create function ret_pkURIfromRowID1(Charstring baseURI,Charstring rowID)
+->Charstring
+/*Retrieve name of PK of the table for the given RowID*/
+as 
+select ret_pkURIs(t) from Charstring t where t= ret_tableURIfromRowID1(baseURI,rowID);
+
+
+/************************************************************************************************************************/
+/************************************************************************************************************************/
+
+create function tableAttributes(Integer id key, Charstring attribute)-> Object as stored;
+create_index('Integer.Charstring.tableAttributes->Object',"attribute","hash","unique");	
+
+create function valueOfAttr()-> Bag of Object
+    as select value from integer id, Charstring attr, Object value where tableAttributes(id,attr)=value;
+
+/*Clean the content of the table*/
+
+create function clean_tableVal()-> Boolean
+as set tableAttributes(id,attr)=NIL
+    from integer id, Charstring attr, Object value where tableAttributes(id,attr)=value;
+
+create function addcolumn(Charstring tableURI,Charstring baseURI)->Boolean
+as
+begin
+	declare Integer i;
+	set i=1;
+	for each Charstring ch where ch in ret_colURIs1(tableURI,baseURI)
+	begin
+		set tableattributes(i,ch)='';
+		set i=i+1;
+	end;
+end;
+/************************************************************************************************************************/
+/************************************************************************************************************************/
+
+create function tableAttributes1(Charstring attribute key)-> Object as stored;
+create_index('Charstring.tableAttributes1->Object',"attribute","hash","unique");	
+
+create function valueOfAttr1()-> Bag of Object
+    as select value from Charstring attr,Object value where tableAttributes1(attr)=value;
+
+/*Clean the content of the table*/
+
+create function clean_tableVal1()-> Boolean
+as set tableAttributes1(attr)=NIL
+    from Charstring attr, Object value where tableAttributes1(attr)=value;
+
+create function addcolumn1(Charstring tableURI,Charstring baseURI)->Boolean
+as
+begin
+	for each Charstring ch where ch in ret_colURIs1(tableURI,baseURI)
+	begin
+		set tableattributes1(ch)='';
+	end;
+end;
+
+create function remove_attr()->Boolean
+as remove tableAttributes1(attr)=value from Charstring attr, Object value;
+
+create function insert_tableVal(Charstring attr,Object Val)-> Boolean
+as set tableAttributes1(attr)=val;
+
+/************************************************************************************************************************/
+create function insertinto(Charstring filename, Charstring baseURI)->(Charstring,Charstring)
+as
+begin
+	declare Charstring t,Charstring tableURI,Bag of Charstring ct,Charstring c1, Charstring c2,Bag of Charstring colURIs;
+	set t="";
+	set tableURI="";
+	set ct=ret_tableURIsCT();
+	for each Charstring s, Charstring p, Charstring v,Charstring i where readTuples1(filename)=(s,p,v,i)
+	begin 
+		if(p in ct) then 
+		begin 
+			set c1=concatagg(inject(ret_pkVal(baseURI,v),","));
+			set c2=concatagg(inject(ret_pkVal(baseURI,v),","));
+   			return (clearURI(p,baseURI),c1+","+c2); 
+  		end	
+		else if(p!="<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>") then
+		/* Generating values for each column for regular tables.*/
+  		begin 
+			if(s!=t) then
+	      		begin 
+			/* Concatenating the column and its values for inserting each record*/
+				if (t!="")then
+				begin   
+					set tableattributes1(ret_pkURIfromRowID1(baseURI,t))=ret_pkVal(baseURI,t);
+					return(clearURI(tableURI,baseURI),concatagg(inject(valueofattr1(),",")));
+					clean_tableVal1();
+				end;
+				set t=s;
+			/*Adding columns in the Stored table*/
+				if(tableURI!=ret_tableURIfromRowID1(baseURI,t)) then 
+				begin 
+					remove_attr();
+					addcolumn1(ret_tableURIfromRowID1(baseURI,t),baseURI);
+				end; 
+				set tableURI=ret_tableURIfromRowID1(baseURI,t);
+			end;
+		end;
+   		
+		if(v!="" and p!="<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>") then
+		begin 
+			if like(clearURI(p,baseURI),"*/*")then begin
+				set tableattributes1(p)=v;end
+			else begin set c1=ret_pkVal(baseURI,v);
+				set tableattributes1(ret_fkMap(p))=c1;end;
+
+   		end;
+    	end;
+end;
+/************************************************************************************************************************/

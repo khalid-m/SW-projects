@@ -1,0 +1,72 @@
+GSDM 
+Extensible distributed data stream management system 
+for scientific applications
+
+The system resides in gsdm subdirectory of Amos II
+Subdirectories:
+C      C source code including UDP streams
+lsp    Lisp source code
+osql   Osql source code
+dat    Empty directory for storage of report files of execution      
+     
+
+1. Installation: create a directory AmosNT under your home directory
+and extract the source code from the archive there:
+cd AmosNT
+unzip gsdm
+
+2. Set environment variables
+AMOS_HOME 
+   should be set to the name of the directory where Amos II is installed.
+NAMESERVER_HOST 
+   should be set to the IP address of the machine where the name server will run
+
+3. Compile amos2
+Under Windows:
+cd bin
+install
+
+Under Linux (assuming AmosNT is the directory where the system is unzipped):
+cd system/Linux
+make
+cd ../..
+
+
+4. Compile GSDM working nodes and coordinator in AmosNT directory:
+Under Windows:
+gsdminstall
+
+Under Linux:
+./gsdminstall_lin
+
+For Linux only: copy startgsdm script into your home directory:
+cd ~/
+cp AmosNT/startgsdm .
+
+5. Check that you have a valid user account on the servers to be used for GSDM working nodes. Your RSA/DSA public keys (in \.ssh\id_rsa.pub) should also be installed on the server (i.e. appended to ~/.ssh/authorized_keys2 ) in order to avoid entering your password when starting the gsdm servers.
+
+6. Start an example scenario:
+
+a. Start nameserver on the host specified in NAMESERVER_HOST
+   amos2 -n NS
+
+b. Start a coordinator server on the same host in subdirectory gsdm:
+   amos2 coord.dmp
+
+c. Open the script file in AmosNT/gsdm/osql/start.osql, 
+choose a scenario and execute the commands for it in the coordinator. 
+
+d. When the execution stops, you can execute a 'report' command that
+creates a text file in gsdm/dat directory with a name composed by the
+data flow name, date and time. You can open the file to see the
+execution statistics. 
+
+e. Stop the coordinator by:
+kill_peer("STATSRV");
+quit;
+
+Stop the nameserver by:
+^C
+quit;
+
+

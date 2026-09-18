@@ -1,0 +1,15 @@
+@prefix dt:   <http://example.org/datatype#> .
+@prefix :     <http://example.org/ns#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+:x1 :p 5 .                                    #integer
+:x2 :p 3.14 .                                 #float
+:x3 :p true .                                 #boolean
+:x4 :p "2005-02-28T00:00:00Z"^^xsd:dateTime . #datetime
+:x5 :p "cat" .                                #simple string
+:x6 :p "katt"@sv .                            #langtagged string
+:x7 :p ((1 2 3) (4 5 6)) .                    #NMA
+:x8 :p :katze .                               #URI
+:x9 :p _:cattus .                             #user blank node
+:x10 :p [] .                                  #generated blank node
+:x11 :p "chat"^^dt:specialDatatype .          #custom type

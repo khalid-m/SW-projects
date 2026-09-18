@@ -1,0 +1,121 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Tore Risch, UDBL
+ * $RCSfile: cursor.osql,v $
+ * $Revision: 1.7 $ $Date: 2011/12/14 20:07:07 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Testing cursors 
+ *
+ ****************************************************************************
+ * $Log: cursor.osql,v $
+ * Revision 1.7  2011/12/14 20:07:07  torer
+ * Removed unnessecary coercions
+ *
+ * Revision 1.6  2011/02/12 16:57:27  torer
+ * Testing cursors on materialized bags
+ *
+ * Revision 1.5  2011/01/28 09:18:11  torer
+ * 'result' -> 'return'
+ *
+ * Revision 1.4  2011/01/27 21:05:13  torer
+ * Added nomore(Scan)
+ * and the PSM control structures 'loop' and 'while'
+ *
+ * Revision 1.3  2011/01/26 21:00:47  torer
+ * PSM's (...) notation for tuples allowed as alternative to <...>
+ *
+ ****************************************************************************/
+
+open :c0 for bag(1);
+
+lisp;
+
+(checkequal "trivial cursor"
+            ((osql "more(:c0);") '((true)))
+	    ((osql "fetch :c0;") '((1)))
+            ((osql "more(:c0);") nil)
+            ((osql "fetch :c0;") nil))
+
+:osql
+
+close :c0;
+
+/* Cursor on materialized bag */
+
+open :c1 for bag(1,2);
+
+lisp;
+
+(checkequal "Cursor on materialized bag"
+            ((osql "fetch :c1;") '((1)))
+	    ((osql "fetch :c1;") '((2)))
+            ((osql "more(:c1);") nil)
+            ((osql "fetch :c1;") nil))
+
+:osql
+
+/* fetch into */
+open :c1 for 0+1;
+
+fetch :c1 into :i;
+
+open :c2 for 
+  (select i,j from Integer i, Integer j 
+   where i = j+1 and j in iota(1,10));
+
+lisp;
+
+(checkequal "fetch into"
+	    ((osql ":i;") '((1)))
+	    ((osql "fetch :c2 into :a, :b;") nil)
+            ((osql ":a+:b;") '((3)))
+            ((osql "more(:c2);") '((true)))
+	    ((osql "fetch :c2;") '((3 2)))
+            ((osql "more(:c2);") '((true)))
+            ((osql "fetch :c2;") '((4 3)))
+	    )
+:osql
+
+close :c1;
+close :c2;
+
+create function sumb(Bag of Number b)->Integer
+  as begin declare Number r, Number x, Scan c;
+           set r=0;
+           open c for b;
+           while more(c) 
+           do fetch c into x;
+              set r = r + x;
+           end while;
+           return r;
+     end;
+     
+create function sum2(Bag of Number b1, Bag of Number b2)->Integer
+  as begin declare Number r, Number x1, Number x2, Scan c1, Scan c2;
+           set r=0;
+           open c1 for b1;
+           open c2 for b2;
+           loop if nomore(c1) then leave;
+                if nomore(c2) then leave;
+                fetch c1 into x1;
+                fetch c2 into x2;
+                set r = r + x1 * x2;
+           end loop; 
+           return r;
+     end;
+
+
+lisp;
+
+(checkequal
+ "Cursor procedures"
+ ((osql "sumb(iota(1,10));") '((55)))
+ ((osql "sum2(iota(1,10),iota(1,10));") '((385)))
+ )
+
+:osql
+
+rollback;
+

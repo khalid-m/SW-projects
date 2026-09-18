@@ -1,0 +1,24 @@
+create function rdf_triple_cache(Charstring src)
+       ->Bag of <Charstring,Charstring,Charstring> as stored;
+
+create function parseRDF(Charstring source)->
+    bag of <Charstring,Charstring,Charstring,Integer> as
+  foreign "JAVA:AmosStmt/Load";
+
+create function rdf_triples(Charstring src) ->
+                 <Charstring s, Charstring p, Charstring o> as
+  begin
+        if notany(rdf_triple_cache(src)) then        
+           for each Charstring s, Charstring p, Charstring o, Integer i
+               where <s,p,o,i> = parserdf(src)
+             add rdf_triple_cache(src) = <s,p,o>;
+        for each Charstring s, Charstring p, Charstring o
+              where <s,p,o> = rdf_triple_cache(src)
+             result <s,p,o>;
+   end;
+
+create function rdql(charstring query)->object as foreign "JAVA:Start/rdql";
+
+create function SourceNameSpace(Charstring nm)-> Charstring
+   as foreign "JAVA:Start/sourcenamespace";
+

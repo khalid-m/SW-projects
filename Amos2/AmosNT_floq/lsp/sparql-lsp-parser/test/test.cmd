@@ -1,0 +1,1 @@
+amos2 %AMOS_HOME%/bin/amos2.dmp %AMOS_HOME%/SQoND/lsp/string-based-wrapper.lsp %AMOS_HOME%/lsp/sparql-lsp-parser/test/regress.lsp -l "(quit)"

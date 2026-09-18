@@ -1,0 +1,138 @@
+<html>
+    <head>
+        <title>Update assignment status</title>
+        <script type="text/javascript" src="scripts/cookies.js"></script>
+        <script type="text/javascript" src="scripts/SOAPClient.js"></script>
+        <script type="text/javascript" src="scripts/utility.js"></script>
+        <script type="text/javascript" language="javascript">
+            var studentName,error,selectedName;
+            var oMyObject = window.dialogArguments;
+            var cname = oMyObject.courseName;
+
+            //list stuent by p-number
+            function listByPNumber() {
+                error = null;
+                SOAPClient.invoke("LISTSTUDENTSFULL", [4,"inc",cname], false, listByPNumber_callBack, error_callBack);
+            }
+
+            function listByPNumber_callBack(o, xmlDoc)
+            {
+                if (o == null){
+                    document.getElementById("pNumberDiv").innerHTML = "<select size='1' id='pNumber'><option selected value=''>None</option></select>";
+                }else{
+                    var selectList = populateOptions(o,2,"pNumber");
+                    document.getElementById("pNumberDiv").appendChild(selectList);
+                }
+            }
+
+            //list student by full name
+            function listByFullName() {
+                error = null;
+                SOAPClient.invoke("LISTSTUDENTSFULL", [1,"inc",cname], false, listByFullName_callBack, error_callBack);
+            }
+
+            function listByFullName_callBack(o, xmlDoc)
+            {
+                if (o == null){
+                    document.getElementById("fullNameDiv").innerHTML = "<select size='1' id='fullName'><option selected value=''>None</option></select>";
+                }else{
+                    var selectList = populateOptions(o,2,"fullName");
+                    document.getElementById("fullNameDiv").appendChild(selectList);
+                }
+            }
+
+            //list student by email
+            function listByEmail() {
+                error = null;
+                SOAPClient.invoke("LISTSTUDENTSFULL", [2,"inc",cname], false, listByEmail_callBack, error_callBack);
+            }
+
+            function listByEmail_callBack(o, xmlDoc)
+            {
+                if (o == null){
+                    document.getElementById("emailDiv").innerHTML = "<select size='1' id='email'><option selected value=''>None</option></select>";
+                }else{
+                    var selectList = populateOptions(o,2,"email");
+                    document.getElementById("emailDiv").appendChild(selectList);
+                }
+            }
+            
+            function selectStudent_onclick(){ 
+                var pnName = document.getElementById("pNumber").value;
+                var fName = document.getElementById("fullName").value;
+                var emailName = document.getElementById("email").value;
+                if ( pnName != "" ) {
+                    selectedName = pnName;
+                } else if (fName != "" ) {
+                    selectedName = fName;
+                } else if (emailName != "" ) {
+                    selectedName = emailName;
+                } else {
+                    alert("Please select a student from the list above.");
+                    return;
+                }
+                SOAPClient.invoke("SELECTSTUDENTINFOFULL", [selectedName,cname], true, selectStudent_callBack, error_callBack);
+                studentName = selectedName;
+                document.getElementById("pNumber").options[0].selected = true;
+                document.getElementById("fullName").options[0].selected = true;
+                document.getElementById("email").options[0].selected = true;
+            }
+
+            function selectStudent_callBack(o, xmlDoc)
+            {
+                    var tblHead = "<tr style='background-color:lightgrey'><th>Full Name</th><th>e-mail</th><th>Username</th><th>P Number</th><th>Group No.</th></tr>";
+                    var table = resultToTable(o,null,tblHead);
+                    document.getElementById("selectStudDiv").innerHTML = "The following student was selected for subsequent actions:<br>" + table;
+            }
+
+            function error_callBack(e, errorCode){
+                if (e != null){
+                    error = e;
+                    document.getElementById("selectDiv").style.display='none';
+                    document.getElementById("errorDiv").innerHTML="Error callBack:<br>" + error + "<br><br>Error code:<br>" + errorCode;
+                }
+            }
+	
+            function update_onclick(){
+                if (studentName == '' || studentName == null){
+                    alert("Choose a student first.");
+                }else {
+                    returnValue=studentName;
+                    window.close();
+                }
+            }
+
+            function btnClose_onclick(){
+                returnValue = 'none';
+                window.close();
+            }
+
+            function window_onload(){
+                if (getCookie("name")==""||getCookie("name")==null){
+                    alert("You don't have authority to view this page.");
+                    document.all.aLogout.href='index.html';
+                    document.all.aLogout.click();
+                }
+                listByPNumber();
+                listByFullName();
+                listByEmail();
+            }
+        </script>
+    </head>
+    <body onload="return window_onload();">
+        <div id="selectDiv" style="display:block;">
+        Select a student by ONE of the parameters below.<br><br>
+        Students listed by Personal Number:<br>
+        <div id="pNumberDiv"></div><br><br>
+        Students listed by Full Name:<br>
+        <div id="fullNameDiv"></div><br><br>
+        Students listed by E-Mail:<br>
+        <div id="emailDiv"></div><br><br>
+        <div id="selectStudDiv"></div><br>
+        <INPUT type="button" value="Select student" onclick="return selectStudent_onclick();">
+        <INPUT type="button" value="update" onclick="return update_onclick();">
+        </div>
+        <div id="errorDiv"></div>
+        <INPUT type="button" value="close" onclick="return btnClose_onclick();">
+    </body>
+</html>

@@ -1,0 +1,18 @@
+Accessing CheloniaDB with linux scripts
+
+chelonia makedb /Test/db10
+
+tar czvf URDME.tar.gz URDME
+
+chelonia updatedb ./URDME.tar.gz  /Test/db10
+
+chelonia stat /Test/db10
+
+chelonia querydb "select read_data('1:10', a.blobId) from aTriples a where a.vName='width' and a.taskId=2;" /Test/db10
+
+{'0': ['done', 'http://sal6.uppmax.uu.se:60005/hopi/b164f381-71c5-405d-ab74-f60b6627001a', 'http']}
+
+wget http://sal6.uppmax.uu.se:60005/hopi/b164f381-71c5-405d-ab74-f60b6627001a
+
+cat b164f381-71c5-405d-ab74-f60b6627001a
+

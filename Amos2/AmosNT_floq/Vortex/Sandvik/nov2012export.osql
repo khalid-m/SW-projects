@@ -1,0 +1,53 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Tore Risch, UDBL
+ * $RCSfile: nov2012export.osql,v $
+ * $Revision: 1.2 $ $Date: 2012/11/08 16:14:48 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Master file for exported svali with milling example in image
+ *
+ ****************************************************************************
+ * $Log: nov2012export.osql,v $
+ * Revision 1.2  2012/11/08 16:14:48  torer
+ * New milling model
+ *
+ * Revision 1.1  2012/10/30 13:04:35  torer
+ * New script to load export image
+ *
+ * Revision 1.3  2012/10/20 14:27:02  torer
+ * No SVALI source code in demo2012.dmp
+ *
+ * Revision 1.2  2012/10/20 14:14:06  torer
+ * No milling sources in image
+ *
+ * Revision 1.1  2012/10/20 13:58:52  torer
+ * Automatic installation of exported svali with milling example
+ *
+ ****************************************************************************/
+
+exposeSource(true);
+
+< '../schema/SmartVortexSchema.osql'; /* The generic Smart Vortex schema based on D3.1 */
+
+< 'CorenetWrapper.osql'; /* The general Corenet stream wrapper that handles any 
+                            equipment stream from Sandvik */
+
+< 'MillWrapper.osql'; /* The milling wrapper in terms of CORENET */
+
+< 'MillingModel.osql'; /* The math model for milling */
+
+exposeSource(false);
+
+< 'MillingValidator.osql'; /* The milling stream validation model */
+
+< 'OtherWrapper.osql'; /* The other Sandvik wrapper in terms of CORENET */
+
+< 'LearningModel.osql'; /* The learning model and validator */
+
+< 'SandvikMetaData.osql'; /* Populate the Smart Vortex database with meta-data */
+
+save "../bin/demo2012.dmp";
+
+quit;

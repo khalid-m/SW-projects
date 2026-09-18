@@ -1,0 +1,91 @@
+ /*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2006 Johan Petrini, Tore Risch UDBL
+ * $RCSfile: complete.amosql,v $
+ * $Revision: 1.3 $ $Date: 2012/05/16 17:31:32 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Functions implementing complete RDFS views of relational databases.
+ ******************************************************************************
+/* Fn generating arguments for call to key constructor.
+ */
+create function genValArgs(Charstring tn,Vector v)->Charstring 
+  as
+   select concatagg(inject(concat(tn + "_",cast(in(v) as Charstring)),','));
+
+/* Fn generating key constructor fn for each mapped class representing a table with 
+ * composite primary key.
+ */
+create function genKeyConstructFn(Charstring tn,Vector v)->Boolean 
+  as
+  begin
+   declare Charstring arg,Charstring res;
+   if (notany(functionnamed("KC_" + tn))) then
+   begin
+     set arg= concatagg(inject(concat("Charstring " + tn + "_",cast(in(v) as Charstring))," key, ")) + " key";
+     set res= concatagg(inject(concat(tn + "_",cast(in(v) as Charstring))," + '@' + "));
+     eval("create function KC_" + tn + "(" + arg + ")->Charstring ck key
+ as " + res + ";");
+   end;
+  end;
+
+/* Fn defining a generalized property view.
+ */
+create function genPV(Charstring upv,		
+	               Charstring tn,
+	               Charstring cn)->Charstring clause
+as
+ begin
+  declare Vector k;
+  set k = sortvector(vectorof(upper(getKey(DSOfUPV(upv),tn))),'<');
+  genKeyConstructFn(tn,k);
+  return in(select "(" + genRelcall(upv,tn) + " and 
+                   cMap('" + tn + "','" + upv + "', cid) and 
+                   pMap('" + tn + "','" + cn + "','" + upv + "', p) and 
+                   s = rowid(cid,KC_" + tn + "(" + genValArgs(tn,k)  + ")) and  
+                   val = " + tn + "_" + cn + ")");
+ end;
+       
+
+/* Fn defining a generalized class membership view.
+ */
+create function genCCV(Charstring upv,		
+	               Charstring tn)->Charstring clause
+as 
+ begin
+  declare Vector k;
+  set k = sortvector(vectorof(upper(getKey(DSOfUPV(upv),tn))),'<');
+  genKeyConstructFn(tn,k);
+  return in(select "(" + genRelcall(upv,tn) + " and 
+            cMap('" + tn + "','" + upv + "', cid) and         
+            s = rowid(cid,KC_" + tn + "(" + genValArgs(tn,k)  + ")) and
+            p = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and 
+            val = cid)");
+ end;
+
+/* Fn defining a generalized class relationship view.
+ */
+create function genFPV(Charstring upv,		
+	                Charstring tn,
+                        Charstring cn,
+                        Charstring otn)->Charstring clause
+as
+ begin 
+  declare Vector k;
+  set k = sortvector(vectorof(upper(getKey(DSOfUPV(upv),tn))),'<');
+  genKeyConstructFn(tn,k);
+  return in(select "(" + genRelcall(upv,tn) + " and 
+            cMap('" + tn + "','" + upv + "', cid) and 
+            rMap('" + tn + "','" + cn + "','" + otn + "','" + upv + "', p) and
+            s = rowid(cid,KC_" + tn + "(" + genValArgs(tn,k)  + ")) and 
+            val = rowid(cMap('" + otn + "','" + upv + "'),
+                      " + tn + "_" + cn + "))");
+ end;
+
+
+
+
+
+
+

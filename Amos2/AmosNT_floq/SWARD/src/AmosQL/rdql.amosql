@@ -1,0 +1,51 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Johan Petrini UDBL
+ * $RCSfile: rdql.amosql,v $
+ * $Revision: 1.18 $ $Date: 2007/12/03 14:46:54 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Interface to RDQL parser
+ ****************************************************************************/
+create function parse_rdql(Charstring query)->Charstring 
+as 
+ foreign "JAVA:Start/parseRDQL";
+
+create function parseRDQL(Charstring query)->Charstring 
+as 
+ foreign "JAVA:Start/parseRDQL";
+
+/*
+create function parseRDQLBinds(Charstring query)->Vector
+as
+ foreign "JAVA:Start/parseRDQLBinds";
+*/
+
+/*
+create function rdql(Charstring query)->Vector
+as 
+ foreign "JAVA:Start/RDQL";
+*/
+
+create function rdql(Charstring query)->Vector
+as 
+ select evalv(parseRDQL(query));
+
+/*
+create function rdqlBinds(Charstring rdql)->Vector
+as
+ select bindsTpl(evalv(amosql),resVars(amosql))
+ from Charstring amosql
+ where amosql = parseRDQL(rdql);
+*/
+
+create function rdqlBinds(Charstring rdql)->Vector
+as
+ select bindsTpl(call_function(q,{}),resVars(q))
+ from Function q
+ where q = compileQuery(parseRDQL(rdql));
+
+
+
+

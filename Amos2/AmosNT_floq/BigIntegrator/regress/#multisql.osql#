@@ -1,0 +1,1381 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: multisql.osql,v $
+ * $Revision: 1.7 $ $Date: 2013/09/10 08:00:12 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: LOcal multi-SQL scenario
+ ****************************************************************************
+ * $Log: multisql.osql,v $
+ * Revision 1.7  2013/09/10 08:00:12  minzh812
+ * *** empty log message ***
+ *
+ * Revision 1.6  2013/08/15 15:18:59  minzh812
+ * *** empty log message ***
+ *
+ * Revision 1.4  2013/08/12 07:29:32  minzh812
+ * *** empty log message ***
+ *
+ * Revision 1.3  2013/06/18 09:42:25  minzh812
+ * *** empty log message ***
+ *
+ * Revision 1.2  2013/01/03 16:38:34  minzh812
+ * *** empty log message ***
+ *
+ * Revision 1.1  2012/12/27 11:01:32  torer
+ * example of multi-sql query
+ *
+ ****************************************************************************/
+
+/* multicast_receive will be factor 4 times faster than call sql to every 
+   datasource in sequence (like in multisql) in a 4 processors machine (my 
+   machine (according to Tore) */
+
+start javaamos -n
+start javaamos -O peer.osql -s u
+start javaamos -O peer.osql -s v
+
+javaamos -c me
+
+/* maps logdburi to jdbc object and used in query in sequence */
+create function logdburi_js(Object)->JDBC as stored; 
+
+
+/* create n jdbc connection objects and used in query in sequence */
+create function jdbcSet(Number n, Charstring driver)
+                       -> Bag of Jdbc
+  as jdbc("C"+iota(1,n), driver);
+
+/* connect to jdbc datasource and map the uri to jdbc datasource */
+/* and used in query in sequence */
+create function connect2(Jdbc ds1, Charstring uri, 
+                           Charstring user_name, Charstring password)->Jdbc ds2
+  as begin 
+          connect(ds1, uri, user_name, password);
+          set logdburi_js(uri)=ds1;
+     end;
+
+
+/* connect each jdbc object with a data source with different db name */
+/* and used in query in sequence */
+create function openJdbcSet(Bag of Jdbc js,
+                            Charstring dburl, Bag of Charstring dbs,
+                            Charstring user, Charstring pw)
+                          -> Bag of Jdbc
+  as for each Jdbc j, Charstring db 
+     where j in js and db in dbs 
+     begin
+         return connect(j, dburl+db, user, pw);
+     end;
+
+
+/* disconnect given database connections */
+/* and used in query in sequence */
+create function closeJdbcSet(Bag of Jdbc js) -> Bag of Jdbc
+  as for each Jdbc j where j in js 
+     begin disconnect(j);
+           return j;
+     end;
+
+/* utility functions */
+create function transformvec(vector inputvarsvec)->(object, vector) as foreign 'transinvec-++';
+
+create function formargfrombag(bag)->vector as foreign 'formargfrombag-+';
+
+create function vectorBag(Vector v) -> Bag of Charstring
+  as select v[i] 
+     from Integer i;
+
+/* mapping database uri to peer name */
+/* and used in query in parallel */
+create function mappinguri_peer(Charstring uri)->Charstring as stored;
+
+set mappinguri_peer("jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB")='u';
+
+set mappinguri_peer("jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB")='v';
+
+/* and used in query in parallel */
+/* mapping logdb uri to peer name and forming peer vector and query argument 
+   vector for multicastreceive */
+create function multicastreceive3(Vector uris, Charstring fn, Charstring query, 
+                                         Vector args)->Bag of Object
+  as begin
+     declare vector peervec, vector argvec, Charstring pe, Charstring logdburi;
+     set peervec={};
+     set argvec={};
+     for each integer i where i in iota(0, dim(uris)-1)
+       begin
+       set logdburi=uris[i];
+       set pe=mappinguri_peer(logdburi);
+        if pe then
+          begin
+          set peervec=concat(peervec, {pe}); 
+          set argvec=concat(argvec, {{logdburi, query, args[i]}});
+/*add metavec*/
+          end;
+       end;
+     if dim(peervec) >= 1 then
+     return multicastreceive(peervec, fn, argvec);
+     end;
+
+/* multi_sql_union is the same as sql */
+/* for query logdb in sequence, takes logdbid, query, and parameters */ 
+create function multi_sql_union(Object logdburi, Charstring query, 
+                                Vector params) -> Vector
+  as select sql(logdburi_js(logdburi), query, params);
+
+
+/* set url of meta-database */ 
+set :dburl = "jdbc:mysql://localhost:3306/";
+
+trace("connect");
+
+/* set up connection to access toy meta database at local mysql */
+set :a = jdbc("a", "com.mysql.jdbc.Driver");
+
+connect(:a, :dburl + "metadb", "regress", "regress");
+
+/* set up connection to access small meta database (100 machine installations 
+   and 200 sensors) at local mysql */
+set :metas = jdbc("metas", "com.mysql.jdbc.Driver");
+
+connect(:metas, :dburl + "metadb_s", "regress", "regress");
+
+/* set up connection to access middle meta database (200 machine installations 
+   and 400 sensors) at local mysql */
+set :metam = jdbc("metam", "com.mysql.jdbc.Driver");
+
+connect(:metam, :dburl + "metadb_m", "regress", "regress");
+
+/* set up connection to access middle meta database (500 machine installations 
+   and 1000 sensors) at local mysql */
+set :metal = jdbc("metal", "com.mysql.jdbc.Driver");
+
+connect(:metal, :dburl + "metadb_l", "regress", "regress");
+
+
+/* set up two jdbc connection objects to logDBs at SQLserver*/
+/* one logDB is located at udblserver1 and another resides at udbl-station */
+set :js = jdbcSet(2,"com.microsoft.jdbc.sqlserver.SQLServerDriver");
+
+/****************************** for sequence execution ***************************/
+/* connect each jdbc object with a database connection */
+/* openJdbcSet(:js,:dburl,dbnames(2, "logdb"), "regress", "regress"); */
+set :logdb1url = "jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB";
+
+set :logdb2url = "jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB";
+
+/* for bm15GB */
+/*
+set :logdb1url = "jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm15GB";
+
+set :logdb2url = "jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm15GB";
+*/
+
+connect2(first(:js), :logdb1url, "udbl", "udbl");
+
+connect2(last(:js), :logdb2url, "udbl", "udbl");
+
+
+
+/* testing multi_sql_union */
+count(multi_sql_union(:logdb1url, "select * from measuresA where mv>359", {}));
+
+count(multi_sql_union(:logdb2url, "select * from measuresA where mv>359", {}));
+
+< 'patch.osql';
+
+
+
+/* import source predicate SENSORINSTALLATION, SITE, INSTALLEDEQUIPMENT, 
+   EQUIPMENTMODEL, SENSORMODEL from toy meta database */
+import_table(:a, 'SENSORINSTALLATION');
+
+import_table(:a, 'LOCATION');
+
+import_table(:a, 'MACHINEINSTALLATION');
+
+import_table(:a, 'MACHINE');
+
+import_table(:a, 'SENSOR');
+
+/* import source predicate SENSORINSTALLATION, SITE, INSTALLEDEQUIPMENT, 
+   EQUIPMENTMODEL, SENSORMODEL from small meta database */
+import_table(:metas, 'SENSORINSTALLATION');
+
+import_table(:metas, 'LOCATION');
+
+import_table(:metas, 'MACHINEINSTALLATION');
+
+import_table(:metas, 'MACHINE');
+
+import_table(:metas, 'SENSOR');
+
+/* import source predicate SENSORINSTALLATION, SITE, INSTALLEDEQUIPMENT, 
+   EQUIPMENTMODEL, SENSORMODEL from middle meta database */
+import_table(:metam, 'SENSORINSTALLATION');
+
+import_table(:metam, 'LOCATION');
+
+import_table(:metam, 'MACHINEINSTALLATION');
+
+import_table(:metam, 'MACHINE');
+
+import_table(:metam, 'SENSOR');
+
+
+/* import source predicate SENSORINSTALLATION, SITE, INSTALLEDEQUIPMENT, 
+   EQUIPMENTMODEL, SENSORMODEL from large meta database */
+import_table(:metal, 'SENSORINSTALLATION');
+
+import_table(:metal, 'LOCATION');
+
+import_table(:metal, 'MACHINEINSTALLATION');
+
+import_table(:metal, 'MACHINE');
+
+import_table(:metal, 'SENSOR');
+
+
+/* import source predicate Measurement from one logdb */
+/* import_sourceset_table(:js, 'MEASURESA'); */
+import_table2(first(:js),'MEASURESA',:js);
+
+apropos("measuresa");	
+
+
+/* peers setup for paralization */
+/* peer u */
+/* in peer u, call jdbc function */
+set :u= call_function('u','jdbc', {"A","com.microsoft.jdbc.sqlserver.SQLServerDriver"}, 10)[0];
+
+/* in peer u, make connection to logdb, for bm1GB */
+call_function('u','connect', {:u,"jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB", "udbl", "udbl"}, 10);
+
+/* in peer u, make connection to logdb, for bm15GB */
+/* 
+call_function('u','connect', {:u,"jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm15GB", "udbl", "udbl"}, 10);
+*/
+
+/* populating the mapping */
+/* so that when peer receive logdb uri from FLOQ, it can fetch the mapping 
+   jdbc object in peer */
+call_function('u','pop_uri_jdbc',{"jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB",:u},10);
+
+/* for bm15GB */
+/*
+call_function('u','pop_uri_jdbc',{"jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm15GB",:u},10);
+*/
+
+/* just to check the mapping works */
+call_function('u', 'logdburi_jdbc',{"jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB"}, 10); 
+
+/* just to check the mapping works, for bm15GB */
+/*
+call_function('u', 'logdburi_jdbc',{"jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm15GB"}, 10); 
+*/
+
+/* check whether the sql_my works with logdburi */
+call_function('u', 'sql_my', {"jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB", "select * from measuresA where mv>359", {}}, 10);
+
+/* peer v */
+/* in peer v, call jdbc function */
+set :v= call_function('v','jdbc', {"B","com.microsoft.jdbc.sqlserver.SQLServerDriver"}, 10)[0];
+
+/* in peer v, make connection to logdb */
+call_function('v','connect', {:v,"jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB", "udbl", "udbl"}, 10);
+
+/* for bm15GB */
+/*
+call_function('v','connect', {:v,"jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm15GB", "udbl", "udbl"}, 10);
+*/
+
+/* populating the mapping */
+/* so that when peer receive logdb uri from FLOQ, it can fetch the mapping 
+   jdbc object in peer */
+call_function('v','pop_uri_jdbc',{"jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB",:v},10);
+
+/* for bm15GB */
+/*
+call_function('v','pop_uri_jdbc',{"jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm15GB",:v},10);
+*/
+
+/* just to check the mapping works */
+call_function('v', 'logdburi_jdbc',{"jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB"}, 10); 
+
+/* check whether the sql_my works with logdburi */
+call_function('v', 'sql_my', {"jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB", "select * from measuresA where mv>359", {}}, 10);
+
+/* simple test on multicastreceive */
+multicastreceive({'u','v'}, 'sql_my', {{"jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB","select count(*) from measuresA where mv>359",{}},{"jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB","select count(*) from measuresA where mv>359",{}}});
+
+/* for bm15GB */
+/*
+multicastreceive({'u','v'}, 'sql_my', {{"jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm15GB","select count(*) from measuresA where mv>359",{}},{"jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm15GB","select count(*) from measuresA where mv>359",{}}});
+*/
+
+/* test case on multicastreceive3 */
+set :vec2={{"jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB","jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB"},
+{{{20.0,10.0,2,2},{20.0,10.0,7,7}},{{50.0,10.0,1,1},{348.0,10.0,6,8}}}};
+
+multicastreceive3(:vec2[0], "sql_myv2", "select bt,et,mv from measuresA where (mv-?)>? and m=? and s=?", :vec2[1]);
+
+
+
+/* What equipment has failed? with toy meta database */
+/* 2 bindings to each udblserver1 and udblserver3 */
+create function newq4()->(Integer, Number, Number) as
+select m(ma), bt(ma), et(ma)
+from SensorInstallation@A si, Location@A l, MeasuresA ma, 
+     MachineInstallation@A mi, Machine@A m
+where mv(ma)> ev(si)+th(si) and
+      lid(l)=locatedat(mi) and
+      mi(mi)=mi(si) and
+      m(mi)=m(m) and
+      s(ma)=si(si) and 
+      m(ma)=mi(si) and 
+      uri(l)=jdbcuri(ma);
+
+pc("newq4");
+
+count(newq4());
+	
+
+/* What equipment has failed? with small meta database (100 machine installations and 200 sensors) */
+/* 40 bindings to each udblserver1 and udblserver3 */
+/* query to metadb returns 40 rows for udblserver1, 40 rows for udblserver3, 120 rows for unknown */
+create function newq4s()->(Integer, Number, Number) as
+select m(ma), bt(ma), et(ma)
+from SensorInstallation@metas si, Location@metas l, MeasuresA ma, 
+     MachineInstallation@metas mi, Machine@metas m
+where mv(ma)> ev(si) + th(si) and
+      lid(l)=locatedat(mi) and
+      mi(mi)=mi(si) and
+      m(mi)=m(m) and
+      s(ma)=si(si) and 
+      m(ma)=mi(si) and 
+      uri(l)=jdbcuri(ma);
+
+pc("newq4s");
+
+count(newq4s());
+
+
+/* What equipment has failed? with middle size meta database (200 machine installations and 400 sensors) */
+/* 80 bindings to each udblserver1 and udblserver3 */
+/* query to metadb returns 80 rows for udblserver1, 80 rows for udblserver3, 240 rows for unknown */
+create function newq4m()->(Integer, Number, Number) as
+select m(ma), bt(ma), et(ma)
+from SensorInstallation@metam si, Location@metam l, MeasuresA ma, 
+     MachineInstallation@metam mi, Machine@metam m
+where mv(ma)> ev(si)+th(si) and
+      lid(l)=locatedat(mi) and
+      mi(mi)=mi(si) and
+      m(mi)=m(m) and
+      s(ma)=si(si) and 
+      m(ma)=mi(si) and 
+      uri(l)=jdbcuri(ma);
+
+pc("newq4m");
+
+count(newq4m());
+
+/* What equipment has failed? with large size meta database (500 machine installations and 1000 sensors) */
+/* 200 bindings to each udblserver1 and udblserver3 */
+/* query to metadb returns 200 rows for udblserver1, 200 rows for udblserver3, 600 rows for unknown */
+create function newq4l()->(Integer, Number, Number) as
+select m(ma), bt(ma), et(ma)
+from SensorInstallation@metal si, Location@metal l, MeasuresA ma, 
+     MachineInstallation@metal mi, Machine@metal m
+where mv(ma)-ev(si)>th(si) and
+      lid(l)=locatedat(mi) and
+      mi(mi)=mi(si) and
+      m(mi)=m(m) and
+      s(ma)=si(si) and 
+      m(ma)=mi(si) and 
+      uri(l)=jdbcuri(ma);
+
+pc("newq4l");
+
+count(newq4l());
+
+
+/* What equipment in Uppsala has failed? */
+create function newq3()->(Integer, Number, Number) as
+select m(ma), bt(ma), et(ma)
+from SensorInstallation@A si, Location@A l, MeasuresA ma, 
+     MachineInstallation@A mi, Machine@A m
+where name(l)='Uppsala' and
+      mv(ma)-ev(si)>th(si) and
+      lid(l)=locatedat(mi) and
+      mi(mi)=mi(si) and
+      m(mi)=m(m) and
+      s(ma)=si(si) and 
+      m(ma)=mi(si) and 
+      uri(l)=jdbcuri(ma);
+
+
+pc("newq3");
+
+count(newq3());
+
+
+
+/* these queries have not been reformulated yet */
+create function newq3_1()->(Integer, charstring, Integer, Number) as
+select ie(si), ename(e), logdbid(s), mv(m)
+from SENSORINSTALLATION@A si, SITE@A s, MEASURESA m, 
+     INSTALLEDEQUIPMENT@A ie, EQUIPMENTMODEL@A e
+where location(s)='Campinas' and
+      mv(m)-ev(si)>th(si) and
+      site(s)=site(ie) and
+      ie(ie)=ie(si) and
+      e(ie)=e(e) and
+      s(m)=si(si) and
+      logdbid(m)=logdbid(s);
+
+pc("newq3_1");
+
+count(newq3_1());
+
+
+create function newq3_2()->(Integer, charstring, Integer, Number) as
+select ie(si), ename(e), logdbid(s), mv(m)
+from SENSORINSTALLATION@A si, SITE@A s, MEASURESA m, 
+     INSTALLEDEQUIPMENT@A ie, EQUIPMENTMODEL@A e
+where mv(m)-ev(si)>th(si) and
+      site(s)=site(ie) and
+      ie(ie)=ie(si) and
+      e(ie)=e(e) and
+      s(m)=si(si) and
+      logdbid(m)=logdbid(s);
+
+pc("newq3_2");
+
+count(newq3_2());
+
+
+/* queries */
+/*Q1: What are the sites for equipment named PUMP? */
+create function q1()->charstring as
+select location(s)
+from SITE@A s, EQUIPMENTMODEL@A e, INSTALLEDEQUIPMENT@A ie
+where ename(e)='MoriSeiki 5000' and e(ie)=e(e) and site(s)=site(ie);
+
+
+/*Q2: What equipment is there in Uppsala? */
+create function q2()->integer as
+select e(ie)
+from INSTALLEDEQUIPMENT@A ie, SITE@A s
+where location(s)='Uppsala' and site(ie)=site(s);
+
+
+
+/*Q3: What equipment in Uppsala has failed (mv-ev>th) during the last month? */
+create function q3()->(Integer, charstring, Integer, Number) as
+select ie(si), ename(e), logdbid(s), mv(m)
+from SENSORINSTALLATION@A si, SITE@A s, MEASURESA m, 
+     INSTALLEDEQUIPMENT@A ie, EQUIPMENTMODEL@A e
+where location(s)='Uppsala' and 
+      Real(now())-30*24*60*60<ts(m) and
+      mv(m)-ev(si)>th(si) and
+      site(s)=site(ie) and
+      ie(ie)=ie(si) and
+      e(ie)=e(e) and
+      si(m)=si(si) and
+      logdbid(m)=logdbid(s);
+
+
+/*Q4: What sensors on what equipment in Uppsala has almost indicated failure 
+      (mv-ev>0.75*th) during the last month? */
+create function q4()->(Integer, charstring) as
+select ie(si), ename(e)
+from SENSORINSTALLATION@A si, SITE@A s, MEASUREMENT m, 
+     INSTALLEDEQUIPMENT@A ie, EQUIPMENTMODEL@A e
+where location(s)='Uppsala' and 
+      Real(now())-30*24*60*60<ts(m) and
+      mv(m)-ev(si)>0.75*th(si) and
+      site(s)=site(ie) and
+      ie(ie)=ie(si) and
+      e(ie)=e(e) and
+      si(m)=si(si) and
+      logdbid(m)=logdbid(s);
+
+
+/*Q5: What sensors on what equipment and location indicated failure (mv-ev>th) 
+      during the last month? */
+create function q5()->(Integer, Number, Charstring, Integer) as
+select ie(si), mv(m),location(s), logdbid(s)
+from SENSORINSTALLATION@A si, SITE@A s, MEASUREMENT m, 
+     INSTALLEDEQUIPMENT@A ie, EQUIPMENTMODEL@A e
+where Real(now())-30*24*60*60<ts(m) and
+      mv(m)-ev(si)>th(si) and
+      site(s)=site(ie) and
+      ie(ie)=ie(si) and
+      e(ie)=e(e) and
+      si(m)=si(si) and
+      logdbid(m)=logdbid(s);
+
+
+/*Q6: What sensors of kind TEMP indicated failure on different machines in Uppsala within less than 5 minutes. */
+create function q6()->Integer as
+select si(si)
+from SENSORINSTALLATION@A si, SITE@A s, MEASUREMENT m, 
+     INSTALLEDEQUIPMENT@A ie, EQUIPMENTMODEL@A e, SENSORMODEL@A sm
+where location(s)='Uppsala' and
+      sname(sm)='TEMP' and
+      Real(now())-5*60<ts(m) and
+      mv(m)-ev(si)>th(si) and
+      site(s)=site(ie) and
+      ie(ie)=ie(si) and
+      e(ie)=e(e) and
+      si(m)=si(si) and
+      sm(si)=sm(sm) and
+      logdbid(m)=logdbid(s);
+
+
+
+/*Q7: On what equipment in Uppsala did sensor TEMP and POWER fail within one 
+      minute? */
+/* problem with or in amosql */
+create function q7()->(Integer, charstring) as
+select ie(si), ename(e)
+from SENSORINSTALLATION@A si, SITE@A s, MEASUREMENT m, 
+     INSTALLEDEQUIPMENT@A ie, EQUIPMENTMODEL@A e, SENSORMODEL@A sm
+where location(s)='Uppsala' and
+      (sname(sm)='TEMP' or
+      sname(sm)='POWER') and
+      Real(now())-60<ts(m) and
+      mv(m)-ev(si)>th(si) and
+      site(s)=site(ie) and
+      ie(ie)=ie(si) and
+      e(ie)=e(e) and
+      si(m)=si(si) and
+      sm(si)=sm(sm) and
+      logdbid(m)=logdbid(s);
+
+
+/*Q8: On what equipment and when was sensor TEMP higher than its maxv */
+create function q8()->(Integer, number) as
+select ie(si), ts(m)
+from SENSORINSTALLATION@A si, SENSORMODEL@A sm, MEASUREMENT m 
+where sname(sm)='TEMP' and
+      mv(m)>maxv(sm) and
+      sm(si)=sm(sm) and
+      si(m)=si(si);
+
+
+/* low level interface function call corresponding to q3 */
+
+/* multi_sql_union should have something to do with parallelism */
+/*
+create function multi_sql_union2(Bag of vector (JDBC jdbc, Charstring query, Vector params))->Bag
+  as set tempds
+     for each js in jdbc
+      /* start a peer */
+      begin 
+       sql(js, query, param);
+*/
+
+in(multi_sql_union({first(:js), "SELECT * FROM MEASUREMENT M", {}}));
+
+/* using logdbid_js */
+select in(multi_sql_union(qrb))
+from Bag of vector qrb
+where qrb = (select {logdbid_js(qr[4]),
+                     "SELECT * FROM MEASUREMENT M 
+                      WHERE M.MV - ?>? AND M.SI = ? AND M.LOGDBID=?",
+                    {qr[2], qr[3], qr[1], qr[4]}}    
+                 from Vector qr
+                where qr = 
+                  sql(:a, "SELECT E.ENAME, SI.SI, SI.EV, SI.TH, S.LOGDBID
+                           FROM SENSORINSTALLATION SI, SITE S, 
+                                INSTALLEDEQUIPMENT IE,
+                                EQUIPMENTMODEL E
+                           WHERE S.LOCATION = 'Uppsala' AND
+                                 S.SITE = IE.SITE AND
+                                 IE.IE=SI.IE AND
+                                 IE.E=E.E"));
+
+/* just to check the result of the previous query */
+set :qrb = (select {logdbid_js(qr[4]),
+                     "SELECT * FROM MEASUREMENT M 
+                      WHERE M.MV - ?>? AND M.SI = ? AND M.LOGDBID=?",
+                    {qr[2], qr[3], qr[1], qr[4]}}    
+                 from Vector qr
+                where qr = 
+                  sql(:a, "SELECT E.ENAME, SI.SI, SI.EV, SI.TH, S.LOGDBID
+                           FROM SENSORINSTALLATION SI, SITE S, 
+                                INSTALLEDEQUIPMENT IE,
+                                EQUIPMENTMODEL E
+                           WHERE S.LOCATION = 'Uppsala' AND
+                                 S.SITE = IE.SITE AND
+                                 IE.IE=SI.IE AND
+                                 IE.E=E.E"));
+
+/* with logdbid_js as seperate predicate */
+create function test2()->charstring as
+select qr[0] 
+from Vector qr, jdbc js 
+where qr = 
+sql(#[OID 1517 "A"], "SELECT E.ENAME, SI.SI, SI.EV, SI.TH, S.LOGDBID
+          FROM SENSORINSTALLATION SI, SITE S, 
+               INSTALLEDEQUIPMENT IE,
+               EQUIPMENTMODEL E
+          WHERE S.LOCATION = 'Uppsala' AND
+                S.SITE = IE.SITE AND
+                IE.IE=SI.IE AND
+                IE.E=E.E") and
+                js = logdbid_js(qr[4]) and   
+some(multisql(js,"SELECT * FROM MEASUREMENT M WHERE M.MV - ?>? 
+                                AND M.SI = ? AND M.LOGDBID=?",
+                     {qr[2], qr[3], qr[1], qr[4]}));
+
+
+/* low level interface function call send the same query to all log 
+   databases */
+select qr[0] 
+from Vector qr
+where qr = 
+sql(:a, "SELECT E.ENAME, SI.SI, SI.EV, SI.TH, S.LOGDBID
+          FROM SENSORINSTALLATION SI, SITE S, 
+               INSTALLEDEQUIPMENT IE,
+               EQUIPMENTMODEL E
+          WHERE S.LOCATION = 'Uppsala' AND
+                S.SITE = IE.SITE AND
+                IE.IE=SI.IE AND
+                IE.E=E.E") and
+some(multisql(:js,"SELECT * FROM MEASUREMENT M WHERE M.MV - ?>? AND
+                             ?- 2592000<M.TS AND
+                              M.SI = ? AND M.LOGDBID=?",
+                     {qr[2], qr[3], real(now()), qr[1], qr[4]}));
+
+
+
+
+
+
+
+
+
+/* start peers */
+/* open 2 connections */
+javaamos -n ns
+
+start /min javaamos -s s1
+
+start /min javaamos -s s2
+
+javaamos
+
+/* To be sure peer started.*/
+sleep(1); 
+register("me");
+
+
+
+
+
+/* low level interface function parallel calling querying multi databases 
+   by multicastreceive */
+/* :a is a jdbc object */
+set :a= call_function('s1','jdbc', {"ibds","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :b= call_function('s2','jdbc', {"ibds2","com.mysql.jdbc.Driver"}, 10)[0];
+
+call_function('s1','connect', {:a,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 10);
+
+call_function('s2','connect', {:b,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 10);
+
+count(call_function('s1','sql', {:a,"select * from measurement", {}}, 100));
+
+count(call_function('s2','sql', {:b,"select * from measurement", {}}, 100));
+
+count(multicastreceive({'s1','s2'}, 'sql', {{:a,"select * from measurement",{}},{:b,"select * from measurement",{}}}));
+
+
+/* multisql vs multicastreceive */
+count(multisql(:js, "select * from measurement", {}));
+
+/* need to generate a call with multicastreceive instead of multisql */
+count(multicastreceive({'s1','s2'}, 'sql', {{:a,"select * from measurement",{}},{:b,"select * from measurement",{}}}));
+
+
+
+/* close jdbc connection set */
+closeJdbcSet(:js);
+
+call_function('s1','disconnect',{:a},10); 
+call_function('s2','disconnect',{:b},10);
+
+
+kill_the_federation();
+
+
+
+
+
+
+
+/* open 10 connections */
+javaamos -n ns
+
+start /min javaamos -s s1
+
+start /min javaamos -s s2
+
+start /min javaamos -s s3
+
+start /min javaamos -s s4
+
+start /min javaamos -s s5
+
+start /min javaamos -s s6
+
+start /min javaamos -s s7
+
+start /min javaamos -s s8
+
+start /min javaamos -s s9
+
+start /min javaamos -s s10
+
+javaamos
+
+sleep(1); 
+register("me");
+
+/* running 10 sql in sequence in a Amos peer */
+
+create function jdbcSet(Number n, Charstring driver)
+                       -> Bag of Jdbc
+  as jdbc("C"+iota(1,n), driver);
+
+create function openJdbcSet(Bag of Jdbc js,
+                            Charstring dburl, Charstring db,
+                            Charstring user, Charstring pw)
+                          -> Bag of Jdbc
+  as for each Jdbc j where j in js 
+     return connect(j, dburl+db, user, pw);
+
+create function closeJdbcSet(Bag of Jdbc js) -> Bag of Jdbc
+  as for each Jdbc j where j in js 
+     begin disconnect(j);
+           return j;
+     end;
+
+create function multiSQL(Bag of Jdbc js, Charstring query, Vector params)
+                       -> Bag of Vector
+  as sql(in(js), query, params);
+
+set :dburl = "jdbc:mysql://localhost:"+getenv("PORTDB")+"/";
+
+trace("connect");
+
+set :js = jdbcSet(10,"com.mysql.jdbc.Driver");
+
+openJdbcSet(:js,:dburl,"regress", "regress", "regress");
+
+/* start to execute */
+count(multisql(:js, "select * from measured", {}));
+
+multisql(:js, "select * from measured", {});
+
+select qr[0] 
+from Vector qr
+where qr = 
+sql(first(:js), "SELECT E.ENAME, SI.SI, SI.EV, SI.TH, S.LOGDBID
+          FROM SENSORINSTALLATION SI, SITE S, 
+               INSTALLEDEQUIPMENT IE,
+               EQUIPMENTMODEL E
+          WHERE S.LOCATION = 'Uppsala' AND
+                S.SITE = IE.SITE AND
+                IE.IE=SI.IE AND
+                IE.E=E.E") and
+some(multisql(:js,"SELECT * FROM MEASURED M WHERE M.MV - ?>? AND
+                             ?- 2592000<M.TS AND
+                              M.SI = ? AND M.LOGDBID=?",
+                     {qr[2], qr[3], real(now()), qr[1], qr[4]}));
+
+multicastreceive({first(:js), first(:js)}, 'sql', {{first(:js),"select * from measured",{}},{first(:js),"select * from measured",{}}});
+
+
+/* running in parellel in 10 Amos peers */
+
+set :a= call_function('s1','jdbc', {"ibds","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :b= call_function('s2','jdbc', {"ibds2","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :c= call_function('s3','jdbc', {"ibds3","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :d= call_function('s4','jdbc', {"ibds4","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :e= call_function('s5','jdbc', {"ibds5","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :f= call_function('s6','jdbc', {"ibds6","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :g= call_function('s7','jdbc', {"ibds7","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :h= call_function('s8','jdbc', {"ibds8","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :i= call_function('s9','jdbc', {"ibds9","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :j= call_function('s10','jdbc', {"ibds10","com.mysql.jdbc.Driver"}, 10)[0];
+
+call_function('s1','connect', {:a,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s2','connect', {:b,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s3','connect', {:c,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s4','connect', {:d,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s5','connect', {:e,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s6','connect', {:f,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s7','connect', {:g,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s8','connect', {:h,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s9','connect', {:i,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s10','connect', {:j,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+count(call_function('s1','sql', {:a,"select * from measured", {}}, 100));
+
+count(call_function('s2','sql', {:b,"select * from measured", {}}, 100));
+
+count(multicastreceive({'s1','s2','s3','s4','s5','s6','s7','s8','s9','s10'}, 'sql', {{:a,"select * from measured",{}},{:b,"select * from measured",{}},
+	{:c,"select * from measured",{}},{:d,"select * from measured",{}},
+	{:e,"select * from measured",{}},{:f,"select * from measured",{}},
+	{:g,"select * from measured",{}},{:h,"select * from measured",{}},
+	{:i,"select * from measured",{}},{:j,"select * from measured",{}}}));
+
+
+/* multisql vs multicastreceive */
+count(multisql(:js, "select * from measured", {}));
+
+count(multicastreceive({'s1','s2','s3','s4','s5','s6','s7','s8','s9','s10'}, 'sql', {{:a,"select * from measured",{}},{:b,"select * from measured",{}},
+	{:c,"select * from measured",{}},{:d,"select * from measured",{}},
+	{:e,"select * from measured",{}},{:f,"select * from measured",{}},
+	{:g,"select * from measured",{}},{:h,"select * from measured",{}},
+	{:i,"select * from measured",{}},{:j,"select * from measured",{}}}));
+
+
+
+/* close jdbc connection set */
+closeJdbcSet(:js);  /*local*/
+
+
+call_function('s1','disconnect',{:a},10); 
+call_function('s2','disconnect',{:b},10);
+call_function('s3','disconnect',{:c},10);
+call_function('s4','disconnect',{:d},10);
+call_function('s5','disconnect',{:e},10);
+call_function('s6','disconnect',{:f},10);
+call_function('s7','disconnect',{:g},10);
+call_function('s8','disconnect',{:h},10);
+call_function('s9','disconnect',{:i},10);
+call_function('s10','disconnect',{:j},10);
+
+
+
+kill_the_federation();
+
+
+
+/* running 20 sql in sequence in a Amos peer */
+javaamos -n ns
+
+start /min javaamos -s s1
+
+start /min javaamos -s s2
+
+start /min javaamos -s s3
+
+start /min javaamos -s s4
+
+start /min javaamos -s s5
+
+start /min javaamos -s s6
+
+start /min javaamos -s s7
+
+start /min javaamos -s s8
+
+start /min javaamos -s s9
+
+start /min javaamos -s s10
+
+start /min javaamos -s s11
+
+start /min javaamos -s s12
+
+start /min javaamos -s s13
+
+start /min javaamos -s s14
+
+start /min javaamos -s s15
+
+start /min javaamos -s s16
+
+start /min javaamos -s s17
+
+start /min javaamos -s s18
+
+start /min javaamos -s s19
+
+start /min javaamos -s s20
+
+javaamos
+
+sleep(1); 
+register("me");
+
+
+create function jdbcSet(Number n, Charstring driver)
+                       -> Bag of Jdbc
+  as jdbc("C"+iota(1,n), driver);
+
+create function openJdbcSet(Bag of Jdbc js,
+                            Charstring dburl, Charstring db,
+                            Charstring user, Charstring pw)
+                          -> Bag of Jdbc
+  as for each Jdbc j where j in js 
+     return connect(j, dburl+db, user, pw);
+
+create function closeJdbcSet(Bag of Jdbc js) -> Bag of Jdbc
+  as for each Jdbc j where j in js 
+     begin disconnect(j);
+           return j;
+     end;
+
+create function multiSQL(Bag of Jdbc js, Charstring query, Vector params)
+                       -> Bag of Vector
+  as sql(in(js), query, params);
+
+set :dburl = "jdbc:mysql://localhost:"+getenv("PORTDB")+"/";
+
+trace("connect");
+
+set :js = jdbcSet(20,"com.mysql.jdbc.Driver");
+
+openJdbcSet(:js,:dburl,"regress", "regress", "regress");
+
+
+
+/* running in parellel in 20 Amos peers */
+
+set :a= call_function('s1','jdbc', {"ibds","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :b= call_function('s2','jdbc', {"ibds2","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :c= call_function('s3','jdbc', {"ibds3","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :d= call_function('s4','jdbc', {"ibds4","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :e= call_function('s5','jdbc', {"ibds5","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :f= call_function('s6','jdbc', {"ibds6","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :g= call_function('s7','jdbc', {"ibds7","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :h= call_function('s8','jdbc', {"ibds8","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :i= call_function('s9','jdbc', {"ibds9","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :j= call_function('s10','jdbc', {"ibds10","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :k= call_function('s11','jdbc', {"ibds11","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :l= call_function('s12','jdbc', {"ibds12","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :m= call_function('s13','jdbc', {"ibds13","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :n= call_function('s14','jdbc', {"ibds14","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :o= call_function('s15','jdbc', {"ibds15","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :p= call_function('s16','jdbc', {"ibds16","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :q= call_function('s17','jdbc', {"ibds17","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :r= call_function('s18','jdbc', {"ibds18","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :s= call_function('s19','jdbc', {"ibds19","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :t= call_function('s20','jdbc', {"ibds20","com.mysql.jdbc.Driver"}, 10)[0];
+
+call_function('s1','connect', {:a,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s2','connect', {:b,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s3','connect', {:c,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s4','connect', {:d,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s5','connect', {:e,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s6','connect', {:f,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s7','connect', {:g,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s8','connect', {:h,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s9','connect', {:i,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s10','connect', {:j,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s11','connect', {:k,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s12','connect', {:l,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s13','connect', {:m,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s14','connect', {:n,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s15','connect', {:o,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s16','connect', {:p,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s17','connect', {:q,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s18','connect', {:r,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s19','connect', {:s,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s20','connect', {:t,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+
+/* multisql vs multicastreceive */
+count(multisql(:js, "select * from measured", {}));
+
+count(multicastreceive({'s1','s2','s3','s4','s5','s6','s7','s8','s9','s10','s11','s12','s13','s14','s15','s16','s17','s18','s19','s20'}, 'sql', {{:a,"select * from measured",{}},{:b,"select * from measured",{}},
+	{:c,"select * from measured",{}},{:d,"select * from measured",{}},
+	{:e,"select * from measured",{}},{:f,"select * from measured",{}},
+	{:g,"select * from measured",{}},{:h,"select * from measured",{}},
+	{:i,"select * from measured",{}},{:j,"select * from measured",{}},
+	{:k,"select * from measured",{}},{:l,"select * from measured",{}},
+	{:m,"select * from measured",{}},{:n,"select * from measured",{}},
+	{:o,"select * from measured",{}},{:p,"select * from measured",{}},
+	{:q,"select * from measured",{}},{:r,"select * from measured",{}},
+	{:s,"select * from measured",{}},{:t,"select * from measured",{}}}));
+
+
+
+/* close jdbc connection set */
+closeJdbcSet(:js);  /*local*/
+
+
+call_function('s1','disconnect',{:a},10); 
+call_function('s2','disconnect',{:b},10);
+call_function('s3','disconnect',{:c},10);
+call_function('s4','disconnect',{:d},10);
+call_function('s5','disconnect',{:e},10);
+call_function('s6','disconnect',{:f},10);
+call_function('s7','disconnect',{:g},10);
+call_function('s8','disconnect',{:h},10);
+call_function('s9','disconnect',{:i},10);
+call_function('s10','disconnect',{:j},10);
+call_function('s11','disconnect',{:k},10);
+call_function('s12','disconnect',{:l},10);
+call_function('s13','disconnect',{:m},10);
+call_function('s14','disconnect',{:n},10);
+call_function('s15','disconnect',{:o},10);
+call_function('s16','disconnect',{:p},10);
+call_function('s17','disconnect',{:q},10);
+call_function('s18','disconnect',{:r},10);
+call_function('s19','disconnect',{:s},10);
+call_function('s20','disconnect',{:t},10);
+
+
+kill_the_federation();
+
+
+
+/* running 30 sql in sequence in a Amos peer */
+javaamos -n ns
+
+start /min javaamos -s s1
+
+start /min javaamos -s s2
+
+start /min javaamos -s s3
+
+start /min javaamos -s s4
+
+start /min javaamos -s s5
+
+start /min javaamos -s s6
+
+start /min javaamos -s s7
+
+start /min javaamos -s s8
+
+start /min javaamos -s s9
+
+start /min javaamos -s s10
+
+start /min javaamos -s s11
+
+start /min javaamos -s s12
+
+start /min javaamos -s s13
+
+start /min javaamos -s s14
+
+start /min javaamos -s s15
+
+start /min javaamos -s s16
+
+start /min javaamos -s s17
+
+start /min javaamos -s s18
+
+start /min javaamos -s s19
+
+start /min javaamos -s s20
+
+start /min javaamos -s s21
+
+start /min javaamos -s s22
+
+start /min javaamos -s s23
+
+start /min javaamos -s s24
+
+start /min javaamos -s s25
+
+start /min javaamos -s s26
+
+start /min javaamos -s s27
+
+start /min javaamos -s s28
+
+start /min javaamos -s s29
+
+start /min javaamos -s s30
+
+javaamos
+
+sleep(1); 
+register("me");
+
+
+create function jdbcSet(Number n, Charstring driver)
+                       -> Bag of Jdbc
+  as jdbc("C"+iota(1,n), driver);
+
+create function openJdbcSet(Bag of Jdbc js,
+                            Charstring dburl, Charstring db,
+                            Charstring user, Charstring pw)
+                          -> Bag of Jdbc
+  as for each Jdbc j where j in js 
+     return connect(j, dburl+db, user, pw);
+
+create function closeJdbcSet(Bag of Jdbc js) -> Bag of Jdbc
+  as for each Jdbc j where j in js 
+     begin disconnect(j);
+           return j;
+     end;
+
+create function multiSQL(Bag of Jdbc js, Charstring query, Vector params)
+                       -> Bag of Vector
+  as sql(in(js), query, params);
+
+set :dburl = "jdbc:mysql://localhost:"+getenv("PORTDB")+"/";
+
+trace("connect");
+
+set :js = jdbcSet(30,"com.mysql.jdbc.Driver");
+
+openJdbcSet(:js,:dburl,"regress", "regress", "regress");
+
+
+
+/* running in parellel in 30 Amos peers */
+
+set :a= call_function('s1','jdbc', {"ibds","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :b= call_function('s2','jdbc', {"ibds2","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :c= call_function('s3','jdbc', {"ibds3","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :d= call_function('s4','jdbc', {"ibds4","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :e= call_function('s5','jdbc', {"ibds5","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :f= call_function('s6','jdbc', {"ibds6","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :g= call_function('s7','jdbc', {"ibds7","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :h= call_function('s8','jdbc', {"ibds8","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :i= call_function('s9','jdbc', {"ibds9","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :j= call_function('s10','jdbc', {"ibds10","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :k= call_function('s11','jdbc', {"ibds11","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :l= call_function('s12','jdbc', {"ibds12","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :m= call_function('s13','jdbc', {"ibds13","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :n= call_function('s14','jdbc', {"ibds14","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :o= call_function('s15','jdbc', {"ibds15","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :p= call_function('s16','jdbc', {"ibds16","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :q= call_function('s17','jdbc', {"ibds17","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :r= call_function('s18','jdbc', {"ibds18","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :s= call_function('s19','jdbc', {"ibds19","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :t= call_function('s20','jdbc', {"ibds20","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :u= call_function('s21','jdbc', {"ibds21","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :v= call_function('s22','jdbc', {"ibds22","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :w= call_function('s23','jdbc', {"ibds23","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :x= call_function('s24','jdbc', {"ibds24","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :y= call_function('s25','jdbc', {"ibds25","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :z= call_function('s26','jdbc', {"ibds26","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :aa= call_function('s27','jdbc', {"ibds27","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :bb= call_function('s28','jdbc', {"ibds28","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :cc= call_function('s29','jdbc', {"ibds29","com.mysql.jdbc.Driver"}, 10)[0];
+
+set :dd= call_function('s30','jdbc', {"ibds30","com.mysql.jdbc.Driver"}, 10)[0];
+
+call_function('s1','connect', {:a,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s2','connect', {:b,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s3','connect', {:c,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s4','connect', {:d,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s5','connect', {:e,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s6','connect', {:f,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s7','connect', {:g,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s8','connect', {:h,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s9','connect', {:i,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s10','connect', {:j,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s11','connect', {:k,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s12','connect', {:l,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s13','connect', {:m,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s14','connect', {:n,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s15','connect', {:o,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s16','connect', {:p,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s17','connect', {:q,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s18','connect', {:r,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s19','connect', {:s,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s20','connect', {:t,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s21','connect', {:u,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s22','connect', {:v,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s23','connect', {:w,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s24','connect', {:x,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s25','connect', {:y,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s26','connect', {:z,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s27','connect', {:aa,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s28','connect', {:bb,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s29','connect', {:cc,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+call_function('s30','connect', {:dd,"jdbc:mysql://localhost:3306/regress", "regress", "regress"}, 100);
+
+/* multisql vs multicastreceive */
+count(multisql(:js, "select * from measured", {}));
+
+count(multicastreceive({'s1','s2','s3','s4','s5','s6','s7','s8','s9','s10','s11','s12','s13','s14','s15','s16','s17','s18','s19','s20','s21','s22','s23','s24','s25','s26','s27','s28','s29','s30'}, 'sql', {{:a,"select * from measured",{}},{:b,"select * from measured",{}},
+	{:c,"select * from measured",{}},{:d,"select * from measured",{}},
+	{:e,"select * from measured",{}},{:f,"select * from measured",{}},
+	{:g,"select * from measured",{}},{:h,"select * from measured",{}},
+	{:i,"select * from measured",{}},{:j,"select * from measured",{}},
+	{:k,"select * from measured",{}},{:l,"select * from measured",{}},
+	{:m,"select * from measured",{}},{:n,"select * from measured",{}},
+	{:o,"select * from measured",{}},{:p,"select * from measured",{}},
+	{:q,"select * from measured",{}},{:r,"select * from measured",{}},
+	{:s,"select * from measured",{}},{:t,"select * from measured",{}},
+	{:u,"select * from measured",{}},{:v,"select * from measured",{}},
+	{:w,"select * from measured",{}},{:x,"select * from measured",{}},
+	{:y,"select * from measured",{}},{:z,"select * from measured",{}},
+	{:aa,"select * from measured",{}},{:bb,"select * from measured",{}},
+	{:cc,"select * from measured",{}},{:dd,"select * from measured",{}}}));
+
+
+
+/* close jdbc connection set */
+closeJdbcSet(:js);  /*local*/
+
+
+call_function('s1','disconnect',{:a},10); 
+call_function('s2','disconnect',{:b},10);
+call_function('s3','disconnect',{:c},10);
+call_function('s4','disconnect',{:d},10);
+call_function('s5','disconnect',{:e},10);
+call_function('s6','disconnect',{:f},10);
+call_function('s7','disconnect',{:g},10);
+call_function('s8','disconnect',{:h},10);
+call_function('s9','disconnect',{:i},10);
+call_function('s10','disconnect',{:j},10);
+call_function('s11','disconnect',{:k},10);
+call_function('s12','disconnect',{:l},10);
+call_function('s13','disconnect',{:m},10);
+call_function('s14','disconnect',{:n},10);
+call_function('s15','disconnect',{:o},10);
+call_function('s16','disconnect',{:p},10);
+call_function('s17','disconnect',{:q},10);
+call_function('s18','disconnect',{:r},10);
+call_function('s19','disconnect',{:s},10);
+call_function('s20','disconnect',{:t},10);
+call_function('s21','disconnect',{:u},10);
+call_function('s22','disconnect',{:v},10);
+call_function('s23','disconnect',{:w},10);
+call_function('s24','disconnect',{:x},10);
+call_function('s25','disconnect',{:y},10);
+call_function('s26','disconnect',{:z},10);
+call_function('s27','disconnect',{:aa},10);
+call_function('s28','disconnect',{:bb},10);
+call_function('s29','disconnect',{:cc},10);
+call_function('s30','disconnect',{:dd},10);
+
+kill_the_federation();
+
+
+
+

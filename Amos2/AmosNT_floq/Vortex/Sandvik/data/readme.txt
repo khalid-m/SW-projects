@@ -1,0 +1,1 @@
+This folder contains example data stream files for the Sandvik Coromant examples.

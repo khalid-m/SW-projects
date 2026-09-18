@@ -1,0 +1,3 @@
+create function capabilitynamed(Charstring name) -> Object cap 
+  as select cap 
+     where objectname(cap)=name;

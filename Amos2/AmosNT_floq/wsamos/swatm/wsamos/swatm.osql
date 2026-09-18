@@ -1,0 +1,15 @@
+create function TM_operations()-> function as stored;
+
+add TM_operations()=functionnamed("DEFINEUPV");
+add TM_operations()=functionnamed("RDQL");
+
+create function fun_descr(Function f)-> 
+	<Charstring name, Vector args> as select name(f), arg_descr(f);
+
+create function TM_operations_descr()-> <Charstring name, Vector args> 
+ as select fun_descr(TM_operations());
+
+add TM_operations()=resolvents(functionnamed("TM_OPERATIONS_DESCR"));
+
+register("WEB-AMOS");
+listen();

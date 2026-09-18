@@ -1,0 +1,36 @@
+Script files for L=64 are in AmosNT/scsq/lr/scsq-plr/:
+
+lwc.sh/run_cluster.sh starts the entire scsq-plr.
+However, the checked-in version is configured for L=100.
+Thus, the following needs to be done,
+(1) set lrinputfiles(64)
+(2) change dlrnomysepib in lr.osql, similar to /lr/experiment/lrsimple.osql
+
+When running scsq-plr on a single node (e.g. for testing), the following lines
+must be commented out. Otherwise, the scheduler is fooled.
+     sp_basehostnum(1);
+     sp_currenthostnum(0);
+
+Cluster specific configuration is in
+	$(AMOS_HOME)/scsq/config/spconfig-xxxx
+In most cases, spconfig-linux.osql is enough.
+
+---
+
+Original note from Fredrik Edemar below:
+Ja, L=64 kunde jag köra fullt ut.
+Filerna ligger i AmosNT/scsq/lr/scsq-plr/.
+lwc.sh/run_cluster.sh startar körningen på en nod/klustret, men den
+inchechade versionen är inställd på L=100, så
+set lrinputfiles(64) och dlrnomysepib måste ändras i lr.osql, precis
+som i /lr/experiment/lrsimple.osql.
+
+Om man kör på en nod måste kan också kommentera bort raderna
+sp_basehostnum(1);
+sp_currenthostnum(0);
+
+Det finns ingen README-fil eftersom jag inte visste om det var tänkt
+att det skulle köras på ett kluster, och då krävs det ju
+handpåläggning med /lr/config/lrconfig-mei.osql.
+
+---

@@ -1,0 +1,61 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Cheng Xu, Tore Risch, UDBL
+ * $RCSfile: LearningModel.osql,v $
+ * $Revision: 1.10 $ $Date: 2013/11/16 17:02:39 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Learning validation model
+ *
+ ****************************************************************************
+ * $Log: LearningModel.osql,v $
+ * Revision 1.10  2013/11/16 17:02:39  chexu484
+ * returning stream of tuples
+ *
+ * Revision 1.9  2013/09/29 15:39:40  chexu484
+ * validation stream change to stream of vector instead of stream of tuple
+ *
+ * Revision 1.8  2012/11/13 10:06:57  chexu484
+ * 1. Learning validator seperated from learning model, similar as milling
+ * 2. Alert messages are time stamped as well
+ *
+ * Revision 1.7  2012/11/12 17:37:04  chexu484
+ * 1. change threshold by function call: th("A", val);
+ * 2. alert stream becomes tuple of (Charstring, Number)
+ *
+ * Revision 1.6  2012/11/12 16:28:54  larme597
+ * *** empty log message ***
+ *
+ * Revision 1.5  2012/11/12 11:41:10  larme597
+ * *** empty log message ***
+ *
+ * Revision 1.4  2012/11/12 11:14:04  torer
+ * *** empty log message ***
+ *
+ * Revision 1.3  2012/11/09 13:01:53  torer
+ * *** empty log message ***
+ *
+ * Revision 1.2  2012/11/08 18:24:03  chexu484
+ * integrating smart vortex semantic model with the "other" scenario from Sandvik done!
+ *
+ * Revision 1.1  2012/11/08 16:14:46  torer
+ * New milling model
+ *
+ * Revision 1.1  2006/02/12 20:01:08  torer
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+
+/*** The model starts here ***/
+
+create function touchingPower(OtherStream s) -> Stream of (Number, Number)
+  as streamof(select timestampOther(r), power
+              from Record r, Number power
+              where r in rawStreamTuples(s)
+		and power = powerConsumptionOther(r) 
+                and flag(r) = 1 and power > 0);
+
+/*** Conveniance functions ***/
+create function touchingPower(Charstring coreid) -> Stream of (Number, Number)
+  as touchingPower(theOtherStream(coreid));

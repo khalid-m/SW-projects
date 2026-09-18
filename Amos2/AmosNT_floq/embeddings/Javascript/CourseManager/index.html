@@ -1,0 +1,121 @@
+
+<html>
+    <head>
+        <title>Welcome to Course Manager</title>
+        <script type="text/javascript" src="scripts/SOAPClient.js"></script>
+        <script type="text/javascript" src="scripts/cookies.js"></script>
+        <script type="text/javascript" src="scripts/utility.js"></script>
+        <script type="text/javascript" language="javascript">
+            var courseName;
+            
+            function aLogin_onclick(){
+                if (chooseCourse()){
+                    var myObject = new Object();
+                    myObject.selectedCourse = courseName;
+                    var userType = window.showModalDialog('Login.html',myObject,'dialogWidth:300px; dialogHeight:200px; center:Yes; resizable: Yes; help: No;');
+                    if (userType=="STUDENT"){
+                        document.all.aLogin.href='StudentHome.html?coursename=' + courseName;
+                        document.all.aLogin.click();
+                    }
+                    else if (userType=="ASSISTANT"){
+                        document.all.aLogin.href='AssistantHome.html?coursename=' + courseName;
+                        document.all.aLogin.click();
+                    }
+                    else if (userType=="LECTURER"){
+                        document.all.aLogin.href='LecturerHome.html?coursename=' + courseName;
+                        document.all.aLogin.click();
+                    }
+                    else {
+                        return false;
+                    }  
+                }
+            }
+
+            function aRegisterStudent_onclick(){
+                if (chooseCourse()){
+                    var myObject = new Object();
+                    myObject.selectedCourse = courseName;
+                    var regSucc = window.showModalDialog('RegisterStudent.html',myObject,'dialogWidth:800px; dialogHeight:600px; center:Yes; resizable: Yes; help: No;');
+                    return false;
+                }
+            }
+
+            function aRegisterGroup_onclick(){
+                if (chooseCourse()){
+                    var myObject = new Object();
+                    myObject.selectedCourse = courseName;
+                    var regSucc = window.showModalDialog('RegisterGroup.html',myObject,'dialogWidth:800px; dialogHeight:600px; center:Yes; resizable: Yes; help: No;');
+                    return false;
+                }
+            }
+
+            function aListStudents_onclick(){
+                if (chooseCourse()){
+                    var myObject = new Object();
+                    myObject.selectedCourse = courseName;
+                    var regSucc = window.showModalDialog('ListStudents.html',myObject,'dialogWidth:800px; dialogHeight:600px; center:Yes; resizable: Yes; help: No;');
+                    return false;
+                }
+            }
+
+            function aListLonelyStudents_onclick(){
+                if (chooseCourse()){
+                    var myObject = new Object();
+                    myObject.selectedCourse = courseName;
+                    var regSucc = window.showModalDialog('ListLonelyStudents.html',myObject,'dialogWidth:800px; dialogHeight:600px; center:Yes; resizable: Yes; help: No;');
+                    return false;
+                }
+            }
+
+            function chooseCourse(){
+                if (document.getElementById("coursename").value == ""){
+                    alert("Please select a course first.");
+                    return false;
+                }else{
+                    courseName = document.getElementById("coursename").value;
+                    return true;
+                }
+            }
+
+            function listCourse_callBack(o, xmlDoc)
+            {
+                if (o == null){
+                    document.getElementById("cnameDiv").innerHTML = "<select size='1' id='coursename'><option selected value=''>None</option></select>";
+                    courseName = "";
+                }else{
+                    var selectList = populateOptions(o,null,"coursename");
+                    document.getElementById("cnameDiv").appendChild(selectList);
+                }
+            }
+
+            function error_callBack(e, errorCode){
+                if (e != null){
+                    error = e;
+                    document.getElementById("cnameDiv").innerHTML="Error callBack:<br>" + error + "<br><br>Error code:<br>" + errorCode;
+                }
+            }
+
+            function window_onload(){
+                SOAPClient.invoke("EXISTCOURSE", [],true, listCourse_callBack, error_callBack);
+            }
+        </script>
+    </head>
+    <body onload="return window_onload();">
+        <table>
+            <tr><td><h2>Welcome to UDBL Course Manager</h2></td><td></td><td>Course Name:</td><td><div id="cnameDiv"></div></td></tr>
+        </table>
+        <hr>
+        <h3>From this page you can:</h3>
+        <ul>
+            <li><a id="aLogin" href="" onclick="return aLogin_onclick();">Login</a> to the system. <br>
+            <li><a id="aRegisterStudent" href="" onclick="return aRegisterStudent_onclick();">Register as a new student</a><br>
+            <li><a id="aRegisterGroup" href="" onclick="return aRegisterGroup_onclick();">Register a group of students</a><br>
+            <li><a id="aListStudents" href="" onclick="return aListStudents_onclick();">List all students in the course</a><br>
+            <li><a id="aListLonelyStudents" href="" onclick="return aListLonelyStudents_onclick();">List students alone in a group or not yet in a group</a>.
+                These are your potential group partners.
+        </ul>
+        <hr>
+        Powered by <a href="http://user.it.uu.se/~udbl/amos">Amos II</a><br>
+        <hr>
+    </body>
+</html>

@@ -1,0 +1,79 @@
+/*-*-sql-*-*************************************
+ * AMOS2
+ *
+ * LR MAIN ************************************/
+
+create function rvi()->Boolean 
+  /* Internal function to empty vehicle data table */
+  as remove vehicle_info(i) = <j, k, l, m, n, o, rlu, rn> 
+       from Integer i, Integer j, Integer k, Integer l, Integer m, Real n, 
+            Integer o, Integer rlu, Real rn;
+
+create function in_vi(Stream s) -> Vector of Integer
+as select v
+   from Vector of Integer v
+   where v in s;
+
+create function lrinit()->Boolean
+  /* Initialize the benchmark run */
+  as begin
+	/* init_answer(); */
+	rvi();
+	remove current_second() = i from Integer i;
+	set current_second() = 0;
+	set current_minute() = 1;
+     end;
+
+create function lrfinalize()->Boolean
+  /* Finalize the benchmrk run */
+  as begin
+	remove accident() = <i, j, k, l, m> 
+       	from Integer i, Integer j, Integer k, Integer l,Integer m;
+     	remove stopped_car() = <i, j, k, l, m, o> 
+       	from Integer i, Integer j, Integer k, Integer l, Integer m,Integer o;
+     	remove smashed_car() = <i, j, k, l, m, o> 
+       	from Integer i, Integer j, Integer k, Integer l, Integer m,Integer o;
+     	remove vehicle_info(i) = <j, k, l, m, n, x, y, z> 
+       	from Integer i, Integer j, Integer k, Integer l, Integer m, Real n,
+             Integer x, Integer y, Real z;
+     	init_stat(0);
+     	init_stat(1);
+     	init_stat(2);
+     	init_stat(3);
+     	init_stat(4);
+     	init_stat(5);
+	/* close_answer(); */
+     end;
+
+create function lrVali0(Vector of Integer x) -> Vector
+  /* Process one input event */
+  as begin
+        if x[0] = "TS" then broadcast(x);
+     	if x[3] = 0 then accident_check(x[1], x[2], x[4], x[5], x[6], x[7], x[8]); 
+                                       /* Speed = 0 => possible accident */
+     	if (is_smashed(x[2])) > 0 then check_accident_cleared(x[1], x[2], x[8], x[7],
+                                                           x[4], x[0]);
+     	if x[0] = 0 /* position report */ 
+     	then begin
+	        seg_stat(x);
+		toll_calc(x[1], x[2], x[4], x[8], x[7], x[6], x[3], x[5]);
+             end
+	else if x[0] = 3
+	then begin
+		swtype3({x[1], x[9], hist_toll(x[2],x[14],x[4])});
+	     end
+     	else if x[0] = 2
+	then begin /*account balance*/
+		/*return result_account_balance_answer(x[2], x[1], x[9]);*/
+		result_account_balance_answer(x[2], x[1], x[9]);
+	     end;
+      end;
+
+create function lrVali(Charstring hostname, Integer coordno, Integer sourceno) -> Boolean
+  as begin
+     lrinit();
+     lrVali0(lrreadsocket(hostname, coordno, sourceno));
+     end;
+
+create function lr0(Stream of Vector of Integer s) -> Stream as
+  select streamof(lrVali0(in_vi(s)));

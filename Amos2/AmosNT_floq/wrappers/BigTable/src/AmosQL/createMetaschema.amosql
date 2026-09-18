@@ -1,0 +1,210 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: createMetaschema.amosql,v $
+ * $Revision: 1.10 $ $Date: 2012/08/08 08:42:17 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: <description>
+ *
+ ****************************************************************************
+ * $Log: createMetaschema.amosql,v $
+ * Revision 1.10  2012/08/08 08:42:17  minzh812
+ * rename function name.
+ * remove not used function.
+ *
+ * Revision 1.9  2012/06/12 15:53:27  minzh812
+ * generic code to finalizer manager.
+ *
+ * Revision 1.1  2012/03/21 09:52:35  minzh812
+ * *** empty log message ***
+ *
+ * Revision 1.8  2012/03/19 13:03:23  minzh812
+ * standard form to initialize the absorber, finalizer.
+ *
+ * Revision 1.7  2012/01/10 07:40:29  torer
+ * New tuple format
+ *
+ * Revision 1.6  2011/11/04 16:19:37  minzh812
+ * handle theta join and construct uniform schema for wrapping RDBMS and Bigtable
+ *
+ * Revision 1.5  2011/09/30 14:56:01  torer
+ * Redundant function removed
+ *
+ * Revision 1.4  2011/09/30 13:39:35  torer
+ * removed redundant stored function
+ *
+ * Revision 1.3  2011/04/29 13:35:39  minzh812
+ * *** empty log message ***
+ *
+ * Revision 1.2  2011/04/19 07:19:19  minzh812
+ * *** empty log message ***
+ *
+ * Revision 1.1  2011/01/03 12:44:01  minzh812
+ * Files with lower case extensions
+ *
+ * Revision 1.2  2010/10/20 13:43:45  minzh812
+ * *** empty log message ***
+ *
+ * Revision 1.1  2010/08/31 07:07:35  minzh812
+ * amosql files for bigtable.
+ *
+ * Revision 1.4  2010/06/15 08:46:37  torer
+ * *** empty log message ***
+ *
+ ****************************************************************************/
+
+/*****************************************************************************
+ * BiGWrapper Meta-data
+ ****************************************************************************/
+
+create function bigTableURL(Charstring dsn) -> Charstring url
+  as stored;
+
+create function bigTables(Charstring dsn) -> Bag of Charstring name
+  /* The collections in a BigTable datasource */
+  as stored;
+
+create function bigTableKeyAttribute(Charstring dsn, Charstring coll)
+                                     ->Bag of (Charstring aname)
+  as stored; 
+
+
+create function bigTableNumOfTuples(Charstring dsn, Charstring coll)
+                                    -> Integer numOfTuples
+  /* Retrieved by meta-data importer by running Python program */
+  as stored; 
+
+create function extent_dsn(Function efn)-> Charstring dsn
+  /* The data source identifier of a source relation */
+  as stored;
+
+create function extent_ds(Function efn)-> Bigtable bt
+  as stored;
+
+create function collection_dsn(Charstring coll) -> Charstring dsn
+  as select extent_dsn(efn)
+     from Function efn
+     where extent_collection(efn) = coll;
+
+create function extent_fn(Charstring dsn, Charstring coll)
+			 -> Function efn
+  /* The source relation for a collection in a data source */
+  as select efn where extent_collection(efn)=coll and extent_dsn(efn)=dsn;
+
+/*
+create function bigTableAttributes(Charstring dsn, Charstring coll)
+                                  ->Bag of (Integer pos,
+                                            Charstring aname, 
+                                            Charstring atype, 
+                                            Integer iskey, Integer indexed)
+  as stored; 
+*/
+
+create function bigTableAttributes(Charstring dsn, Charstring coll)
+                                  ->Bag of (Integer pos,
+                                            Charstring aname, 
+                                            Charstring atype, 
+                                            Charstring iskey, 
+					    Charstring indexed)
+  as stored; 
+
+/*
+create function bigTableAttributeVectorAname(Charstring dsn, Charstring coll)
+                                       -> Vector of Charstring
+  as vectorize(select pos, aname 
+               from Integer pos,
+                    Charstring aname,
+                    Charstring atype,
+                    Integer iskey,
+                    Integer indexed
+               where (pos, aname, atype, iskey, indexed) in
+                      bigTableAttributes(dsn, coll));
+*/
+
+create function bigTableAttributeVectorAname(Charstring dsn, Charstring coll)
+                                       -> Vector of Charstring
+  as vectorize(select pos, aname 
+               from Integer pos,
+                    Charstring aname,
+                    Charstring atype,
+                    Charstring iskey,
+                    Charstring indexed
+               where (pos, aname, atype, iskey, indexed) in
+                      bigTableAttributes(dsn, coll));
+
+/*
+create function bigTableAttributeVectorAtype(Charstring dsn, Charstring coll)
+                                       -> Vector of Charstring
+  as vectorize(select pos, atype
+               from Integer pos,
+                    Charstring aname,
+                    Charstring atype,
+                    Integer iskey,
+                    Integer indexed
+               where (pos, aname, atype, iskey, indexed) in
+                      bigTableAttributes(dsn, coll));
+*/
+
+create function bigTableAttributeVectorAtype(Charstring dsn, Charstring coll)
+                                       -> Vector of Charstring
+  as vectorize(select pos, atype
+               from Integer pos,
+                    Charstring aname,
+                    Charstring atype,
+                    Charstring iskey,
+                    Charstring indexed
+               where (pos, aname, atype, iskey, indexed) in
+                      bigTableAttributes(dsn, coll));
+
+/* => attribute type and name by dsn and tbn as bag of charstring 
+  in the order with query result*/
+create function bigTableAttributesR(Charstring dsn, Charstring coll)
+                                       -> bag of Charstring
+  as select atype + " " +  aname
+               from Integer pos,
+                    Charstring aname,
+                    Charstring atype
+               where (pos, aname) in
+                      bagify(bigTableAttributeVectorAname(dsn, coll)) and 
+                     (pos, atype) in 
+                      bagify(bigTableAttributeVectorAtype(dsn, coll));
+  
+
+create function extent_function(Charstring dsn, Charstring coll)
+                               -> Function efn
+  as select efn
+     where extent_dsn(efn) = dsn and
+           extent_collection(efn) = coll;
+
+
+
+create function bigtableExtentAttributes(Function efn)-> Vector of Charstring
+  as bigtableAttributeVectorAname(extent_dsn(efn), extent_collection(efn));
+
+
+/******************************************************************************
+ * Statistics
+ *****************************************************************************/
+/* statistic of column type integer */
+create function colIntegerStatistic(Charstring dsn, Charstring coll, 
+					Charstring aname)
+			            -> (Integer minVal, Integer maxVal) 
+  as stored;
+
+create function colInt_maxVal(Charstring dsn, Charstring coll, 
+					Charstring aname)
+			            -> Integer maxVal 
+  as stored;
+
+create function colInt_minVal(Charstring dsn, Charstring coll, 
+					Charstring aname)
+			            -> Integer minVal 
+  as stored;
+
+/* statistic of column type Charstring */
+create function colCharstringStatistic(Charstring dsn, Charstring coll, 
+					Charstring aname)
+			    	       -> Integer numOfDiffVals 
+  as stored;

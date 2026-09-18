@@ -1,0 +1,211 @@
+/*-*-sql-*-*******************************************************************/
+
+/* experiments for pairwise distance calculations and indexes */ 
+
+create function euclid_distance(Vector of Number x, Vector of Number y)->Number
+  /* The Euclidean distance between coordinates X and Y */
+  as sqrt(sum(select power((x[i]-y[i]),2) 
+     from Integer i));
+
+create function dist(Vector of Number x, Vector of Number y)->Number
+/*  as euclid(x,y);*/
+  as euclid_distance(x,y);
+
+create function tab()->Bag of <Number x, Number y> as stored;
+
+/*
+
+create_index('tab', 'x' , 'mbtree', 'multiple');
+
+create_index('tab', 'y', 'mbtree', 'multiple');
+
+drop_index('tab', 'x');
+drop_index('tab', 'y');
+
+*/
+
+create function filltab(Integer k)->Boolean
+  as for each Integer i
+     where i in iota(1,k)
+     add tab()= <rand(1000), rand(1000)>;  
+
+create function nbr_nocond(Number a, Number b, Number eps)
+                          ->Bag of <Number, Number, Number>
+  as select x, y, euclid_distance({x,y},{a,b})
+     from Number x, Number y
+     where <x, y> in tab()
+       and dist({x,y},{a,b}) <= eps;   
+
+create function nbr_wcond(Number a, Number b, Number eps)
+                          ->Bag of <Number, Number, Number>
+  as select x, y, euclid_distance({x,y},{a,b})
+     from Number x, Number y
+     where <x, y> in tab()
+       and x >= a - eps 
+       and x <= a + eps
+       and y >= b - eps 
+       and y <= b + eps
+       and a != x
+       and b != y
+       and dist({x,y},{a,b}) <= eps;   
+
+create function nbr_integ(Vector of Number v, Number eps)
+                          ->Bag of Vector of Number
+  as select n
+     from Vector of Number n, Number x, Number y, Integer i
+     where <x, y> in tab()
+       and n = {x, y}
+       and n[i] >= v[i] - eps 
+       and n[i] <= v[i] + eps
+       and n != v
+       and dist(n,v) <= eps;   
+
+create function nbr_counts_noc(Number eps)->Bag of Number
+  as select n
+     from Number n, Number a, Number b 
+     where <a, b> in tab()
+       and n = count(nbr_nocond(a,b,eps));
+
+create function nbr_counts_wc(Number eps)->Bag of Number
+  as select n
+     from Number n, Number a, Number b 
+     where <a, b> in tab()
+       and n = count(nbr_wcond(a,b,eps));
+
+create function nbr_counts_integ(Number eps)->Bag of Number
+  as select n
+     from Number n, Number a, Number b 
+     where <a, b> in tab()
+       and n = count(nbr_integ({a,b},eps));
+
+create function duration_sec(Time t, Integer us)-> Real 
+/* Function to convert a timespan tuple to durations in seconds */
+  as select 60*60*hour(t)+60*minute(t)+second(t)+(us/1000000);
+
+create function elapsed_sec(Timeval s, Timeval e)-> Real
+/* Function to calculate the elapsed time between two 
+   timestamps (Timvals) */ 
+  as duration_sec(timespan(s, e));
+
+create function inc(Number s, Number i, Number e)->Vector of Number
+/* Generate a sequence vestor s to e with increments if i */   
+  as vselect v  
+     from Number v, Integer k
+     where v = s + k*i
+       and k in iota(0,floor((e-s)/i));
+
+create function complexity(Function fn, Number sv, Number iv, Number ev)
+                           -> Vector
+/* Measure the complexity of a computation */
+as for each Number v
+   where v in inc(sv,iv,ev)
+   begin
+     declare timeval ts, timeval te;
+     set ts = now();
+     apply(fn, {v});
+     set te = now();
+     result {v, duration_sec(timespan(ts,te))};
+   end;   
+
+
+create function opnoc(Number n)->Integer
+  as sum(nbr_counts_noc(n));
+
+create function opwc(Number n)->Integer
+  as sum(nbr_counts_wc(n));
+
+create function opinteg(Number n)->Integer
+  as sum(nbr_counts_integ(n));
+
+*EOF*
+
+/*
+
+create_index('tab', 'x' , 'mbtree', 'multiple');
+create_index('tab', 'y', 'mbtree', 'multiple');
+
+drop_index('tab', 'x');
+drop_index('tab', 'y');
+
+*/
+
+clear_function('tab');
+
+filltab(4000);
+
+complexity(#'opinteg', 10, 10, 100);
+
+complexity(#'opwc', 10, 10, 100);
+
+complexity(#'opnoc', 10, 10, 100);
+
+
+
+
+
+
+
+
+/*
+
+create_index('tab', 'x' , 'mbtree', 'multiple');
+create_index('tab', 'y', 'mbtree', 'multiple');
+
+drop_index('tab', 'x');
+drop_index('tab', 'y');
+
+delete function tab;
+create function tab()->Bag of <Number x, Number y> as stored
+
+*/
+
+
+
+
+
+
+
+
+delete function n;
+
+create function n()->Bag of <Number a, Number b> as stored;
+
+/*
+
+create_index('n', 'a', 'mbtree', 'multiple');
+
+*/
+
+
+add n()=<x,x+1> from Number x where x in iota(1,100000);
+
+create function findbinn(Number y)->Number
+  as select y
+     from Number dummy
+     where n()=<dummy, y>;  
+
+create function findxepsinn(Number x, Number eps)->Number
+  as select n 
+     from Number n, Number dummy
+     where n()=<n, dummy>
+       and n<=x+eps
+       and n>=x-eps;  
+
+create function findyepsinn(Number y, Number eps)->Number
+  as select n 
+     from Number n, Number dummy
+     where n()=<dummy, n>
+       and n<=y+eps
+       and n>=y-eps;  
+
+
+create function findallbinn(Integer k)->Number
+ as count(findbinn(iota(1,k)));
+
+count(findxepsinn(iota(1,1000),100)); 
+
+findallbinn(10);
+
+complexity(#'findallbinn', 100, 100, 1000);
+
+

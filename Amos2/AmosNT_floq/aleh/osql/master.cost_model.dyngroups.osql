@@ -1,0 +1,8 @@
+<'schema.osql';
+load_lisp('../lsp/cost_model.populated.lsp');
+load_lisp('../lsp/grouping.lsp');
+load_lisp('../lsp/dyngroups.lsp');
+lisp;
+(setq *enable-parteval* nil)
+:osql
+save '../aleh_load.cost_model.dyngroups.dmp';

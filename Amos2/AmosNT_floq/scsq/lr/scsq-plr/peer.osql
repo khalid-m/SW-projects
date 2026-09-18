@@ -1,0 +1,9 @@
+create function sqlPeer( Charstring sqlStr, integer id, integer event)
+                               -> Integer as
+begin
+  
+  
+  /*print(sqlStr+" id="+ stringify(id)+" event type = "+ stringify(event));*/
+  return (sql(dexp_jdbc(id),sqlStr)[0]);
+
+end;

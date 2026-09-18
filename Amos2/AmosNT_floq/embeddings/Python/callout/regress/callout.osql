@@ -1,0 +1,278 @@
+/***************************************************************
+ * AMOS2
+ *  
+ * Author: (c) 2011 Robert Kajic, UDBL
+ * $RCSfile: callout.osql,v $
+ * $Revision: 1.11 $ $Date: 2011/05/02 18:05:59 $
+ * $State: Exp $ $Locker:  $
+ * 
+ * Description: Python callout regressions tests. 
+ * ============================================================
+ * $Log: callout.osql,v $
+ * Revision 1.11  2011/05/02 18:05:59  roka4241
+ * Better error handling and regression tests of invalid foreign function specifications that cause a_error errors.
+ *
+ * Revision 1.10  2011/04/28 18:27:16  roka4241
+ * Merged pyiter.c/h into pyobj.c/h and made a new type pyitertype that is 'sort of' a subtype of pyobj.
+ *
+ * Revision 1.9  2011/04/26 17:53:00  roka4241
+ * Merged PyAmosOid, PyAmosScan and PyAmosConn into a single python type PyAmosObj. Will simplify addition of amos generator wrapper.
+ *
+ * Revision 1.8  2011/04/20 17:16:26  roka4241
+ * Returning of scans from amos to python. Calling and mapping over amos functions from python.
+ *
+ * Revision 1.7  2011/04/07 17:48:21  roka4241
+ * Calling of python functions with amos scans and iterating over the scan transparently in python.
+ *
+ * Revision 1.6  2011/02/24 23:06:04  roka4241
+ * Embedding of NumPy. Foreign function definition and calling of python function that returns the NumPy ndarray datatype.
+ *
+ * Revision 1.5  2011/02/22 09:01:28  roka4241
+ * *** empty log message ***
+ *
+ * Revision 1.4  2011/02/21 17:17:11  roka4241
+ * Fixed reloading of foreign functions bug. Initial testing of multidirectional foreign functions defined in python.
+ *
+ * Revision 1.3  2011/02/18 15:31:33  roka4241
+ * Getting compilation and tests running without having to compile python yourself.
+ *
+ * Revision 1.2  2011/02/17 13:30:59  roka4241
+ * Added support for binding patterns to allow unbound arguments and multidirectional functions.
+ *
+ * Revision 1.1  2011/02/02 13:41:39  roka4241
+ * First commit since the file was forgotten last time. Previous commit: testing of foreign functions based on user defined python functions. All common datatypes are tested, including passing of amos oids to python. This commit: testing creation and calling of foreign functions based on builtin python functions.
+ *
+ *
+ **************************************************************/
+lisp;
+
+(defun str-before (str before)
+  (let ((pos (string-pos str before)))
+    (if pos         
+        (substring 0 (- pos (length before)) str)      
+      (substring 0 (length str) str))))
+
+(defun pyerror-const (err)
+  (str-before (second (second err)) ","))
+
+(checkequal "Incomplete foreign function signature."
+            
+            ((pyerror-const (catch-error (osql "create function pyerr(Real a) -> Real x 
+                            as foreign 'py:';")))
+             "PYAMOS_ERR_SECOND_COLON")
+            ((pyerror-const (catch-error (osql "create function pyerr(Real a) -> Real x 
+                            as foreign 'py:b';")))
+             "PYAMOS_ERR_SECOND_COLON")
+            ((pyerror-const (catch-error (osql "create function pyerr(Real a) -> Real x 
+                            as foreign 'py:f';")))
+             "PYAMOS_ERR_SECOND_COLON"))
+
+(checkequal "Empty binding pattern."
+            ((typename (catch-error (osql "create function pyerr(Real a) -> Real x 
+                            as foreign 'py::dir';")))
+             'OID))
+
+(checkequal "Invalid binding pattern"
+            ((pyerror-const (catch-error (osql "create function pydir(Real a) -> Bag info
+                            as foreign 'py:a:dir';")))
+             "PYAMOS_ERR_INVALID_BP")
+            ((pyerror-const (catch-error (osql "create function pydir(Real a) -> Bag info
+                            as foreign 'py:ba:dir';")))
+             "PYAMOS_ERR_INVALID_BP")
+            ((pyerror-const (catch-error (osql "create function pydir(Real a) -> Bag info
+                            as foreign 'py:bfa:dir';")))
+             "PYAMOS_ERR_INVALID_BP"))
+
+(checkequal "Non-existing module."
+            ((pyerror-const (catch-error (osql "create function pydir(Real a) -> Bag info
+                            as foreign 'py::undef.dir';")))
+             "PYAMOS_ERR_MODULE_DEF"))
+
+
+(checkequal "Non-existing function."
+            ((pyerror-const (catch-error (osql "create function pydir(Real a) -> Bag info
+                            as foreign 'py::undef_func';")))
+             "PYAMOS_ERR_FUNC_DEF"))
+
+(checkequal "Existing non-callable function."
+            ((pyerror-const (catch-error (osql "create function pydir(Real a) -> Bag info
+                            as foreign 'py::regress.callout.non_func';")))
+             "PYAMOS_ERR_FUNC_CALLABLE"))
+ 
+
+(checkequal "Create foreign function from python (builtin) function."
+            ((typename (osql "create function pyabs(Real a) -> Real x 
+                            as foreign 'py:bf:abs';"))
+             'OID))
+
+(checkequal "Create foreign function from python (math) function."
+            ((typename (osql "create function pyfloor(Real a) -> Real x 
+                            as foreign 'py:bf:math.floor';"))
+             'OID))
+
+(checkequal "Create foreign function from python function (user defined)."
+            ((typename (osql "create function pyplus(Integer a, Integer b) -> Integer x
+                            as foreign 'py:bbf:regress.callout.plus';"))
+             'OID))
+
+(checkequal "Create multidirectional foreign function from python function (user defined)."
+            ((typename (osql "create function pyplusm(Number x, Number y) -> Number r 
+                            as multidirectional
+                              ('bbf' key foreign 'py:bbf:regress.callout.plus_bbf')
+                              ('bfb' key foreign 'py:bfb:regress.callout.plus_bfb') 
+                              ('fbb' key foreign 'py:fbb:regress.callout.plus_fbb');"))
+             'OID))
+
+(checkequal "Integer input and integer output."
+            ((caar 
+              (osql "create function pyminus(Integer a, Integer b) -> Integer x
+                       as foreign 'py:bbf:regress.callout.minus';
+                     pyminus(5,1);"))
+             4))
+
+(checkequal "Real input and real output."
+            ((round 
+              (caar 
+               (osql "create function pyminus(Real a, Real b) -> Real x
+                        as foreign 'py:bbf:regress.callout.minus';
+                      pyminus(5.1,1.2);")))
+             (round 3.9)))
+
+(checkequal "String input and string output."
+            ((caar 
+              (osql "create function pyplus(Charstring a, Charstring b) -> Charstring x
+                       as foreign 'py:bbf:regress.callout.plus';
+                     pyplus('Hello ', 'World!');"))
+             "Hello World!"))
+
+(checkequal "Bag output (extracted from generator)."
+            ((osql "create function pyiota(Integer start, Integer stop) -> Bag items
+                      as foreign 'py:bbf:regress.callout.iota';
+                    pyiota(1,8);")
+             (osql "iota(1,8);")))
+
+(checkequal "List output."
+            ((osql "create function pyiota_list(Integer start, Integer stop) -> Vector items
+                      as foreign 'py:bbf:regress.callout.iota_list';
+                    pyiota_list(1,8);")
+             (osql "vectorof(iota(1,8));")))
+
+(checkequal "Tuple output."
+            ((osql "create function pyiota_tuple(Integer start, Integer stop) -> Vector items
+                      as foreign 'py:bbf:regress.callout.iota_tuple';
+                    pyiota_tuple(1,8);")
+             (osql "vectorof(iota(1,8));")))
+
+(checkequal "Dict output."
+            ((record-fields 
+              (caar 
+               (osql "create function pyiota_dict(Integer start, Integer stop) -> Record items
+                        as foreign 'py:bbf:regress.callout.iota_dict';
+                      pyiota_dict(1,8);")))
+             (record-fields 
+              (tuplelist-to-record 
+               (zip 
+                (mapcar #'car (osql "iota(1,8);"))
+                (mapcar #'car (osql "iota(1,8);")))))))
+
+(checkequal "Array output (treated as sequence)."
+            ((osql "create function pyiota_array(Integer start, Integer stop) -> Bag items
+                      as foreign 'py:bbf:regress.callout.iota_array';
+                    pyiota_array(1,8);")
+             (osql "iota(1,8);")))
+
+(checkequal "Bag output (yielded values)."
+            ((osql "create function pyiota_pow(Integer start, Integer stop, Real exp) -> Bag items 
+                      as foreign 'py:bbbf:regress.callout.iota_pow'; 
+                    pyiota_pow(1,8,3.1415);")
+             (osql "iota(1,8)^3.1415;")))
+
+(checkequal "Oidtype input and oidtype output."
+            ((caar (osql "create function pybounce(Function oid) -> Function oid2
+                            as foreign 'py:bf:regress.callout.bounce';
+                          pybounce(functionnamed('typeof'));"))
+             (caar (osql "functionnamed('typeof');"))))
+
+(checkequal "Call foreign function based on builtin (__builtin__) python function."
+            ((caar (osql "pyabs(-5);"))
+             5))
+
+(checkequal "Call foreign function based on builtin library (math) function."
+            ((caar (osql "pyfloor(4.9);"))
+             4))
+
+;; using py:bbf:regress.reload.pow
+(checkequal "Reload foreign function."
+            ((caar                
+              (let* 
+                  ((file (openstream "regress\\reload.py" "w")))
+                (formatl file 
+                         "import math" T            
+                         "def pow(base, exp):" T
+                         "  return math.pow(base*2, exp)" T) 
+                (flush file)
+                (closestream file)
+                (osql "create function pypow(Real base, Real exp) -> Real r 
+                        as foreign 'py:bbf:regress.reload.pow';")
+                (osql "pypow(2,7);")))
+             16384)
+            ((caar                
+              (let* 
+                  ((file (openstream "regress\\reload.py" "w")))
+                (delete-file "regress\\reload.pyc")
+                (formatl file 
+                         "import math" T            
+                         "def pow(base, exp):" T
+                         "  return math.pow(base, exp)" T) 
+                (flush file)
+                (closestream file)
+                (osql "py_reload('py:bbf:regress.reload.pow');")
+                (osql "pypow(2,7);")))
+             128))
+
+
+(checkequal "Call multidirectional function."
+            ((caar (osql "pyplusm(1,5);")) 6)
+            ((caar (osql "select a from Integer a where pyplusm(1,a)=6;")) 5)
+            ((caar (osql "select a from Integer a where pyplusm(a,5)=6;")) 1))
+
+
+
+(checkequal "Multidimensional ndarray output (NumPy)."
+            ((caar (osql "create function np_square(Integer size) -> Vector of Vector r
+                            as foreign 'py:bf:regress.callout.numpy_square';  
+                          np_square(3);")) 
+             #(#(0 1 2) 
+               #(3 4 5) 
+               #(6 7 8)))
+            ((caar (osql "select a from Integer a where pyplusm(1,a)=6;")) 5)
+            ((caar (osql "select a from Integer a where pyplusm(a,5)=6;")) 1))
+
+(checkequal "Iterate over amos scan and yield the items back to amos."
+            ((osql "create function yield_scan(Scan s) -> Bag of Vector items 
+                            as foreign 'py:bf:regress.callout.yield_scan';
+                          open :s for iota(1,8);
+                          yield_scan(:s);")
+             (osql "select {el} from Integer el where el in iota(1,8);")))
+
+(checkequal "Call function that maps over an amos function."
+            ((osql "create function mapf_iota(Integer start, Integer stop) -> Vector items
+                            as foreign 'py:bbf:regress.callout.mapf_iota';
+                    mapf_iota(1,8);")
+             (osql "vectorof(iota(1,8));")))
+
+(checkequal "Call function that calls an bag-returning amos function."
+            ((osql "create function callf_iota(Integer start, Integer stop) -> Vector items
+                            as foreign 'py:bbf:regress.callout.callf_iota';
+                    callf_iota(1,8);")
+             (osql "vectorof(select {el} from Integer el where el in iota(1,8));")))
+
+(checkequal "Call function that calls an integer-returning amos function."
+            ((osql "create function callf_plus(Integer a, Integer b) -> Integer c
+                            as foreign 'py:bbf:regress.callout.callf_plus';
+                    callf_plus(1,8);")
+             (osql "vectorof(vectorof(plus(1,8)));")))
+
+
+:osql;
+

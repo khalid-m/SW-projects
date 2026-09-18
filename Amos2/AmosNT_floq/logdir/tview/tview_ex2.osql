@@ -1,0 +1,153 @@
+/*-*-sql-*-*******************************************************************/
+
+set :db1 = jdbc("db1","com.mysql.jdbc.Driver");
+connect(:db1,"jdbc:mysql://localhost:3306/regress","regress","regress");
+
+import_table(:db1,"machine");
+triple_view("machine_db1");
+
+/* machine in rdbms */
+create function qq1_amos(Charstring mname) -> Charstring c
+ /* What countries have a machine with name 'mname' */
+  as select c 
+     from Machine@db1 m, Machineinstallation mi, Location l
+     where l=locatedat(mi) and c=country(l) and 
+           id(m)=machinetypeid(mi) and name(m)=mname;
+
+create function qq1_sparql(Charstring mname) -> Charstring c
+  as select c 
+     from Uri m, Integer mid, Uri mi, Uri l
+     where (l,uri('http://www.foo.org/location/country'),c) in location()
+       and (mi,uri('http://www.foo.org/machineinstallation/locatedat'),l)
+           in machineinstallation()
+       and (mi,uri('http://www.foo.org/machineinstallation/machinetypeid'),mid)
+           in machineinstallation()
+       and (m,uri('http://www.foo.org/machine/id'),mid) in machine_db1()
+       and (m,uri('http://www.foo.org/machine/name'),mname) in machine_db1();
+
+import_table(:db1,"location");
+triple_view("location_db1");
+
+/* machine and location in rdbms */
+create function qq1_amos2(Charstring mname) -> Charstring c
+  as select c 
+      from Machine@db1 m, Machineinstallation mi, Location@db1 l
+      where id(l)=locatedatid(mi) and c=country(l) and
+            id(m)=machinetypeid(mi) and name(m)=mname;
+
+create function qq1_sparql2(Charstring mname) -> Charstring c
+  as select c 
+     from Uri m, Integer mid, Uri mi, Uri l, Integer lid
+     where (l,uri('http://www.foo.org/location/country'),c) in location_db1()
+       and (l,uri('http://www.foo.org/location/id'),lid) in location_db1()
+       and (mi,uri('http://www.foo.org/machineinstallation/locatedatid'),lid)
+           in machineinstallation()
+       and (mi,uri('http://www.foo.org/machineinstallation/machinetypeid'),mid)
+           in machineinstallation()
+       and (m,uri('http://www.foo.org/machine/id'),mid) in machine_db1()
+       and (m,uri('http://www.foo.org/machine/name'),mname) in machine_db1();
+
+/* as above but show uri */
+create function qq1_sparql2b(Charstring mname) -> (Charstring c,Uri l)
+  as select c,l 
+     from Uri m, Integer mid, Uri mi, Uri l, Integer lid
+     where (l,uri('http://www.foo.org/location/country'),c) in location_db1()
+       and (l,uri('http://www.foo.org/location/id'),lid) in location_db1()
+       and (mi,uri('http://www.foo.org/machineinstallation/locatedatid'),lid)
+           in machineinstallation()
+       and (mi,uri('http://www.foo.org/machineinstallation/machinetypeid'),mid)
+           in machineinstallation()
+       and (m,uri('http://www.foo.org/machine/id'),mid) in machine_db1()
+       and (m,uri('http://www.foo.org/machine/name'),mname) in machine_db1();
+
+import_table(:db1,"machineinstallation");
+triple_view("machineinstallation_db1");
+
+/* everything in rdbms */
+create function qq1_amos3(Charstring mname) -> Charstring c
+  as select c 
+     from Machine@db1 m, Machineinstallation@db1 mi, Location@db1 l
+     where id(l)=locatedatid(mi) and c=country(l) and
+           id(m)=machinetypeid(mi) and name(m)=mname;
+
+create function qq1_sparql3(Charstring mname) -> Charstring c
+  as select c 
+     from Uri m, Integer mid, Uri mi, Uri l, Integer lid
+     where (l,uri('http://www.foo.org/location/country'),c) in location_db1()
+       and (l,uri('http://www.foo.org/location/id'),lid) in location_db1()
+       and (mi,uri('http://www.foo.org/machineinstallation/locatedatid'),lid)
+           in machineinstallation_db1()
+       and (mi,uri('http://www.foo.org/machineinstallation/machinetypeid'),mid)
+           in machineinstallation_db1()
+       and (m,uri('http://www.foo.org/machine/id'),mid) in machine_db1()
+       and (m,uri('http://www.foo.org/machine/name'),mname) in machine_db1();
+
+
+import_table(:db1,"sensor");
+triple_view("sensor_db1");
+
+/* sensor in rdbms */
+create function qq2_amos(Charstring c) -> (Charstring n,Charstring m,
+                                           Charstring v,Real h,Real p)
+ /* Select information about all sensors on a continent */
+  as select name(s),manufacturer(s),version(s),hystereses(s),sensorprecision(s)
+     from Sensor@db1 s, Sensorinstallation si, Machineinstallation mi, 
+          location l 
+     where l=locatedat(mi) and c=continent(l) and
+           mi=onmachine(si) and id(s)=sensortypeid(si);
+
+/* sensor in rdbms */
+create function qq2_sparql(Charstring c) -> (Charstring n,Charstring m,
+                                             Charstring vv,Real h,Real p)
+  as select n,m,vv,h,p 
+     from Uri l, Integer lid, Uri mi, Integer mid, Uri s, Integer sid, Uri si
+     where (mi,uri('http://www.foo.org/machineinstallation/id'),mid)
+           in machineinstallation()
+       and (mi,uri('http://www.foo.org/machineinstallation/locatedatid'),lid)
+           in machineinstallation()
+       and (l,uri('http://www.foo.org/location/id'),lid) in location()
+       and (l,uri('http://www.foo.org/location/continent'),c) in location()
+       and (si,uri('http://www.foo.org/sensorinstallation/onmachineid'),mid)
+           in sensorinstallation()
+       and (si,uri('http://www.foo.org/sensorinstallation/sensortypeid'),sid)
+           in sensorinstallation()
+       and (s,uri('http://www.foo.org/sensor/id'),sid) in sensor_db1() 
+       and (s,uri('http://www.foo.org/sensor/name'),n) in sensor_db1()
+       and (s,uri('http://www.foo.org/sensor/manufacturer'),m) in sensor_db1()
+       and (s,uri('http://www.foo.org/sensor/version'),vv) in sensor_db1()
+       and (s,uri('http://www.foo.org/sensor/hystereses'),h) in sensor_db1()
+       and (s,uri('http://www.foo.org/sensor/sensorprecision'),p)
+           in sensor_db1();
+
+import_table(:db1,"sensorinstallation");
+triple_view("sensorinstallation_db1");
+
+/* machine/sensor installation in rdbms */
+create function qq2_amos2(Charstring c) -> (Charstring n,Charstring m,
+                                            Charstring v,Real h,Real p) 
+  as select name(s),manufacturer(s),version(s),hystereses(s),sensorprecision(s)
+     from Sensor s, Sensorinstallation@db1 si, Machineinstallation@db1 mi, 
+          Location l 
+     where id(l)=locatedatid(mi) and c=continent(l) and
+           id(mi)=onmachineid(si) and id(s)=sensortypeid(si);
+
+create function qq2_sparql2(Charstring c) -> (Charstring n,Charstring m,
+                                              Charstring vv,Real h,Real p)
+  as select n,m,vv,h,p 
+     from Uri l, Integer lid, Uri mi, Integer mid, Uri s, Integer sid, Uri si
+     where (mi,uri('http://www.foo.org/machineinstallation/id'),mid)
+           in machineinstallation_db1()
+       and (mi,uri('http://www.foo.org/machineinstallation/locatedatid'),lid)
+           in machineinstallation_db1()
+       and (l,uri('http://www.foo.org/location/id'),lid) in location()
+       and (l,uri('http://www.foo.org/location/continent'),c) in location()
+       and (si,uri('http://www.foo.org/sensorinstallation/onmachineid'),mid)
+           in sensorinstallation_db1()
+       and (si,uri('http://www.foo.org/sensorinstallation/sensortypeid'),sid)
+           in sensorinstallation_db1()
+       and (s,uri('http://www.foo.org/sensor/id'),sid) in sensor()
+       and (s,uri('http://www.foo.org/sensor/name'),n) in sensor()
+       and (s,uri('http://www.foo.org/sensor/manufacturer'),m) in sensor()
+       and (s,uri('http://www.foo.org/sensor/version'),vv) in sensor()
+       and (s,uri('http://www.foo.org/sensor/hystereses'),h) in sensor()
+       and (s,uri('http://www.foo.org/sensor/sensorprecision'),p) in sensor();

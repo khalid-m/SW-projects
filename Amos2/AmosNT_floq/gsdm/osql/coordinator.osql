@@ -1,0 +1,457 @@
+/*****************************************************************************
+ * AMOS2 - GSDM
+ *
+ * Author: (c) 2005 Milena Ivanova, UDBL
+ * $RCSfile: coordinator.osql,v $
+ * $Revision: 1.26 $ $Date: 2006/01/20 17:53:55 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Coordinator functionality.
+ * 	Abstract representation of dataflow graph (algebra tree) for
+ *	a query as AmosQL metadata(types and functions). 
+ *	1) Dataflow creation: dfdt.osql
+ *	2) Dataflow compilation
+ *	3) Dataflow instalation: inst.osql
+ *	4) Dataflow activation: inst.osql
+ *	This functionality is interlaced with management of working nodes
+ *	M1) get cluster resources
+ *	M2) create mapping between physical resources and logical nodes in
+ *		the dataflow graph
+ *	M3) start working nodes
+ *	Dependencies: M1, M2 and M3 before 3)	
+ *		currently M1 after 2), but might be before 1) 
+ *		depending on the policy
+ ****************************************************************************/
+
+/* 1) Dataflow is specified in terms of nodes and logical sites on which they are assigned, nodes are connected by producer-consumer relationships */
+
+load_amosql("osql/dfdt.osql");
+
+load_lisp(getenv("AMOS_HOME")+'/gsdm/lsp/coordinator.lsp');
+
+create function username()-> charstring as stored;
+
+/* Metadata for Continuous Queries */
+create type cq;
+create function inputs(cq q)-> vector of mstream as stored;
+create function outputs(cq q)-> vector of mstream as stored;
+create function plan(cq q)-> dataflow d as stored;
+
+create function cq(dataflow d, vector of mstream in, vector of mstream out)
+	-> cq q
+as begin
+	create cq(plan,inputs,outputs) instances q(d,in,out);
+	result q;
+end;
+
+/************************************************************/
+
+create function vector_of(bag of <integer,charstring>)->vector of charstring
+	 as foreign 'vector_of-+';
+
+/* 2)Compile dataflow : for each consumer relationship between 2 operators (arc in the dataflow graph) create 1(local) or 2(distributed) stream objects to implement the connection. Proceeds corresponding to operator dependancies, i.e. from level 0 to level max
+
+1) determine levels of all operators
+levels() defined in coordinator.lsp
+2)create streams connecting the operators following op ordering by level
+*/
+
+create function derive_amosqlop_result_type(node nd) -> charstring tp
+as foreign 'derive-amosqlop-result-typefn';
+
+create function get_input_stream_type(node nd)-> charstring
+as select stype(s)
+from mstream s
+where s=in(input_streams(nd));
+
+
+create function derive_op_result_type(node op) -> charstring tp
+as begin
+	declare charstring rtype;
+
+	if fn(op)="S-Merge" then
+		set rtype = get_input_stream_type(op)
+	else if fn(op)="OS-Join" then
+		set rtype = get_input_stream_type(op)
+	else if fn(op)="chop" then
+		set rtype = get_input_stream_type(op)
+	else set rtype= derive_amosqlop_result_type(op);
+
+	result rtype;	
+end;
+
+create function set_stream_props(dataflow d) -> boolean
+as begin
+	for each mstream s
+	where s= streams(d)
+	begin 
+	   if dest(s)="" then set dest(s)=id(assigned_to(s));
+	   if source(s)="" then set source(s)=id(assigned_to(s));
+	end;
+end;
+
+create function compile(node q) -> boolean
+as begin
+	declare mstream s, mstream s1,
+	site siteprod,
+	charstring name, 
+	charstring stype;
+	
+	set siteprod= assigned_to(q);
+
+	set stype=derive_op_result_type(q);	
+
+	for each site st
+	where st = consumer_sites(q)
+	begin
+         /* create log stream connecting to this GSDM node */	
+	    set name= next_sid();
+	   
+	    if st = siteprod then
+	    begin 		/*local stream produced by the node*/
+		set s= mm_stream(name,stype,siteprod);
+		add result_streams(q)=s;
+
+		for each node nd1
+		where nd1=in(outputs(q)) and st=assigned_to(nd1)
+		   set input_streams(nd1)=substvel(input_streams(nd1),q,s);
+	    end	
+
+	  else begin	  /* 2 streams - to other gsdm node*/
+		set s= outGSDM_stream(name,stype,siteprod,id(st));
+		set source(s)=id(q); 
+		add result_streams(q)=s;
+		
+		set s1= inGSDM_stream(name,stype,st,id(siteprod));
+
+		for each node nd1
+		where nd1=in(outputs(q)) and st=assigned_to(nd1)
+		   set input_streams(nd1)=substvel(input_streams(nd1),q,s1);
+	  end;
+	end;
+	result 'true';
+end;
+
+create function compile_dataflow(dataflow d,
+		  vector of mstream ins, 
+		  vector of mstream outs) -> boolean
+as begin
+
+	declare node nd,charstring stype,
+	mstream s;
+
+	levels(d);
+
+	for each node nd
+	where nd = nodes(d)
+	   set input_streams(nd)= substv(inputs(nd),ins);
+
+	/* connect input streams to input nodes 
+	bind_inputs(d,ins); */
+
+	/* TO DO: input stream assignment to multiple sites*/
+	for each mstream s
+	where s=in(ins)
+	if count(sites(s,d))=1 then
+		 add assigned_to(s)=sites(s,d)
+	else print("Multiple site assignment");
+
+
+	/* create all other streams connecting the nodes */
+	for each integer l
+	where l = iota(0,maxlevel(d))
+	begin
+	for each node q
+	where q=nodes(d) and level(q) = l
+	  compile(q);
+	end;
+
+	/* connect the result streams to the last node in the plan
+	OBS. Currently only dataflows with 1 logical result stream supported,
+	but result can be replicated to many different streams*/
+
+	set nd= get_output(d,0);
+	set stype=derive_op_result_type(nd);	
+	for each mstream s
+	where s = in(outs)
+	begin
+	    add result_streams(nd)=s;	
+	    set assigned_to(s)= assigned_to(nd);
+	    set source(s)= id(nd);
+	    set stype(s)=stype;
+	end;
+	set_stream_props(d);
+end;
+
+
+
+create function compile_dataflow(dataflow d,
+		   mstream ins, 
+		   mstream outs) -> boolean
+as select compile_dataflow(d,vector of mstream (ins),
+			vector of mstream (outs));
+
+load_amosql("osql/inst.osql");
+
+
+
+/****************************************************************
+GSDM Resource Manager : starting and terminating GSDM nodes
+TO DO: M1) get Grid resources 
+	currently the user sets cluster_nodes function
+****/
+
+create function cluster_nodes(charstring clustername)->
+				vector of charstring as stored;
+
+create function map_nodes(dataflow d)-> boolean
+as begin
+	declare vector of charstring nodes,
+	integer k, integer i;
+
+/* logical names of graph vertices */
+
+	set k=count(sites(d));
+
+	if resources(d)="LOCAL" then 	/* all nodes on the local machine*/
+	for each site s
+	where s = sites(d)	
+	   set location(s)= getenv("NAMESERVER_HOST")
+
+	else begin
+	   set nodes=cluster_nodes(resources(d));
+	   set i=0;
+	   for each site s
+	   where s = sites(d)
+	   begin	
+		set location(s)= nodes[i];
+		set i= i+1; 
+	   end;
+	end;
+end;
+
+
+create function start_workingnode_local(site g)-> boolean
+as begin
+	declare charstring opt;
+	set opt= " -o " +"register('" + id(g) + "');";
+	set opt= concat(opt,"listen_gsdm();");
+
+	start_wn_opt(opt);
+end;
+
+create function start_all(dataflow d)-> boolean
+as begin
+
+	for each site s
+	where s=sites(d)
+	if resources(d)="LOCAL" then
+	   start_workingnode_local(s)
+	   else start_workingnode_ssh(location(s),id(s));
+end;
+
+
+create function start_statsrv(charstring clname)-> boolean
+as begin
+	if clname="LOCAL" then
+	start_amos("-O osql/statsrv.osql","STATSRV")
+	else start_statsrv_ssh();
+	sleep(2);
+end;
+
+
+create function kill_all(dataflow d)-> boolean
+as begin
+	for each site s
+	where s=sites(d)
+	kill_peer(id(s));
+end;
+
+/***** Registration of dataflow at STATSRV for statistics collector **/
+
+create function register_sites(dataflow d) -> boolean
+as begin
+	for each site g 
+	where g = sites(d)	
+	begin
+	   ship("STATSRV","register_site('" + id(g) +"');");
+	end;
+end;
+
+create function register_nodes(dataflow d) -> boolean
+as begin
+	for each node op
+	where op = nodes(d)	
+	   ship("STATSRV","register_node('" + id(d) +"','"+
+	      id(assigned_to(op)) + "','" +
+	      id(op) +"','" + fn(op) +"');"); 
+end;
+
+create function register_mstreams(dataflow d) -> boolean
+as begin
+	for each mstream s 
+	where kind(s)="TCP" and dest(s)=id(assigned_to(s))
+	   ship("STATSRV","register_mstream('" + id(d) +"','"+
+	      id(assigned_to(s)) + "','" +
+	      name(s) +"');"); 
+end;
+
+create function register_output(dataflow d) -> boolean
+as begin
+   ship("STATSRV",
+		"register_out('" + id(d) +"','"+ id(get_output(d,0)) +"');"); 
+end;
+
+create function params(dataflow d)-> charstring s
+as begin
+	declare charstring p;
+
+	set p= "Size "+ itoa(data_size(d)) +  ' Turn ' +
+	  cast(turn_around(d) as charstring) + ' Image ' + itoa(image_size(d));
+
+	result p;
+end;
+
+create function register_dataflow(dataflow d) -> boolean
+as begin
+	if registered(d)=0 then
+	begin
+	ship("STATSRV","register_dataflow('" + id(d) + "','" + params(d)+"');");
+	register_sites(d);
+	register_nodes(d);
+	register_mstreams(d);
+	register_output(d);
+	set registered(d)=1;
+	end;
+end;
+
+create function set_exp_params(dataflow d,integer ds, 
+	real turn, integer im) -> boolean
+as begin
+	set data_size(d)=ds;
+	set turn_around(d)=turn;
+	set image_size(d)=im;
+end;
+
+/* map sites to cluster nodes and start GSDM servers */
+create function map_and_start(dataflow d) -> boolean
+as begin
+	if installed(d)=0 then
+	begin
+	set resources(d)=resources();
+	map_nodes(d);
+	start_all(d);
+	wait_for_listening(d);
+	end;
+end;
+
+create function print_exec_stat(dataflow d)-> boolean
+as begin
+	ship("STATSRV",
+	"print_dataflow_stat(dataflow_named('" + id(d) +"'));");
+end;
+
+
+create function run(dataflow d) -> boolean
+as begin
+	register_dataflow(d);	
+
+	map_and_start(d);
+
+	install_dataflow(d);
+
+	activate_dataflow(d);
+end;
+
+create function run(dataflow d, charstring cond, number val) -> boolean
+as begin
+	register_dataflow(d);	
+
+	map_and_start(d);
+
+	install_dataflow(d,cond,val);
+
+	activate_dataflow(d);
+end;
+
+create function report(dataflow d) -> boolean
+as begin
+	report_to_statsrv(d);
+	sleep(5);
+	print_exec_stat(d); 
+/*	get_prof(d);*/
+end;
+
+create function run_wait(dataflow d) -> boolean
+as begin
+	register_dataflow(d);	
+
+	map_and_start(d);
+
+	install_dataflow(d);
+
+	activate_dataflow(d);
+
+	wait_for_completion(d);
+	report_to_statsrv(d);
+	sleep(5);
+	print_exec_stat(d); 
+end;
+
+create function clean_dataflow(dataflow d) -> boolean
+as begin
+	
+	kill_all(d);
+	kill_peer("STATSRV");
+end;
+
+/************************************************************/
+/* CQ compile, run, stop */
+
+create function vector_of(bag of <integer,mstream>)->vector of mstream
+	 as foreign 'vector_of-+';
+
+create function copystrin(vector of mstream ins) -> vector of mstream 
+as select(
+vector_of(select i, mstream(next_sid(),source(s),dest(s),kind(s),stype(s)) 
+	from mstream s,integer i
+	where s=ins[i])); 
+
+create function copystrout(vector of mstream outs) -> vector of mstream 
+as select(
+vector_of(select i, mstream(next_sid(),source(s),dest(s),kind(s)) 
+	from mstream s,integer i
+	where s=outs[i])); 
+
+create function compile(cq q) -> boolean
+as begin
+	declare vector of mstream cpins,
+	vector of mstream cpouts;
+	if compiled(plan(q))=0 then
+	begin
+	   set cpins=copystrin(inputs(q));
+	   set cpouts=copystrout(outputs(q)); 
+	   compile_dataflow(plan(q),cpins,cpouts);
+	   set compiled(plan(q))=1;
+	end;
+end;
+
+create function run(cq q) -> boolean
+as select run(plan(q));
+
+create function run(cq q, charstring cond, number val) -> boolean
+as select run(plan(q),cond,val);
+
+create function stop(cq q) -> boolean
+as select stop(plan(q));
+
+create function report(cq q)-> boolean
+as select report(plan(q));
+
+create function clean(cq q)-> boolean
+as select kill_all(plan(q));
+
+/************************************************************/
+
+load_amosql("osql/exp.osql");
+

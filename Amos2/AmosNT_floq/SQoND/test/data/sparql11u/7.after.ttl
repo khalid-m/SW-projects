@@ -1,0 +1,6 @@
+# Default graph
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+
+<http://example/william> a foaf:Person .
+<http://example/william> foaf:givenName "William" .
+<http://example/william> foaf:mbox  <mailto:bill@example> .

@@ -1,0 +1,113 @@
+/*-*-sql-*-*******************************************************************/
+logging off;
+create function lroutput()->vector;
+create function datafile()->charstring;
+create function timer()->real;
+create function v()->vector of vector of vector;
+create function expected()->vector;
+create function exp_long()->vector;
+create function filecount()->integer;
+
+/*set datafile() = getenv('AMOS_HOME') + '/scsq/lr/data/c10-20k';*/
+set datafile() = getenv('HOME') + '/binbench/c10-200k';
+set expected() = {232,20594,20688,20695,20702,20711,20797,20812,20813,20828,
+                  21178};
+set filecount() = 200000;
+set exp_long() ={232,981,981,981,981,981,981,981,981,981,981,981,981,981,981,
+                 20594,20688,20695,20702,20711,20797,20812,20813,20828,21178};
+
+/*
+set datafile() = getenv('HOME') + '/c10-1M';
+set expected() = {1015,103434,103476,103485,103532,103859,104330,104339,104358,
+                  104382,105190};
+set filecount() = 1000000;
+set exp_long() = {1015,5044,5044,5044,5044,5044,5044,5044,5044,5044,5044,5044,
+                  5044,5044,5044,103434,103476,103485,103532,103859,104330,
+                  104339,104358,104382,105190};
+*/
+
+lisp;
+;"
+
+(checkequal "dx"
+((osql "set v() = vselect in(zipstreams(vs))
+from vector of stream vs, vector of stream src
+where vs = mapstreams(src,#'tscount')
+and src = splitstream(lreadfast(datafile(), 10), 10 + 1, #'dxpartition');
+print({'time: ', maxagg(select cast(v()[2][i] as vector of real)[0]
+                -cast(v()[0][i] as vector of real)[0] from integer i)});
+sort(in(in(v()[1])));")
+(osql "expected();")))
+
+(checkequal "d + mod[10]"
+((osql "set v() = vselect in(zipstreams(concat(so, my)))
+from vector of stream of vector dpart,
+vector of stream L1,
+vector of stream so, vector of stream my, 
+stream of vector reader
+where so = mapstreams(L1, #'tscount')
+and my = mapstreams({dpart[1]}, #'tscount')
+and L1 = splitstream(dpart[0], 10, #'modpartition')
+and dpart = splitstream(reader, 2, #'dpartition')
+and reader = mapv({{datafile(), 10}},
+#'CHARSTRING.INTEGER.lreadfast->STREAM-VECTOR-INTEGER')[0];
+print({'time: ', maxagg(select cast(v()[2][i] as vector of real)[0]
+                -cast(v()[0][i] as vector of real)[0] from integer i)});
+sort(in(in(v()[1])));")
+(osql "expected();")))
+
+(checkequal "d + mod[5] + mod[2]"
+((osql "set v() = vselect in(zipstreams(concat(so, my)))
+from vector of stream of vector dpart, vector of stream L1, 
+vector of stream L2,
+vector of stream so, vector of stream my, stream of vector reader
+where so = mapstreams(L2, #'tscount')
+and my = mapstreams({dpart[1]}, #'tscount')
+and L2 = splitstreams(L1, 2, #'modpartition')
+and L1 = splitstream(dpart[0], 5, #'modpartition')
+and dpart = splitstream(reader, 2, #'dpartition')
+and reader = mapv({{datafile(), 10}}, 
+#'CHARSTRING.INTEGER.lreadfast->STREAM-VECTOR-INTEGER')[0];
+print({'time: ', maxagg(select cast(v()[2][i] as vector of real)[0]
+                -cast(v()[0][i] as vector of real)[0] from integer i)});
+sort(in(in(v()[1])));")
+(osql "expected();")))
+
+(checkequal "d + mod[2] + mod[5]"
+((osql "set v() = vselect in(zipstreams(concat(so, my)))
+from vector of stream of vector dpart, vector of stream L1,
+vector of stream L2,
+vector of stream so, vector of stream my, stream of vector reader
+where so = mapstreams(L2, #'tscount')
+and my = mapstreams({dpart[1]}, #'tscount')
+and L2 = splitstreams(L1, 5, #'modpartition')
+and L1 = splitstream(dpart[0], 2, #'modpartition')
+and dpart = splitstream(reader, 2, #'dpartition')
+and reader = mapv({{datafile(), 10}}, 
+#'CHARSTRING.INTEGER.lreadfast->STREAM-VECTOR-INTEGER')[0];
+print({'time: ', maxagg(select cast(v()[2][i] as vector of real)[0]
+                -cast(v()[0][i] as vector of real)[0] from integer i)});
+sort(in(in(v()[1])));")
+(osql "expected();")))
+
+(checkequal "d + mod[2] + mod[3] + mod[4]"
+((osql "set v() = vselect in(zipstreams(concat(so, my)))
+from vector of stream of vector dpart, vector of stream L1, 
+vector of stream L2, vector of stream L3, vector of stream so, 
+vector of stream my, stream of vector reader
+where so = mapstreams(L3, #'tscount')
+and my = mapstreams({dpart[1]}, #'tscount')
+and L3 = splitstreams(L2, 4, #'modpartition')
+and L2 = splitstreams(L1, 3, #'modpartition')
+and L1 = splitstream(dpart[0], 2, #'modpartition')
+and dpart = splitstream(reader, 2, #'dpartition')
+and reader = mapv({{datafile(), 10}}, 
+#'CHARSTRING.INTEGER.lreadfast->STREAM-VECTOR-INTEGER')[0];
+print({'time: ', maxagg(select cast(v()[2][i] as vector of real)[0]
+                -cast(v()[0][i] as vector of real)[0] from integer i)});
+sort(in(in(v()[1])));")
+(osql "exp_long();")))
+
+(sleep 3)
+
+(send-form '(quit) (open-nameserver-port))

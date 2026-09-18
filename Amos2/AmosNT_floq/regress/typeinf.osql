@@ -1,0 +1,63 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2006 Tore Risch, UDBL
+ * $RCSfile: typeinf.osql,v $
+ * $Revision: 1.2 $ $Date: 2006/12/06 22:31:50 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Type inference for collections
+ *
+ ****************************************************************************
+ * $Log: typeinf.osql,v $
+ * Revision 1.2  2006/12/06 22:31:50  torer
+ * Strict typing of vector constructors in queries
+ *
+ ****************************************************************************/
+
+create type t1;
+create type t2;
+create type t3;
+create type t4 under t2;
+create type t5 under t2;
+create type t6 under t4, t5;
+create type t7 under t4, t5;
+create type t8 under t5, t3;
+create t1 instances :t1;
+create t2 instances :t2;
+create t3 instances :t3;
+create t4 instances :t4;
+create t5 instances :t5;
+create t6 instances :t6;
+create t7 instances :t7;
+create t8 instances :t8;
+
+create function pick(Vector of Vector of Integer v)->Integer 
+  as select v[0][0];
+
+create function pack(integer i)->integer
+  as select pick({{i}});
+
+create function pick2(t2 x, Vector y) -> Object
+  as select y[0];
+
+create function pick2(t4 x, Vector y)-> Object
+  as select y[1];
+
+ 
+lisp;
+(checkequal 
+ "Multiple-inheritance type inference for vectors"
+ ((osql "name(typeof({:t8,:t7}));") '(("VECTOR-T5")))
+ ((osql "name(typeof({:t6,:t7}));") '(("VECTOR-T2")))
+ ((osql "name(typeof({:t4,:t8}));") '(("VECTOR-T2")))
+ ((osql "name(typeof({:t1,:t2}));") '(("VECTOR-USEROBJECT")))
+ ((osql "name(typeof({{:t6},{:t7}}));") '(("VECTOR-VECTOR-T2")))
+ ((osql "name(typeof({{:t6,:t8},{:t7}}));") '(("VECTOR-VECTOR-T5")))
+ ((osql "pack(1);") '((1)))
+ ((osql "pick2(:t4,{1,2});") '((2)))
+ )
+:osql
+rollback;
+
+ 

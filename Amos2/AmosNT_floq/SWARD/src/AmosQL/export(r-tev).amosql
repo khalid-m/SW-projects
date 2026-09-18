@@ -1,0 +1,458 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2006 Johan Petrini, Tore Risch UDBL
+ * $RCSfile: export(r-tev).amosql,v $
+ * $Revision: 1.2 $ $Date: 2012/02/04 17:14:19 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: SWARD wrapper generator
+ ****************************************************************************
+ * $Log: export(r-tev).amosql,v $
+ * Revision 1.2  2012/02/04 17:14:19  torer
+ * Namespaces for functions and types introduced as name prefixes, e.g.
+ *
+ * create function sql:person(Integer ssn) -> (Charstring name, Integer salary) as stored;
+ *
+ * The prefix sql: makes amos functions queryables with sql, e.g.:
+ *
+ * SELECT * FROM PERSON;
+ *
+ * Revision 1.1  2006/11/24 16:12:56  petrini
+ * *** empty log message ***
+ *
+ * Revision 1.12  2006/11/06 21:10:27  torer
+ * Testing existance of mapped table columns
+ *
+ ****************************************************************************/
+
+/*** Return 0 if sql identifier is uri and 1 if rlit ***/
+create function is_sqllid(Charstring str)->Integer flg
+  as foreign 'is_sqllid';
+
+/*** Translates an sql string to corresponding uid. E.g. <monkey> is 
+     translated to monkey.
+     If the argument of sqltouid is a sql string representing an rdf literal 
+     sqltouid returns nothing ***/
+
+create function sqltouid(Charstring str)->Charstring r
+  as foreign 'sqltouid';
+
+lisp;
+;(defglobal _profiler-frequency_ 0.1); How often to sample stack per sec
+
+;(defun stat-function ()
+;      (and _stat-enabled_
+;	   ((lambda (x)
+;	      (and (eq x '***olog***) _current-ologpred_ 
+;		   (setq x (oid-name _current-ologpred_)))
+;	      (and x (setf (gethash (print x) _profile-stats_) 
+;			   (1+ (or(gethash x _profile-stats_)0 )))))
+;	    (topcall _exclude-profile_))))
+
+
+;;;Implemetation of foreign function applyTripleFn.
+
+(defun applytriples (fno fn s p v)
+  (mapfunction fn nil 
+	       (f/l (row)
+		    (osql-result fn (first row)(second row)(third row)))))
+
+;;;Foreign fn that applies a function f representing the column 
+;;;triple extent of a column in a relational database and returns 
+;;;the result as a bag of RDF triples
+
+(set-type-container (osql "create function applyTripleFn(Function fn) 
+			-> <Charstring, Charstring, Charstring>
+  			as foreign 'applytriples';"))
+
+;;; Define TR rewrite rule:
+
+(define-tr-rewriter 'FUNCTION.APPLYTRIPLEFN->CHARSTRING.CHARSTRING.CHARSTRING
+  'applytriple-test 'applytriple-transform)
+
+(defun applytriple-test (pred rest)
+  "Tests in first argument of APPLYTRIPLES constant"
+  (oid-p (cadr pred)))
+
+(defun applytriple-transform (pred rest)
+  "Generates rewritten conjunction"
+  (let ((fno (cadr pred))
+	(args (cddr pred)))
+    (expand-predicate (cons fno args) nil)))
+
+(defun rdispatch (fno flg str r)
+  "Encapsulates the way an sql identifier (<id> or) is translated to 
+   corresponding resource"
+  (cond ((equal flg 0)
+	 (osql-result flg str (getfunction 
+			       (getfunctionnamed 'uri) (list str))))
+	(t (osql-result flg str (caar (getfunction (getfunctionnamed 'lit)
+						   (list str)))))))
+
+;;;Create a row identifier for every row in the rdb.
+(set-type-container 
+ (osql "
+create function rowid(Charstring uri,Literal val)->Charstring rid 
+  as multidirectional ('bbf' foreign 'cbbf' cost {1,1})
+	              ('ffb' foreign 'cffb' cost {1,1});"))
+
+;;;Wrapper fn for rdispatch.
+(set-type-container 
+ (osql "
+create function rdispatch(Integer flg, Charstring str)->Resource r
+  as foreign 'rdispatch';"))
+
+;;;Translates a rlit to corresponding lid. Invertable and 1:1. 
+(set-type-container 
+ (osql "
+create function rtosqllid(Resource r)-> Charstring str 
+  as multidirectional ('bf' key select lid(r))
+                      ('fb' key select rdispatch(is_sqllid(str),str));"))
+
+;;;Translates a uri to corresponding uid. Invertable and 1:1
+(set-type-container 
+ (osql "
+create function rtosqluid(Resource r)->Charstring str 
+  as multidirectional ('bf' key select '<' + cast(uid(r) as Charstring)
+                                       + '>')
+                      ('fb' key select uri(sqltouid(str)));"))
+:osql
+
+/*** Attributes of a connection ***/
+create function url(JDBC ds)->Charstring url
+  as stored;
+create function catalog(JDBC ds)->Charstring catalog
+  as stored;
+create function schema(JDBC ds)->Charstring schema
+  as stored;
+create function the_jdbc(Charstring dsn)->JDBC ds 
+  as select ds where name(ds)=upper(dsn);
+
+/*** Key declarations ***/
+declare_key(theresolvent('RDISPATCH'),{'flg','str'});
+declare_key(theresolvent('RDISPATCH'),{'r'});
+declare_key(theresolvent('ROWID'),{'uri','val'});
+declare_key(theresolvent('ROWID'),{'rid'});
+
+/*** One SWARD can have several RDF views but only one unique 
+     combination of data source and terminology. Currently we presumes 
+     only one data source in a SWARD system. ***/
+/*** Property mapping table ***/
+
+create function propMap(Charstring tn,Charstring cn,Charstring ont,
+                        Charstring prop)->Boolean
+  as stored;
+
+declare_key(theresolvent('PROPMAP'),{'tn','cn','ont'});
+declare_key(theresolvent('PROPMAP'),{'ont','prop'});
+
+/*** Wrapper for propMap stored fn.***/
+create function propMap(Charstring tn,Charstring cn,Charstring ont)
+                        ->Charstring prop
+  as select prop where propMap(tn,cn,ont,prop);
+
+/*** Helper fn. ***/
+create function getPropMap(Charstring tn,Charstring cn,Charstring ont)
+                          ->Charstring prop
+  as select prop where propMap(tn,cn,ont,prop); 
+
+/*** Get those tbls refered to in propmap table. ***/
+create function getPropMapTbls(Charstring ont)->Charstring tn
+  as select distinct tn 
+     from Charstring cn, Charstring prop 
+     where propMap(tn,cn,ont,prop);
+
+/*** Class mapping table ***/
+create function classMap(Charstring tn,Charstring ont,Charstring class)
+                        ->Boolean
+  as stored;
+
+declare_key(theresolvent('CLASSMAP'),{'tn','ont'});
+declare_key(theresolvent('CLASSMAP'),{'class'});
+
+/*** Wrapper for classMap stored fn.***/
+create function classMap(Charstring tn,Charstring ont)->Charstring class
+  as select class where classMap(tn,ont,class);
+
+/*** Defining TEVExtent table that maps a colid to 
+     corresponding domain calculus expression that 
+     defines the column triple extent of the colid. ***/
+create function TEVExtent(Charstring tid,Charstring ont,Function vd)->Boolean
+   as stored;
+
+declare_key(theresolvent('TEVEXTENT'),{'tid','ont'});
+declare_key(theresolvent('TEVEXTENT'),{'vd'});
+
+/*** Wrapper for TEVExtent stored fn.***/
+create function TEVExtent(Charstring tid,Charstring ont)->Function vd
+  as select vd where TEVExtent(tid,ont,vd);
+
+/*** Generates the RDF triples defined by the column triple 
+     extent represented by function f. Filters on s,p or o. ***/
+create function getTriples(Function fn) -> 
+                          <Charstring s, Charstring p, Charstring v>
+  as select s, p, v
+     where <s, p, v> = applyTripleFn(fn);
+
+/*** Defining ResolventName fn that given a name of a function f returns f. 
+     If there exist more than one resolvent for f an exception is thrown. ***/
+create function resolventNamed(Charstring fn) -> Function
+ as if count(resolvents(functionnamed(fn))) != 1 
+    then error("Not exactly one resolvent",fn)
+    else result resolvents(functionnamed(fn));
+
+/*** Get key of rdb table. ***/
+
+create function get_key(Charstring dsn,Charstring catalog,Charstring schema,
+                        Charstring tn)->Charstring col
+  as select col 
+     from charstring constraint 
+     where <col,constraint> = primary_keys(the_jdbc(dsn),catalog,schema,tn);
+
+/*** Autogenerate call to relational fn as part of tev for rdb. ***/
+create function gen_relcall(Charstring dsn, Charstring rname)->Charstring r
+  as select rname + "_" + dsn + "_cc()=<" + 
+            concatagg(inject((select rname + "_" + lower(cname) 
+     from Charstring cname, Charstring ctype 
+     where <ctype, cname> = columns(the_jdbc(dsn), rname)), ",")) + ">";
+
+/*** Autogenerate conjunctions as part of tev for rdb. ***/
+create function gen_conjunct1(Charstring dsn,
+		              Charstring ont,		
+			      Charstring tn,
+			      Charstring k,
+			      Charstring cn
+			     )->Charstring clause
+  as select "(" + gen_relcall(dsn,tn) + " 
+	and propmap('" + tn + "','" + k + "','" + ont + "', kcolid)
+	and rid = rowid(kcolid," + tn + "_" + k + ")
+	and propmap('" + tn + "','" + cn + "','" + ont + "', colid)
+	and s = rid 
+	and p = colid 
+	and val = " + tn + "_" + cn + ")";
+
+/*** Autogenerate disjunctions as part of tev for rdb. ***/
+create function gen_disjunct2(Charstring dsn,Charstring tn,Charstring ont)
+                             ->Bag of Charstring disjunct
+  as for each Charstring cn,Charstring prop 
+	 where propMap(tn,cn,ont,prop) 
+       begin
+         declare charstring k;
+         set k = upper(get_key(dsn,catalog(the_jdbc(dsn)),schema(the_jdbc(dsn)),tn));
+         result gen_conjunct1(dsn,ont,tn,k,cn);
+       end;
+
+create function gen_disjunct1(Charstring dsn,Charstring tn,Charstring ont)
+                             -> Bag of Charstring disjunct
+  as result concatagg(inject(gen_disjunct2(dsn,tn,ont)," or "));
+
+/*** Autogenerate variables as part of tev for rdb. ***/
+create function gen_relvars(Charstring dsn,Charstring rname)
+                           ->Charstring relvars
+  as select concatagg(inject((select "Charstring " +  rname + "_"
+            + lower(cname) 
+     from Charstring cname,Charstring ctype 
+     where <ctype, cname> = columns(the_jdbc(dsn),rname)), ","));
+
+create function is_column_of(Relational r, Charstring tbl, Charstring col)
+                             ->Boolean
+  as select true
+     from charstring dummy
+     where columns(r,tbl)= <dummy,upper(col)>;
+
+create function gen_relvars1(Charstring dsn,Charstring tn,Charstring ont)
+                            -> Bag of Charstring relvars
+as
+         begin
+           if (notany(functionnamed(upper(tn) + "_" + dsn + "_CC"))) 
+           then  import_table(the_jdbc(dsn),tn);
+           result concatagg(inject((select "Charstring " +  tn + "_" 
+                                           + lower(cn) 
+	                            from Charstring cn,Charstring ctype 
+	                            where <ctype, cn> = 
+                                          columns(the_jdbc(dsn),tn)), ","));
+         end;
+
+create function gen_relvars2(Charstring dsn,Charstring tn,Charstring ont)
+                             ->Charstring relvars
+  as result concatagg(inject(gen_relvars1(dsn,tn,ont), ","));
+
+create function genTEVDefWhereClause(Charstring tevn, Charstring ont)->Charstring str
+as
+	begin
+	for each Charstring tn where tn = getPropMapTbls(ont)
+	begin
+	result 	"c_" + tevn + tn + "() = <s,p,o> or s_" + tevn + tn + "() = <s,p,o>";
+	end;
+	end;
+
+/*** Export rdb as rdf view with startegies end and end-p. ***/
+create function exportRDB_e(Charstring dsn,  /*** Data source name ***/
+			    Charstring tevn,  /*** TEV id ***/
+			    Charstring ont /*** Terminology ***/
+			    )->Boolean as
+begin
+ /*Check if tev already exists*/
+ for each Charstring tn where tn = getPropMapTbls(ont)
+ begin
+  /*Create contents tev*/
+  eval("create function c_" + tevn + tn + "()-> 
+		<Charstring s,Charstring p,Charstring val> as 
+		select s,p,val 
+  		from " + gen_relvars2(dsn,tn,ont) + ",Charstring rid,Charstring colid,Charstring kcolid
+		where " + gen_disjunct1(dsn,tn,ont) + ";");
+
+  /*Create schema tev*/
+  eval("create function s_" + tevn + tn + "()-><Charstring s,Charstring p,Charstring v>
+        as
+        select s,p,v
+        from Charstring tn,Charstring cn,Charstring term,Charstring prop,Charstring class
+        where       
+        (classMap('" + tn + "','" + ont + "',class) and
+         s = class and
+         p = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and
+         v = 'http://www.w3.org/2000/01/rdf-schema#Class') or
+	 (classMap('" + tn + "','" + ont + "',class) and
+ 	 propMap('" + tn + "',cn,'" + ont + "',prop) and
+         s = prop and
+         p = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and
+         v = 'http://www.w3.org/2000/01/rdf-schema#Property') or
+         (propMap('" + tn + "',cn,'" + ont + "',prop) and
+         classMap('" + tn + "','" + ont + "',class) and
+         s = prop and
+         p = 'http://www.w3.org/2000/01/rdf-schema#domain' and
+         v = class) or
+	 (propMap('" + tn + "',cn,'" + ont + "',prop) and
+	 s = prop and
+	 p = 'http://www.w3.org/2000/01/rdf-schema#range' and
+	 v = 'http://www.w3.org/2000/01/rdf-schema#Literal');
+       ");
+
+ end;
+
+  /*Create tev*/
+  eval("create function " + tevn + "()-><Charstring s,Charstring p,Charstring v>
+        as
+	select s,p,o 
+	where " + concatagg(inject(genTEVDefWhereClause(tevn,ont),' or ')) + ";"); 
+
+   /*Create sql tev*/
+   eval("create function sql:" + tevn + "()-> 
+		<Charstring s,Charstring p,Charstring val> as 
+	select s,p,val
+     	where <s,p,val> = " + tevn + "();");
+
+end;
+
+create function exportRDB(Charstring dsn,
+			  Charstring tevn,
+			  Charstring ont
+			  )->Boolean as
+begin
+
+ if(notany(functionnamed(tevn))) then
+ begin
+  for each Charstring tbln,Charstring cn,Charstring prop 
+	where propMap(tbln,cn,ont,prop) 
+  begin
+	declare charstring k;
+	if (notany(functionnamed(upper(tbln) + "_" + dsn + "_CC"))) then
+	begin
+		import_table(the_jdbc(dsn),tbln);
+	end;
+
+        if is_column_of(the_jdbc(dsn),tbln,cn)
+	then set k = get_key(dsn,catalog(the_jdbc(dsn)),
+                             schema(the_jdbc(dsn)),tbln)
+        else error("No column named "+cn+" in table "+tbln);
+	eval("create function " + upper(tbln) + cn +"()->
+		<Charstring s,Charstring p,Charstring val> as
+      		select s, p, val
+		from " + gen_relvars(dsn,tbln) + ", Charstring rid, Charstring prop, Charstring kprop
+		where " + gen_relcall(dsn,tbln) + "
+		and propMap('" + tbln + "','" + k + "','" + ont + "', kprop)
+		and rid = rowid(kprop," + tbln + "_" + k + ")
+		and propMap('" + tbln + "','" + cn + "','" + ont + "', prop)
+		and s = rid 
+		and p = prop 
+		and val = " + tbln + "_" + cn + ";"); 
+			
+	eval("set TEVExtent('" + getPropMap(tbln,cn,ont) + "','" + ont + "', resolventnamed('" + 
+		upper(tbln) + cn + "')) = true;");
+  end;
+ end;
+ eval("create function TYPE()-><Charstring s,Charstring p,Charstring v>
+       as
+       select s,p,v
+       from Charstring tn,Charstring cn,Charstring prop,Charstring class 
+       where
+       (classMap(tn,'" + ont + "',class) and
+       s = class and
+       p = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and
+       v = 'http://www.w3.org/2000/01/rdf-schema#Class');		
+      ");
+
+ set TEVExtent("http://www.w3.org/1999/02/22-rdf-syntax-ns#type","udbl.it.uu.se/schemas/company")=
+		resolventnamed("TYPE");
+
+ eval("create function DOMAIN()-><Charstring s,Charstring p,Charstring v> 
+       as
+       select s,p,v
+       from Charstring tn,Charstring cn,Charstring prop,Charstring class
+       where
+       propMap(tn,cn,'" + ont + "',prop) and
+       classMap(tn,'" + ont + "',class) and
+       s = prop and
+       p = 'http://www.w3.org/2000/01/rdf-schema#domain' and
+       v = class;
+      ");
+
+
+ set TEVExtent("http://www.w3.org/2000/01/rdf-schema#domain","udbl.it.uu.se/schemas/company")=
+		resolventnamed("DOMAIN");
+
+
+eval("create function RANGE()-><Charstring s,Charstring p,Charstring v> 
+       as
+       select s,p,v
+       from Charstring tn,Charstring cn,Charstring prop,Charstring class
+       where
+       propMap(tn,cn,'" + ont + "',prop) and
+       classMap(tn,'" + ont + "',class) and
+       s = prop and
+       p = 'http://www.w3.org/2000/01/rdf-schema#range' and
+       v = 'http://www.w3.org/2000/01/rdf-schema#Literal';");
+
+ set TEVExtent("http://www.w3.org/2000/01/rdf-schema#range","udbl.it.uu.se/schemas/company")=
+		resolventnamed("RANGE");
+
+ eval("create function " + tevn + "()-> 
+		<Charstring s,Charstring p,Charstring v> as 
+	select s,p,v
+	from function fn,Charstring tbln,Charstring cn,Charstring prop
+     	where <s,p,v> = getTriples(fn) and 
+	   TEVExtent(prop,'" + ont + "', fn) and
+	   p = prop;");
+
+ eval("create function sql:" + tevn + "()-> 
+		<Charstring s,Charstring p,Charstring val> as 
+	select s,p,val
+     	where <s,p,val> = " + tevn + "();");
+
+end;
+
+create function urioftev(Charstring tevn)->Charstring tid as stored;
+create function tevofuri(Charstring tid)->Charstring tevn 
+as 
+	select tevn where urioftev(tevn)=tid;
+
+
+
+
+
+
+
+
+
+

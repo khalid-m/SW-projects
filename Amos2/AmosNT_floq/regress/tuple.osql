@@ -1,0 +1,145 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Tore Risch, UDBL
+ * $RCSfile: tuple.osql,v $
+ * $Revision: 1.9 $ $Date: 2013/12/30 13:36:34 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Testing use of tuple valued functions
+ *
+ ****************************************************************************
+ * $Log: tuple.osql,v $
+ * Revision 1.9  2013/12/30 13:36:34  torer
+ * Testing tuple variables
+ *
+ * Revision 1.8  2012/04/13 11:39:34  torer
+ * select x from ... where x in (1,2,3) now works
+ *
+ * Revision 1.7  2012/02/15 14:05:55  torer
+ * New version
+ *
+ * Revision 1.6  2012/02/11 12:47:01  torer
+ * select (x,y)...  <->  select x,y ...
+ *
+ * Revision 1.5  2011/12/29 07:37:15  torer
+ * Introduced tuple types
+ *
+ * Revision 1.4  2011/12/27 12:19:53  torer
+ * new error message
+ *
+ * Revision 1.3  2011/01/26 21:00:47  torer
+ * PSM's (...) notation for tuples allowed as alternative to <...>
+ *
+ * Revision 1.2  2010/11/08 16:29:06  torer
+ * Testing <..f(x)..> = <..p..>
+ *
+ * Revision 1.1  2008/11/18 07:17:28  torer
+ * Testing tuple valued functions
+ *
+ ****************************************************************************/
+
+declare Bag :bg;
+
+set :v = {1,2,3,7};
+set :t = (1,:v);
+
+create function tpl(Number) -> Bag of (Object, Object);
+create function tpl2(Number) -> (Object,Object);
+
+set tpl(1)= (1,2);
+set tpl(2)= (1*2+8/4,2);
+set tpl(3)= (:v[1+1]+2,2);
+set tpl(4)= (1,-2+3);
+set tpl(2*3-1) = (1,2);
+set tpl(6) = (#'iota',#'tpl');
+set tpl(:v[4-1]) = (3,3);
+set tpl((i+1)/2)=(i+1, i-1) from integer i where i=15;
+set :c = tpl(1);
+
+set tpl2(1)=(3,4);
+set (:a,:b)=tpl2(1);
+
+lisp;
+
+(checkequal "Tuples"
+	    ((osql "tpl(1);") '((1 2)))
+	    ((osql "in(:c);") '((1 2)))
+	    ((osql "tpl(2);") '((4 2)))
+	    ((osql "tpl(3);") '((5 2)))
+	    ((osql "tpl(4);") '((1 1)))
+	    ((osql "tpl(5);") '((1 2)))
+	    ((osql "tpl(7);") '((3 3)))
+	    ((osql "(1,2,3) = (1,2,3);") '((true)))
+	    ((osql "(1,2,3) = (1,2,4);") nil)
+	    ((osql "(1,sqrt(4)) = (1,2);") '((true)))
+            ((osql "(3,2)=(1+2,2);") '((true)))
+            ((osql "(1+2,1) = (3,1);") '((true)))
+	    ((osql "tpl(8);") '((16 14)))
+            ((osql ":a;")'((3)))
+            ((osql ":b;")'((4)))
+	    ((osql "(1,2);") '(((TUPLE 1 2)))) 
+            ((osql "select (1,a) from Object a where a=2;") '((1 2)))
+            ((osql "select a from Object a where (1,a)=(1,2);") '((2)))
+            ((osql ":t;")'(((TUPLE 1 #(1 2 3 7)))))
+            ((osql "select x from Object x where :t = (1,x);") 
+	     '((#(1 2 3 7))))
+            ((osql "name(typeof(:t));") '(("(INTEGER,VECTOR-INTEGER)")))
+            ((osql "select n from number n where n in (1,2);")
+             '((1) (2)))
+            ((osql "select n from number n where 1 in (3,n-1) and n=2;")
+             '((2)))
+	    ((errstring (osql "set (:a,:b) = tpl(1);")) 
+	     "Multiple assignment of single value to")
+	    ((errstring (osql "set :bg = tpl2(1);"))
+	     "Cannot assign atomic value to bag")
+	    )
+
+:osql
+
+set :t = bag((1,2),(2,3),(1,3));
+
+lisp;
+
+(checkequal "Bags of tuples"
+            ((osql "bag((1,2));") '(((AGGR_BAG (1 2)))))
+            ((osql ":t;")'(((AGGR_BAG (1 2) (2 3) (1 3)))))
+            ((osql "select bag((1,a)) from Object a where a=2;")
+             '(((AGGR_BAG (1 2))))) 
+            ((osql "name(typeof(:t));")'(("BAG-(INTEGER,INTEGER)")))
+            ((osql "groupby(:t,#'sum');") '((1 5) (2 3)))
+            ;;((osql "bag((1,{2,(3,4)}));") (fel))
+	    )
+
+:osql
+
+set :vt = {(1,2),(3,4),(1,5)};
+
+lisp;
+
+(checkequal 
+ "Vector of tuples"
+ ((osql "{(1,2),3};") '((#((TUPLE 1 2) 3))))
+ ((osql ":vt;") '((#((TUPLE 1 2) (TUPLE 3 4) (TUPLE 1 5)))))
+ ((osql "name(typeof(:vt));")'(("VECTOR-(INTEGER,INTEGER)")))
+ )
+
+
+(checkequal 
+ "Tuple variables"
+ ((osql "select t from Tuple t where t=(1,2);")
+  '(((TUPLE 1 2))))
+ ((osql "select y,x from Number x, Number y, Tuple t where (x,y)=t 
+            and t=(1,2);")
+  '((2 1)))
+ ((osql "select t from Tuple t where t=(1,2) or t=(1,3);")
+  '(((TUPLE 1 2)) ((TUPLE 1 3))))
+ ((osql "select t from Tuple t where t = tuple(tpl2(1));")
+  '(((tuple 3 4))))
+ ((osql "select t from Tuple t where t = tuple(tpl2(1)) and t<(1,1);") nil)
+ )
+
+:osql
+
+rollback;
+

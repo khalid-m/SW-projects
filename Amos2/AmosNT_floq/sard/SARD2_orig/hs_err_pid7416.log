@@ -1,0 +1,187 @@
+#
+# A fatal error has been detected by the Java Runtime Environment:
+#
+#  EXCEPTION_ACCESS_VIOLATION (0xc0000005) at pc=0x4acfcc0e, pid=7416, tid=2428
+#
+# JRE version: 7.0-b147
+# Java VM: Java HotSpot(TM) Client VM (21.0-b17 mixed mode windows-x86 )
+# Problematic frame:
+# C  [amos2.dll+0x4cc0e]
+#
+# Failed to write core dump. Minidumps are not enabled by default on client versions of Windows
+#
+# If you would like to submit a bug report, please visit:
+#   http://bugreport.sun.com/bugreport/crash.jsp
+# The crash happened outside the Java Virtual Machine in native code.
+# See problematic frame for where to report the bug.
+#
+
+---------------  T H R E A D  ---------------
+
+Current thread (0x0031a000):  JavaThread "main" [_thread_in_native, id=2428, stack(0x00250000,0x002a0000)]
+
+siginfo: ExceptionCode=0xc0000005, reading address 0xc04c2f5b
+
+Registers:
+EAX=0x0086678c, EBX=0x70747468, ECX=0x4b1d0020, EDX=0x4ae34b00
+ESP=0x0029ba10, EBP=0x752f2f3a, ESI=0x00890e90, EDI=0x4ba60eb0
+EIP=0x4acfcc0e, EFLAGS=0x00010246
+
+Top of Stack: (sp=0x0029ba10)
+0x0029ba10:   4ae35190 4ae351b4 4ae351c0 4ae35190
+0x0029ba20:   4ace5d43 00000000 0029ba74 00000000
+0x0029ba30:   0029ba8c 0029bb30 4acf55d4 4ae35190
+0x0029ba40:   0029bb68 008772a8 4ae35160 4ae35190
+0x0029ba50:   0029ba74 00664510 0000cb30 4acf7150
+0x0029ba60:   0029bac8 00000000 00000018 00000000
+0x0029ba70:   ffffffff 005aaf50 0023c9d4 000000f0
+0x0029ba80:   0029bb70 00000000 00000000 4ae35190 
+
+Instructions: (pc=0x4acfcc0e)
+0x4acfcbee:   e8 ad 17 00 00 83 c4 08 c6 47 01 ff a1 20 28 df
+0x4acfcbfe:   4a 89 47 04 8b 0d 80 2f df 4a 89 35 20 28 df 4a
+0x4acfcc0e:   8a 44 29 01 8d 4c 29 01 3c fe 74 56 8a d0 fe ca
+0x4acfcc1e:   3c 01 88 11 77 4c a1 80 2f df 4a 8d 4c 18 01 8a 
+
+
+Register to memory mapping:
+
+EAX=0x0086678c is an unknown value
+EBX=0x70747468 is an unknown value
+ECX=0x4b1d0020 is an unknown value
+EDX=0x4ae34b00 is an unknown value
+ESP=0x0029ba10 is pointing into the stack for thread: 0x0031a000
+EBP=0x752f2f3a is an unknown value
+ESI=0x00890e90 is an unknown value
+EDI=0x4ba60eb0 is an unknown value
+
+
+Stack: [0x00250000,0x002a0000],  sp=0x0029ba10,  free space=302k
+Native frames: (J=compiled Java code, j=interpreted, Vv=VM code, C=native code)
+C  [amos2.dll+0x4cc0e]  release+0x10e
+
+Java frames: (J=compiled Java code, j=interpreted, Vv=VM code)
+J  callout.CallContext.emit(Lcallin/Tuple;)V
+j  jdbc_interface.JDBCInterface.executeParametrizedQuery(Lcallout/CallContext;Lcallin/Tuple;)V+61
+v  ~StubRoutines::call_stub
+j  callin.Connection.amosTopLoop(Ljava/lang/String;)V+0
+j  JavaAMOS.main([Ljava/lang/String;)V+33
+v  ~StubRoutines::call_stub
+
+---------------  P R O C E S S  ---------------
+
+Java Threads: ( => current thread )
+  0x4a509800 JavaThread "Service Thread" daemon [_thread_blocked, id=6768, stack(0x4ab10000,0x4ab60000)]
+  0x4a505000 JavaThread "C1 CompilerThread0" daemon [_thread_blocked, id=6188, stack(0x4aa80000,0x4aad0000)]
+  0x4a503c00 JavaThread "Attach Listener" daemon [_thread_blocked, id=6984, stack(0x4aa30000,0x4aa80000)]
+  0x4a500800 JavaThread "Signal Dispatcher" daemon [_thread_blocked, id=8960, stack(0x4a960000,0x4a9b0000)]
+  0x4a4aac00 JavaThread "Finalizer" daemon [_thread_blocked, id=6468, stack(0x4a830000,0x4a880000)]
+  0x4a4a6000 JavaThread "Reference Handler" daemon [_thread_blocked, id=7948, stack(0x4a8a0000,0x4a8f0000)]
+=>0x0031a000 JavaThread "main" [_thread_in_native, id=2428, stack(0x00250000,0x002a0000)]
+
+Other Threads:
+  0x00a9f800 VMThread [stack: 0x00350000,0x003a0000] [id=9068]
+  0x4a51cc00 WatcherThread [stack: 0x4aba0000,0x4abf0000] [id=9100]
+
+VM state:not at safepoint (normal execution)
+
+VM Mutex/Monitor currently owned by a thread: None
+
+Heap
+ def new generation   total 19648K, used 9947K [0x04470000, 0x059c0000, 0x199c0000)
+  eden space 17472K,  47% used [0x04470000, 0x04c911f8, 0x05580000)
+  from space 2176K,  74% used [0x05580000, 0x05715c58, 0x057a0000)
+  to   space 2176K,   0% used [0x057a0000, 0x057a0000, 0x059c0000)
+ tenured generation   total 43712K, used 13176K [0x199c0000, 0x1c470000, 0x44470000)
+   the space 43712K,  30% used [0x199c0000, 0x1a69e058, 0x1a69e200, 0x1c470000)
+ compacting perm gen  total 12288K, used 3384K [0x44470000, 0x45070000, 0x48470000)
+   the space 12288K,  27% used [0x44470000, 0x447be3a8, 0x447be400, 0x45070000)
+No shared spaces configured.
+
+Code Cache  [0x02470000, 0x02588000, 0x04470000)
+ total_blobs=535 nmethods=383 adapters=85 free_code_cache=31664Kb largest_free_block=32424512
+
+Dynamic libraries:
+0x00c50000 - 0x00c7e000 	C:\Windows\SysWOW64\java.exe
+0x77480000 - 0x77600000 	C:\Windows\SysWOW64\ntdll.dll
+0x75ae0000 - 0x75bf0000 	C:\Windows\syswow64\kernel32.dll
+0x74f30000 - 0x74f77000 	C:\Windows\syswow64\KERNELBASE.dll
+0x752d0000 - 0x75370000 	C:\Windows\syswow64\ADVAPI32.dll
+0x75db0000 - 0x75e5c000 	C:\Windows\syswow64\msvcrt.dll
+0x753b0000 - 0x753c9000 	C:\Windows\SysWOW64\sechost.dll
+0x75650000 - 0x75740000 	C:\Windows\syswow64\RPCRT4.dll
+0x74ed0000 - 0x74f30000 	C:\Windows\syswow64\SspiCli.dll
+0x74ec0000 - 0x74ecc000 	C:\Windows\syswow64\CRYPTBASE.dll
+0x75750000 - 0x75850000 	C:\Windows\syswow64\USER32.dll
+0x75bf0000 - 0x75c80000 	C:\Windows\syswow64\GDI32.dll
+0x75c80000 - 0x75c8a000 	C:\Windows\syswow64\LPK.dll
+0x74f80000 - 0x7501d000 	C:\Windows\syswow64\USP10.dll
+0x72060000 - 0x721fe000 	C:\Windows\WinSxS\x86_microsoft.windows.common-controls_6595b64144ccf1df_6.0.7601.17514_none_41e6975e2bd6f2b2\COMCTL32.dll
+0x76b50000 - 0x76ba7000 	C:\Windows\syswow64\SHLWAPI.dll
+0x75a40000 - 0x75aa0000 	C:\Windows\system32\IMM32.DLL
+0x753d0000 - 0x7549c000 	C:\Windows\syswow64\MSCTF.dll
+0x66d00000 - 0x66dbe000 	C:\Program Files (x86)\Java\jre7\bin\msvcr100.dll
+0x669d0000 - 0x66cf1000 	C:\Program Files (x86)\Java\jre7\bin\client\jvm.dll
+0x729d0000 - 0x729d7000 	C:\Windows\SysWOW64\WSOCK32.dll
+0x75370000 - 0x753a5000 	C:\Windows\syswow64\WS2_32.dll
+0x75e60000 - 0x75e66000 	C:\Windows\syswow64\NSI.dll
+0x72910000 - 0x72942000 	C:\Windows\SysWOW64\WINMM.dll
+0x75a30000 - 0x75a35000 	C:\Windows\syswow64\PSAPI.DLL
+0x669c0000 - 0x669cc000 	C:\Program Files (x86)\Java\jre7\bin\verify.dll
+0x669a0000 - 0x669c0000 	C:\Program Files (x86)\Java\jre7\bin\java.dll
+0x66980000 - 0x66993000 	C:\Program Files (x86)\Java\jre7\bin\zip.dll
+0x001e0000 - 0x001ec000 	C:\AmosNT\bin\JavaAmos.dll
+0x4acb0000 - 0x4adfc000 	C:\AmosNT\bin\amos2.dll
+0x001f0000 - 0x001fc000 	C:\AmosNT\bin\bt.dll
+0x00330000 - 0x00343000 	C:\AmosNT\bin\xt.dll
+0x004a0000 - 0x004b9000 	C:\AmosNT\bin\ssdm.dll
+0x00500000 - 0x00513000 	C:\AmosNT\bin\python_ext.dll
+0x57570000 - 0x57776000 	C:\Windows\SysWOW64\python25.dll
+0x75f00000 - 0x76b4a000 	C:\Windows\syswow64\SHELL32.dll
+0x7c340000 - 0x7c396000 	C:\Windows\SysWOW64\MSVCR71.dll
+0x66940000 - 0x66954000 	C:\Program Files (x86)\Java\jre7\bin\net.dll
+0x72890000 - 0x728cc000 	C:\Windows\system32\mswsock.dll
+0x72440000 - 0x72446000 	C:\Windows\System32\wship6.dll
+0x726b0000 - 0x726b5000 	C:\Windows\System32\wshtcpip.dll
+0x72840000 - 0x72884000 	C:\Windows\SysWOW64\DNSAPI.dll
+0x729b0000 - 0x729cc000 	C:\Windows\SysWOW64\IPHLPAPI.DLL
+0x729a0000 - 0x729a7000 	C:\Windows\SysWOW64\WINNSI.DLL
+0x72730000 - 0x72736000 	C:\Windows\SysWOW64\rasadhlp.dll
+0x72740000 - 0x72778000 	C:\Windows\System32\fwpuclnt.dll
+0x73c20000 - 0x73c36000 	C:\Windows\SysWOW64\CRYPTSP.dll
+0x73be0000 - 0x73c1b000 	C:\Windows\system32\rsaenh.dll
+0x73980000 - 0x73997000 	C:\Windows\SysWOW64\USERENV.dll
+0x745f0000 - 0x745fb000 	C:\Windows\SysWOW64\profapi.dll
+0x72900000 - 0x72910000 	C:\Windows\system32\NLAapi.dll
+0x728f0000 - 0x72900000 	C:\Windows\system32\napinsp.dll
+0x728d0000 - 0x728e2000 	C:\Windows\system32\pnrpnsp.dll
+0x72780000 - 0x72788000 	C:\Windows\System32\winrnr.dll
+0x66970000 - 0x6697f000 	C:\Program Files (x86)\Java\jre7\bin\nio.dll
+
+VM Arguments:
+jvm_args: -Xms64m -Xmx1024m 
+java_command: JavaAMOS sard2.dmp
+Launcher Type: SUN_STANDARD
+
+Environment Variables:
+CLASSPATH=C:/AmosNT/bin/javaamos.jar;.;C:/AmosNT/jarlib/mysql-connector-java-5.1.6-bin.jar;C:\MSQL_JDBC\lib\msbase.jar;C:\MSQL_JDBC\lib\msutil.jar;C:\MSQL_JDBC\lib\mssqlserver.jar;
+PATH=C:\XEmacs\XEmacs-21.4.5i586-pc-win32;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Program Files\Mimer SQL 10.0\;C:\Program Files (x86)\Mimer SQL 10.0 32-bit Client;C:\Program Files (x86)\Graphviz 2.28\bin;C:\Program Files (x86)\Microsoft SQL Server\100\Tools\Binn\;C:\Program Files\Microsoft SQL Server\100\Tools\Binn\;C:\Program Files\Microsoft SQL Server\100\DTS\Binn\;C:\Program Files (x86)\Microsoft SQL Server\100\Tools\Binn\VSShell\Common7\IDE\;C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\PrivateAssemblies\;C:\Program Files (x86)\Microsoft SQL Server\100\DTS\Binn\;C:\Microsoft Visual Studio\Common\Tools\WinNT;C:\Microsoft Visual Studio\Common\MSDev98\Bin;C:\Microsoft Visual Studio\Common\Tools;C:\Microsoft Visual Studio\VC98\bin;C:\utils;C:\Program Files (x86)\Java\jdk1.7.0\bin;C:\AmosNT\bin;C:\root\bin;C:\Program Files\Mimer SQL 10.0;C:\AmosNT\bin;C:\Program Files\gnuplot\bin;C:\Program Files (x86)\Google\google_appengine;C:\XEmacs\XEmacs-21.4.5\i586-pc-win32;C:\Python25;C:\Program Files (x86)\Google\google_appengine\
+USERNAME=minzh812
+OS=Windows_NT
+PROCESSOR_IDENTIFIER=Intel64 Family 6 Model 23 Stepping 10, GenuineIntel
+
+
+
+---------------  S Y S T E M  ---------------
+
+OS: Windows 7 , 64 bit Build 7601 Service Pack 1
+
+CPU:total 4 (4 cores per cpu, 1 threads per core) family 6 model 23 stepping 10, cmov, cx8, fxsr, mmx, sse, sse2, sse3, ssse3, sse4.1
+
+Memory: 4k page, physical 4058364k(1763120k free), swap 8114868k(4021836k free)
+
+vm_info: Java HotSpot(TM) Client VM (21.0-b17) for windows-x86 JRE (1.7.0-b147), built on Jun 27 2011 02:25:52 by "java_re" with unknown MS VC++:1600
+
+time: Mon Sep 02 09:30:15 2013
+elapsed time: 209 seconds
+

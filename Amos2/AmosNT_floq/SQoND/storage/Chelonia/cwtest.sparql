@@ -1,0 +1,6 @@
+WrapCheloniaExperiment("","http://a#","/Test/huang_1","Huang-Experiment");
+
+SELECT ?s ?p ?o WHERE {?s ?p ?o};
+
+SELECT ?s ?p (?o[0:10,0:10] as ?res) WHERE {?s ?p ?o};
+

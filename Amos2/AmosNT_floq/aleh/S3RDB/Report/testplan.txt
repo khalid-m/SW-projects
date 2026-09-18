@@ -1,0 +1,31 @@
+test plan
+
+- Estimate compile times and execution times and execution query plan for small reposotory of data of 101 events (done)
+
+- fix queries and reestimate new execution times and execution query plan for modified queries in schema1b, schema3b and schema4b in the following order
+	threeleptoncut
+	allcuts
+	optallcuts
+	expcuts
+
+- Estimate execution times for queries in AMOS (done)
+
+- prepare and load data from AMOS to all MSSQL server schemas for the big repository of data (25000 events)
+
+- Estimate execution times for allcuts in every schema in the following order
+	schema 3
+	schema 3b
+	schema 4
+	schema 4b
+	schema 1
+	schema 3b
+
+-Estimate execution times for cheapest single cuts for every schema in the previous order for the following cuts in the following order
+	leptoncut
+	topcut
+	threeleptoncut
+	missEEcuts
+
+-Estimate execution times for topcut for every schema in the previous order 
+
+-Estimate execution times for jetvetocut for every schema in the previous order 

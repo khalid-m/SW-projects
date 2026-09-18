@@ -1,0 +1,120 @@
+
+
+set :rdql_schema = 
+     "SELECT ?tp
+      FROM <swatm>
+      WHERE(?tp, <rdf:type>, <rdf:Property>) 
+	   (?tp, <rdfs:domain>, <swatm:TOPIC>)
+	   (?tp, <rdfs:range>, <rdfs:Literal>)
+      AND ?tp != <swatm:IDTOPIC>";
+
+rdql(:rdql_schema);
+
+
+set :rdql_content1 = "SELECT ?basenamestring
+			FROM <swatm>
+			WHERE (?tmo , <swatm:BASENAMESTRING> ?basenamestring)";
+
+set :rdql_content2  = "SELECT ?tm0 
+		       	FROM <swatm>
+			WHERE (?tm0 , <swatm:BASENAMETOPIC>, ?tm1)
+			      (?tm1 , <swatm:BASENAMESTRING>, 'Hamlet, Prince of Denmark')"; 
+
+
+set :rdql_content3  = "SELECT ?tm2 
+		       	FROM <swatm>
+			WHERE (?tm0 , <swatm:BASENAMETOPIC>, ?tm1)
+			      (?tm1 , <swatm:BASENAMESTRING>, 'Hamlet, Prince of Denmark') 
+			      (?tm0 , <swatm:OCCURRENCETOPIC>, ?tm2)";
+
+
+set :rdql_content4  = "SELECT ?occurrence 
+		       	FROM <swatm>
+			WHERE (?tm0 , <swatm:BASENAMETOPIC>, ?tm1)
+			      (?tm1 , <swatm:BASENAMESTRING>, 'Hamlet, Prince of Denmark') 
+			      (?tm0 , <swatm:OCCURRENCETOPIC>, ?tm2)
+        		      (?tm2 , <swatm:REFERENCE>, ?occurrence)";
+
+/*The result
+{"http://www.csclub.uwaterloo.ca/u/relander/XML/hamlet.xml"}
+{"ftp://www.gutenberg.org/pub/gutenberg/etext97/1ws2610.txt"}
+it takes about 0.2 s to complete the rdql question */
+
+
+set :rdql_content5  = "SELECT ?iofoc 
+		       	FROM <swatm>
+			WHERE (?tm0 , <swatm:BASENAMETOPIC>, ?tm1)
+			      (?tm1 , <swatm:BASENAMESTRING>, 'Hamlet, Prince of Denmark') 
+			      (?tm0 , <swatm:OCCURRENCETOPIC>, ?tm2)
+        		      (?tm2 , <swatm:REFERENCE>, ?occurrence)
+			      (?tm2 , <swatm:INSTANCEOFOCCURRENCE>, ?iofoc)
+			AND ?occurrence  != <http://www.csclub.uwaterloo.ca/u/relander/XML/hamlet.xml> ";
+
+/*The result
+{"swatm:1311"}
+about 0.3 s with partial evaluaring */
+bout 3-4 s without partial evaluaring */
+
+
+set :rdql_hybrid  = "SELECT ?iofoc, ?tm3
+		       	FROM <swatm>
+			WHERE (?tm0 , <swatm:BASENAMETOPIC>, ?tm1)
+			      (?tm1 , <swatm:BASENAMESTRING>, 'Hamlet, Prince of Denmark') 
+			      (?tm0 , <swatm:OCCURRENCETOPIC>, ?tm2)
+        		      (?tm2 , <swatm:REFERENCE>, ?occurrence)
+			      (?tm2 , <swatm:INSTANCEOFOCCURRENCE>, ?iofoc)
+			      (<swatm:INSTANCEOFOCCURRENCE>, <rdfs:range>,?tm3)
+			AND ?occurrence  != <http://www.csclub.uwaterloo.ca/u/relander/XML/hamlet.xml>";
+
+
+rdql(:rdql_hybrid);
+
+/*The result
+{"swatm:1311","swatm:TOPIC"}
+*/
+
+/*SQL questions*/
+
+set :sql_schema = 
+"SELECT c1.s, c1.val
+ FROM TM c1
+ WHERE c1.p = 'rdfs:range' AND
+       c1.val= 'swatm:TOPIC';";
+
+set :sql_content1 = 
+"SELECT val 
+ FROM TM 
+ WHERE p='swatm:BASENAMESTRING';";
+
+set :sql_content2 =
+"SELECT t1.val 
+ FROM TM t1, TM t2, TM t3, TM t4
+ WHERE t1.p='swatm:REFERENCE' AND t1.s=t2.val AND t2.p='swatm:OCCURRENCE'
+       AND t2.s=t3.s AND t3.val = t4.s AND t4.p='swatm:BASENAMESTRING' AND t4.val = 'Hamlet, Prince of Denmark';";
+
+/*The result
+{"http://www.csclub.uwaterloo.ca/u/relander/XML/hamlet.xml"}
+{"ftp://www.gutenberg.org/pub/gutenberg/etext97/1ws2610.txt"}
+with partial evaluaring it takes about 1 s to comlete the quetsion 
+without partial evaluaring it takes about 15 s to comlete the quetsion */
+
+set :sql_content4 =
+"SELECT t5.val 
+ FROM TM t1, TM t2, TM t3, TM t4, TM t5
+ WHERE t1.p='swatm:REFERENCE' AND t1.s=t2.val AND t2.p='swatm:OCCURRENCE'
+       AND t2.s=t3.s AND t3.val = t4.s AND t4.p='swatm:BASENAMESTRING' AND t4.val = 'Hamlet, Prince of Denmark' AND t5.p='swatm:INSTANCEOFOCCURRENCE' AND t1.s=t5.s AND t1.val<>'http://www.csclub.uwaterloo.ca/u/relander/XML/hamlet.xml';";
+
+/*The result
+{"http://udbl.it.uu.se/TopicMap#1311"}
+without partial evaluaring it takes about 55 s to comlete the quetsion 
+with partial evaluaring it takes about 2 s to comlete the quetsion */
+
+lisp;
+
+;;; Regression tests!!!
+
+(checkequal "SQL queries to the RDF view of Topic Maps"
+  ((osql "sort(sql(:sql_content));")
+   '((#("Hamlet, Prince of Denmark")) (#("The Tempest"))))
+)
+:osql			

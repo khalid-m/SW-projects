@@ -1,0 +1,109 @@
+/* send event to MySQL and fetch result every second*/
+create function callLR0( vector of integer x) -> vector of integer as
+begin 
+
+	return (select {x[0], x[1], 0, x[9], res[0], x[12]}
+	from vector res
+	where res = sql(my_jdbc(),
+                   "select toll from hist where vid=? and day=? and xway=?",
+                   {x[2], x[14], x[4]}));
+		 
+end;
+/*
+create function lsproc_dexp(integer port, integer id, integer local)
+       -> integer as foreign 'lsprocdexp';
+*/
+create function stream_to_vector(stream s)->vector of integer
+  as select v
+     from vector of integer v
+     where v in s;
+
+create function mysql_nodes(Integer connection_id)
+  -> <charstring host, charstring dbname, charstring dbuser, 
+      charstring dbpass, Integer port > as stored;
+
+
+create function connect_jdbc(Integer id) -> boolean as 
+begin
+/*set my_jdbc() = jdbc("lrdb", "com.mysql.jdbc.Driver");*/
+select connect(dexp_jdbc(id), "jdbc:mysql://localhost:" + port + "/" + dbname, dbuser, dbpass )
+from Charstring dbname, Charstring dbuser,
+     Charstring dbpass, Integer port
+where mysql_nodes(id) = <"localhost", dbname, dbuser, dbpass, port>;
+
+return True;
+end;
+
+create function disconnect_jdbc(Integer max) -> boolean as
+begin
+select disconnect(dexp_jdbc(i))
+from Integer i
+where i in iota(0,max-1);
+
+return True;
+end;
+
+
+create function lrdexp0bin(iarray x)->Darray as begin
+  client_system("localhost");
+  if x[3] = 0 then accident_check(x[1], x[2], x[4], x[5], x[6], x[7], x[8]);
+  if (is_smashed(x[2])) > 0 then check_accident_cleared(x[1], x[2], x[8],
+                                                        x[7], x[4], x[0]);
+  if x[0] = 0 then begin
+    seg_statbin(x);
+    return realify(toll_calc_t(x[1], x[2], x[4], x[8], x[7], x[6], x[3], x[5], real(x[12])));
+  end
+  else if x[0] = 3 then begin
+    declare integer nr_nodes, integer id, vector answer;
+    set nr_nodes = count( select mysql_nodes(i) from integer i );
+    set id= mod(xway(x), nr_nodes);
+    set answer = ship("P"+stringify(id),queryMaker_peer(x,id));
+    /*print("P"+stringify(id)+" "+queryMaker_peer(x,id));*/
+    if answer[0] != nil then begin
+	print("answer="+stringify(answer[0]));
+    	return realify({x[0],x[1],rnow(),x[9],answer[0],x[12]});
+    end
+  end
+  else if x[0] = 2 then begin
+    declare real lasttime, real balance;
+    set lasttime = giveme_lasttime(x[2]);
+    set balance = giveme_balance(x[2]);
+    if balance != nil then begin
+      return realify({x[0], x[1], rnow(), x[12], lasttime, real(balance)});
+    end else begin
+      return realify({x[0], x[1], rnow(), x[12], x[1], 0.0});
+    end;
+  end;
+end;
+
+create function lrdexpbin(stream of iarray s)->stream of Darray as
+select streamof(lrdexp0bin(in(s)));
+
+create function daily_exp_node()
+  -> <charstring host, charstring dbname, charstring dbuser, 
+      charstring dbpass, Integer port > as stored;
+
+
+/* handles daily exp queries. queryMaker_peer() in ../src/myhistory.osql */
+create function scsqMySQLExp( Stream s, Integer id)
+                               -> Vector as 
+  begin 
+  client_system("localhost");
+  return (tslrhoho(queryMaker_peer(vector_in(s),id)));
+
+end;
+
+ /*entry function for daily exp node */
+create function lr_dailyexp( Stream s, Integer id)
+                             -> Stream as
+ select streamof(scsqMySQLExp( s, id ) );
+
+create function mapping( Stream s, integer id)
+                               -> vector as
+begin
+	return(select answer[0] from vector answer where answer =  sql(dexp_jdbc(0),"select toll from hist where vid=? and day=? and xway=?",{1, 31, 0})); 
+end;
+
+
+create function Dmap(Stream s, integer id) -> Stream as
+        select streamof(mapping(s, id));

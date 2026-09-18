@@ -1,0 +1,18 @@
+create function test_canrelay()
+ -> Bag of Vector
+  as canrelay("cat ./testdata.txt");
+
+lisp;
+
+(checkequal "canrelay filter data"
+  ((osql "count(select v from Vector v where v = in( test_canrelay() ) 
+    and v[5]='334455');")
+   '((20))))
+
+(checkequal "canrelay filter time"
+  ((osql "count(select v from Vector v where v = in( test_canrelay() )
+    and v[0]>='19876.655839' and v[0]<='19876.705823');")
+   '((29))))
+
+:osql
+rollback;

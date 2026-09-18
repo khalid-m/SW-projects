@@ -1,0 +1,1 @@
+ntriples\release\ntriples.exe ntriples.dmp example.amosql

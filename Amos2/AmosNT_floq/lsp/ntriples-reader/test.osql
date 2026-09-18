@@ -1,0 +1,28 @@
+/*-*-sql-*-*******************************************************************
+
+/* Checking that ntriples() is re-entrant: */
+
+load_lisp('ntriples-reader.lsp');
+
+create function f() -> Bag of (Charstring, Charstring) as stored;
+
+/* Build a cartesian product of triple's Objects in function f() */
+create function fill_f(Charstring filename) -> Boolean 
+as begin
+	for each Charstring o
+	where o in (select o from Charstring s, Charstring p, Charstring o
+			where <s,p,o> in ntriples(filename))
+		begin
+		for each Charstring o1
+		where o1 in (select o1 
+			from Charstring s1, Charstring p1, Charstring o1
+			where <s1,p1,o1> in ntriples(filename))
+		begin
+			add f() = <o,o1>;
+		end;
+	end;
+end;
+
+fill_f(getenv('AMOS_HOME')+'/wrappers/ntriples/nt/test.nt');
+
+f();

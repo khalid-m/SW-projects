@@ -1,0 +1,271 @@
+/*-*-sql-*-*******************************************************************
+
+/* 
+
+   Help directives and skeleton for the HITS algorithm and tasks 
+   in DM assignment 4. Read all comments and code. 
+
+   Students are expected to follow the directives and complete / replace 
+   / correct code where necessary (marked with TODO) according 
+   to the function signatures, descriptions, HINTS, and NOTES.
+   Students are encouraged to experiment with explicit or implicit 
+   options and alternative implementations. 
+
+*/
+
+
+/* Useful string function definition: replace(), explodeon(), 
+   exlode(), infront(), back() */
+load_lisp("./src/string.lsp");
+
+/******************************************/
+/* URL normalization function definitions */
+/******************************************/
+
+create function removeProtocol(Charstring url)->Charstring
+/* TODO: Remove "HTTP://" from the beginning of a URL.
+   HINT: Use function replace(). */
+  as "NO HTTP://";
+
+create function lastChar(Charstring s)->Charstring
+/* TODO: Return the last character of the string s. 
+   HINT: Use functions substring() and char_length(). */
+  as "l";
+
+create function allButLastChar(Charstring s)->Charstring
+/* TODO: Rerurn all but the last characters of input string s */ 
+  as "all but last cha";
+
+create function removeTrailingSlash(Charstring url)->Charstring
+/* TODO: Remove trailing slash from url.
+   HINT: Use if-statement and the function lastChar().
+         A function that uses the if-statement is a 
+         stored procedure. Hence one must use the 
+         result statement to emit tuples. */ 
+  as "No / at the end";
+
+create function removeINDEXdotHTML(Charstring url)->Charstring 
+/* TODO: Remove "INDEX.HTML" from url.
+   HINT: Use function replace(). */
+  as " no INDEX.HTML"; 
+
+create function normalizeURL(Charstring url)->Charstring
+/* Performs simple URL normalization */ 
+  as removeTrailingSlash(removeINDEXdotHTML(removeProtocol(upper(url))));
+
+/*********************************************/
+/* DB represeantion of pages + linkage graph */
+/* and utilities to load / view data         */
+/*********************************************/ 
+
+/* Create a stored function / relation pages() */
+create function pages()->Bag of Charstring p as stored;
+/* TODO: Place an index on pages() if desirable */
+
+/* Create a stored function / relation links() */ 
+create function links(Charstring f)->Bag of Charstring t as stored;
+/* Place an index on links() if desirable */
+
+create function populateLinks(Vector of Charstring vl)->Boolean
+/* Populates the function links() from a adjecency list vector of a page 
+   Also normalize the URLs of the pages */
+  as add links(NormalizeURL(vl[0]))=NormalizeURL(vl[i]) 
+     from Integer i
+     where i > 0;
+
+create function addPage(Charstring p)->Boolean
+/* Adds a page to the function pages() 
+   Also normalizes the URL of page p */
+  as add pages()=NormalizeURL(p);
+
+create function loadLinks(Charstring file)->Boolean
+/* Populates the function links() from an linkage FILE where
+   each line contains an adjecency list separated by space. */
+  as populateLinks(cast(read_ntuples(file) as Vector of Charstring));
+
+create function loadPages(Charstring file)->Boolean
+/* Populates the function pages() from an linkage FILE where
+   each line contains an adjacency list separated by space. 
+   The *first* page on such a list is the page that is added to pages() */
+  as addPage(cast(read_ntuples(file)[0] as Charstring));
+
+create function showLinks()->Bag of <Charstring, Charstring>
+/* Shows the contents of the function links() */
+  as select f, t 
+     from Charstring f, Charstring t
+     where t in links(f);
+
+/* showPages(): simply call pages(); */
+
+create function showDeadPages()->Bag of Charstring
+/* TODO: Return the page f if we do not know the link structure 
+         of f, i.e., f is not in pages() but links(dummy)=f is *not* NIL. 
+   HINT: Use stored functions links() and pages() and the notany()
+         Boolean operator / function. See manual!
+   NOTE: These are not the pages that do not link to pages!!! */
+  as select "Name of page with unknown link structure";
+
+create function removeDeadLinks()->Boolean
+/* TODO: Remove all links to a page f if we do not know 
+   the link structure of f, i.e., f is not in pages(), but 
+   links(dummy)=f is not NIL.
+   HINT : Use the remove statement and the function showdeadPages(). 
+   NOTE: These are not the pages that do not link to pages!!! */
+  as TRUE;
+
+/* Note that deleting a link from page f to t, where f only likns to t
+   will make f look like a page with no links. One could perform an 
+   iterative removal or pages and links as shown bellow but this will
+   potentially drastically shrink the graph, which might be undesierable. 
+   Hence, as part of the proprocessing a single step of deadLink removal 
+   is proposed. Note that in this step a page p to which the links are 
+   removed, by definition is not present in the function pages, hence 
+   no page removal is necessary. */   
+
+/* Iterative link removal: not used! */
+create function removeDeadLinks_tcf(Integer ndl)->Integer 
+/* Transitive closure function to remove read links from
+   the function links */
+as 
+begin	
+  removeDeadLinks();
+  result count(showDeadPages());
+end;
+
+create function removeAllDeadLinks(Integer input)->Vector
+/* Function for iterative removal of links via tclose */
+  as select output
+     from Integer output
+     where output in tclose(#'removeDeadLinks_tcf', input);
+
+/* Stored function / relation to store the authority and hubiness of pages */
+create function Authority(Charstring p)->Number a as stored;
+/* Place an index on Authority() if desirable */
+
+create function Hubbiness(Charstring p)->Number h as stored;
+/* Place an index on Hubbiness() if desirable */
+
+create function showAuthority()->Bag of <Number, Charstring>
+/* Shows the authority of pages */
+  as select roundto(a,5), p 
+     from Charstring p, Number a
+     where a = Authority(p);
+
+create function showHubbiness()->Bag of <Number, Charstring>
+/* Shows the authority of pages */
+  as select roundto(h,5), p 
+     from Charstring p, Number h
+     where h = Hubbiness(p);
+
+create function initialize()->Boolean
+/* Sets initial values of hubbiness and authority of all the pages */
+as for each Charstring p where p in pages()
+   begin
+     set hubbiness(p)=1;
+     set authority(p)=1;
+   end;
+
+create function calculateAuthority(Charstring p)->Number 
+/* TODO: Calculate the authority of page p. 
+   HINT: Use the aggregate function sum(). */
+ as 1;
+
+create function calculateHubbiness(Charstring p)->Number 
+/* TODO: Calculate the hubbiness of a page 
+   HINT: Use the aggregate function sum(). */
+ as 1;
+
+create function updateAuthority()->Boolean
+/* Updates the authority values of pages based on the 
+   hubbiness values of the pages that link to them. */
+  as set Authority(p) = calculateAuthority(p)
+     from Charstring p
+     where p in pages();
+
+create function updateHubbiness()->Boolean
+/* TODO: Update the hubbiness values of pages based on the 
+   authority values of the pages that they link to. */
+  as TRUE; 
+
+create function enorm(Bag of Number b)->Number
+/* Calculates the Euclidean norm of a bag of numbers. */
+  as sqrt(sum(select power(n,2) 
+              from Number n 
+              where n in b));
+
+create function normalizeAuthority()->Boolean
+/*  Normalizes Authority() to unit length */ 
+  as set Authority(p) = Authority(p) / lenAuth
+     from Charstring p, Number lenAuth
+     where p in pages()
+       and lenAuth = enorm(Authority(pages()));
+
+create function normalizeHubbiness()->Boolean
+/*  TODO: Normalize Hubbiness() to unit length */ 
+  as TRUE;
+
+create function sse(Vector of Number a, Vector of Number b)->Number
+/* TODO: Calculate the sum square error between two vectors. 
+   Used to check convergence of iterative calculation. */
+  as 1;
+
+create function HITS_tcf(Number input)->Number 
+/* Iterative step of the HITS algorithm */
+as
+begin
+  declare Vector of Number a0, Vector of Number h0;
+  set a0 = vectorof(calculateAuthority(pages()));
+  set h0 = vectorof(calculateHubbiness(pages()));
+  updateAuthority();
+  updateHubbiness();
+  normalizeAuthority();
+  normalizeHubbiness();
+  result roundto((sse(a0, vectorof(calculateAuthority(pages()))) + 
+                  sse(h0, vectorof(calculateHubbiness(pages())))),
+                 3);      
+end;
+
+create function HITS_tclose(Number input)->Number
+/* TODO: Implement the iterative HITS calculation 
+         based on convergence of the hubbiness and 
+         authority values */
+   as select output
+      from Number output
+      where output in tclose(#"HITS_tcf", input);
+
+create function HITS(Charstring file)->Bag of <Number, Charstring> 
+/* The HITS algorithm including loading, preprocessing, 
+   iteration until convergence, and display of top10 results.  */
+as
+begin
+  /* empty stored relations/functions */
+  clear_function('links');	
+  clear_function('pages');
+  clear_function('Authority');	
+  clear_function('Hubbiness');
+  /* load links and pages */
+  loadLinks(file);		 
+  loadPages(file);   
+  /* remove dead links */
+  removeDeadLinks();		
+  /* initialize authority and hubbiness of pages to 1 */
+  initialize();			
+  /* normalize authority and hubbiness of pages to unit length */
+  normalizeAuthority();		
+  normalizeHubbiness();
+  /* Pretty print? */ 	
+  if (1<0) then
+  begin
+    print(concat(concat("Analyzing web-graph in file: ", file), " ..."));
+    /* iteration with convergence indicator */
+    print(HITS_tclose(-1));
+  end
+  else
+    /* iteration until convergence */ 
+    HITS_tclose(-1);
+  /* Output top 10 hubby and authoritative pages */
+  dp('Hubbiness', 100);
+  result (topk(showHubbiness(),10));
+  dp('Authority', 100);
+  result (topk(showAuthority(),10));
+end;

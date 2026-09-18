@@ -1,0 +1,46 @@
+/*-*-sql-*-*******************************************************************/
+
+/* sfn tree definitions -- obsoleted by rfn+bfn */
+
+/* Constant a = cc / (cp + ce)
+   a = 1.08 was used in DASFAA 2010 */
+create function a() -> real as 1.08;
+
+create function tree(stream s, vector of integer fov)
+-> vector as select in(zipstreams(mapstreams(
+hpartstreamv(ps, #'lrproute', prod(in(fov)), fov, 0), #'stcount')))
+from stream ps
+where ps = ostream(newsp(s), 0);
+
+create function maxtree(stream s, integer target_fo, integer bc)
+-> vector as select in(zipstreams(mapstreams(
+hpartstreamv(ps, #'lrproute', target_fo, fov, 0), #'stcount')))
+from stream ps, vector of integer fov
+where ps = ostream(newsp(s), 0)
+and fov = optv(target_fo, a(), bc);
+
+create function tosno(stream s, integer fo, integer rrfo) -> vector as
+select in(zipstreams(mapstreams(pmerge, #'stcount')))
+from vector of stream pmerge, vector of stream rr, vector of stream fsplit
+where pmerge = mapstreams(vectorof(
+  select mergestreams(vectorize(
+    select j, fsplit[i + j*fo]
+    from integer j
+    where j in iota(0, rrfo - 1)))
+  from integer i
+  where i in iota(0, fo - 1)), #'id')
+and fsplit = splitflexras(rr, fo, #'lrproute', {0, 1}, make_record({}))
+and rr = splitstream(ostream(newsp(s), 0), rrfo, #'randrobin');
+
+create function tos(stream s, integer fo, integer rrfo) -> vector as
+select in(zipstreams(mapstreams(pmerge, #'stcount')))
+from vector of stream pmerge, vector of stream rr, vector of stream fsplit
+where pmerge = mapstreams(vectorof(
+  select smjstreamsna(vectorize(
+    select j, fsplit[i + j*fo]
+    from integer j
+    where j in iota(0, rrfo - 1)), 1)
+  from integer i
+  where i in iota(0, fo - 1)), #'id')
+and fsplit = splitflexras(rr, fo, #'lrproute', {0, 1}, make_record({}))
+and rr = splitstream(ostream(newsp(s), 0), rrfo, #'randrobin');

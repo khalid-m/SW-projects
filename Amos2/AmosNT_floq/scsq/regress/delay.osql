@@ -1,0 +1,275 @@
+/*-*-sql-*-*******************************************************************/
+
+create function rep() -> integer;
+set rep() = 0;
+
+create function src_grp()->
+<vector of integer, vector of vector of number> as
+groupby_pos((
+select src, delay
+from integer src, real delay, vector of number cd
+where src = cd[0] and delay = cd[3]
+and cd = cdelay()), 1);
+
+create function avgdelay(vector of integer src, vector of vector of number d)
+-><integer, number, integer>
+as select src[0], x, cnt
+from number x, integer cnt
+where x = roundto(average(in(in(d))), 3)
+and cnt = count(in(d));
+
+lisp;
+;"
+
+(checkequal "change flush freq"
+((osql "
+sp_flush_freq(0.1);
+sp_flush_freq();")
+'((0.1))))
+
+(checkequal "emit capacity"
+((caar (osql "
+sp_ts(1);
+coo_storedelays(1);
+set rep() = 100000;
+set :emitcap = 0;
+set :tcres = extract(newsp(stcount(
+stract(newsp(gen_array(2, rep()))))));
+set :emitcap = rep()/:tcres[2];
+:tcres[3];"))
+(prog1 (caar (getfunction 'rep '()))
+       (formatl t " E = " amos_emitcap " tpl/s "))))
+
+(checkequal "delay data in coordinator"
+((sleep 2) 2)
+((let* ((avgdelay (caar (osql "
+clear_function('delay');
+add delay(x[0], x[1], x[2]) = x[3] from vector of number x where x=cdelay();
+real(average(select delay(i,j,r) from integer i, integer j, real r));")))
+(cnt (caar (osql "count(cdelay());"))))
+(prog1 (> cnt 0)
+       (formatl t "average delay = " (roundto avgdelay 3) " ")))
+t))
+
+;"
+:osql
+clear_cdelay();
+
+create function setup(real flushfreq, real emitcap)->boolean as begin
+clear_function('delay');
+sp_flush_freq(flushfreq);
+sp_ts(1);
+coo_storedelays(1);
+set rep() = 1000*round(emitcap/1000);
+sp_report_freq(1.0);
+sp_ts_freq(0.1);
+end;
+
+create function unionexp(integer skew, integer rep, real emitcap)
+->vector of number as
+select extract(newsp(streamof(tcount(mergestreams({
+stract(newsp(hpslgen_array(2, rep*skew/100, 100/(skew*maxfreq)))),
+stract(newsp(hpslgen_array(2, rep*(100-skew)/100,
+                           100/(maxfreq*(100-skew)))))})))))
+from integer maxfreq
+where maxfreq = emitcap;
+
+create function starvexp(integer time, real emitcap, integer percentage)
+->vector of number as
+select extract(newsp(stcount(mergestreams({
+stract(newsp(gen_array(2, rep))),
+stract(newsp(hpslgen_array(2, rep*percentage/100,
+                         100/(percentage*emitcap))))}))))
+from integer rep
+where rep = round(time*emitcap);
+
+lisp;
+
+(checkequal "symmetric union flush 0.1"
+((let* (
+(resv (prog1 (caar (osql "
+setup(0.1, :emitcap);
+unionexp(50, rep(), :emitcap);")) (sleep 2)))
+(delays (osql "avgdelay(src_grp());"))
+(tp (/ (caar (getfunction 'rep '())) (elt resv 2)))
+(avgdelay (caar (osql "average(cdelay()[3]);"))))
+(prog1 (elt resv 3)
+       (formatl t "average delay = " (roundto avgdelay 3) t)
+       (formatl t "left | right delay = " delays t)
+       (formatl t "throughput = " tp " tpl/s ")))
+(caar (getfunction 'rep '()))))
+
+(checkequal "symmetric union flush 0.01"
+((let* (
+(resv (prog1 (caar (osql "
+setup(0.01, :emitcap);
+unionexp(50, rep(), :emitcap);")) (sleep 2)))
+(delays (osql "avgdelay(src_grp());"))
+(tp (/ (caar (getfunction 'rep '())) (elt resv 2)))
+(avgdelay (caar (osql "average(cdelay()[3]);"))))
+(prog1 (elt resv 3)
+       (formatl t "average delay = " (roundto avgdelay 3) t)
+       (formatl t "left | right delay (previous measurements accumulated) = "
+	delays t)
+       (formatl t "throughput = " tp " tpl/s ")))
+(caar (getfunction 'rep '()))))
+
+(checkequal "symmetric union flush 0.001"
+((let* (
+(resv (prog1 (caar (osql "
+setup(0.001, :emitcap);
+unionexp(50, rep(), :emitcap);")) (sleep 2)))
+(delays (osql "avgdelay(src_grp());"))
+(tp (/ (caar (getfunction 'rep '())) (elt resv 2)))
+(avgdelay (caar (osql "average(cdelay()[3]);"))))
+(prog1 (elt resv 3)
+       (formatl t "average delay = " (roundto avgdelay 3) t)
+       (formatl t "left | right delay = " delays t)
+       (formatl t "throughput = " tp " tpl/s ")))
+(caar (getfunction 'rep '()))))
+
+(checkequal "symmetric union flush 0.0001"
+((let* (
+(resv (prog1 (caar (osql "
+setup(0.0001, :emitcap);
+unionexp(50, rep(), :emitcap);")) (sleep 2)))
+(delays (osql "avgdelay(src_grp());"))
+(tp (/ (caar (getfunction 'rep '())) (elt resv 2)))
+(avgdelay (caar (osql "average(cdelay()[3]);"))))
+(prog1 (elt resv 3)
+       (formatl t "average delay = " (roundto avgdelay 3) t)
+       (formatl t "left | right delay = " delays t)
+       (formatl t "throughput = " tp " tpl/s ")))
+(caar (getfunction 'rep '()))))
+
+(osql "writefile('proctime/symdelays', cdelay());
+sleep(2);
+clear_cdelay();")
+
+(let ((amos_times 5) (amos_percentage 1))
+(checkequal "starved union flush 0.1"
+((let* (
+(resv (prog1 (caar (osql "
+setup(0.1, :emitcap);
+starvexp(:times, :emitcap, :percentage);")) (sleep 2)))
+(delays (osql "avgdelay(src_grp());"))
+(tp (/ (* 1.01 amos_times amos_emitcap) (elt resv 2)))
+(avgdelay (caar (osql "average(cdelay()[3]);"))))
+(prog1 (elt resv 3)
+       (formatl t "average delay = " (roundto avgdelay 3) t)
+       (formatl t "left | right delay = " delays t)
+       (formatl t "throughput = " tp " tpl/s ")))
+(round (* 1.01 amos_times amos_emitcap)))))
+
+(let ((amos_times 5) (amos_percentage 1))
+(checkequal "starved union flush 0.01"
+((let* (
+(resv (prog1 (caar (osql "
+setup(0.01, :emitcap);
+starvexp(:times, :emitcap, :percentage);")) (sleep 2)))
+(delays (osql "avgdelay(src_grp());"))
+(tp (/ (* 1.01 amos_times amos_emitcap) (elt resv 2)))
+(avgdelay (caar (osql "average(cdelay()[3]);"))))
+(prog1 (elt resv 3)
+       (formatl t "average delay = " (roundto avgdelay 3) t)
+       (formatl t "left | right delay = " delays t)
+       (formatl t "throughput = " tp " tpl/s ")))
+(round (* 1.01 amos_times amos_emitcap)))))
+
+(let ((amos_times 5) (amos_percentage 1))
+(checkequal "starved union flush 0.001"
+((let* (
+(resv (prog1 (caar (osql "
+setup(0.001, :emitcap);
+starvexp(:times, :emitcap, :percentage);")) (sleep 2)))
+(delays (osql "avgdelay(src_grp());"))
+(tp (/ (* 1.01 amos_times amos_emitcap) (elt resv 2)))
+(avgdelay (caar (osql "average(cdelay()[3]);"))))
+(prog1 (elt resv 3)
+       (formatl t "average delay = " (roundto avgdelay 3) t)
+       (formatl t "left | right delay = " delays t)
+       (formatl t "throughput = " tp " tpl/s ")))
+(round (* 1.01 amos_times amos_emitcap)))))
+
+(let ((amos_times 5) (amos_percentage 1))
+(checkequal "starved union flush 0.0001"
+((let* (
+(resv (prog1 (caar (osql "
+setup(0.0001, :emitcap);
+starvexp(:times, :emitcap, :percentage);")) (sleep 2)))
+(delays (osql "avgdelay(src_grp());"))
+(tp (/ (* 1.01 amos_times amos_emitcap) (elt resv 2)))
+(avgdelay (caar (osql "average(cdelay()[3]);"))))
+(prog1 (elt resv 3)
+       (formatl t "average delay = " (roundto avgdelay 3) t)
+       (formatl t "left | right delay = " delays t)
+       (formatl t "throughput = " tp " tpl/s ")))
+(round (* 1.01 amos_times amos_emitcap)))))
+
+(osql "writefile('proctime/starvedelays', cdelay());
+sleep(2);
+clear_cdelay();")
+
+(checkequal "skew union flush 0.1"
+((let* (
+(resv (prog1 (caar (osql "
+setup(0.1, :emitcap);
+unionexp(1, rep(), :emitcap);")) (sleep 2)))
+(delays (osql "avgdelay(src_grp());"))
+(tp (/ (caar (getfunction 'rep '())) (elt resv 2)))
+(avgdelay (caar (osql "average(cdelay()[3]);"))))
+(prog1 (elt resv 3)
+       (formatl t "average delay = " (roundto avgdelay 3) t)
+       (formatl t "left | right delay = " delays t)
+       (formatl t "throughput = " tp " tpl/s ")))
+(caar (getfunction 'rep '()))))
+
+(checkequal "skew union flush 0.01"
+((let* (
+(resv (prog1 (caar (osql "
+setup(0.01, :emitcap);
+unionexp(1, rep(), :emitcap);")) (sleep 2)))
+(delays (osql "avgdelay(src_grp());"))
+(tp (/ (caar (getfunction 'rep '())) (elt resv 2)))
+(avgdelay (caar (osql "average(cdelay()[3]);"))))
+(prog1 (elt resv 3)
+       (formatl t "average delay = " (roundto avgdelay 3) t)
+       (formatl t "left | right delay = " delays t)
+       (formatl t "throughput = " tp " tpl/s ")))
+(caar (getfunction 'rep '()))))
+
+(checkequal "skew union flush 0.001"
+((let* (
+(resv (prog1 (caar (osql "
+setup(0.001, :emitcap);
+unionexp(1, rep(), :emitcap);")) (sleep 2)))
+(delays (osql "avgdelay(src_grp());"))
+(tp (/ (caar (getfunction 'rep '())) (elt resv 2)))
+(avgdelay (caar (osql "average(cdelay()[3]);"))))
+(prog1 (elt resv 3)
+       (formatl t "average delay = " (roundto avgdelay 3) t)
+       (formatl t "left | right delay = " delays t)
+       (formatl t "throughput = " tp " tpl/s ")))
+(caar (getfunction 'rep '()))))
+
+(checkequal "skew union flush 0.0001"
+((let* (
+(resv (prog1 (caar (osql "
+setup(0.0001, :emitcap);
+unionexp(1, rep(), :emitcap);")) (sleep 2)))
+(delays (osql "avgdelay(src_grp());"))
+(tp (/ (caar (getfunction 'rep '())) (elt resv 2)))
+(avgdelay (caar (osql "average(cdelay()[3]);"))))
+(prog1 (elt resv 3)
+       (formatl t "average delay = " (roundto avgdelay 3) t)
+       (formatl t "left | right delay = " delays t)
+       (formatl t "throughput = " tp " tpl/s ")))
+(caar (getfunction 'rep '()))))
+
+(osql "writefile('proctime/skewdelays', cdelay());
+sleep(2);
+clear_cdelay();")
+
+
+:osql
+quit;

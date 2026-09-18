@@ -1,0 +1,109 @@
+/*-*-sql-*-*******************************************************************/
+
+/* LOAD(<data/filter-eq.ttl>,true); */
+
+/* Not well-formed query - ?y might be unbound in 2nd OPTIONAL block */
+
+set :Q1 = '
+PREFIX : <http://example.org/>
+SELECT ?x ?y ?z
+WHERE { :a :A ?x .
+        OPTIONAL { ?x :P ?y }.
+        OPTIONAL { ?x :Q ?z .
+                   FILTER ( ?y = ?z ) } .
+        FILTER bound(?y)       
+      }
+';
+
+
+/* Correction of Q1 (makes a difference - should not generate ?y values with equality) */
+
+set :Q2 = '
+PREFIX : <http://example.org/>
+SELECT ?x ?y ?z
+WHERE { :a :A ?x .
+        OPTIONAL { ?x :P ?y }.
+        OPTIONAL { ?x :Q ?z .
+                   FILTER ( ?y = ?z ) .
+                   FILTER bound(?y) }
+      }
+';
+
+/* Simple query to use EQUAL-+ in EP */
+
+set :Q3 = '
+PREFIX : <http://example.org/>
+SELECT ?x ?y ?z
+WHERE { :a :A ?x .
+        OPTIONAL { ?y :Q ?z .
+                   FILTER ( ?x = ?y ) }
+      }
+';
+
+
+/* NIL-to-NIL equality check (not well-formed) */
+
+set :Q4 = '
+PREFIX : <http://example.org/>
+SELECT ?x ?y ?z
+WHERE { :a :A ?x .
+        OPTIONAL { ?x :P ?y } .
+        OPTIONAL { ?x :Q ?z } .
+        FILTER ( ?y = ?z )
+      }
+';
+
+
+/* LOAD(<data/bind.ttl>,true); */
+
+/* BIND variables are semibound (not well-formed) */
+
+set :BQ1 = '
+PREFIX : <http://example.org/>
+SELECT ?a ?b ?c ?d
+WHERE { :a :A ?a .
+        OPTIONAL { ?a :P ?b } .
+        BIND ( ?b + 2 AS ?c ) .
+        BIND ( ?c * ?b AS ?d ) .
+        FILTER ( ?d = 3 )
+      }
+';
+
+/* A query that makes a difference! */
+
+set :BQ1a = '
+PREFIX : <http://example.org/>
+SELECT ?a ?b ?c ?d
+WHERE { :a :A ?a .
+        OPTIONAL { ?a :P ?b } .
+        BIND ( ?b  AS ?c ) .
+        BIND ( ?c  AS ?d ) .
+        FILTER ( ?d = 1 && bound(?b) )
+      }
+';
+
+/* BIND variables are bound, dependencies should be traced */
+
+set :BQ2 = '
+PREFIX : <http://example.org/>
+SELECT ?a ?b ?c ?d
+WHERE { :a :A ?a .
+        ?a :P ?b .
+	BIND ( ?c * ?b AS ?d ) .
+        BIND ( ?b + 2 AS ?c ) .
+        FILTER ( ?d = 3 )
+      }
+';
+
+/* simple query where FILTER helps to optimize - reordering needed */
+
+set :BQ3 = '
+PREFIX : <http://example.org/>
+SELECT ?x ?y ?z
+WHERE { FILTER ( ?z = 3 )
+        BIND ( ?y + 2 AS ?z ) .
+	?x :P ?y .
+      }
+';
+
+

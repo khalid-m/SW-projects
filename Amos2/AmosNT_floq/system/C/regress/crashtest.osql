@@ -1,0 +1,18 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 Lars Melander, UDBL
+ * $RCSfile: crashtest.osql,v $
+ * $Revision: 1.1 $ $Date: 2010/06/23 17:53:29 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Loading lisp for testing background check.
+ ****************************************************************************
+ * $Log: crashtest.osql,v $
+ * Revision 1.1  2010/06/23 17:53:29  larme597
+ * Testing coroutine background check for Linux.
+ *
+ ****************************************************************************/
+
+lisp;
+(load "crashtest.lsp")

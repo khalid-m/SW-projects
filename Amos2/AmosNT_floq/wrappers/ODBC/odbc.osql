@@ -1,0 +1,98 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2002 Martin Hansson, UDBL
+ * $RCSfile: odbc.osql,v $
+ * $Revision: 1.8 $ $Date: 2004/03/02 08:57:04 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: OSQL declaration of functions that constitute the ODBC wrapper
+ *              interface.
+ *
+ ****************************************************************************/
+
+/* Static functions (not operating on an instance) */
+
+create function odbc_catalog(integer hconn) -> charstring x
+as foreign 'odbc_Catalog_bf';
+
+create function odbc_driver_info(integer hconn) ->
+	<charstring dname, charstring version, integer odbc_major, integer odbc_minorv>
+as foreign 'odbc_DriverInfo_bffff';
+
+create function odbc_dbms_info(integer hconn) -> <charstring prodname, charstring prodversion>
+as foreign 'odbc_DbmsInfo_bff';
+
+create function odbc_connections() -> vector
+as foreign 'odbc_Connections_f';
+
+create function odbc_datasources() -> <charstring x, charstring y>
+as foreign 'odbc_DataSources_f';
+
+
+/* Constructors */
+
+create function odbc(charstring name) -> odbc as foreign 'odbc--+';
+
+
+/* Connect/disconnect */
+
+create function connect(odbc o,charstring dsn,charstring usr,charstring pass)
+   -> odbc as foreign 'connect----+';
+
+create function connect(odbc o,  charstring dsn) -> odbc
+/* provides a default user and password */
+  as select connect(o, dsn, '', '');
+
+create function disconnect(odbc o) -> boolean
+  as foreign 'disconnect-+';
+
+/* Metadata */
+
+
+/*
+ * True if the table exists in the database 
+ */
+create function tables(odbc o)
+  -> <charstring table,charstring catalog,charstring schema,charstring owner>
+  as foreign 'tables-++++';
+
+create function columns(odbc o, charstring table_name_pattern)
+  -> <charstring column_name, charstring amos_type>
+  as foreign 'columns--++';
+
+create function primary_keys(odbc o, charstring table_name_pattern)
+  -> <charstring column_name, charstring constraint_name>
+as foreign 'primary_keys--++';
+
+create function primary_keys(odbc o, charstring catalog_name, 
+                             charstring schema_name, charstring table_name) 
+  -> <charstring column_name, charstring constraint_name>
+as select primary_keys(o, table_name);
+
+create function primary_keys(odbc o, charstring schema_name, charstring table_name) 
+  -> <charstring column_name, charstring constraint_name>
+as select primary_keys(o, table_name);
+
+
+/* Query execution */
+
+create function sql(odbc o, charstring query, vector params) -> vector
+  as foreign 'sql---+';
+
+create function sql(odbc o, charstring query) -> vector
+  as foreign 'sql--+';/* select sql(o, query, {});*/
+
+create function sqlu(odbc o, charstring update, vector arguments) -> integer 
+ as foreign 'sqlu----+';
+
+create function sqlu(odbc o, charstring update) -> integer altered
+ as select sqlu(o, update, {});
+
+
+/* Stored functions */
+
+create function odbc_dsn(odbc o) -> charstring;
+create function username(odbc o) -> charstring;
+create function password(odbc o) -> charstring;
+create function native_conn(odbc o) -> charstring;

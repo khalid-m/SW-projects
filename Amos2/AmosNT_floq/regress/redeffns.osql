@@ -1,0 +1,89 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 1993 Staffan Flodin, CAELAB
+ * $RCSfile: redeffns.osql,v $
+ * $Revision: 1.6 $ $Date: 2011/01/28 09:18:11 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Testing incremental recompilation
+ *
+ ****************************************************************************
+ * $Log: redeffns.osql,v $
+ * Revision 1.6  2011/01/28 09:18:11  torer
+ * 'result' -> 'return'
+ *
+ * Revision 1.5  2009/11/02 07:58:04  torer
+ * Incremental recompilation of derived functions with transient subplans now works
+ *
+ ****************************************************************************/
+
+create type person;
+create type employee;
+
+create function salary(person p)->integer i as stored;
+create function income(person p)->integer i as stored;
+create person(salary,income) instances :a(100,200), :b(300,400);
+create function f1(integer)->integer;
+create function f2(integer i)->integer as select f1(i);
+create function f1(integer i)->integer as select 1;
+
+create function ib()->Bag of Integer as iota(1,10);
+create function ic()->Integer as count(ib());
+create function ib()->Bag of Integer as iota(1,9);
+
+lisp;
+
+(checkequal "defining and redefining functions"
+ ((osql "select income(:a);") '((200)))
+ ((progn
+    (osql "create function income(person p)->integer i as select salary(p);")
+    (osql "income(:a);")) '((100)))
+ ((osql "f2(2);") '((1)))
+ ((osql "ic();") '((9)))
+ )
+:osql
+
+rollback;
+
+create function foo(integer)->integer;
+create function fum(integer)->boolean;
+create function fum(integer y) -> boolean as set foo(y) = y;
+create function fii(integer y)->integer as begin return y; end;
+create function fii(integer y)-> integer as select y+1;
+lisp;
+(defun fie(amos_x) 
+   (osql "fum(:x);")
+   (osql "foo(:x);"))
+(checkequal "defining and redefining procedures"
+ ((fie 10) '((10)))
+ ((fie 17) '((17)))
+ ((osql "fii(12);") '((13))))
+:osql
+rollback;
+
+create type person;
+create type employee under person;
+create type supervisor under employee;
+
+create function salary(person p)->integer as select 0;
+create function salary(employee e)->integer as stored;
+create function allsal()->integer as select salary(p) from person p;
+create function salary(supervisor s)->integer as select employee.salary->integer(s)*2;
+
+create person instances :a;
+create employee(salary) instances (56000);
+create supervisor(employee.salary->integer) instances (76000);
+lisp;
+(checkequal "Adding and removing overrides"
+	((sorttuples (osql "allsal();")) '((0) (56000) (152000)))
+	((null(osql "delete function supervisor.salary->integer;")) NIL)
+	((sorttuples (osql "allsal();")) '((0) (56000) (76000)))
+	((null(osql "delete function employee.salary->integer;")) NIL)
+	((sorttuples (osql "allsal();")) '((0) (0) (0))))
+:osql
+rollback;
+
+
+
+

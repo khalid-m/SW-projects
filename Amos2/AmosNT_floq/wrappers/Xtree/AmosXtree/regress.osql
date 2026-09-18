@@ -1,0 +1,224 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 torer, UDBL
+ * $RCSfile: regress.osql,v $
+ * $Revision: 1.19 $ $Date: 2010/06/19 06:26:52 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Xtree index testing
+ *
+ ****************************************************************************
+ * $Log: regress.osql,v $
+ * Revision 1.19  2010/06/19 06:26:52  thtr1663
+ * re-arrange scripts + remove hardcode index for picture application
+ *
+ * Revision 1.18  2010/06/15 11:18:41  thtr1663
+ * rewriter for KNN
+ *
+ * Revision 1.17  2010/06/14 16:28:28  thtr1663
+ * add test case for Nested join loop query
+ *
+ * Revision 1.16  2010/06/14 14:27:45  torer
+ * *** empty log message ***
+ *
+ * Revision 1.15  2010/06/14 08:59:50  thtr1663
+ * handle permutaion of arguments
+ *
+ * Revision 1.14  2010/06/14 08:21:47  thtr1663
+ * add test case for inequality
+ *
+ * Revision 1.13  2010/06/14 05:56:26  thtr1663
+ * edit test cases for rewrite
+ *
+ * Revision 1.12  2010/06/08 15:42:43  torer
+ * More careful regression test
+ *
+ * Revision 1.11  2010/06/08 15:26:00  torer
+ * More cases
+ *
+ * Revision 1.10  2010/06/08 14:09:50  torer
+ * Beginning of xtree rewriter
+ *
+ * Revision 1.9  2010/06/08 09:14:19  torer
+ * Added stub for XTREE rewriter
+ *
+ * Revision 1.8  2010/06/07 14:38:23  torer
+ * *** empty log message ***
+ *
+ * Revision 1.7  2010/06/07 08:22:45  thtr1663
+ * test deleter
+ *
+ * Revision 1.6  2010/06/04 14:18:34  thtr1663
+ * Fix KNN search on multiple Xtree index
+ *
+ * Revision 1.5  2010/06/04 10:52:41  thtr1663
+ * Remove ^M (ending line)
+ *
+ * Revision 1.4  2010/06/04 07:40:56  thtr1663
+ * Modify Xtree to make it possible to store multiple index. 
+ * Index hooks are updated accordingly
+ *
+ * Revision 1.3  2010/06/02 07:26:22  thtr1663
+ * Modify Xtree index hook
+ *
+ * Revision 1.2  2010/06/01 13:24:16  thtr1663
+ * Integrate Xtree index
+ *
+ * Revision 1.1  2010/05/25 17:46:52  torer
+ * Added stub for test script of Xtree indexes
+ *
+ ****************************************************************************/
+/*load_lisp("rewriter.lsp");*/
+
+
+/*New operator knn*/
+
+/*create function knn(Function fn, Vector of Number , Integer k)-> Bag of Object 
+as multidirectional
+    ('bbbf' foreign 'xtree_knn_search_fn' rewriter 'knnsearch');
+	*/
+
+create function pictureFeatures(Charstring pic)->Vector of Number features
+  as stored;
+
+create_index("pictureFeatures","features","Xtree","multiple");
+
+
+add pictureFeatures("Pic001")={1,2,3,4};
+add pictureFeatures("Pic002")={1.0,2.0,3.0,5.0};
+add pictureFeatures("Pic003")={1.0,2.0,2.0,6.0};
+add pictureFeatures("Pic004")={1.0,2.0,3.0,4.0};
+add pictureFeatures("Pic005")={5.0,6.0,7.0,8.0};
+add pictureFeatures("Pic006")={1.0,2.0,3.0,4.0};
+add pictureFeatures("Pic007")={5.0,6.0,7.0,8.0};
+
+
+remove pictureFeatures("Pic004")={1.0,2.0,3.0,4.0};
+remove pictureFeatures("Pic006")={1.0,2.0,3.0,4.0};
+
+remove pictureFeatures("Pic005")={5.0,6.0,7.0,8.0};
+remove pictureFeatures("Pic007")={5.0,6.0,7.0,8.0};
+
+/* Drop the forward index (Hash index). Only Xtree index remains */
+/*drop_index("pictureFeatures","pic");*/
+
+create function q1() -> Bag of Charstring
+  /* Index scan on XTREE without any rewrite */
+  as select p from Charstring p
+     where pictureFeatures(p)={1.0, 2.0, 3.0, 4.0};
+
+create function q2() -> Bag of Charstring 
+  /* Full scan on primary hash index without any rewrite */
+  as select p from Charstring p, Vector r 
+     where pictureFeatures(p)=r;
+
+create function q3() -> Bag of Charstring
+  as select p from Charstring p 
+     where euclid(pictureFeatures(p), {1, 2, 3, 4}) < 1;
+
+
+create function q3a() -> Bag of Charstring
+  as select p from Charstring p 
+     where 1 > euclid(pictureFeatures(p),{1,2,3,4});
+
+create function q3b() -> Bag of Charstring
+  as select p from Charstring p 
+     where 1 = euclid(pictureFeatures(p),{1,2,3,4});
+
+create function q4() -> Bag of Charstring
+  as select p from Charstring p 
+     where euclid(pictureFeatures(p),{1,2,3,4}) <= 1.0;
+
+create function q5() -> Bag of Charstring
+  as select p  from Charstring p 
+     where euclid(pictureFeatures(p),{1,2,3,4}) >0
+       and euclid(pictureFeatures(p),{1,2,3,4}) < 1.5 ;
+
+/*Rewriter - check inequality*/
+create function q6() -> Bag of Charstring
+  as select p  from Charstring p 
+     where euclid(pictureFeatures(p),{1,2,3,4}) > 0
+       and euclid(pictureFeatures(p),{1,2,3,4}) < 1.5
+	and  euclid(pictureFeatures(p),{1,2,3,4}) != 1.0 ;
+
+
+/*Rewriter - check permutation of arguments*/
+create function q7() -> Bag of Charstring
+  as select p  from Charstring p 
+     where euclid({1, 2,3,4}, pictureFeatures(p)) > 0
+       and euclid({1,2, 3, 4}, pictureFeatures(p)) < 1.5;
+
+
+/*Rewriter - check less-or-equal than*/
+create function q8() -> Bag of Charstring
+  as select p  from Charstring p 
+     where euclid({1, 2, 3, 4}, pictureFeatures(p)) > 0
+       and euclid({1, 2, 3, 4}, pictureFeatures(p)) <= 1.5;
+
+create function q9() -> Bag of Charstring
+  as select p  from Charstring p 
+     where euclid({1, 2,3,4}, pictureFeatures(p)) >= 0
+       and euclid({1,2, 3, 4}, pictureFeatures(p)) <= 1.5;
+
+/*Rewriter - test Nested Join Loop*/
+create function q10() -> Bag of Charstring
+  as select p from Charstring p, Charstring q
+     where euclid({1,2,3,5},pictureFeatures(p)) < 1.5 
+       and euclid({1,2,3,4},pictureFeatures(q)) < 0.5
+       and p > q 
+       and p> "Pic003" and q < "Pic005";
+
+/*Rewriter - test knn operator*/
+create function q11() -> Bag of Charstring 
+as select p from Charstring p
+   where p in knn(#'pictureFeatures', {1, 2, 3, 4}, 3);
+
+/*Rewriter - test knn operator*/
+create function q12() -> Bag of Charstring 
+as select p from Charstring p, Charstring q
+   where p in knn(#'pictureFeatures', {1, 2, 3, 4}, 3)
+    and	 q in knn(#'pictureFeatures', {1, 2, 3, 5}, 3)
+	and p > q;
+
+lisp;
+
+(checkequal 
+ "Xtree index"
+ ((osql "q1();")
+  ;; tests getter
+  '(("Pic001")))
+ ((osql "pictureFeatures('Pic001');")
+  '((#(1.0 2.0 3.0 4.0))))
+ ((osql "q2();")
+  ;; Returns all pictures through the mapper
+  '(("Pic001") ("Pic002") ("Pic003") ))
+ ((osql "q3();")
+  '(("Pic001")))
+ ((osql "q3a();")
+  '(("Pic001")))
+ ((osql "q3b();")
+  '(("Pic002")))
+ ((osql "q4();")
+  '(("Pic001") ("Pic002")))
+ ((osql "q5();")
+  '(("Pic002")))
+ ((osql "q6();")
+  '())
+ ((osql "q7();")
+  '(("Pic002")))
+ ((osql "q8();")
+  '(("Pic002")))
+ ((osql "q9();")
+  '(("Pic001") ("Pic002")))
+ ((osql "q10();")
+  '())
+ ((osql "q11();")
+  '(("Pic001") ("Pic002") ("Pic003")))
+ ((osql "q12();")
+  '(("Pic002") ("Pic003") ("Pic003")))
+ )
+
+:osql
+
+/*rollback;*/

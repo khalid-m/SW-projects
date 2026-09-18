@@ -1,0 +1,91 @@
+/*-*-sql-*-*******************************************************************/
+
+< 'svschema.osql';
+< 'svdata.osql';
+
+triple_view("machine");
+triple_view("machineinstallation");
+triple_view("location");
+triple_view("sensor");
+triple_view("sensorinstallation");
+
+create function everything() -> Bag of (Uri s, Uri p, Literal o)
+  as select s,p,o 
+     where (s,p,o) in machine() or
+           (s,p,o) in machineinstallation() or
+           (s,p,o) in location() or
+           (s,p,o) in sensor() or
+           (s,p,o) in sensorinstallation();
+
+create function q1_amos(Charstring mname) -> Charstring 
+ /* What countries have a machine with name 'mname' */
+ as select country(l) 
+    from Machine m, Machineinstallation mi, Location l
+    where l=locatedat(mi) and 
+          m=machinetype(mi) and 
+          name(m)=mname;
+
+create function q1_sparql(Charstring mname) -> Charstring c
+  as select c 
+     from Uri m, Uri mi, Uri l
+     where (l,uri('http://www.foo.org/location/country'),c) in location()
+       and (mi,uri('http://www.foo.org/machineinstallation/locatedat'),l)
+           in machineinstallation()
+       and (mi,uri('http://www.foo.org/machineinstallation/machinetype'),m)
+           in machineinstallation()
+       and (m,uri('http://www.foo.org/machine/name'),mname) in machine();
+
+create function q1_sparql2(Charstring mname) -> Charstring c
+  as select c 
+     from Uri m, Uri mi, Uri l
+     where (l,uri('http://www.foo.org/location/country'),c) in everything()
+       and (mi,uri('http://www.foo.org/machineinstallation/locatedat'),l)
+           in everything()
+       and (mi,uri('http://www.foo.org/machineinstallation/machinetype'),m)
+           in everything()
+       and (m,uri('http://www.foo.org/machine/name'),mname) in everything();
+
+
+create function q2_amos(Charstring c) -> (Charstring,Charstring) 
+ /* Select information about all sensors on a continent */
+  as select manufacturer(s), serialnumber(si)
+     from sensor s, sensorinstallation si, machineinstallation mi, location l
+     where c=continent(l) and
+           l=locatedat(mi) and
+           mi=onmachine(si) and
+           s=sensortype(si);
+
+create function q2_sparql(Charstring c) -> (Charstring mfact, 
+                                            Charstring serial)
+  as select mfact, serial 
+     from Uri s, Uri si, Uri mi, Uri l
+     where (l,uri('http://www.foo.org/location/continent'),c) in everything()
+       and (mi,uri('http://www.foo.org/machineinstallation/locatedat'),l)
+           in everything()
+       and (si,uri('http://www.foo.org/sensorinstallation/onmachine'),mi)
+           in everything()
+       and (si,uri('http://www.foo.org/sensorinstallation/sensortype'),s)
+           in everything()
+       and (si,uri('http://www.foo.org/sensorinstallation/serialnumber'),
+            serial) in everything()
+       and (s,uri('http://www.foo.org/sensor/manufacturer'),mfact)
+           in everything();
+
+
+create function q3_amos(Charstring mname) -> (Charstring,Location) 
+ /* Like Q1 but also show the uri of the location */
+  as select country(l),l 
+     from Machine m, Machineinstallation mi, Location l
+     where l=locatedat(mi) and 
+           m=machinetype(mi) and 
+           name(m)=mname;
+
+create function q3_sparql(Charstring mname) -> (Charstring c,Uri l)
+  as select c,l 
+     from Uri m, Uri mi, Uri l
+     where (l,uri('http://www.foo.org/location/country'),c) in everything()
+       and (mi,uri('http://www.foo.org/machineinstallation/locatedat'),l)
+           in everything()
+       and (mi,uri('http://www.foo.org/machineinstallation/machinetype'),m)
+           in everything()
+       and (m,uri('http://www.foo.org/machine/name'),mname) in everything();

@@ -1,0 +1,131 @@
+/****************************************************/
+	/* Decode functions  */
+/****************************************************/
+
+/*create type Vecele1 properties(name charstring,value vector);
+create Vecele1 instances :vecele1;
+set value(:vecele1)={};
+set name(:vecele1)="ele1";
+
+create type Vecele2 properties(name charstring,value vector);
+create Vecele2 instances :vecele2;
+set value(:vecele2)={};
+set name(:vecele2)="ele2";
+
+create type Vecele3 properties(name charstring,value vector);
+create Vecele3 instances :vecele3;
+set value(:vecele3)={};
+set name(:vecele3)="ele3";
+
+create function vec_concat(vector a, vector b) -> vector c 
+        as  
+	begin	
+	for each integer i, Vecele3 ve3 where i=iota(0,(count(a)-1)) and name(ve3)="ele3"
+              begin 
+                set value(ve3)=concat(value(ve3),concat({a[i]},{b[i]}));
+		if i=(count(a)-1)then 
+			begin
+			  result  value(ve3);
+			  set value(ve3)={};
+			end
+              end;
+
+	end;
+
+create function findelements(charstring wsname,charstring opname)
+                ->Element e 
+			as 
+			   select e 
+   			   from Operation op, Service ws, Element e
+   			   where name(op)=opname and name(ws)=wsname and 
+         			port(ws)=op and input(op)=e ;
+
+create function findresult1()->vector rs  
+				as select value(ve) from Vecele1 ve where name(ve)="ele1";
+
+create function findresult2()->vector rs  
+				as select value(ve) from Vecele2 ve where name(ve)="ele2";
+	 
+create function iterate1(vector  r)-> vector rs
+		as 
+		begin
+		 for each Element e, Vecele2 ve2  
+                 where e=in(r) and name(ve2)="ele2"
+		  begin
+			set value(ve2)= concat(value(ve2),{name(e)});
+			if subelements(e)then 
+	                       	set value(ve2)= concat(value(ve2),{iterate1(subelements(e))});
+		 end;
+	        set rs=findresult2();	
+		result rs;
+		set value(ve2)={} from Vecele2 ve2 where name(ve2)="ele2";	
+		end;
+
+create function iterate(charstring wsname, charstring opname)-> vector rs 
+		as 
+		begin
+		  for each  Element e,Vecele1  ve  
+                  where e=findelements(wsname,opname)and name(ve)="ele1" 
+		   begin
+			set value(ve)= concat(value(ve),{name(e)});
+		    	if subelements(e)then 
+				set value(ve)= concat(value(ve),{iterate1(subelements(e))});
+		   end;
+		   set rs=findresult1();	
+		   result rs;
+		   set value(ve)={} from Vecele1 ve where name(ve)="ele1";						 	
+	       end;
+
+create function decode(charstring wsname, charstring opname)
+                ->vector rs key as
+begin
+   set rs =iterate(wsname,opname);
+   result rs;
+end;
+*/
+create function maxoccurs(Charstring f)->Integer as select maxoccurs(e) from Element e where name(e)=f;
+
+create function elementOf(vector v)-> Object
+  as select v[i] from integer i;
+
+lisp;
+(defun cwo (fno wd ws op t q r)
+  (mapfunctionres 'callwebserviceoperation (list wd ws op t q) nil
+	(f/l (row)
+		       (osql-result wd ws op t q (nth 0 row)))))
+:osql
+
+/*****************************************************************************/
+		/* callwebservice  functions  */
+/*****************************************************************************/
+
+create function initoperation(charstring name, charstring soapactionuri, 
+                                charstring style ,charstring encodingstyle, 
+                                charstring namespaceuri, charstring targeturl,
+                                vector t,charstring query)
+                 -> vector v 
+as foreign  "JAVA:webservicewrapper/initoperation";  
+
+
+create function cwo(charstring wsdluri,charstring wsname,charstring opname, 
+                               vector t,charstring query)->vector v as foreign "cwo";
+ 
+create function callwebserviceoperation(charstring wsdluri,charstring wsname,charstring opname, 
+                               vector t,charstring query)->vector v as 
+ select initoperation(opname,soapactionuri(op),style(op),
+                        encodingstyle(op),namespaceuri(ws),targeturl(op),t,
+                        query)
+ from Operation op, Service ws 
+ where name(op)=opname and name(ws)=wsname and wsdluri(ws)=wsdluri and port(ws)=op;
+ 
+
+/*****************************************************************************/
+/*calculate the excution time of query*/
+/****************************************************************************/
+create function testsql(Charstring sql)->Real c 
+as begin set c = clock();
+         sql(sql);
+         result clock()-c;
+   end;
+ 
+

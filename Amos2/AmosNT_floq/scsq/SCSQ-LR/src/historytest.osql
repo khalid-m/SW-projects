@@ -1,0 +1,238 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Mårten Svensson, UDBL
+ * $RCSfile: historytest.osql,v $
+ * $Revision: 1.2 $ $Date: 2012/01/10 07:39:28 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Main box in Linear Road
+ *
+ ****************************************************************************
+ * $Log: historytest.osql,v $
+ * Revision 1.2  2012/01/10 07:39:28  torer
+ * New tuple format
+ *
+ * Revision 1.1  2010/04/09 08:47:46  torer
+ * Basic SCSQ-LR
+ *
+ * Revision 1.3  2010/04/06 09:11:04  chexu484
+ * window function "groupagg"
+ *
+ * Revision 1.2  2010/04/05 18:08:25  chexu484
+ * responsetime() added again
+ *
+ * Revision 1.1  2010/04/01 11:38:58  torer
+ * Original lr version
+ *
+ * Revision 1.5  2007/11/05 15:08:55  masv3245
+ * Removed some of the vectors
+ *
+ * Revision 1.4  2007/11/05 09:16:22  masv3245
+ * added comments to code, removed some old junk
+ *
+ * Revision 1.3  2007/10/22 19:51:12  torer
+ * Simpler
+ *
+ * Revision 1.2  2007/10/21 19:36:57  torer
+ * Added header, indented
+ *
+ ****************************************************************************/
+
+
+create function set_current_second(Number s)->Boolean
+  as set current_second()=s;
+
+create function set_current_minute(Number m)->Boolean
+  as set current_minute()=m;
+
+/****************************Seg stat*****************/
+create function seg_stat(vector x)->boolean
+  as begin
+	if (x[1]>current_second()) 	/*new second*/
+	then begin 
+             set_current_second(cast(x[1] as integer));
+	     remove_stopped_cars(current_second());  /*remove old reports of stopped cars*/
+	     if (mod(cast(x[1]as integer),60)=0)   /*new minute*/
+             then begin		
+	          set_current_minute(floor(current_second()/60) + 1);
+	          print(current_minute());
+	          select check_kill_accident(xways) 
+	            from integer xways 
+	           where xways in iota(0,1); /* check if there are any reports of accident that have been cleared*/
+	          init_stat(current_minute()); /*remove old hash-table and start a new one*/
+	          end;
+	     end;
+     add_stat(x,current_minute()); /* add stat to NOV and LAV*/
+     end;
+
+create function toll_calc(integer sec, integer vid, integer xway, integer pos, integer seg,integer dir,integer spd,integer lane)->boolean
+     as if (lane=4) /*if car is on exit ramp no toll is charged*/
+     then update_vehicle_info(vid,xway,pos,seg,dir,spd)
+     else if check_new_seg_report(vid,seg,xway)
+          then begin end
+          else begin
+	       add_previous_toll(vid,xway,pos,seg,dir,spd);/* Add toll from previous segment*/
+	       calc_toll(sec,vid,xway,pos,seg,dir,spd); /*calculate toll for the new segment*/
+	       end;
+	       
+create function check_accident_cleared(integer sec, integer vid,integer pos,integer seg,integer xway,integer tpe)->boolean
+  as if is_smashed(vid)>0 
+     then if ((giveme_smashed_pos(vid)!=pos) and (tpe=0)) 
+          then begin
+	       print({"accident cleared in xway,seg,vid,minute,sec:",xway, seg,
+                      vid, current_minute(),sec});		
+	       add accident_remove_order()=(xway,current_minute()+2);
+	       end;
+
+/**************************************MAIN**************************/
+
+create function rvi()->boolean 
+  as remove vehicle_info(i)=(j,k,l,m,n,rlu,o,rn) 
+       from integer i, integer j, integer k, integer l, integer m, real n, 
+            integer o, real rlu, real rn;
+
+create function lrinit()->boolean
+  as begin
+     init_fh(); 
+     rvi();
+     remove rtime()= t from timeval t;
+     remove current_second() = i from integer i;
+     set current_minute()=1;
+     end;
+
+create function lrfinalize()->boolean
+  as begin
+     remove accident()= (i,j,k,l,m) 
+       from integer i, integer j, integer k, integer l,integer m;
+     remove stopped_car() = (i,j,k,l,m,o) 
+       from integer i, integer j, integer k, integer l, integer m,integer o;
+     remove smashed_car()= (i,j,k,l,m,o) 
+       from integer i, integer j, integer k, integer l, integer m,integer o;
+     remove vehicle_info(i)= (j,k,l,m,x,y,n,z) 
+       from integer i, integer j, integer k, integer l, integer m, integer n,
+             real x, real y, real z;
+     init_stat(0);
+     init_stat(1);
+     init_stat(2);
+     init_stat(3);
+     init_stat(4);
+     init_stat(5);
+     close_fh();
+     end;
+
+create function lr(vector of integer x)->boolean
+  as begin
+     if x[3]=0 then accident_check(x[1],x[2],x[4],x[5],x[6],x[7],x[8]); /* Speed=0 =>possible accident */
+     if (is_smashed(x[2]))>0 then check_accident_cleared(x[1],x[2],x[8],x[7],x[4],x[0]); /*report from car involved in accident*/
+     if x[0]=0 
+     then begin
+	  seg_stat(x);
+	  toll_calc(x[1],x[2],x[4],x[8],x[7],x[6],x[3],x[5]); 
+          end
+     else if x[0]=3 
+          then begin /*daily expenditure*/
+	       wtype3({x[0],x[1],tdiff(now(),rtime()),x[9],
+                       hist_toll(x[2],x[14],x[4])});
+	       end
+          else if x[0]=2 
+          then begin /*account balance*/
+	       wtype2({x[0],x[1],tdiff(now(),rtime()),x[9],
+                       giveme_lasttime(x[2]),giveme_balance(x[2])});
+	       end;
+     end;
+
+create function leaks()->boolean
+  as begin
+     lrinit();
+     set rtime()=now(); 
+     set current_second() = 0;  
+     lr(cast (readfile("/data/lr/cdp_lite.osql") as vector of integer));
+     lrfinalize();
+     end;
+
+
+create function responsetime()->Boolean 
+	/*calculate worst case response time for the different queries*/
+	as begin declare  Number toll, Number accalert, Number daily, 
+                          Number account;
+                 set toll=maxagg(select (a[3]-a[2]) 
+                                 from Vector of Number a 
+                                 where	a = (cast (readfile('O-tollALERT') as Vector of Integer)));
+                 set accalert=maxagg(select (b[2]-b[1]) 
+                                     from Vector of Number b 
+                                     where b = (cast (readfile('O-acc-ALERT') as Vector of Integer)));
+                 set daily=maxagg(select (c[2]-c[1]) 
+                                  from Vector of Number c 
+                                  where c = (cast (readfile('O-t3') as Vector of Integer)));
+                 set account=maxagg(select (d[2]-d[1]) 
+                                    from Vector of Number d 
+                                    where d = (cast (readfile('O-t2') as Vector of Integer)));
+                 print ({"worst case response time for toll alerts:",toll});
+                 print ({"worst case response time for accident alerts:",
+                         accalert});
+                 print ({"worst case response time for daily expenditure:",
+                          daily});
+                 print ({"worst case response time for account balance:",
+                          account});
+           end;
+
+
+/* tests
+
+1. The "real" test
+
+lrinit();
+set current_second() = 0;
+set rtime()=now();
+lr(cast (lrstream("/data/lr/cardatapoints15.out") as vector of integer));
+
+lrfinalize();
+
+
+2. "Full fräs"
+
+lisp;(stop-profile)(start-profile):osql
+lrinit();
+set current_second() = 0;
+set rtime()=now();
+lr(cast (readfile("/data/lr/cardatapoints15.out") as vector of integer));
+
+lrfinalize();
+
+
+3. Look for memory leaks
+
+lisp;(stop-profile)(start-profile)(storagestat t):osql
+leaks();
+
+
+select i,d,cars(i,0,d,1) from integer i, integer d;
+
+4. Simuleringens tyngsta del: 1/10 av datat ligger under de sista 785 sek (13 min). 
+I genomsnitt 1647 tupler/sek.
+
+lisp;(stop-profile)(start-profile):osql
+lrinit();
+set current_second() = 0;
+set rtime()=now();
+lr(cast (readfile("/data/lr/cdp_heavy.osql") as vector of integer));
+real(now());
+
+lrfinalize();
+
+5. Simuleringens lättaste del: De första 30000 raderna täcker de första 404 s
+I genomsnitt 74 tupler/sek.
+
+lisp;(stop-profile)(start-profile):osql
+
+*/
+
+create function testLR(Charstring filename) -> Boolean
+  as begin
+      lrinit();
+      set current_second() = 0;  
+      set rtime()=now();
+      lr(cast (readfile(filename) as vector of integer));
+      lrfinalize();
+     end;

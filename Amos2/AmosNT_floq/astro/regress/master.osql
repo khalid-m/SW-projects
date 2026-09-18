@@ -1,0 +1,61 @@
+lisp;
+(checkequal "make vector of generators" 
+	    ((osql "dim(vectorof(select bagof(iota(1,10 )) from integer i where i=iota(1,2 )));")
+		   '((2)))
+	    (nil nil)
+	    )
+
+(checkequal "operations on vectors of numbers"
+	    ((osql "
+create function positive(number n)->number as select n where n>=0;
+
+create function vsquarediffs(vector of number b, real x)->bag of real as
+select (y-x)*(y-x) from real y where y = in(b);
+
+create function getdimvalues(vector of number v, integer dim)-> real as
+select positive(sqrt(sum(vsquarediffs(cast({v[cast(dim-1 as integer)],v[dim]}
+  as vector of number),0.0))));
+
+create function vmax(Vector v)-> <Integer i, Object o>
+  as select i, o where o = maxagg(in(v)) and v[i]=o;
+
+getdimvalues(cast ({1,1,4,4,99,98} as vector of number),1) - positive(sqrt(2));")
+		   '((0.0)))
+	    ((osql "getdimvalues(cast ({1,1,4,4.5,99,98} as vector of number),3) - positive(sqrt(36.25));")
+		   '((0.0)))
+	    
+	    )
+
+(checkequal "vector aggregation"
+	    ((osql "create function windowagg(bag of vector v, integer sz) -> vector as begin
+        declare vector w, integer cnt;
+        set w={};
+        set cnt=0;
+        for each original vector e where e=in(v)
+        begin
+                set cnt=cnt+1;
+                set w=concat(w,e);
+
+                if cnt=sz then
+                begin
+                        result(w);
+                        set w={};
+                        set cnt=0;
+                end;
+        end;
+end;
+count(select windowagg( (select vectorof(select iota(1,100)) from integer i where i = iota(1,10)),5));"
+)
+	     '((2))))
+
+(checkequal "vmax"
+	    ((osql "create function vmax(Vector v)-> <Integer i, Object o>
+   as select i, o where o = maxagg(in(v)) and v[i]=o;
+vmax({7,4,5,6,7,5,4});"
+)
+	     '((0 7) (4 7))))
+
+
+(rollback)
+:osql
+quit;

@@ -1,0 +1,35 @@
+/******************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2005 Johan Petrini, UDBL
+ * $RCSfile: master_experiment.amosql,v $
+ * $Revision: 1.2 $ $Date: 2010/04/28 14:46:27 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Master script to load SWARD system for reproducing experiment 
+ * results.
+ *****************************************************************************/
+lisp;
+(setq _prompter_ "Sward")
+(load "src/lsp/h.lsp")
+(load "src/lsp/export.lsp") 
+:osql
+
+<'src/AmosQL/h.amosql'; 
+<'src/AmosQL/rdql.amosql';
+<'src/AmosQL/sql.amosql';
+<'src/AmosQL/sparql.amosql';
+<'src/AmosQL/ds.amosql';
+<'src/AmosQL/experiment.amosql';
+<'src/AmosQL/export.amosql';
+
+/* Set SWARD db image size to 100M
+ */
+imagesize 100000000;
+
+/* Partial evaluation of predicates below is part of basic SWARD system
+ */
+parteval('TEVEXTENT');
+parteval('S');
+parteval('PMAP');
+parteval('CMAP');

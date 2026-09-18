@@ -1,0 +1,1 @@
+java -cp "%AMOS_HOME%\bin\javaamos.jar;%AMOS_HOME%\jarlib\mysql-connector-java-5.1.6-bin.jar" JavaAMOS ssdm.dmp master.osql -q AmosQL %1 %2 %3 %4 %5 %6 %7 %8 %9

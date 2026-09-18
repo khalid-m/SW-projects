@@ -1,0 +1,73 @@
+accessBigtable("ds1", "http://gae-clem-server.appspot.com/simpleprotocol");
+
+
+bigTables('ds1');
+
+
+bigTableAttributes('ds1', 'MACHINEMODEL');
+
+bigTableAttributes('ds1', 'MACHINE');
+
+bigTableAttributes('ds1', 'SENSOR');
+
+bigTableAttributes('ds1', 'SENSORMODEL');
+
+bigTableAttributes('ds1', 'MEASUREMENT');
+
+
+/* Query all Machine Model */
+create function q0()->(Integer,Charstring,Charstring) 
+  as select id(m),name(m),short_description(m)
+     from MACHINEMODEL_ds1 m;
+
+pc("q0");
+
+q0();
+
+
+/* Query the location of machine number five */
+create function q1()->Charstring
+  as select location(m)
+     from MACHINE_ds1 m
+     where MachineId(m)=5;
+
+pc("q1");
+
+q1();
+
+
+/* Query the sensors, machine infor for  machine model one */
+create function q2()->(Integer,Charstring,Charstring)
+  as select machineId(m),location(s),manufacturer(s)
+     from MACHINE_ds1 m, SENSOR_ds1 s
+     where Machine_Model_Id(m)=1 and 
+	   MachineId(m) = MachineId(s); 
+
+pc("q2");
+
+q2();
+
+
+/* Query the model, max,min temperature information of sensor number three  */
+create function q3()->(Charstring, Real, Real)
+  as select name(sm), max_temperature(sm), min_temperature(sm)
+     from SENSORMODEL_ds1 sm, SENSOR_ds1 s
+     where sensorId(s)=3 and
+           sensor_model_id(s) = id(sm);
+
+pc("q3");
+
+q3();
+
+
+/* Query measurement type, name of sensor manufacturer Bruce AB */
+create function q4()->(Integer, Charstring)
+  as select sensorId(s),name(m)
+     from SENSOR_ds1 s, MEASUREMENT_ds1 m
+     where manufacturer(s)='Bruce AB' and
+	   type(m) = 'simulation' and
+           sensorId(s)=sensorId(m);
+
+pc("q4");
+
+q4();

@@ -1,0 +1,26 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2006 Erik Zeitler, UDBL
+ * $RCSfile: sp.osql,v $
+ * $Revision: 1.5 $ $Date: 2008/07/10 10:56:47 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Load sp configuration and save sp dump file
+ * sp.dmp is used by the sp binary, executing on PCs
+ *
+ ****************************************************************************/
+
+< 'bgconfig.osql';
+< 'spconfig.osql';
+< 'scsq.osql';
+< 'scsql.osql';
+< 'mathfns.osql';
+< 'peakdetect.osql';
+
+load_lisp("../lsp/sp.lsp");
+load_lisp("../lsp/ga.lsp");
+load_lisp("../../lsp/iterate.lsp");
+
+save "../../bin/sp.dmp";
+quit;

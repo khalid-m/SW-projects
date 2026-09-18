@@ -1,0 +1,311 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Silvia Stefanova UDBL
+ * $RCSfile: Dview_byconcat.amosql,v $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Definition of the D-viw using only concat
+ ******************************************************************************
+ * 
+ ****************************************************************************/
+
+
+/*RDB having only columns with data type  Varchar*/
+/**************************************************/
+
+/*Keys: neeeded e.g.to eliminate (and (plus "ss" a _ss_) (plus "dd" b _ss_) )  */
+declare_key(#'CHARSTRING.OBJECT.PLUS->CHARSTRING',{"x","y"});
+declare_key(#'CHARSTRING.OBJECT.PLUS->CHARSTRING',{"r"});
+
+
+
+create function getKeyrr_flat(Charstring ds,Charstring tn) ->Charstring col
+as 
+  begin
+	declare Charstring str, Charstring str1,Charstring str2, integer i;
+	set i=0;
+	if (count (primary_keys(JDBCOfDS(ds),catalogOfDS(ds),schemaOfDS(ds),tn)) > 0) then
+         begin
+		for each Charstring col,Charstring constraint
+		 where (col,constraint) in primary_keys(JDBCOfDS(ds),catalogOfDS(ds),schemaOfDS(ds),tn) 
+			/*set str=tn+"_"+col +","+str ;*/
+		 begin
+			set i=i+1;
+			set str1=concat(concat(tn,"_"),col);
+			if (i=1) then
+				set str="concat("+ str1+",'_')"
+			else
+				set str= "concat(" +str+"," +str1+"),";
+		 end;
+		if (i>1) then
+			return substring(str,0,char_length(str)-2)
+		else
+			return str1;
+ 	 end;
+  end;
+
+
+create function getFKeyrr_flat(Charstring ds, Charstring tn, Charstring otn) ->Charstring vectorcol
+as 
+ begin
+   	declare Charstring str,Charstring str1,Charstring str2, integer i;
+	set i=0;
+	 if ( some(imported_keys(JDBCOfDS(ds),catalogOfDS(ds),schemaOfDS(ds),tn))) then
+	  begin
+		for each Charstring col,Charstring ocol 
+			where(otn,ocol,col) in imported_keys(JDBCOfDS(ds),catalogOfDS(ds),schemaOfDS(ds),tn)
+		 begin
+		   	set i=i+1;
+			set str1=concat(concat(tn,"_"),col);
+			if (i=1) then
+				set str="concat("+ str1+",'_')"
+			else
+				set str= "concat(" +str+"," +str1+"),";
+		 end;	 
+		if (str != "") then
+		 begin
+			if (i>1) then
+			return substring(str,0,char_length(str)-2)
+		else
+			return str1;
+		 end;
+  	  end;
+ end;
+
+
+
+
+create function mvalueid(Charstring val key, Charstring xsdtype key)->Charstring mapvalue 
+as
+	select "\""+val+"\""+"\^\^"+"<"+xsdtype+">";
+
+
+
+
+
+/*Column view*/
+create function genPV(Charstring upv,		
+	              Charstring tn,
+	              Charstring cn)->Charstring clause
+as 
+/*TO DO: The version of the genPV with concat of the XSD type to val*/
+ select "(" + genRelcall(upv,tn) + " and 
+	cMap('" + tn + "','" + upv + "', cid) and 
+         pMap('" + tn + "','" + cn + "','" + upv + "', p) and 
+       	 s=concat(cid,concat('/_',"+k+")) and
+	 val = mvalueid(" + tn + "_" + cn + ",typeMap('"+tn+"','"+cn+"','"+upv+"')))"
+ from Charstring k
+ where k =  getKeyrr_flat(DSOfUPV(upv),tn);
+
+
+
+create function genCCV(Charstring upv,		
+	               Charstring tn)->Charstring clause
+as 
+ select "(" + genRelcall(upv,tn) + " and 
+        cMap('" + tn + "','" + upv + "', cid) and         
+        s=concat(cid,concat('/_',"+k+")) and
+        p = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and 	
+        val = cid  )"
+ from Charstring k
+ where k =  getKeyrr_flat(DSOfUPV(upv),tn);
+
+
+
+/* Fn for defining a one-to-many relationship view for a foreign key column  mapped to 
+ * an RDF property;
+ * !!! Generalized for the case of compound keys !!!!
+ */
+create function genFPV(Charstring upv,		
+	                Charstring tn,
+                        Charstring otn)->Charstring clause
+  as select "(" + genRelcall(upv,tn) + " and 
+        cMap('" + tn + "','" + upv + "', cid) and 
+       	rcMap('" + tn + "','"+ otn +"','"+upv +"',p) and
+        s=concat(cid,concat('/_',"+k+")) and
+        val = concat( cMap('" + otn + "','" + upv + "'),(concat('/_',"+k2+")) ) )"
+  from Charstring k, Charstring k2
+  where k = getKeyrr_flat(DSOfUPV(upv),tn) and
+	k2=  getFKeyrr_flat(DSofUPV(upv),tn,otn);
+
+
+
+/* Fn for defining a many-to-many relationship view for pair of foreign key columns 
+ */
+create function genFMMPV(Charstring upv,		
+	                Charstring tn,
+                        Vector of Charstring cn1,
+			Vector of Charstring cn2,
+                        Charstring otn1,
+			Charstring otn2)->Charstring clause
+  as select "(" + genRelcall(upv,tn) + " and 
+        cMap('" + otn1 + "','" + upv + "', cid) and 
+        s = concat(cid,concat('/_'," +k1 + ")) and 
+	rmmMap('" + tn + "',"+cn1+","+cn2+",'" +otn1 +"','" +otn2 +"','"+upv+"',p) and
+        val = concat(cMap('" + otn2 + "','" + upv + "'),(concat('/_',"+k2+"))) )"
+   from Charstring k1, Charstring k2
+  where k1 = concat_cols(tn, cn1) and
+	k2 = concat_cols(tn, cn2);
+
+
+
+
+
+
+
+
+
+
+
+/*RDB having columns with different data types */
+/***********************************************************/
+
+create function getKeyrr_flat(Charstring ds,Charstring tn) ->Charstring col
+as 
+  begin
+	declare Charstring str, Charstring str1,Charstring str2, integer i;
+	set i=0;
+	if (count (primary_keys(JDBCOfDS(ds),catalogOfDS(ds),schemaOfDS(ds),tn)) > 0) then
+         begin
+		for each Charstring col,Charstring constraint
+		 where (col,constraint) in primary_keys(JDBCOfDS(ds),catalogOfDS(ds),schemaOfDS(ds),tn) 
+			/*set str=tn+"_"+col +","+str ;*/
+		 begin
+			set i=i+1;
+			set str1=concat(concat(tn,"_"),col);
+			if (i=1) then
+				set str="concat(cast(" + str1+" as Charstring),'_')"
+			else
+				set str= "concat(" +str+",cast(" +str1+" as Charstring)),";
+		 end;
+		if (i>1) then
+			return substring(str,0,char_length(str)-2)
+		else
+			return "cast("+str1+ " as Charstring)";
+ 	 end;
+  end;
+
+
+
+create function getFKeyrr_flat(Charstring ds, Charstring tn, Charstring otn) ->Charstring vectorcol
+as 
+ begin
+   	declare Charstring str,Charstring str1,Charstring str2, integer i;
+	set i=0;
+	 if ( some(imported_keys(JDBCOfDS(ds),catalogOfDS(ds),schemaOfDS(ds),tn))) then
+	  begin
+		for each Charstring col,Charstring ocol 
+			where(otn,ocol,col) in imported_keys(JDBCOfDS(ds),catalogOfDS(ds),schemaOfDS(ds),tn)
+		 begin
+		    set i=i+1;
+		    set str1=concat(concat(tn,"_"),col);
+		    if (i=1) then
+			set str="concat(cast(" + str1+" as Charstring),'_')"
+		    else
+			set str= "concat(" +str+",cast(" +str1+" as Charstring)),";
+		 end;	 
+		if (str != "") then
+		 begin
+			if (i>1) then
+			return substring(str,0,char_length(str)-2)
+		else
+			return "cast("+str1+ " as Charstring)";
+		 end;
+  	  end;
+ end;
+
+
+/*
+create function r_mvalueid(Literal val, Charstring xsdtype)->Charstring mapvalue key
+as
+	select concat("\"",concat(cast(val as Charstring),("\"\^\^<"+ xsdtype +">")));
+
+
+
+create function i_mvalueid(Charstring mapvalue, Charstring xsdtype)->Literal val
+as 	select val from Charstring str2, Charstring str3 where 
+			 str2=concat("\"^^<",xsdtype) and 
+			 str3=concat(str2,">") and
+			  mapvalue= concat("\"", concat(cast(val as Charstring),str3))	;		 
+
+*/
+
+create function r_mvalueid(Literal val, Charstring xsdtype)->Charstring mapvalue key
+as
+	select concat(stringify(val),xsdtype);
+
+
+create function i_mvalueid(Charstring mapvalue, Charstring xsdtype)->Literal val
+as  select val where mapvalue=concat(stringify(val),xsdtype);
+
+
+create function mvalueid(Literal val, Charstring xsdtype)->Charstring mapvalue key
+as multidirectional ('bbf' select r_mvalueid(val,xsdtype))
+		    ('fbb' select i_mvalueid(mapvalue,xsdtype));
+
+
+
+/*Column view*/
+create function genPV(Charstring upv,		
+	              Charstring tn,
+	              Charstring cn)->Charstring clause
+as 
+/*TO DO: The version of the genPV with concat of the XSD type to val*/
+ select "(" + genRelcall(upv,tn) + " and 
+	cMap('" + tn + "','" + upv + "', cid) and 
+         pMap('" + tn + "','" + cn + "','" + upv + "', p) and 
+       	 s=concat(cid,concat('/_',"+k+")) and
+	 val = mvalueid(" + tn + "_" + cn + ",typeMap('"+tn+"','"+cn+"','"+upv+"')))"
+ from Charstring k
+ where k =  getKeyrr_flat(DSOfUPV(upv),tn);
+
+
+
+create function genCCV(Charstring upv,		
+	               Charstring tn)->Charstring clause
+as 
+ select "(" + genRelcall(upv,tn) + " and 
+        cMap('" + tn + "','" + upv + "', cid) and         
+        s=concat(cid,concat('/_',"+k+")) and
+        p = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and 	
+        val = cid  )"
+ from Charstring k
+ where k =  getKeyrr_flat(DSOfUPV(upv),tn);
+
+
+
+/* Fn for defining a one-to-many relationship view for a foreign key column  mapped to 
+ * an RDF property;
+ * !!! Generalized for the case of compound keys !!!!
+ */
+create function genFPV(Charstring upv,		
+	                Charstring tn,
+                        Charstring otn)->Charstring clause
+  as select "(" + genRelcall(upv,tn) + " and 
+        cMap('" + tn + "','" + upv + "', cid) and 
+       	rcMap('" + tn + "','"+ otn +"','"+upv +"',p) and
+        s=concat(cid,concat('/_',"+k+")) and
+        val = concat( cMap('" + otn + "','" + upv + "'),(concat('/_',"+k2+")) ) )"
+  from Charstring k, Charstring k2
+  where k = getKeyrr_flat(DSOfUPV(upv),tn) and
+	k2=  getFKeyrr_flat(DSofUPV(upv),tn,otn);
+
+
+
+/* Fn for defining a many-to-many relationship view for pair of foreign key columns 
+ */
+create function genFMMPV(Charstring upv,		
+	                Charstring tn,
+                        Vector of Charstring cn1,
+			Vector of Charstring cn2,
+                        Charstring otn1,
+			Charstring otn2)->Charstring clause
+  as select "(" + genRelcall(upv,tn) + " and 
+        cMap('" + otn1 + "','" + upv + "', cid) and 
+        s = concat(cid,concat('/_'," +k1 + ")) and 
+	rmmMap('" + tn + "',"+cn1+","+cn2+",'" +otn1 +"','" +otn2 +"','"+upv+"',p) and
+        val = concat(cMap('" + otn2 + "','" + upv + "'),(concat('/_',"+k2+"))) )"
+   from Charstring k1, Charstring k2
+  where k1 = concat_cols(tn, cn1) and
+	k2 = concat_cols(tn, cn2);

@@ -1,0 +1,116 @@
+create function soaptest()
+                 -> Object r as foreign  "JAVA:soapTest/invokeConnection";
+
+create function soaptest1()
+                 -> Object r as foreign  "JAVA:soapTest/invokeConnection1";
+
+create function soaptest2()
+                 -> Object r as foreign  "JAVA:soapTest/invokeConnection2";
+
+create function co_busy()-> charstring  as foreign "co-busy";
+
+
+lisp;
+(defun co-busy (fno r)
+   (print "in busy loop")
+   (if (co-inside) (co-yield '*busy*)
+    (amos-error "Calling BUSY outside coroutine"))
+  )
+
+(defun callsoaptest()
+  (osql "soaptest();"))
+
+(defun callsoaptest1()
+  (osql "soaptest1();"))
+
+(defun coroutinetest()
+  (let ((co (coroutine 'callsoaptest (list ))) r)
+    
+    (if (not(co-terminated co))
+	(progn 
+         (setq r (co-resume co))
+	   (if (consp r) (car (car r)))))))
+
+(defun coroutinetest1()
+  (let ((co (coroutine 'callsoaptest1 (list ))) r)
+    
+    (if (not(co-terminated co))
+	(progn 
+         (setq r (co-resume co))
+	   (if (consp r) (car (car r)))))))
+
+(osql "create function coroutinetest2()->Object
+  as foreign 'coroutinetest2+';")
+
+(defun coroutinetest2+ (fno r)
+  (let ((co (coroutine 'mapfunction
+		       (list (getfunctionnamed 'soaptest2->object);; arg 1
+			     nil;; arg2 in mapfunction
+			     'co-yield)));; arg3 in mapfunction
+	r)
+    (while (not (co-terminated co))
+      (setq r (co-resume co))
+      (if (consp r)(osql-result (car r))
+	nil))));; co-yield will return a list, busy a string
+
+
+
+(osql "create function coroutinetest3()->Object
+  as foreign 'coroutinetest3';")
+
+(defun coroutinetest3 (fno r)
+  (let (( co (coroutine 'coroutinetest3+ (list ))) r (count 0))
+    (while (not (co-terminated co))
+      (print "In 1st loop")
+      (setq r (co-resume co))
+      (print r)
+      (if (consp r)(if (eq (car r) "Succeed") (setq count (+ count 1)))
+	nil))
+    (print count)
+    (if (= count 2) (osql-result "Succeed") nil)
+    ))
+
+(defun coroutinetest3+ ()
+  (let (co1 co2	r )
+    (setq co1 (coroutine 'mapfunction
+			 (list (getfunctionnamed 'soaptest2->object) nil 'co-yield)))
+    (setq co2 (coroutine 'mapfunction
+			 (list (getfunctionnamed 'soaptest2->object) nil 'co-yield)))
+    
+
+    (while (not (and (co-terminated co1)(co-terminated co2)))
+      (print "In 2nd loop")
+      (if (not (co-terminated co1))
+	  (progn
+	    (setq r (co-resume co1))
+	    (if (consp r) (car r)
+	      nil)))
+      (if (not (co-terminated co2))
+	  (progn
+	    (setq r (co-resume co2))
+	    (if (consp r) (car r)
+	      nil)))
+      )
+    ))   
+	
+   
+
+(checkequal "Coroutine test with java function- no soap connection" 
+	    ((coroutinetest) "Succeed")
+	    )
+
+(checkequal "Coroutine test with java function- soap connection" 
+	    ((coroutinetest1) "Succeed")
+	    )
+(checkequal "Calling back to Amos2 from Java" 
+	    ((osql "coroutinetest2();") '(("Succeed")))
+	    )
+(quote 
+(trace co-yield)
+(trace co-resume)
+(checkequal "Calling within coroutines" 
+	    ((osql "coroutinetest3();") '(("Succeed")))
+	    ))
+
+:osql
+	  

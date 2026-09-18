@@ -1,0 +1,45 @@
+/* to be executed under AmosNT\wrappers\ntriples\ntriples.cmd */
+
+create function stmt_store(RDFResource s, RDFResource p, RDFResource o)->Boolean as stored;
+create_index("stmt_store","s","hash","multiple");
+create_index("stmt_store","p","hash","multiple");
+create_index("stmt_store","o","hash","multiple");
+
+create function triples()->Bag of <RDFREsource s, RDFResource p, RDFResource o>
+  as select s, p, o where stmt_store(s,p,o);
+
+create function tripleStream(Charstring file) -> Stream of <RDFREsource, RDFResource, RDFResource>
+  as streamof(ntriples(file));
+
+create function loadRDF(Charstring file)->boolean b
+as
+	begin
+     		for each original RDFResource subj, RDFResource pred, RDFResource obj
+         	where <subj,pred,obj> in ntriples(file)
+	 	add stmt_store(subj, pred, obj)=true;   
+	end;
+
+
+load_lisp("sparql-lsp-parser.lsp");
+
+create function ex1()-> <RDFResource, RDFResource, RDFResource> as
+select e, x, y
+   from RDFResource e, RDFNumber x, RDFResource y
+   where <e, rdfr_iri('http://data.org/IsA'), 
+      rdfr_iri('http://data.org/Event')> in ntriples("ex1.nt")
+   and <e, rdfr_iri('http://data.org/x'), x> in ntriples("ex1.nt")
+   and <e, rdfr_iri('http://data.org/y'), y> in ntriples("ex1.nt")
+   and rdfr_data(x) > 0;
+
+create function ex2()-> <RDFResource, RDFResource, RDFResource> as
+select e, x, y
+   from RDFResource e, RDFNumber x, RDFResource y,
+        Stream of <RDFResource,RDFResource,RDFResource> s
+   where <e, rdfr_iri('http://data.org/IsA'), 
+      rdfr_iri('http://data.org/Event')> in s
+   and <e, rdfr_iri('http://data.org/x'), x> in s
+   and <e, rdfr_iri('http://data.org/y'), y> in s
+   and s = tripleStream("ex1.nt")
+   and rdfr_data(x) > 0;
+
+pc('ex1');

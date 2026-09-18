@@ -1,0 +1,39 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Mårten Svensson, UDBL
+ * $RCSfile: mkdmp.osql,v $
+ * $Revision: 1.1 $ $Date: 2011/08/24 05:02:18 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Master file for creating lr.dmp. given historylr.dmp
+ *
+ ****************************************************************************
+ * $Log: mkdmp.osql,v $
+ * Revision 1.1  2011/08/24 05:02:18  soba1559
+ * Adding trie based implementation of the Linear Road Benchmark
+ *
+ * Revision 1.1  2010/04/01 11:38:58  torer
+ * Original lr version
+ *
+ * Revision 1.2  2007/11/05 15:08:55  masv3245
+ * Removed some of the vectors
+ *
+ * Revision 1.1  2007/10/19 11:30:02  torer
+ * New directory 'src' contains all Linear Road source code
+ * Master files cleaned up
+ *
+ ****************************************************************************/
+
+loadsystem("src","master.osql");
+
+save "lr.dmp";
+
+quit;
+
+/*
+Prerequisite: 
+mkhist.cmd makes a dmp containing historical data.
+Historical data must be in /data/lr/hist.osql
+*/
+/*testlr('data/cdp_mid15.out');*/

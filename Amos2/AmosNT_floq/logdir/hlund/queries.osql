@@ -1,0 +1,54 @@
+create LogDirectory (name,folder,timeout,startseq) 
+       /* The log directory where Hägglunds data streams are located */
+       instances ('d2',pwd()+'/realdata/',10,5125);
+
+create function get_filename(logevent e) -> charstring
+ as filename(logfile(e));
+
+create function torque() -> bag of (number ts, number val)
+ /* Return stream of time stamped changes in the variable representing TORQUE
+    computed by the difference between variables REG403 and REG407. 
+    A new result tuple is produced whenever any variable in the stream 
+    changes. 
+    Notice that this does not scale since the refresh frequency is based on 
+    the fastest changing variable in the stream */
+ as for each record r where r in record_agg(simlogeventstream(dirnamed('d2')))
+  return (select r["TS"], 100 * (reg403 - reg407)
+          from number reg403, number reg407
+          where reg403 = r["REG403"] and reg407 = r["REG407"]);
+
+
+create function torque2() -> bag of (number,number,charstring)
+ /* A more complicated torque() using log events and filtering to reduce the
+    refresh frequency to the fastest changing variable of interest. */
+ as for each record r where r in filter_record_agg(simlogeventstream(dirnamed('d2')),
+                                                   {'REG403','REG407'})
+  return (select r["TS"], torque, get_filename(e403)
+          from logevent e403, logevent e407, number torque
+          where e403 = r["REG403-EVENT"] and e407 = r["REG407-EVENT"] and
+                torque = 100 * (value(e403) - value(e407)) and 
+                torque > 2200.0);
+
+create function power() -> bag of (number,number)
+ /* As torque() but is computing the POWER instead */
+ as for each record r where r in filter_record_agg(simlogeventstream(dirnamed('d2')),
+                                                   {'REG403','REG407','REG109'})
+  return (select r["TS"], (100 * (reg403 - reg407) * reg109) / 9549.0
+          from number reg403, number reg407, number reg109
+          where reg403 = r["REG403"] and reg407 = r["REG407"] and 
+                reg109 = r["REG109"]);
+
+
+create LogDirectory (name,folder,timeout,startseq) 
+  /* The log directory to which file copier regularly copies log files
+     from the original log directory to simulate arriving log files */
+  instances ('d2b',pwd()+'/realdata/target/',30,5125);
+
+create function torque2b() -> bag of (number,number,charstring)
+ as for each record r where r in filter_record_agg(logeventstream(dirnamed('d2b')),
+                                                   {'REG403','REG407'})
+  return (select r["TS"], torque, get_filename(e403)
+          from logevent e403, logevent e407, number torque
+          where e403 = r["REG403-EVENT"] and e407 = r["REG407-EVENT"] and
+                torque = 100 * (value(e403) - value(e407)) and 
+                torque > 2200.0);

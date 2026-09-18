@@ -1,0 +1,36 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2004 Maryam Ladjvardi, Tore Risch, UDBL
+ * $RCSfile: search.amosql,v $
+ * $Revision: 1.2 $ $Date: 2005/03/13 21:11:01 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Test wrapper queries to populated BerkeleyDB database
+ *
+ ****************************************************************************/
+
+/* Connect to populated BerkeleyDB database (script populate.amosql) */
+
+bk_connect("DB1");
+set :h=bk_handle("DB1","Person");
+bk_access(:h);
+
+/* Wrapper queries */
+
+count(select p from Person_DB1 p);
+select ssn(p) from Person_DB1 p;
+select ssn(p),name(p) from Person_DB1 p;
+select ssn(p),name(p) 
+  from Person_DB1 p
+  where ssn(p)=1026;  
+select ssn(p),name(p) from Person_DB1 p where ssn(p)>1640;
+select ssn(p),name(p) 
+  from Person_DB1 p
+  where length(p)>1.60;
+select ssn(q),name(q),name(p) 
+  from Person_DB1 p, Person_DB1 q
+  where ssn(p)=6962 and ssn(q)>ssn(p);
+
+bk_disconnect();
+

@@ -1,0 +1,150 @@
+/*-*-sql-*-*************************************************************
+ * This is a tutorial for object-oriented database design with Amos II *
+ ***********************************************************************
+
+/* First create the types Tournament and Country: */
+
+create type Tournament;
+create type Country;
+
+/* Then create some functions over the created types: */
+
+create function year(Tournament)->Integer as stored;
+create function name(Country)->Charstring as stored;
+create function host(Tournament)->Country as stored;
+
+/*  Then populate the database by creating objects 
+    and setting function values: */
+
+create Country instances :ita, :bra, :esp;
+set name(:ita)="Italy";
+set name(:bra)="Brazil";
+set name(:esp)="Spain";
+create Tournament instances :t2, :t12, :t14;
+set year(:t2)=1934;
+set host(:t2)=:ita;
+set year(:t12)=1982;
+set host(:t12)=:esp;
+set year(:t14)=1990;
+set host(:t14)=:ita;
+
+/* Create some more types and functions: */
+
+create type Person;
+create type Referee under Person;
+create type Player under Person;
+
+create function name(Person)->Charstring as stored;
+
+/* Populate more: */
+
+create Person (name) instances  ("Pavel Smerdjakov");
+create Referee (name) instances :r1 ("Abraham Klein");
+create Player (name) instances :p1 ("Falcao"),
+		:p2 ("Socrates"),
+		:p3 ("Paolo Rossi");
+
+/* More types: */
+
+create type Team;
+create type Match;
+
+/* Define a derived function: */
+
+create function host_name(Integer y)->Charstring hn
+ as select name(host(t))
+    from Tournament t
+    where year(t)=y;
+
+/* More stored functions: */
+
+create function represents(Team)->Country as stored;
+create function refereed_by(Match)->Referee as stored;
+create function played_in(Match)->Tournament as stored;
+create function spectators(Match)->Integer as stored;
+
+/* Stored function with one-many cardinality constraint: */
+
+create function tournament(Team)->Tournament as stored;
+create function participating_teams(Tournament t)->Team tm 
+ as select tm where tournament(tm) = t;
+
+/* Populate: */
+
+create Team (represents) instances :ita82 (:ita),
+                                   :bra82 (:bra);
+add participating_teams(:t12)=:ita82;
+add participating_teams(:t12)=:bra82;
+
+create function players(Team)->Bag of Player as stored;
+
+add players(:bra82)=:p1;
+add players(:bra82)=:p2;
+add players(:ita82)=:p3;
+
+create function player_participations(Match)->
+                 Bag of (Player, Integer goals, Integer own_goals) as stored;
+
+create function participating_players(Match m)->Player p
+ as select p
+    from  Integer g, Integer og
+    where (p, g, og) in player_participations(m);
+
+create function goals(Player p, Match m)->Integer g
+ as select g
+    from Integer og
+    where (p, g, og) in player_participations(m);
+
+create function own_goals(Player p, Match m)->Integer og
+ as select og
+    from Integer g
+    where (p, g, og) in player_participations(m);
+
+create Match (refereed_by, played_in, spectators)
+  instances :m1 (:r1, :t12, 44000);
+add player_participations(:m1)=(:p1, 1, 0);
+add player_participations(:m1)=(:p2, 1, 0);
+add player_participations(:m1)=(:p3, 3, 0);
+
+create function team_participations(Match)->
+                                      Bag of (Team, Integer goals) as stored;
+
+create function participating_teams(Match m)->Team t
+ as select t
+    from Integer g
+    where (t, g) in team_participations(m);
+
+create function goals(Team t, Match m)->Integer g
+ as select g
+    where (t, g) in team_participations(m);
+
+/* Import more data from file "../demo/wcdata.amosql" that can also be 
+   downloaded from
+   http://www.it.uu.se/research/group/udbl/amos/doc/wcdata.amosql */
+
+< '../demo/wcdata.amosql'; 
+
+create function goals1(Match m)->Integer
+ as select goals(t1, m) + goals(t2, m)
+    from Team t1, Team t2;
+
+create function goals2(Match m)->Integer
+ as select goals(t1, m) + goals(t2, m)
+    from Team t1, Team t2
+    where t1 != t2;
+
+create function goals(Match m)->Integer
+ as select goals(t1, m) + goals(t2, m)
+    from Team t1, Team t2
+    where t1 < t2;
+
+create function matchinfo(Match m)->(Charstring n1, Integer g1, Charstring n2,
+                                     Integer g2, Integer y)
+ as select name(represents(t1)), goals(t1, m), name(represents(t2)),
+           goals(t2, m), year(played_in(m))
+    from Team t1, Team t2
+    where participating_teams(m)=t1
+      and participating_teams(m)=t2
+      and t1 < t2;
+
+commit;

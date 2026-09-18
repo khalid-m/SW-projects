@@ -1,0 +1,10 @@
+create function create_core_cluster_function(Datasource ds, 
+					     Charstring container_name, 
+			     		     Vector native_properties, 
+           				     Vector keys)
+                                         -> Function f
+  as foreign 'create_core_cluster_function';
+
+
+create function core_cluster_cost(Function f, Vector bpat, Vector args)
+                              -> (Integer costval, Integer fanout);

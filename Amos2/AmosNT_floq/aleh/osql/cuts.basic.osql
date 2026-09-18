@@ -1,0 +1,321 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2006 Ruslan Fomkin, UDBL
+ * $RCSfile: cuts.basic.osql,v $
+ * $Revision: 1.5 $ $Date: 2006/11/14 15:45:14 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Implementation of cuts function in terms of results of ROOT wrapper.
+ * Can be executed only in ROOT wrapper executable.
+ *
+ ****************************************************************************
+ * $Log: cuts.basic.osql,v $
+ * Revision 1.5  2006/11/14 15:45:14  ruslan
+ * redundant condition in the hadr top cut (okJets function) is removed
+ *
+ * Revision 1.4  2006/08/17 07:14:05  ruslan
+ * regression test reflects changes of moving parameters schema
+ *
+ * Revision 1.3  2006/04/28 10:02:24  ruslan
+ * tuple brackets are inserted for result tuples
+ *
+ * Revision 1.2  2006/03/21 19:08:40  torer
+ * Indentation + momentum variable + minagg -> some
+ * makes threeleptoncut run in less than 9 seconds
+ *
+ * Revision 1.1  2006/03/21 13:56:22  ruslan
+ * Streamed without ontology implementation is added
+ *
+ ****************************************************************************/
+
+<'formulas.basic.osql';
+
+create function aleh_access(charstring filename)-> bag of <vector v_key key, 
+	vector v> as
+select {filename,id},v
+from integer id
+where <{filename,"/ATLFAST","h51;1",id,{"Pxmiss","Pymiss","Nele","Kfele",
+	"Pxele","Pyele","Pzele","Eeele","Nmuo","Kfmuo","Pxmuo","Pymuo","Pzmuo",
+	"Eemuo","Njetb","Kfjetb","Pxjetb","Pyjetb","Pzjetb","Eejetb"}},v> 
+	= 
+	root_access_project(filename,"/ATLFAST","h51;1",{"Pxmiss","Pymiss",
+	"Nele","Kfele","Pxele","Pyele","Pzele","Eeele","Nmuo","Kfmuo","Pxmuo",
+	"Pymuo","Pzmuo","Eemuo","Njetb","Kfjetb","Pxjetb","Pyjetb","Pzjetb",
+	"Eejetb"});
+
+/********************************************************************/
+/**
+ * Event should have exactly three isolated leptons with pt above
+ * minPtOfAllThreeLeptons (7 GeV), one of them should have pt above
+ * minPtOfTheHardestLepton (20 GeV), at the same time all of them
+ * should have eta within etaRangeForAllThreeLeptons (2.4).
+ */
+
+/*
+ * TTreeCut::ThreeLeptonCut, allLeptonsWithinEtaRange and m_isolatedLeptons
+ * m_etaRangeForAllThreeLeptons: etaL
+ * m_minPtOfAllThreeLeptons: minPtL
+ */
+create function isolatedLeptons(vector lepton, parameters g) -> bag of vector 
+	as
+  select lepton
+  from vector m
+  where m = momentum(lepton) and
+        abs(eta(m))<etaL(g) and 
+        pt(m)>minPtL(g);
+
+/**
+ * minPtOfAllThreeLeptons: minPtL
+ * minPtOfTheHardestLepton: hardPtL
+ * etaRangeForAllThreeLeptons: etaL
+ */
+create function threeLeptonCut (vector vkey, vector params, parameters g) 
+		-> vector as
+  select vkey
+  where (count(select isolatedLeptons(electrons(params),g))+
+	 count(select isolatedLeptons(muons(params),g)))=3 and
+	 some(select  from real r 
+              where (r=Pt(momentum(isolatedLeptons(electrons(params),g))) or
+		     r=Pt(momentum(isolatedLeptons(muons(params),g)))) and
+                    r>hardPtL(g));
+
+/**********************************************************************/
+/**
+ * the event which has two opposite charged leptons with invariant
+ * mass closed to the Z mass should be cutted away.
+ * Differences between invariant mass of any two opposite charged
+ * leptons and m_zMass should be bigger or equal to m_minimumZMassDiff.
+ * we should look to pairs electron - positron and muon - antimuon.
+ */
+
+create function oppositeLeptons(bag leptons) -> vector of vector as
+	select {l1, l2} from vector l1, vector l2
+	where l1 = in(leptons) and 
+              l2 = in(leptons) and 
+              kf(l1)=-kf(l2);
+
+/*
+ * m_zMass: zMass
+ * m_minimumZMassDiff: minZMass
+ */
+
+create function EvInvMass(vector of vector leptons,parameters g) -> real r as
+	select r
+	where r = absInvMass((select in(leptons)),zMass(g)) and 
+	      r < minZMass(g);
+
+create function zVetoCut(vector vkey, vector params, parameters g) -> vector as
+	select vkey
+	where notany(EvInvMass(oppositeLeptons(electrons(params)),g)) and
+	      notany(EvInvMass(oppositeLeptons(muons(params)),g));
+
+
+/********************************************************************/
+/**
+ * HardTopCut
+ */
+
+/*
+ * TTreeCut::SelectOkJets, m_okJets
+ * Selects jets (with AtlfastB to) which are ok
+ * m_etaRangeForJets: etaJ
+ * m_minPtForJets: minPtJ
+ */
+
+create function okJetsHelpfunc(vector vkey, vector params, parameters g) -> 
+	bag of <vector jetb_key, vector jetb> as
+   select jetb_key, jetb 
+   where <jetb_key,jetb> =jetbs(vkey,params) and 
+	 abs(eta(momentum(jetb)))<etaJ(g) and 
+         pt(momentum(jetb))>minPtJ(g);
+
+create function okJets(vector vkey, vector params, parameters g) -> 
+	bag of <vector jetb_key, vector jetb> as
+   select jetb_key, jetb 
+   where <jetb_key,jetb> =okJetsHelpfunc(vkey,params,g)/* and
+	 atleast(3,(select okJetsHelpfunc(vkey,params,g)))*/;
+
+/*
+ * TTreeCut::SeperateBJets, m_okBJets
+ * Select b jets from jets (with AtlfastB to) of event
+ * function getPdg is Kfjetb from TTreeClass here
+ * m_theIntegerForBTaggedJet: forBJet
+ */
+
+create function bJets(vector vkey, vector params, parameters g) -> 
+	bag of <vector jetb_key, vector jetb> as
+  select jetb_key, jetb 
+  where <jetb_key,jetb> =okJets(vkey, params, g) and 
+        kf(jetb)=forBJet(g);
+
+/*
+ * TTreeCut::SeperateBJets, m_okWJets
+ * Select wJets from jets (with AtlfastB to) of event. 
+ * They are ok and not bJets.
+ */
+
+create function wJets(vector vkey, vector params, parameters g) -> 
+	bag of <vector jetb_key, vector JetB> as
+  select jetb_key, jetb 
+  where <jetb_key,jetb> =okJets(vkey, params, g) and 
+        kf(jetb)!=forBJet(g);
+
+/*
+ * TTreeCut::Select2WCombinations, m_okWComb
+ * select 2W combinations
+ * returns vectors of two wJets which satisfy invariant mass condition
+ * m_wMass: wMass
+ * m_allowedWMassDiff: allowedWMass
+ */
+
+create function wPairs(vector vkey, vector params, parameters g) -> 
+	vector of vector v as
+  select v 
+  from vector j1_key, vector j1, vector j2_key, vector j2
+  where <j1_key,j1> =wJets(vkey,params,g) and  
+        <j2_key,j2> =wJets(vkey,params,g) and 
+        j1_key[2]>j2_key[2] and v={j1,j2} and 
+	absInvMass((select in(v)),wMass(g))<allowedWMass(g); 
+
+/*
+ * TTreeCut::SelectTopCombination, m_okTopComb
+ * m_topMass: tMass
+ * m_allowedTopMassDiff: allowedTMass
+ */
+
+create function topComb(vector vkey, vector params, parameters g) -> 
+	vector of vector v as
+  select v 
+  from vector j1, vector j2, vector bj_key, vector bj
+  where v={j1,j2,bj} and 
+        {j1,j2}=wPairs(vkey,params,g) and 
+	<bj_key,bj> =bJets(vkey,params,g) and
+	absInvMass((select in(v)),tMass(g))<allowedTMass(g);
+
+/*
+ * TTreeCut::SelectTopCombination, m_theTopComb
+ * min of m_okTopComb
+ */
+
+create function mTopComb(vector vkey, vector params, parameters g) -> 
+	vector of vector v as
+  select v
+  where v=topComb(vkey,params,g) and  
+        absInvMass((select in(v)),tMass(g))=
+	                   minagg(select absInvMass((select in(vs)),tMass(g)) 
+		                  from vector of vector vs
+		                  where vs=topComb(vkey,params,g));
+
+/*
+ * TTreeCut::SelectTopCombination, m_theLeftOverJets
+ * select m_okJets which are not contained in m_theTopComb
+ */
+
+create function leftJets(vector vkey, vector params, parameters g) -> 
+	vector jetb as
+  select jetb
+  from vector jetb_key
+  where <jetb_key,jetb> =okJets(vkey,params,g) and
+	notany(select jetb 
+               where jetb=in(mTopComb(vkey,params,g)));
+
+/**
+ * Hardronic Top Cut 2 (see management file)
+ *** OBS!do not forget that it should be at least 3 ok jets
+ */
+
+create function topCut(vector vkey, vector params, parameters g) -> vector as
+  select vkey
+  where some(topComb(vkey,params,g));
+
+/**********************************************************************/
+/* Jet Veto Cut 2
+ * leftJets jetbs should have Pt not bigger then maxAllowedPtForOtherJets
+ * see Hadronic Top Cut 2
+ * m_maxAllowedPtForOtherJets: ptOJets
+ */
+
+create function jetVetoCut(vector vkey, vector params, parameters g) -> 
+	vector as
+  select vkey
+  where notany(select jetb 
+               from vector JetB
+	       where jetb=leftJets(vkey,params,g) and 
+		     Pt(momentum(jetb))>ptOJets(g));
+
+/**********************************************************************/
+/*
+ * Other cuts
+ * 1. All isolated leptons should has Pt not bigger then maxPtAll
+ * 2. Isolated lepton which has smallest Pt should have Pt not bigger
+ *    then maxPtSoft
+ * m_isolatedLeptons: isolatedLeptons(event,parameters)->leptons
+ * m_maxPtForAllThreeIsolatedLeptons: maxPtAll
+ * m_maxPtForTheSoftestIsolatedLepton: maxPtSoft
+ */
+
+create function leptonCuts(vector vkey, vector params, parameters g) -> 
+	vector as
+  select vkey
+  where notany(select el 
+               from vector el
+	       where el=isolatedLeptons(electrons(params),g) and 
+		     Pt(momentum(el))>maxPtAll(g)) and
+	notany(select mu 
+               from vector mu
+	       where mu=isolatedLeptons(muons(params),g) and 
+		     Pt(momentum(mu))>maxPtAll(g))
+	and some(select 
+                 from real r 
+		 where (r=Pt(momentum(isolatedLeptons(electrons(params),g)))or
+		        r=Pt(momentum(isolatedLeptons(muons(params),g)))) and
+                       r <= maxPtSoft(g));
+
+/*
+ * Other cuts, continue*
+ * 1. Missing traverse energy (mod(PtMiss)) should be not smaller
+ *    then minTransEe
+ * 2. Effective mass should be not bigger then maxEfMass
+ * m_minMissingTransverseEnergy: minTransEe
+ * m_maxAllowedEffectiveMass: maxEfMass
+ * ptMiss={PxMiss,PyMiss}
+ * pt31=sum(Px(isolated lepton),Py(isolated lepton))
+ */
+
+create function missEeCuts(vector vkey, vector params, parameters g) -> 
+	vector as
+  select vkey 
+  from vector ptMiss, vector pt31
+  where ptMiss={PxMiss(params),PyMiss(params)} and 
+	mod(ptMiss)>=minTransEe(g)
+	and pt31={(sum(select Px(isolatedLeptons(electrons(params),g)))+
+		   sum(select Px(isolatedLeptons(muons(params),g)))),
+		  (sum(select Py(isolatedLeptons(electrons(params),g)))+
+		   sum(select Py(isolatedLeptons(muons(params),g))))} and
+	    effectiveMass(ptMiss,pt31)<=maxEfMass(g);
+
+/*******************************************************************/
+/**
+ * All cuts together!
+ */
+
+create function allCuts(vector vkey, vector params, parameters g) -> vector as
+select vkey
+where vkey=threeLeptonCut(vkey,params,g) and vkey=zVetoCut(vkey,params,g)
+	and vkey=topCut(vkey,params,g) and vkey=jetVetoCut(vkey,params,g) and 
+	vkey=leptonCuts(vkey,params,g) and vkey=missEeCuts(vkey,params,g);
+
+/**
+ * This order of applying cuts forces the opimizer to produce more 
+ * optimal order of calling transient objects in the execution plan 
+ * than previous function allCuts.
+ */
+
+create function optAllCuts(vector vkey, vector params, parameters g) -> 
+	vector as
+select vkey
+where vkey=threeleptoncut(vkey,params,g) and vkey=leptoncuts(vkey,params,g) 
+	and vkey=misseecuts(vkey,params,g) and vkey=zvetocut(vkey,params,g) 
+	and vkey=topcut(vkey,params,g) and vkey=jetvetocut(vkey,params,g);

@@ -1,0 +1,45 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2005 Tore Risch, UDBL
+ * $RCSfile: stockholm.amosql,v $
+ * $Revision: 1.4 $ $Date: 2005/01/04 16:27:13 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Mediator wrapping relational database
+ *
+ ****************************************************************************/
+set :a = jdbc("ibds", "interbase.interclient.Driver");
+
+set :dbdir =
+ "jdbc:interbase://localhost/"+getenv("AMOS_HOME")+"/demo/scenario/";
+lisp;
+(debugging t)
+:osql
+
+connect(:a,:dbdir+"EMPLOYEE.GDB", "SYSDBA", "masterkey");
+
+import_table(:a, 'course');
+import_table(:a, 'teaches');
+import_table(:a, 'takes');
+import_table(:a, 'person');
+
+create function student?(person@ibds p)->boolean
+  as select true
+     where some(select from takes@ibds t where ssn(t)=ssn(p));
+
+create derived type student under person@ibds p where student?(p);
+
+create function student(Takes@ibds t) -> Student s
+  as select s
+     where ssn(t) = ssn(s);
+
+create function course(Takes@ibds t) -> Course@ibds c
+  as select c
+     where cid(c) = cid(t);
+
+commit;
+
+register("Stockholm");
+
+listen();

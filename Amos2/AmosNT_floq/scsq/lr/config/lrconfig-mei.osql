@@ -1,0 +1,21 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Erik Zeitler, UDBL
+ * $RCSfile: lrconfig-mei.osql,v $
+ * $Revision: 1.6 $ $Date: 2009/05/08 22:31:10 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Config file for SCSQ-LR
+ *
+ ****************************************************************************/
+
+/* Set the dumpfile to be loaded by the SP */
+
+set dumpfile() = 'lr.dmp';
+
+create function lrdatadir() -> charstring;
+set lrdatadir() = getenv("HOME") + '/data/lr';
+
+create function lroutputfiles()->charstring;
+set lroutputfiles() = '/scratch/erikz/lroutput/c';

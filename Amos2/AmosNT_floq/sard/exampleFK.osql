@@ -1,0 +1,48 @@
+set :a = jdbc("myds", "com.mysql.jdbc.Driver");
+set :dburl = "jdbc:mysql://localhost:3306/";
+
+connect(:a, :dburl + "example", "sard", "sard");
+
+sql(:a, 'drop table if exists RELATEDSERVICES');
+sql(:a, 'drop table if exists AUTHORS');
+sql(:a, 'drop table if exists authors');
+sql(:a, 'drop table if exists CUSTOMER');
+sql(:a, 'drop table if exists LIFEEVENT');
+sql(:a, 'drop table if exists BOOKS');
+sql(:a, 'drop table if exists ORDERS1');
+sql(:a, 'drop table if exists ORDER_ITEMS');
+sql(:a, 'drop table if exists FAQLISTS');
+sql(:a, 'drop table if exists BUS');
+sql(:a, 'drop table if exists CROSS_RATE');
+
+
+sql(:a, 'CREATE TABLE authors(AUTHOR_ID INTEGER NOT NULL, 
+			      name VARCHAR(50),
+			      SURNAME VARCHAR(50),
+			      constraint id_pk PRIMARY KEY(AUTHOR_ID) )');
+
+
+sql(:a, 'create table RELATEDSERVICES (EID varchar(25) not null,
+				       SERVICENR integer not null,
+				       NAME varchar(50),
+				       constraint eid_pk primary key (EID),
+				       constraint fkra FOREIGN KEY (SERVICENR) references authors(AUTHOR_ID))');
+
+
+
+
+sql(:a, "INSERT INTO AUTHORS(AUTHOR_ID,NAME, SURNAME) VALUES(1,'GREG', 'BARISH');");
+sql(:a, "INSERT INTO AUTHORS(AUTHOR_ID,NAME,SURNAME) VALUES(2,'TIMOTHY', 'BUDD');");
+
+
+sql(:a, "insert into RELATEDSERVICES  
+	(EID, SERVICENR, NAME) 
+	values
+	('ABC1234H', 1, 'Issuing a birth certificate');");
+
+sql(:a, "insert into RELATEDSERVICES  
+	(EID, SERVICENR, NAME) 
+	values
+	('ABC1234I', 2, 'Online payment');");
+
+quit;

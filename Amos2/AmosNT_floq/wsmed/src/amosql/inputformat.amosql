@@ -1,0 +1,122 @@
+/***********Lisp code ****************/
+lisp;
+(defun remove_ele(fno H R)
+  (let ((R (make-array (- (Length H) 1))))
+  (do ((I 0 (+ 1 I)))
+      ((= I (- (Length H) 1)))(seta R I (aref H (+ I 1)))(1- I))
+   (osql-result H R))) 
+
+(foreign-lispfn invalid ((charstring errmsg)(object x))
+		()
+		(error errmsg x)) 
+
+  
+
+:osql
+/***********AMOSQL code ****************/
+
+
+create type Vecele5 properties(name charstring,value vector, temprec record);
+create Vecele5 instances :vecele5;
+set value(:vecele5)={};
+set name(:vecele5)="ele5";
+set temprec(:vecele5)=make_record({});
+
+
+create function remove_ele(vector r)
+                ->vector s as foreign "remove_ele";
+			
+create function checkValue(Element e, Object o)->object v as select v from integer i where v=(value(e))[i] and v=o;
+create function findValue(Element e)->vector v as select value(e);
+
+create function checkValid(Element e, Object o)->charstring v as
+                                     begin
+                                       if (findValue(e)!={}) then
+                                         if checkValue(e,o) then
+                                             return "true"
+                                         else
+                                           begin       
+                                            set v=stringify(o)+" should take one of the value from "+stringify(findValue(e));
+                                            invalid(v,o);
+                                           end;
+                                     end;
+	 
+create function iterate2(vector r, vector inele)-> record rs
+		as 
+		begin
+		set value(ve5)=inele from Vecele5 ve5 where name(ve5)='ele5';
+		
+		for each Element p, Vecele5 ve5 where p=in(r)  and name(ve5)="ele5"
+		  begin
+			if subelements(p)then 
+				begin
+				  set temprec(ve5)=iterate2(subelements(p),value(ve5));
+				  if rs=nil then
+			        	set rs= make_record({name(p),temprec(ve5)})
+			          else
+				      set rs= put_record(rs,name(p),temprec(ve5));
+				end
+			else
+			  begin
+                             checkValid(p,value(ve5)[0]);
+			    if rs=nil then
+				set rs= make_record({name(p),value(ve5)[0]})
+			   else	
+			     set rs = put_record(rs,name(p),value(ve5)[0]);
+			   
+                           set value(ve5)=remove_ele(value(ve5));
+			  end;
+		 end;
+	        if  rs=nil then
+			set rs=make_record({});
+		return rs;
+			
+		end;
+
+create function inputiterate(Operation op, vector inele)-> record rs 
+		as 
+		begin
+		 set value(ve5)=inele from Vecele5 ve5 where name(ve5)='ele5';
+		 
+		
+		  for each Element p,Vecele5 ve5  where p=in(input(op))and  name(ve5)='ele5'
+		   begin
+			if subelements(p)then 
+			 begin
+			   set temprec(ve5)=iterate2(subelements(p),value(ve5)); 
+			   if rs=nil then
+				set rs= make_record({name(p),temprec(ve5)})
+			   else
+			    set rs= put_record(rs,name(p),temprec(ve5));
+			 end
+		       else
+			 begin
+                           checkValid(p,value(ve5)[0]);
+			   if rs=nil then
+				set rs= make_record({name(p),value(ve5)[0]})
+			   else	
+		               set rs= put_record(rs,name(p),value(ve5)[0]);
+
+			   if (value(ve5)!={}) then
+			 	set value(ve5)=remove_ele(value(ve5));
+			end
+		   end;
+		   if  rs=nil then
+			set rs=make_record({});
+		   	
+		   return rs;
+		  set value(ve5)=make_record({}) from Vecele5 ve5 where name(ve5)="ele5";							 	
+	       end;
+
+
+create function decode(Operation op,vector inele)
+                ->record rs as
+begin
+   set rs =inputiterate(op,inele);
+   return rs;
+end;
+
+
+
+                                               
+                                                   

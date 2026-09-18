@@ -1,0 +1,136 @@
+ /*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Silvia Stefanova, UDBL
+ * 
+ * Description: SWATM regression test for the eGovBus Demo. 
+ *					The Moving House Life Event. 
+ *
+ * 
+ ******************************************************************************/
+
+
+importTopicMap("http://user.it.uu.se/~udbl/software/swatm/egov_demo.xtm");
+
+
+/*Example Query 1.1:*/
+/*Select the list of all the countries in English for the "Moving House" Life Event.*/
+
+
+set :q1= "SELECT DISTINCT ?bs1
+      	     FROM <http://user.it.uu.se/~udbl/software/swatm/egov_demo.xtm>
+      	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt1.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> ?bs1.
+		    ?t1 <http://udbl2.it.uu.se/swatm#INSTANCEOFTOPIC> ?t2.
+		    ?t2 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt2.
+		    ?bnt2 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> 'Country'.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm#SCOPEBASENAME> ?t3.
+		    ?t3 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt3.
+                    ?bnt3 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> 'English'.}";
+
+/*Example Query 1.2*/
+/*Select all the passport types written in English for the "Moving House" Life Event*/
+
+set :q2= "SELECT DISTINCT ?bs1
+      	     FROM <http://user.it.uu.se/~udbl/software/swatm/egov_demo.xtm>
+      	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt1.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> ?bs1.
+		    ?t1 <http://udbl2.it.uu.se/swatm#INSTANCEOFTOPIC> ?t2.
+		    ?t2 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt2.
+		    ?bnt2 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> 'Passport type'.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm#SCOPEBASENAME> ?t3.
+		    ?t3 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt3.
+                    ?bnt3 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> 'English'.}";
+
+/*Example Query 2.1*/
+/*Select the list of local authorities*/
+
+set :q3= "SELECT ?bs1
+      	     FROM <http://user.it.uu.se/~udbl/software/swatm/egov_demo.xtm>
+      	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt1.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> ?bs1.
+		    ?t1 <http://udbl2.it.uu.se/swatm#INSTANCEOFTOPIC> ?t2.
+		    ?t2 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt2.
+		    ?bnt2 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> 'Local authority'.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm#SCOPEBASENAME> ?t3.
+		    ?t3 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt3.
+                    ?bnt3 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> 'Display'.}";
+
+
+set :q32= "SELECT ?bs1
+      	     FROM <http://user.it.uu.se/~udbl/software/swatm/egov_demo.xtm>
+      	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt1.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> ?bs1.
+		    ?t1 <http://udbl2.it.uu.se/swatm#INSTANCEOFTOPIC> ?t2.
+		    ?t2 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt2.
+		    ?bnt2 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> 'Local authority'.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm#SCOPEBASENAME> ?t3.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm#SCOPEBASENAME> ?t4.
+		    ?t3 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt3.
+                    ?bnt3 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> 'Display'.
+		    ?t4 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt4.
+                    ?bnt4 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> 'Polish'.}";
+
+/*Example Query 2.2*/
+/*Select the list of the representatives of employees from local authorities*/
+
+set :q4= "SELECT ?bs1
+      	     FROM <http://user.it.uu.se/~udbl/software/swatm/egov_demo.xtm>
+      	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt1.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> ?bs1.
+		    ?t1 <http://udbl2.it.uu.se/swatm#INSTANCEOFTOPIC> ?t2.
+		    ?t2 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt2.
+		    ?bnt2 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> 'Representatives of local authorities'.}";
+
+
+
+select distinct baseNameString(baseNameTopic(t3)), baseNameString(baseNameTopic(t4)) from topic t1, topic t2, topic t3, topic t4, topic t5, baseName b1 where baseNameString(baseNameTopic(t1))='Local authority' and baseNameString(baseNameTopic(t2))='Representatives of local authorities' and instanceOfTopic(t3)=t1 and instanceOfTopic(t4)=t2 and scopeBaseName(b1)=t5 and baseNameTopic(t1)=b1 and baseNameString(baseNameTopic(t5))='Display';
+
+
+set :q34= "SELECT ?bs1 ?bs4
+      	     FROM <http://user.it.uu.se/~udbl/software/swatm/egov_demo.xtm>
+      	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt1.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> ?bs1.
+		    ?t1 <http://udbl2.it.uu.se/swatm#INSTANCEOFTOPIC> ?t2.
+		    ?t2 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt2.
+		    ?bnt2 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> 'Local authority'.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm#SCOPEBASENAME> ?t3.
+		    ?t3 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt3.
+                    ?bnt3 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> 'Display'.
+		    ?t4 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt4.
+		    ?bnt4 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> ?bs4.
+		    ?t4 <http://udbl2.it.uu.se/swatm#INSTANCEOFTOPIC> ?t5.
+		    ?t5 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt5.
+		    ?bnt5 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> 'Representatives of local authorities'.}";
+
+
+
+
+
+
+
+
+
+/* Returns the users*/
+set :q111= "SELECT DISTINCT ?bn1
+      	     FROM <http://user.it.uu.se/~udbl/software/swatm/egov_demo.xtm>
+      	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm#OCCURRENCETOPIC> ?ot1.
+		    ?ot1 <http://udbl2.it.uu.se/swatm#INSTANCEOFOCCURRENCE> ?iof1.
+		    ?iof1 <http://udbl2.it.uu.se/swatm#IDTOPIC> 'systemId3771'.
+		    ?t1 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt1.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> ?bn1. }";
+
+
+
+set :q2= "SELECT DISTINCT ?bn1
+      	     FROM <http://user.it.uu.se/~udbl/software/swatm/egov_demo.xtm>
+      	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm#OCCURRENCETOPIC> ?ot1.
+		    ?ot1 <http://udbl2.it.uu.se/swatm#INSTANCEOFOCCURRENCE> ?iof1.
+		    ?iof1 <http://udbl2.it.uu.se/swatm#IDTOPIC> 'systemId29347'.
+		    ?t1 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt1.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> ?bn1.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm#SCOPEBASENAME> ?t3.
+		    ?t3 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt3.
+                    ?bnt3 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> 'English'.}"; 
+
+

@@ -1,0 +1,119 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Cheng Xu, Tore Risch, UDBL
+ * $RCSfile: HagglundsWrapper.osql,v $
+ * $Revision: 1.1 $ $Date: 2012/12/18 17:35:00 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Hagglunds wrapper
+ *
+ ****************************************************************************
+ * $Log: HagglundsWrapper.osql,v $
+ * Revision 1.1  2012/12/18 17:35:00  chexu484
+ * hagglunds validation
+ *
+ * Revision 1.1  2012/10/24 17:15:28  chexu484
+ * hagglunds model and validate now works
+ * record is used instead of vector
+ *
+ * Revision 1.1  2006/02/12 20:01:08  torer
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+
+load_lisp('../../logdir/src/lisp/logdir.lsp');
+
+<'../../logdir/src/amosql/logdir.osql';
+
+<'../../logdir/hlund/hlund.osql';
+
+load_lisp('../../logdir/hlund/hlund.lsp');
+
+load_lisp('../../logdir/hlund/dgen.lsp');
+
+load_lisp("multi_variable.lsp");
+
+create type HagglundsStream under RawDataStream
+   properties (hlundid Charstring key,
+	       logdirname Charstring);
+
+create function variables(Logdirectory dir) -> Vector of Charstring
+  as stored;
+
+create function theHagglundsStream(Charstring hlundid) -> HagglundsStream
+  as select s from HagglundsStream s where hlundid(s) = hlundid;
+
+create function hagglunds_stream(Logdirectory dir) -> Stream of Vector
+  /* retrieve stream of (timestamp, variablename, value) from logdir */
+  as streamof(select {timestamp(e), variable(e), value(e)}
+              from Logevent e
+              where e in simlogeventstream(dir));
+
+create function hagglunds_records0(Stream s, Vector of Charstring variables)
+                                                             -> Bag of Record
+  as foreign 'hagglunds-rtuples--+';
+
+create function hagglunds_records(Logdirectory dir) -> Stream of Record
+  /* return stream of records w.r.t. the logdir */
+  as streamof(hagglunds_records0(hagglunds_stream(dir), variables(dir)));
+
+create function streamTuples(HagglundsStream hs) -> Stream of Record
+  /* The Jason Stream from HagglundsStream hs */
+  as hagglunds_records(dirnamed(logdirname(hs)));
+
+create function th(HagglundsStream s) -> Number as stored;
+
+
+/* the following functions are commented, it is essentially the
+   same as hagglunds_records but returns vectors instead of records
+create function hagglunds_tuples0(Stream s, Vector of Charstring variables)
+                                                             -> Bag of Vector
+as foreign 'hagglunds-vtuples--+';
+
+create function hagglunds_tuples(Logdirectory dir) -> Stream of Vector
+       as streamof(hagglunds_tuples0(hagglunds_stream(dir), variables(dir))); */
+
+/*
+try:
+
+in(heartbeat(hagglunds_stream(dirnamed('dir1')), 0.5));
+
+in(heartbeat(hagglunds_tuples(dirnamed('dir1')), 0.5));
+
+in(heartbeat(hagglunds_records(dirnamed('dir1')), 0.5));
+
+*/
+
+
+/*
+
+create function value(Logdirectory dir, Vector tpl, Charstring var) -> Number
+  as select cast(tpl[idx] as Number)
+  from Integer idx
+  where variables(dir)[idx] = var
+  and tpl[idx] > -1;
+
+create function timestamp(Vector of Number tpl) -> Number as tpl[0];
+
+create function value_stream(Logdirectory dir, Charstring var) -> Stream of Number
+as streamof(select value(dir, tpl, var)
+from Vector of Number tpl
+where tpl in hagglunds_tuples(dir));
+
+
+
+set :s = hagglunds_tuples(hagglunds_stream("d2"), variables(dirnamed("d2")));
+
+in(:s);
+
+
+
+in(heartbeat(:s, 1));
+
+set :variables = (vselect distinct(v[1]) from vector v where v in :s);
+
+:variables;
+
+in(hagglunds_tuple(:s, :variables));
+*/

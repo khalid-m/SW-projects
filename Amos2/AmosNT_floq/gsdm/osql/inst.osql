@@ -1,0 +1,203 @@
+/*****************************************************************************
+ * AMOS2 - GSDM
+ *
+ * Author: (c) 2005 Milena Ivanova, UDBL
+ * $RCSfile: inst.osql,v $
+ * $Revision: 1.9 $ $Date: 2006/01/20 17:53:55 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Dataflow instalation, activation, deactivation 
+ ****************************************************************************/
+
+/* If a stream is recorded, the gsdm node need to load the file with test data: source(s)="TEST256"-> file "/gsdm/test2048.osql" */
+
+
+create function load_recorded_stream_togsdm(charstring gsdmname,
+		charstring streamname) -> boolean
+as begin
+	ship(gsdmname,"load_recorded_stream('" + streamname + "');");
+end;
+
+/**** Setting global dataflow parameters ***********/
+
+/* turn+rep on first, greedy on others*/
+create function set_turn_around(dataflow d,real r)-> boolean
+as begin
+	set_turn_around(id(get_first_site(d)),r); 
+	set_rep(id(get_first_site(d)),1); 
+end;
+
+create function set_wn_globals(dataflow d) -> boolean
+as begin
+	declare integer mcnt, integer im, real turn;
+
+	if image_size(d) then set im=image_size(d)
+	else set im = 200;
+	if turn_around(d) then set turn=turn_around(d)
+	else set turn = 0.1;
+
+	set_globals(d,im);
+	set_turn_around(d,turn);
+	prof(d);
+end;
+
+create function install_stream (mstream s)-> boolean
+as begin
+	declare charstring stmt;
+
+	/* install only if the stream is not installed */
+	if installed(s)=0 then
+	begin
+		set stmt= concat("register_stream('", stype(s));
+		set stmt = stmt + "','" + name(s) + "','" + source(s);
+		set stmt = stmt + "','" + dest(s) + "','"
+			 + kind(s)+ "');";
+		ship(id(assigned_to(s)), stmt);
+		set installed(s)=1;
+
+	if kind(s)="PLAY" then
+		load_recorded_stream_togsdm(id(assigned_to(s)),
+			source(s));
+	end;
+
+end;
+
+
+/* encoding of node stream args*/
+create function str_argss(node op)->charstring s
+as begin
+	declare charstring s, vector sargs,
+	integer n, integer n1;
+	set sargs=input_streams(op);
+	set n=count(sargs);
+	set n1 = n-2;
+
+	set s= "vector of charstring('";
+	for each integer i where i=iota(0,n1)
+	set s=s+name(cast(sargs[i] as mstream))+"','";
+	set n1=n-1;
+	set s=s+name(cast(sargs[n1] as mstream))+"')";
+
+	result s;
+end;
+
+create function argtostring(object arg)->charstring s
+as select cast (arg as charstring);
+
+create function argtostring(charstring arg)->charstring s
+as select "'"+ arg + "'";
+
+/* encoding of operator args*/
+create function argss(node op)->charstring s
+as begin
+	declare charstring s, vector args,
+	integer n, integer n1;
+
+	set args=params(op);
+	set n=count(args);
+	set n1 = n-2;
+
+	if n=0 then set s= "{}"
+	else begin
+		set s= "vector(";
+		for each integer i where i=iota(0,n1)
+		set s=s+argtostring(args[i])+",";
+		set n1=n-1;
+		set s=s+argtostring(args[n1])+")";
+		end;
+	result s;
+end;
+
+create function install_node (node op)-> boolean
+as begin
+	declare charstring stmt;
+
+	set stmt= concat("register_operator('", id(op));
+	set stmt = stmt + "','" + fn(op);
+	set stmt = stmt + "'," + str_argss(op) + "," + argss(op) + ");";
+
+	ship(id(assigned_to(op)), stmt);
+
+end;
+
+
+create function install_node_and_streams(node q)-> boolean
+as begin
+	for each mstream s
+	where s= in(input_streams(q)) 
+	  install_stream(s);
+	
+	install_node(q);
+	
+	for each mstream s
+	where s=result_streams(q)
+	  install_stream(s);
+end;
+
+/* For each site, for each node at it
+-install input streams
+-install node(SQF)
+-install result streams
+*/
+
+create function install_dataflow(dataflow d) -> boolean
+as begin
+
+	declare charstring wn,
+	integer maxlev,
+	integer minlev;
+
+	if installed(d)=0 then
+	begin
+	   for each site g
+	   where g= sites(d)
+	   begin	
+	      set maxlev= maxagg(select level(q)
+		 from node q 
+		 where q=nodes(d) and assigned_to(q)=g);
+	      set minlev= minagg(select level(q)
+		 from node q 
+		 where q=nodes(d) and assigned_to(q)=g);
+
+	     for each integer l
+	     where l = iota(minlev,maxlev)
+	     begin
+		for each node q
+		where level(q) = l and q=nodes(d) and assigned_to(q)=g
+		  install_node_and_streams(q);
+	     end;
+	   end;
+	   set installed(d)=1;
+	end;
+	set_wn_globals(d);
+	for each node op	
+	where op=nodes(d)
+	   set_stop(id(op),"NON",0,id(assigned_to(op)));
+end;
+
+create function install_dataflow(dataflow d,charstring cond, number val)
+	 -> boolean
+as begin
+	install_dataflow(d);
+	for each node op	
+	   where op=input_points(d)
+	   set_stop(id(op),cond,val,id(assigned_to(op)));
+end;
+
+
+create function activate_operator(node q)-> integer
+as begin
+	declare charstring stmt, vector v;
+
+	set stmt = "activate_query('"  +  id(q) + "');";
+	set v=ship(id(assigned_to(q)), stmt);
+	result v[0];
+end;
+
+create function stop(dataflow d) -> boolean
+as begin
+	for each node op	
+	where op=input_points(d)
+	stop(id(op), id(assigned_to(op)));
+end;
+

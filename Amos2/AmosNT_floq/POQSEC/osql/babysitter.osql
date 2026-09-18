@@ -1,0 +1,76 @@
+/*****************************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2005 Ruslan Fomkin, UDBL
+ * $RCSfile: babysitter.osql,v $
+ * $Revision: 1.11 $ $Date: 2005/08/09 14:30:04 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  
+ *
+ ****************************************************************************/
+<'general.osql';
+load_lisp("../lsp/babysitter.lsp");
+
+create function newsubmission(charstring db) -> vector as
+begin
+	for each object j, charstring xrsl, charstring sitename
+	where {j,xrsl,sitename}=ship(db,"select j,xrslfile(j),
+			nickname(cluster(j)) 
+			from job j where status(j)=\"NEW\";")
+	begin
+/*		if (sitename="NorduGrid")
+		then */ 
+			tosystem("ngsub -f "+xrsl+" > submit.dat");
+/*		else if (sitename="swegrid")
+		then tosystem("ngsub -f "+xrsl+" -C "+site+" > submit.dat")
+		else tosystem("ngsub -f "+xrsl+" -c "+site+" > submit.dat");*/
+		result ship(db,"ngsubmit_c(#[OID "+itoa(getidno(j))+"]);");
+	end;
+/*	for each object j, charstring xrsl
+	where {j,xrsl}=ship(db,"select j,xrslfile(j) 
+			from job j where status(j)=\"NEW\" and notany(cluster(j));")
+	begin
+		tosystem("ngsub -f "+xrsl+" > submit.dat");
+		result ship(db,"ngsubmit_c(#[OID "+itoa(getidno(j))+"]);");
+	end;*/
+end;
+
+create function checkandget(charstring db) -> vector as
+begin
+	tosystem("ngstat -a > status.dat");
+	if ship(db,"updatestatus(\"status.dat\");")
+	then for each object j, charstring name
+		where {j,name}=ship(db,"select j, name(j) from job j
+				where status(j)=\"FINISHED\";")
+		begin
+			tosystem("ngget "+name+" > result.dat");
+			result ship(db,"ngget_c(#[OID "+itoa(getidno(j))+"]);");
+			ship(db,"getResultValue(#[OID "+itoa(getidno(j))+"]);");
+/*			tosystem("rm result.dat");*/
+		end;
+	result ship(db,"updatecompleted();");
+end;
+
+create function run(charstring db) -> boolean as foreign "run-babysitter";
+
+/*
+create function run(charstring db, charstring peer, integer t) -> boolean as
+begin
+	register(peer);
+	for each integer i where i=iota(0,t)
+	begin
+		print("current: "+itoa(i)+" of "+itoa(t));
+		newsubmission(db);
+		tosystem("sleep 20");
+		newsubmission(db);
+		tosystem("sleep 20");
+		newsubmission(db);
+		tosystem("sleep 20");
+		newsubmission(db);
+		tosystem("sleep 20");
+		checkandget(db);
+	end;
+end;
+*/

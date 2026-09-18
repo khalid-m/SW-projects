@@ -1,0 +1,9 @@
+# Graph: http://example/bookStore2
+@prefix dc: <http://purl.org/dc/elements/1.1/> .
+@prefix dcmitype: <http://purl.org/dc/dcmitype/> .
+
+<http://example/book1> dc:title "Fundamentals of Compiler Design" .
+<http://example/book1> dc:date "1996-01-01T00:00:00-02:00"^^xsd:dateTime .
+<http://example/book1> a dcmitype:PhysicalObject .
+
+<http://example/book4> dc:title "SPARQL 1.0 Tutorial" .

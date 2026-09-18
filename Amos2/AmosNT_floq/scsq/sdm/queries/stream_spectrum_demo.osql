@@ -1,0 +1,42 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2009 Gyozo Gidofalvi, UDBL
+ * $RCSfile: stream_spectrum_demo.osql,v $
+ * $Revision: 1.1 $ $Date: 2009/05/09 06:18:34 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Demonstration of functions and queries that 
+ * perform basic spectrum analysis / monitoring of number 
+ * streams. 
+ *
+ ****************************************************************************
+ * $Log: stream_spectrum_demo.osql,v $
+ * Revision 1.1  2009/05/09 06:18:34  gyogi445
+ * Updated stream_transducer code, vectorized stream aggregators, spectrum monitoring
+ *
+ * Revision 1.1  2009/05/06 20:01:08  gyogi445
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+ 
+/* Query to monitor the spectrum of a random stream */
+(in(smonitor(srfft(nrrandstream(10*1024), 1024, 64), 3)));
+
+/* Query to monitor the spectrum of a number stream 
+   in a given column of a file (Number is cast as Real) */ 
+select in(smonitor(ss, 0))
+from Stream of Vector of Number ss, Stream of Number s
+where ss = srfft(s, 1024, 64)
+  and s = streamColFromFile("C:/data/iStreams/HPMN4.out", 6); 
+
+/* Query to monitor the spectrum of a number stream 
+   in a given column of a file (Number is cast as Real) */ 
+select alert
+from Vector of Vector of Number alert, 
+     Stream of Vector of Number ss, 
+     Stream of Number s
+where alert = in(sspectrummonitor(s, 1024, 64, 3))
+  and s = streamColFromFile("C:/data/iStreams/HPMN4.out", 6);
+
+ 

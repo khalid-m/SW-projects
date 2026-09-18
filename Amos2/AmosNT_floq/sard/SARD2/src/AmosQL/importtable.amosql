@@ -1,0 +1,162 @@
+/******************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Silvia Stefanova, UDBL
+ * $RCSfile: importtable.amosql,v $
+ * $Revision: 1.1 $ $Date: 2013/08/09 14:18:16 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Predifinition of some system functions to use the foreign 
+function sql_nil which allows processing of the SQL NILL values
+ *****************************************************************************/
+
+lisp;
+
+(defun create-specialized-query-fn (ds env sqlq)
+  (let* ((inparams  (get-parameters (sqlquery-input sqlq) env))
+	 (outparams (get-parameters (sqlquery-output sqlq) env))
+	 (invars    (sqlquery-input sqlq))
+	 (query     (get-sql-string sqlq))
+	 (body      `(sql_nil , ds , query (vector ,@ invars))))
+    (create-specialized-query-fn1 inparams outparams body)))
+
+
+(defun create-specialized-query-fn1(inparams outparams body)
+  (let ((arity (length outparams))
+	vrefs)
+    (dotimes (i arity)(push `(vref v , (- arity (1+ i))) vrefs))
+    (createfunction '*transient* inparams outparams vrefs 
+		    '((vector v)) `(= v , body))))
+
+(defun setup-sard-cache()
+
+  (defglobal _specialized-query-cache_ (make-hash-table :test (function equal)))
+  (memo '_specialized-query-cache_ 'create-specialized-query-fn1 '(inparams outparams body))
+
+  (defglobal _source-columns-cache_ (make-hash-table :test (function equal)))
+  (memo '_source-columns-cache_ 'get-columns '(ds table))
+  )
+
+(defun import-table-new (ds catalog schema table mtname updateable supertypes)
+  (let* ((columns (get-columns-amos-typed ds table 'noerror))
+	 (keycols (get-key-columns-amos-typed ds catalog schema table))
+	 (cc-fno  (create-relational-core-cluster-fn-new
+		   ds table columns keycols mtname))
+	 (cc-name (generic-fnname cc-fno))
+	 mt)
+    (add-rewriter cc-fno (buildn (length columns) '+) 'rewrite-extent)
+    (setq mt (create-mapped-type mtname 
+				 supertypes
+				 (cons '(integer _ident_) columns )
+				 '((integer _ident_))
+				 cc-name))
+    (add-amos-type    ds :wrapped table :amos mt)
+    (add-wrapped-type ds :wrapped table :amos mt)
+    (if updateable (create-keyed-update-fns ds mt columns keycols))
+    (if updateable
+	(set-constructor mt (create-sql-constructor ds mt))
+      (forbid-constructor mt "This mapped type is read-only"))
+    mt))
+
+(defun create-relational-core-cluster-fn-new (ds table columns keys relation-name)
+  (let*	((width        (length columns))
+	 (name         (concat (make-core-cluster-fn-name relation-name)))
+	 (fullname     (concat name (packlist (buildn width '+))))
+	 (column-names (mapcar #'second columns))
+	 (fbunch       (make-string (1+ width) "f"))
+	 (fno          (createfunction 
+			name
+					; the arguments; none
+			nil
+					; its result types
+			(cons '(integer _ident_ key) columns)
+					; RESV
+			'multidirectional
+					; QUANT
+			`(( , fbunch foreign , fullname))
+					; PRED, whatever that is
+			nil)))
+
+    (addfunction 'absorbability (list ds) (list fno))
+    (addfunction 'queryinfo_updater (list (arg-type ds) fno) 
+	                           (list "relational-translate-core-cluster"))
+	 
+    (defc (mksymbol fullname) 
+      `(lambda , (cons 'fno column-names)
+	 (let ((no 0))
+	   (dolist 
+	       (result
+		(getfunction 
+		 'sql_nil 
+		 '( , ds , (concat "select "
+				   (concatl column-names","(function id))
+				   " from "table))))
+	     (apply (function osql-result) (cons no (arraytolist (first result))))
+	     (1++ no)))))
+    ;; This is something that should be on all mapped types of type 
+    ;; relational.
+    (/putobject fno 'tablename table)
+    ;; Remember that the ds object holds the connection. It must be 
+    ;; present on a core-cluster function. These props *should* be put on the 
+    ;; generic function but the translator API cannot assume that every extent
+    ;; function has a generic function.
+    (addfunction 'datasource (list fno) (list ds))
+
+    fno))
+
+(defun import_table_new-------+ (fno ds catalog-name schema-name table-name 
+				 type-name updateable supertypes mtp)
+  (let ((mt (import-table-new ds 
+			  (convert catalog-name)
+			  (convert schema-name)
+			  (convert table-name)
+			  (or (convert type-name) 
+			      (make-mapped-typename ds table-name))
+			  (convert updateable)
+			  (mapcar #'gettypenamed (convert supertypes)))))
+    (osql-result ds catalog-name schema-name table-name
+		 type-name updateable supertypes mt)))
+
+
+:osql
+
+create function import_tableRDB(relational r,
+		             charstring catalog_name,
+		             charstring schema_name,
+		             charstring table_name,
+			     charstring typename, 
+	           	     boolean updateable,
+                             vector supertypes) -> mappedtype mt
+as foreign 'import_table_new-------+';
+
+
+create function import_tableRDB(relational r, 
+			     charstring table_name, 
+			     boolean updateable)
+  -> mappedtype mt
+as
+select import_tableRDB(r, '', '', table_name, '', updateable, {});
+
+
+
+create function import_tableRDB(relational r, charstring table_name)
+  -> mappedtype mt
+as select import_tableRDB(r, table_name, false);
+
+
+
+/* Returns a scan of the columns in the database. table_name_pattern may 
+ * include '%' signs as wildcards.
+ */
+create function columns4(relational r, charstring schema_pattern,
+			charstring table_name_pattern, 
+ 			charstring column_name_pattern)
+  -> <charstring column_type, charstring column_name, integer column_size,  Charstring allowed_nulls>
+as foreign 'abstract-function';
+
+/* Returns a scan all columns in the database where table_name_pattern matches. 
+ * table_name_pattern may include '%' signs as wildcards.
+ */
+create function columns4(relational r, charstring table_name_pattern) 
+  -> <charstring column_type, charstring column_name, integer column_size,  Charstring allowed_nulls>
+as select columns4(r, '%', table_name_pattern, '%');

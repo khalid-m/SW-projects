@@ -1,0 +1,1 @@
+javaamos photoAlbum.osql -o "save 'photoAlbum.dmp'; quit;"

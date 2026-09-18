@@ -1,0 +1,217 @@
+create function db_ontology() -> charstring as stored;
+create function db_name() -> charstring as stored;
+create function db_new_name()-> charstring as stored;/*Get all the tables from the relational database*/
+create function table_name_down(jdbc jd) -> Charstring tname
+ as
+	select t_name from charstring t_name, charstring c2, charstring c3, charstring c4 
+	where tables(jd)=<t_name,c2,c3,c4> and c4="TABLE";
+
+
+create function f_map(Charstring upv, Charstring tname ) -> Boolean
+/*Mapping if there are FKs in the table*/
+as begin
+	for each Charstring c_name, Charstring f_cname, Charstring f_tname
+	  where <f_tname, f_cname, c_name> = imported_keys(jdbcofds(dsofupv(upv)), tname)
+	begin
+	  set rMap(tname, c_name, f_tname, upv)= db_ontology()+db_name()+ "/"+tname+ "#" +tname+ "_"+ f_tname ;
+	end;
+   end;
+
+create function table_map(Charstring upv) -> Boolean
+as begin
+ for each Charstring t_name where t_name=table_name_down(jdbcofds(dsofupv(upv)))
+	begin
+      		assignClassId(t_name, upv, db_ontology()+db_name()+"/" + t_name);
+		f_map(upv, t_name);
+	end;
+ end; 
+
+
+/*Get the columns info*/
+
+create function column_info_down(jdbc jd) -> <Charstring typ, Charstring column_name, Charstring t_name>
+as
+	select typ, column_name, t_name from Charstring typ, Charstring column_name, Charstring t_name
+	where columns(jd, t_name)=<typ,column_name> and table_name_down(jd)=t_name; 
+
+
+/*
+create function column_map(Charstring upv) -> Boolean
+as begin
+     for each Charstring typ, Charstring c_name, Charstring t_name 
+         where <typ, c_name, t_name> = column_info_down(jdbcofds(dsofupv(upv)))
+	begin
+      	 assignPropId(t_name, c_name, upv, db_ontology()+ db_name() + "/" + t_name + "#" + c_name); 
+	end;
+   end;
+*/
+
+
+
+create function column_map(Charstring upv) -> Boolean
+as begin
+     for each Charstring typ, Charstring c_name, Charstring t_name 
+         where <typ, c_name, t_name> = column_info_down(jdbcofds(dsofupv(upv)))
+	begin
+      set pMap(t_name, c_name, upv) = 
+          db_ontology()+db_name()+"/" + t_name + "#" + c_name;
+	end;
+   end;
+
+
+
+
+create function rdfsclassdef()->charstring as stored;
+set rdfsclassdef()="<rdf:type resource='http://www.w3.org/2000/01/rdf-schema#Class'/>";
+
+create function rdfspropertydef()->charstring as stored;
+set rdfspropertydef()="<rdf:type resource='http://www.w3.org/1999/02/22-rdf-syntax-ns#Property'/>";
+
+create function rdfsdomaindef()->charstring as stored;
+set rdfsdomaindef()="http://www.w3.org/2000/01/rdf-schema#domain";
+
+/*create function rdfsrangedef()->charstring as stored;*/
+
+create function rdfsrangedef(charstring propuri)->charstring as stored;
+/*set rdfsrangedef()="<rdfs:range rdf:resource='http://www.w3.org/2000/01/rdf-schema#string'/>";*/
+
+create function close_descr()->charstring as stored;
+set close_descr()="</rdf:Description>";
+
+create function header()->charstring as stored;
+
+create function generate_header(charstring dbname,charstring ont)->charstring as begin
+set header()= 
+  "<rdf:RDF xml:lang='en'
+   xml:base='"+db_ontology()+db_name()+"#'
+   xmlns:rdf='http://www.w3.org/1999/02/22-rdf-syntax-ns#'
+   xmlns:xsd='http://www.w3.org/2001/XMLSchema'
+   xmlns:rdfs='http://www.w3.org/2000/01/rdf-schema#'>";
+end;
+
+
+create function footer()->charstring as stored;
+set footer()="</rdf:RDF>";
+
+
+create function get_classURI(Charstring upv) -> charstring classxml
+/*Extracts the URIs of all classes (tables) from the triplles amount*/
+as 
+	select s 
+	from charstring s, charstring p,charstring o 
+	where call_function("S"+upv+"->CHARSTRING.CHARSTRING.CHARSTRING",{})={s,p,o} and like(o, "*Class");
+
+/*o= 'http://www.w3.org/2000/01/rdf-schema#Class';*/
+
+
+
+
+/*create function get_classURI(Charstring upv) -> charstring classxml
+as 
+	select s 
+	from charstring s, charstring p,charstring o 
+	where SchemaView(upv)=<s,p,o> and like(o, "*Class");
+
+*/
+
+create function get_propURI(Charstring upv) -> charstring propxml
+/*Extracts the URIs of all properties (columns) from the triplles amount*/
+as 
+	select s 
+	from charstring s, charstring p,charstring o 
+	where call_function("S" + upv + "->CHARSTRING.CHARSTRING.CHARSTRING",{}) = {s,p,o} and 
+              o = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property';
+
+create function get_classpropURI(Charstring classuri,Charstring upv) -> charstring propxml
+/*Extracts the URIs of all properties that have as a domain classuri*/
+as 
+	select s 
+	from charstring s, charstring p,charstring o 
+	where call_function("S"+upv+"->CHARSTRING.CHARSTRING.CHARSTRING",{})={s,p,o} and p=rdfsdomaindef() and  o = classuri ;
+
+
+create function xmlDc(charstring classuri) -> charstring as stored;
+create function generate_xmlDc(charstring classuri) -> charstring
+as
+ set xmlDc(classuri) = "<rdf:Description ID="+"'"+substring(classuri,char_length(db_ontology())+1+char_length(db_name()),char_length(classuri))+ "'" + ">"; 
+
+create function xmlDp(charstring propuri) -> charstring as stored;
+
+/*create function generate_xmlDp(jdbc jd, charstring propuri) -> charstring
+as begin
+for each charstring typ, charstring col, charstring t_name where 
+ column_info_down(jd) = <typ, col,t_name> and substring(propuri,char_length(db_ontology())+1+char_length(db_name()),char_length(propuri)-char_length(col)-2)=t_name 
+   set xmlDp(propuri) = "<rdf:Description ID="+"'"+substring(propuri,char_length(db_ontology())+2+char_length(db_name())+char_length(t_name),char_length(propuri))+"'" + ">";
+end;*/
+
+create function generate_xmlDp(charstring propuri, charstring classuri) -> charstring
+    as set xmlDp(propuri) = "<rdf:Description ID="+"'"+substring(propuri,char_length(classuri)+1,char_length(propuri))+"'" + ">";
+ 
+ 
+
+create function printxmll(bag x)->boolean
+as begin 
+     for each object o where o in x print(o);
+ end; 
+
+
+
+create function generate_rangeforstr(jdbc jd, charstring propuri) -> charstring
+as begin
+  for each charstring typ, charstring col, charstring t_name where 
+   column_info_down(jd) = <typ, col,t_name> and like(propuri,"*"+t_name+"*") and like(propuri,"*"+col)
+	if typ = "VARCHAR" then set rdfsrangedef(propuri)="<rdfs:range rdf:resource='xsd:string'/>" 
+      else if typ = "FLOAT" then set rdfsrangedef(propuri)="<rdfs:range rdf:resource='xsd:float'/>"
+	else if typ = "DATE" then set rdfsrangedef(propuri)="<rdfs:range rdf:resource='xsd:date'/>"
+	else if typ = "INTEGER" then set rdfsrangedef(propuri)="<rdfs:range rdf:resource='xsd:integer'/>"
+	else if typ = "INT" then set rdfsrangedef(propuri)="<rdfs:range rdf:resource='xsd:integer'/>";
+end;
+
+create function xmlDomp(charstring classuri) -> charstring as stored;
+create function generate_xmlDomp(charstring classuri) -> charstring
+as begin
+       set xmlDomp(classuri) = "<rdfs:domain rdf:resource=" + "'#" + substring(classuri,char_length(db_ontology())+1+char_length(db_name()),char_length(classuri)) + "'"+ "/>";
+end;
+
+/*
+
+create function generate_allclassXML(jdbc jd,Charstring upv)->Charstring
+as begin
+  for each charstring propuri,charstring classuri where classuri=get_classURI(upv) and propuri=get_propURI(upv)
+	begin
+      	generate_xmlDp(jd,propuri);
+		generate_rangeforstr(jd, propuri);
+		generate_xmlDc(classuri);
+      	generate_xmlDomp(classuri);
+	end;
+end;
+*/
+
+create function generate_classXML(charstring classuri)->Charstring
+as select c from charstring c where c=xmlDc(classuri) or c=rdfsclassdef() or c=close_descr();
+
+create function generate_propertyXML(charstring propuri,charstring classuri)->Charstring
+as select c from charstring c where c=xmlDp(propuri) or c=rdfspropertydef() or c=xmlDomp(classuri) or c = rdfsrangedef(propuri) or  c=close_descr();
+
+
+create function allclassXML( jdbc jd, charstring file, Charstring upv) -> Bag of charstring
+as begin 
+   set file = file + "_schema.rdf";
+  openwritefile(file);
+  generate_header(db_name(),db_ontology());
+  printxmll(header());
+  for each charstring classuri where classuri=get_classURI(upv)  
+   begin
+    generate_xmlDc(classuri);
+    generate_xmlDomp(classuri);
+    printxmll(generate_classXML(classuri));
+     for each Charstring propuri where get_classpropURI(classuri, upv)=propuri
+	begin
+		generate_xmlDp(propuri,classuri);
+		generate_rangeforstr(jd, propuri);
+		printxmll(generate_propertyXML(propuri, classuri)); 
+	end;	
+    end;
+     printxmll(footer());
+   closewritefile();
+  end;

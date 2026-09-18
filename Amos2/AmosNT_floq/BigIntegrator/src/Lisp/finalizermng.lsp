@@ -1,0 +1,243 @@
+;;; ============================================================
+;;; AMOS2
+;;; 
+;;; Author: (c) <year>2012  <author>Minpeng Zhu, Tore Risch UDBL
+;;; $RCSfile: finalizermng.lsp,v $
+;;; $Revision: 1.15 $ $Date: 2013/12/25 15:34:18 $
+;;; $State: Exp $ $Locker:  $
+;;;
+;;; Description: The finalizer manager takes the optimized 
+;;; algebra expression and, for each access filter referenced in the algebra
+;;; expression, calls the finalizer of the access filter's wrapper. The
+;;; finalizer translates the access filter into an interface function
+;;; call to the source. 
+;;; =============================================================
+
+(defvar *bvars* nil "store the bound variables when traversing whole TBR plan")
+
+(defun finalize-conjunction (tbrl sb) 
+  "traverse tbrl execution plan and apply finalizer on a simple tbr pred that 
+   containing expression object"
+  (map-over-pred tbrl 
+		 (f/l (tbr) (finalize-tbr tbr sb));;finalize a TBR 
+		 (function id)))
+
+
+;;all vars info are stored in *bindings*
+(defun finalize-disjunction (tbrl sb)
+  "reset *bindings* between the elements in or, don't bind vars in first 
+   executed or block to next executed or block"
+  (orify (mapcar (f/l (tbr)
+		      (let ((*bindings* (selectbody-bindings sb))
+			    )
+			(finalize tbr sb))) 
+		 tbrl)))
+
+(defun finalize-optional (tbrl sb)
+  (cons 'optional (finalize tbrl sb)))
+
+;;finalizer manager
+(quote ;;originlal finalize
+(defun finalize (tbr sb) 
+  "traverse the TBR execution plan (tbr) and apply finalizer on a simple tbr 
+   pred that containing expression object"
+  (let ((*bvars* (selectbody-argl sb));; *bvars* first used
+	)
+    (cond ((osql-constantp tbr) tbr)
+	  ((osql-variablep tbr) tbr)
+	  ((compound-p tbr)
+	   (selectq (car tbr)
+		    (and (finalize-conjunction tbr sb))
+		    (or (finalize-disjunction (cdr tbr) sb))
+		    (optional (finalize-optional (cdr tbr) sb))
+		    (error "finalization not implemented for" (car tbr))))
+	  (t (finalize-tbr tbr sb)))))
+)
+
+
+(defun finalize1 (tbr sb) 
+  "traverse the TBR execution plan (tbr) and apply finalizer on a simple tbr 
+   pred that containing expression object"
+  (let ((*bvars* (selectbody-argl sb));; *bvars* first used
+	)
+    (cond ((osql-constantp tbr) tbr)
+	  ((osql-variablep tbr) tbr)
+	  ((compound-p tbr)
+	   (selectq (car tbr)
+		    (and (finalize-conjunction tbr sb))
+		    (or (finalize-disjunction (cdr tbr) sb))
+		    (optional (finalize-optional (cdr tbr) sb))
+		    (error "finalization not implemented for" (car tbr))))
+	  (t (finalize-tbr tbr sb))))
+  )
+
+(defun finalize (tbr sb)
+  (let ((argl (selectbody-argl sb))
+	(finalizedtbrl (finalize1 tbr sb))
+	trl)
+    (setq trl (map-over-pred  finalizedtbrl
+			      (f/l (atbr) 
+				   (if (consp atbr)
+				       (getcalledpred atbr)))
+			      (function id)))
+    (optimize-compound-predicate trl argl)))
+
+
+
+(defun finalize-tbr (tbr sb)
+  "Calls the finalizer for each access filter referenced in Datalog"
+  (if (consp tbr)
+      (let* ((tr (getcalledpred tbr)) 
+	     (expression (second tr))
+	     (inputvar (selectbody-argl sb))
+	     (bnd *bvars*);; *bvars* initialized in finalize
+	     res) 
+	(cond ((expression-p expression) 
+	       (let* ((filter (expression-filter expression));;absorbed predl
+		      (ds (expression-source expression))
+		      (finalizer (expression-finalizer expression))
+		      (equaljoinvars (eqjoinvarlist filter))
+		      (accessfiltervarlist (cddr tr));;absorbed SP varlist
+		      adjustedfilter remain translated) 
+		 (bind-bnd bnd);;bind previous bound variables
+		 (setq adjustedfilter (adjust-filter filter bnd 
+						     accessfiltervarlist sb
+						     equaljoinvars))
+		 (setq remain (second adjustedfilter))
+		 ;;call wrapper's finalizer to translate filtered predicates
+		 (setq translated (funcall finalizer ds (car adjustedfilter)
+					   sb bnd)) 
+		 (cond ((equal translated tr) (setq res tbr))
+		       ((osql-constantp translated));;sp is removed
+		       (t (setq res (optimize-compound-predicate 
+				     (andify (append translated remain)) 
+				     bnd))))))
+	      (t (setq res tbr)))
+	(setq *bvars* (binds-variables tr *bvars*));;append the bound vars
+	;;add here update bvar bound by tbr....
+	(update-varboundby *bvars* tbr inputvar)
+	res)
+    tbr))
+
+(defun bind-var (var)
+  (let ((varbindingcontext (getvarbindingcontext var))
+	)
+    (setf (varinfo-bind varbindingcontext) '-)
+    (if (null (varinfo-entity varbindingcontext))
+	(setf (varinfo-entity varbindingcontext) var))))
+
+
+(defun bind-bnd (bnd)
+  ;;pre-bound vars from either function input or bound by 
+  ;;previous executed predicates.
+  (mapc (f/l (var)
+	     (bind-var var))
+	bnd)
+  )
+
+(defun leaveoutpredp (pred boundvarlist resl equaljoinvars)
+  "take out the pred produced by selecting join var in equal join from 
+   different source predicate(= v5 v6) in join query. e.g in regress1. 
+   v5 just appear in (= v5 v6)"
+  (let* ((predvars (predicate-vars pred))
+	 (op (predicate-operator pred))
+	 (opname (generic-fnname op))
+	 (joinvar (subset predvars (f/l (var) (member var equaljoinvars))))
+	 (restvar (set-difference predvars joinvar))
+	)
+    (and (eq opname '=)
+	 joinvar
+	 (member (car restvar) resl)
+	 (not (member (car restvar) boundvarlist)))
+    ))
+    
+(defun keepnumpred? (numpred allboundvars)
+  (let (freevars)
+    (mapc (f/l (arg) 
+	       (if (not (variable-is-bound arg allboundvars))
+		   (push arg freevars)))
+	  (predicate-vars numpred))
+    (if (= (length freevars) 1)
+	t
+      nil)))
+
+(quote
+(defun putoutpred? (filter pred)
+  "post processing a comparison pred with a var bound by num pred and that 
+   num pred is not in filter"
+  (some (f/l (var)
+	     (some (f/l (assnlst) 
+			(and (eq var (car assnlst))
+			     ;;how to use association list??? to get the second
+			     ;;arg (the predicate)???
+			     (not (member (cdr assnlst) filter))))
+		       *varpredassnlst*))
+   (predicate-vars pred)))
+)
+
+(defun adjust-filter (filter bnd accessfiltervarlist sb equaljoinvars) 
+  "This function is responsible to do more clear checking and categorizing 
+   what pred can qualify to be translated into sql string and what pred has
+   to be leave out as remain to participate in the query execution plan.
+   The reason for this function is that we lack of predicate execution order
+   and the bound var information in absorbing phase. For example, 
+   For theta join, (> v1 v2), if v1, v2 from different datasoruces 
+   and if the pred is absorbed in both access filters, then needed 
+   to remove it in one of the access filters in the finalizer phase.
+   Beside, allowed numerical expression in sql makes JDBC wrapper absorber 
+   much more complicated. Therefore this function needs also determine 
+   what pred has to be executed seperately and can't be involved in 
+   translating sql string."
+  (let* ((boundvarlist (append accessfiltervarlist bnd))
+	;;(numpreds (mapfilter (f/l (pred) (numericalp pred))
+		;;	     filter));;+ - * /, etc
+	(argl (selectbody-argl sb));;not used
+	(resl (selectbody-resl sb))
+	(change t)
+	(firstsp (car filter));;new
+	(rest (cdr filter));;new
+	(allboundvars (append boundvarlist argl))
+	(queryfilter (tconc (list firstsp) firstsp))
+	remain
+	)
+    ;;this is newer code compared to cvs, but this code is not yet checked in
+    ;;because it can't pass regress yet, so there is bug somewhere and i 
+    ;;haven't got time to check it.
+    ;;one more check to separate the predicates used to translate query
+    ;;and predicate needs to leave out to run seperately and predicate needs
+    ;;to removed when it is absorbed in more than one place and not executable
+;;make a fix loop again??????  need to fix
+    (while change
+      (setq change nil)
+      (dolist (pred rest)
+	       (cond ((compound-p pred)
+		      (tconc queryfilter pred)
+		      (setq rest (remove pred rest))
+		      (setq change t))
+		     ((and (numericalp pred);;arithmetic preds return value
+			   (keepnumpred? pred allboundvars))
+		      (tconc queryfilter pred)
+		      (setq allboundvars (append allboundvars 
+						 (predicate-vars pred)))
+		      (setq rest (remove pred rest))
+		      (setq change t))
+		     ((sourcepred? pred)
+		      (tconc queryfilter pred)
+		      (setq rest (remove pred rest))
+		      (setq change t))    
+		     (t
+		      (cond ((coverp pred allboundvars)
+			     ;;eliminate the pred when its vars are not all 
+			     ;;bound and absorbed in more than one place
+			     (tconc queryfilter pred)
+			     (setq rest (remove pred rest))
+			     (setq change t))
+			    ((leaveoutpredp pred boundvarlist resl 
+					    equaljoinvars);;leave pred out
+			     (push pred remain))
+			     ))))
+	  )
+    (list (car queryfilter) remain)))
+
+
+

@@ -1,0 +1,175 @@
+/*-*-sql-*-*******************************************************************/
+
+logging off;
+
+create function lasttime()->real;
+
+create function csrc(charstring indata, integer L)->sp as
+select sp(streamof(lreadfast({indata}, L)),
+          L + 1, 'tcp', 'lrdistrib2_db', 'gr35.uppmax.uu.se');
+
+create function coucentral(sp part, integer L)->vector of sp as
+select proc
+from vector of sp proc, stream s
+where s = streamof(count(extract(part)))
+and proc = spv(vectorof(select s from integer i where i in iota(0, L)));
+
+create function plrcentral(sp part, integer L)->vector of sp as
+select concat(ph, plr)
+from stream h, stream lr, vector of sp ph, vector of sp plr
+where h = streamof(count(extract(part)))
+and lr = streamof(lr(stract(part)))
+and ph = spv({h})
+and plr = spv(vectorof(select lr from integer i where i in iota(1, L)));
+
+create function plrcentral(integer L)->integer as
+select count(
+select uall(plrcentral(csrc(
+getenv('HOME') + '/scratch/1M', L), L)));
+
+create function singlepartnode(integer L)->vector as
+select merge(coucentral(csrc(
+getenv('HOME') + '/scratch/1M', L), L));
+
+create function src_1(charstring indata, integer L)->sp as
+select sp(streamof(lreadfast({indata}, L)),
+          2, 'tcp', 'lrdistrib_part1', 'gr35.uppmax.uu.se');
+
+create function src_2(sp src, integer L)->vector of sp as
+select spv({stract(src), stract(src)}, L, 'tcp', 'lrdistrib_part2');
+
+create function cousplit(vector of sp part, integer L)-> vector of sp as
+select concat(proc1, proc2)
+from vector of sp proc1, vector of sp proc2, stream s1, stream s2
+where s1 = streamof(count(extract(part[0])))
+and s2 = streamof(count(extract(part[1])))
+and proc1 = spv(vectorof(select s1 from integer i where i in iota(1,L)))
+and proc2 = spv(vectorof(select s2 from integer i where i in iota(1,L)));
+
+create function plrpart(vector of sp part, integer L)-> vector of sp as
+select concat(ph, plr)
+from stream h, stream lr, vector of sp ph, vector of sp plr,
+vector of charstring dumps, vector of charstring hostnames,
+vector of charstring binaries
+where h = streamof(mysqltoll('grad.uppmax.uu.se', 'lr', stract(part[0])))
+and lr = streamof(count(lr(stract(part[1]))))
+and ph = spv(vectorof(select h from integer i where i in iota(1, L)), 
+             dumps, hostnames, binaries)
+and plr = spv(vectorof(select lr from integer i where i in iota(1, L)))
+and dumps = vectorof(select 'mytoll.dmp' from integer i where i in iota(1, L))
+and hostnames = vectorof(select 'mei.it.uu.se' from integer i where i in iota(1, L))
+and binaries = vectorof(select 'javascsq' from integer i where i in iota(1, L));
+
+create function plrpart(integer L)->integer as
+select uall(plrpart(src_2(src_1(
+getenv('HOME') + '/scratch/1M', L), L), L));
+
+create function splitpartnodes(integer L)->vector as
+select merge(cousplit(src_2(src_1(
+getenv('HOME') + '/scratch/1M', L), L), L));
+
+lisp;
+
+(checkequal "Postfilter tree count"
+((osql "merge(cousplit(src_2(src_1(
+getenv('AMOS_HOME') + 'scsq/lr/data/cdp_lite40.out', 4), 4), 4));")
+'((#(1 5 4 1 2633 2474 2590 2493)))))
+
+(checkequal "layer_1"
+((osql "select merge(spv({s1, s2}))
+from sp src, stream s1, stream s2
+where s1 = streamof(count(extract(src)))
+and s2 = streamof(count(extract(src)))
+and src = layer_1_fast({getenv('AMOS_HOME') + 'scsq/lr/data/cdp_lite40.out'}, 4);")
+'((#(11 9989)))))
+
+(checkequal "db_partstream total count"
+((osql "count(select v
+from sp src, vector v
+where v = uall(db_partstream(src, 1, 4, 'lrdistrib_part2'))
+and src = layer_1_fast({getenv('AMOS_HOME') + 'scsq/lr/data/cdp_lite40.out'}, 4));")
+'((2644))))
+
+(checkequal "db_partstream LR stream"
+((osql "count(select v
+from sp src, vector v
+where v = uall(db_partstream(src, 1, 4, 'lrdistrib_part2'))
+and eventtype(v) != 3
+and xway(v) < 1
+and src = layer_1_fast({getenv('AMOS_HOME') + 'scsq/lr/data/cdp_lite40.out'}, 4));")
+'((2633)))) 
+
+(checkequal "db_partstream mysql queries"
+((osql "sort(select v
+from sp src, vector v
+where v = uall(db_partstream(src, 1, 4, 'lrdistrib_part2'))
+and v[0] = 3
+and src = layer_1_fast({getenv('AMOS_HOME') + 'scsq/lr/data/cdp_lite40.out'}, 4));")
+'((#(#(3 1 0 239254 31) #(3 34 0 119630 16) #(3 40 0 119634 91) #(3 41 0 119635 65) #(3 43 0 239259 92) #(3 56 0 119642 58) #(3 62 0 18 16) #(3 62 0 239266 76) #(3 66 0 359614 83) #(3 82 0 239274 54) #(3 91 0 119658 27))))))
+
+(checkequal "total count of all"
+((osql "count(select v 
+from vector v, sp src, vector of sp dbp, vector of sp proc, vector of sp all
+where v = lrfuse(suall(all), 4)
+and all = concat({dbp[0]}, proc)
+and dbp = db_partstream(src, 4, 4, 'lrdistrib_part2')
+and proc = procnodes(dbp[1], 4)
+and src = layer_1_fast({getenv('AMOS_HOME') + 'scsq/lr/data/cdp_lite40.out'}, 4));")
+'((5088))))
+
+(checkequal "input tree filter, no LR processing, L = 4, top_fanout = 2"
+((osql "count(select lrfuse(suall(all), L)
+from sp src, vector of sp dbp, vector of sp tp, vector of sp proc, 
+vector of sp all, integer L, integer top_fanout
+where L = 4 and top_fanout = 2
+and all = concat(proc, {dbp[0]})
+and proc = spv(lrinputstreams(tp, L / top_fanout))
+and tp = treenodes(dbp[1], top_fanout, L / top_fanout, 'modfilter')
+and dbp = db_partstream(src, top_fanout, L, 'rangefilter')
+and src = layer_1_fast(
+{getenv('AMOS_HOME') + 'scsq/lr/data/cdp_lite40.out'}, L));")
+'((10000))))
+
+(checkequal "input tree filter, no LR processing, L = 15, top_fanout = 3"
+((osql "count(select v
+from sp src, vector of sp dbp, vector of sp tp, vector of sp proc, 
+vector of sp all, integer L, integer top_fanout, vector v
+where L = 15 and top_fanout = 3
+and v = lrfuse(suall(all), L)
+and all = concat(proc, {dbp[0]})
+and proc = spv(lrinputstreams(tp, L / top_fanout))
+and tp = treenodes(dbp[1], top_fanout, L / top_fanout, 'modfilter')
+and dbp = db_partstream(src, top_fanout, L, 'rangefilter')
+and src = layer_1_fast(
+{getenv('AMOS_HOME') + 'scsq/lr/data/cdp_lite15.out'}, L));") 
+'((19982))))
+
+(checkequal "input tree filter, no LR processing, L = 15, top_fanout = 3"
+((osql "count(select v
+from sp src, vector of sp dbp, vector of sp tp, vector of sp proc, 
+vector of sp all, integer L, integer top_fanout, vector v
+where L = 15 and top_fanout = 3
+and v = lrfuse(suall(all), L)
+and all = concat(proc, {dbp[0]})
+and proc = spv(lrinputstreams(tp, L / top_fanout))
+and tp = treenodes(dbp[1], top_fanout, L / top_fanout, 'modfilter')
+and dbp = db_partstream(src, top_fanout, L, 'rangefilter')
+and src = layer_1_fast(
+{getenv('AMOS_HOME') + 'scsq/lr/data/cdp_lite15.out'}, L));") 
+'((19982))))
+
+; 19982 = 20000 - 18 daily expenditure queries with no answer in mysql.
+
+(checkequal "tree filter, LR executing L = 4, top_fanout = 2"
+((osql "count(select lrfuse(suall(all), 4)
+from sp src, vector of sp dbp, vector of sp tp, vector of sp proc, 
+vector of sp all
+where all = concat(proc, {dbp[0]})
+and proc = procs(lrinputstreams(tp, 2))
+and tp = treenodes(dbp[1], 2, 2, 'modfilter')
+and dbp = db_partstream(src, 2, 4, 'rangefilter')
+and src = layer_1_fast(
+{getenv('AMOS_HOME') + 'scsq/lr/data/cdp_lite40.out'}, 4));")
+'((5088))))
+
+(send-form '(quit) (open-nameserver-port))

@@ -1,0 +1,148 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 Silvia Stefanova, UDBL
+ * 
+ * Description: Setup of master regression test of SARD system exporting 
+ * and querying the regress RDBS .
+ *****************************************************************************/
+/* Settings 
+ */
+lisp;
+(setq _save-intermediates_ t)
+:osql
+
+/* Define DS for EGOVBUS relational database.
+ * Only done once for each relational database by admin.
+ */
+defineDS("EGOVDS",
+         getenv("URLDB"),
+         getenv("DRIVERDB"),
+         "",
+         "",
+         getenv("USERDB"),
+         getenv("PASSWORDDB"));
+
+/* Define UPV 'EGov' associated with data source 'EGOVDS'. 
+ */
+defineUPV("EGOVDS","EGov","http://udbl.it.uu.se/upv/eGov/");
+
+/* Populate the SARD system tables 
+ */
+
+DSConnect("EGov");
+
+wrapRDB(jdbcOfDS("EGOVDS"),"regress","regress","");
+
+assignIDs("EGov","regress","regress","");
+
+/*Changed by Silvia Stefanova*/
+assignCRID("FORM","LIFEEVENT","LIFEEVENT","EGov","http://user.it.uu.se/~udbl/sard/regress#form_of_lifevent");
+assignCRID("LIFEEVENT","country","eucountry","EGov","http://user.it.uu.se/~udbl/sard/regress#lifeevent_of_eucountry");
+
+assign_typeMap("EGov","regress", "");
+
+ViewRDB("EGov");
+
+
+/* Connect to predefined data source assigned to UPV 'eGov'. 
+ */
+DSConnect("EGov");	
+
+
+
+set :sparql_content_1 = 
+      "SELECT ?val1 ?val2
+       FROM <http://udbl.it.uu.se/upv/eGov/>
+       WHERE {?s1 <http://user.it.uu.se/~udbl/sard/regress#lifeevent/NAME> ?val1 .
+              ?s1 <http://user.it.uu.se/~udbl/sard/regress#lifeevent/DESCR> ?val2 .}";
+
+
+set :sparql_content_2 = 
+      "SELECT ?s1 ?p1 ?val1
+       FROM <http://udbl.it.uu.se/upv/eGov/>
+       WHERE {?s1 <http://user.it.uu.se/~udbl/sard/regress#lifeevent/NAME> 'Job'.
+              ?s1 ?p1 ?val1 .
+       FILTER REGEX (?val1, 'germany').}";
+
+
+set :sparql_union1=
+"SELECT ?s1 ?val1 ?val2 
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE { {?s1 <http://user.it.uu.se/~udbl/sard/regress#lifeevent/DESCR> ?val1} 
+	 UNION
+	{?s1 <http://user.it.uu.se/~udbl/sard/regress#lifeevent/NAME> ?val2 } }";
+
+
+set :sparql_union2=
+"SELECT ?s1 ?val1  
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE { {?s1 <http://user.it.uu.se/~udbl/sard/regress#lifeevent/DESCR> ?val1} 
+	 UNION
+	{?s1 <http://user.it.uu.se/~udbl/sard/regress#lifeevent/NAME> ?val1 } }";
+
+lisp;
+
+(defglobal _cont1_res_ 
+ (list 
+	(list (listtoarray 
+	(list "Moving House" "A citizen intends to move from one EU country to another.")))
+	(list (listtoarray 
+	(list "Job" "A citizen from one EU country intends to look for a job in another EU country .")))
+	))
+
+(defglobal _cont2_res_
+  (list
+     (list (listtoarray
+	      (list "http://user.it.uu.se/~udbl/sard/regress#lifeevent/_eujob" "http://user.it.uu.se/~udbl/sard/regress#lifeevent/country" "germany")))))
+
+(defglobal _union1_res_
+  (list 
+	(list (listtoarray
+		(list "http://user.it.uu.se/~udbl/sard/regress#lifeevent/_movinghouse" "A citizen intends to move from one EU country to another." "")))
+	(list
+		(listtoarray
+	          (list "http://user.it.uu.se/~udbl/sard/regress#lifeevent/_eujob" "A citizen from one EU country intends to look for a job in another EU country ." "")))
+	(list 
+		(listtoarray
+		   (list "http://user.it.uu.se/~udbl/sard/regress#lifeevent/_movinghouse" "" "Moving House")))
+	(list (listtoarray
+		   (list "http://user.it.uu.se/~udbl/sard/regress#lifeevent/_eujob" "" "Job")))))
+     
+
+(defglobal _union2_res_
+  (list 
+	(list (listtoarray 
+		 (list "http://user.it.uu.se/~udbl/sard/regress#lifeevent/_movinghouse" "A citizen intends to move from one EU country to another.")))
+	(list (listtoarray
+		  (list "http://user.it.uu.se/~udbl/sard/regress#lifeevent/_eujob" "A citizen from one EU country intends to look for a job in another EU country .")))
+	(list (listtoarray
+	           (list "http://user.it.uu.se/~udbl/sard/regress#lifeevent/_movinghouse" "Moving House")))
+	(list (listtoarray
+		   (list "http://user.it.uu.se/~udbl/sard/regress#lifeevent/_eujob" "Job")))))  
+
+
+
+
+
+(checkequal "SparQL content query 1"
+	    ((sorttuples (osql "sparql(:sparql_content_1);"))
+	     (sorttuples _cont1_res_)))
+
+
+(checkequal "SparQL unbound-property query 1 with FILTER REGEX on the object"
+	    ((sorttuples (osql "sparql(:sparql_content_2);"))
+	     (sorttuples _cont2_res_)))
+
+
+(checkequal "SparQL UNION query 1 - two blocks with different vars on subjects "
+	    ((sorttuples (osql "sparql(:sparql_union1);"))
+	     (sorttuples _union1_res_)))
+
+
+(checkequal "SparQL UNION query 2 - two blocks with the same vars "
+	    ((sorttuples (osql "sparql(:sparql_union2);"))
+	     (sorttuples _union2_res_)))
+	
+
+

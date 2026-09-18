@@ -1,0 +1,107 @@
+/*-*-sql-*-*******************************************************************/
+
+create function streamagg0(stream x, Integer size, Integer stride)
+                           ->Vector
+  /* Implementation of streamagg */
+  as foreign 'winaggbf';
+
+create function streamagg(stream x, Integer size, Integer stride)
+                ->Stream of Vector 
+  as select streamof(streamagg0(x,size,stride));
+
+create function siota(Integer l, Integer u) -> Stream of Integer
+  as select streamof(iota(l,u));
+
+lisp;
+
+;;; Result printer for streams (i.e. generators):
+(putobject _stream_ 'printfn 'print-stream-object)
+
+(defun print-stream-object (so stream)
+  (formatl stream "*" (externalize (generator-type so)) "*")
+  t)
+:osql
+
+/* eselect: empty select */
+
+create function eselect()->object
+	as select nil;
+
+create function estream()->stream
+	as select streamof(eselect());
+
+create function landmarks(stream v)->vector
+as begin
+        declare vector w;
+        set w={};
+        return(w);
+        for each original object e where e=in(v)
+        begin
+		set w=concat(w,{e});
+                return(w);
+	end;
+end;
+
+create function landmark(stream s)->vector
+as select vectorof(in(s));
+
+/* example #'sfn's */
+
+create function rr(vector v, integer fanout)-><integer j, object o> as
+select j, v[j]
+where j < fanout;
+
+create function rra(vector v, integer fanout, integer rarg)->
+<integer j, object o> as
+select j, x + rarg
+from number x
+where j < fanout
+and x = v[j];
+
+create function randrobin(object o, integer fanout) -> <integer, object> as
+select ezrand(fanout), o;
+
+/* example #'bfn's */
+
+create function odd(integer i)->boolean
+as select
+where mod(i, 2) = 1;
+
+create function even(integer i)->boolean
+as select
+where mod(i, 2) = 0;
+
+/* f() can be used as #'rfn' or #'bfn' */
+
+create function f(object)->boolean as nil;
+
+/* Use t() as broadcast #'bfn'*/
+
+create function t(object)->boolean as true;
+
+/* example #'rfn's */
+
+create function randr(object o, integer fanout) -> integer as
+ezrand(fanout);
+
+create function irandr(integer i, integer fo)->integer as
+randr(i, fo);
+
+create function randrodd(integer o, integer fanout) -> integer as
+select ezrand(fanout)
+where odd(o);
+
+create function oddeven(integer i, integer fanout)->integer
+as mod(i, fanout);
+
+/* example zipstreams vector aggregation mapfn #'vdsum' */
+
+create function vdsum0(vector of darray v) -> darray as
+select darray(sumvector)
+from vector of real sumvector
+where sumvector = vectorize(select di, sum(select v[vi][di] from integer vi)
+from integer di
+where di in iota(0, dim(v[0])-1));
+
+create function vdsum(stream of vector of darray s)->Stream of Darray as
+select streamof(vdsum0(in(s)));

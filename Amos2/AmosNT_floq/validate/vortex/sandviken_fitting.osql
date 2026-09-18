@@ -1,0 +1,119 @@
+/*-*-sql-*-********************************************************************/
+
+/* the static table is for the meta data */
+create type Man_process properties(
+       id Integer,
+       type Charstring,
+       duration Number,
+       formula Function,
+       fx Number,
+       fy Number,
+       fz Number); 
+
+/* pop in two meta data into the database */
+create Man_process (id, type, duration, fx, fy, fz)
+       instances :turning1 (1, "turning1", 2000, 100, 250, 200);
+        
+create Man_process (id, type, duration, fx, fy, fz)
+       instances :turning2 (2, "turning2", 500, 100, 200, 200);         
+
+/* look at the current database */
+select id(m), type(m), duration(m), fx(m), fy(m), fz(m)
+from Man_process m;  
+
+/* the new data got from Sandviken only includes fx, fy, fz */
+/* for simplicity, data are streamed in as stream of vector of numbers */
+/* and the first index of the vector can be used as flags indicating
+   when the cycle stats and stops */
+create function w_start(Vector v) -> Boolean as v[0] = 1;        
+create function w_stop(Vector s, Vector v) -> Boolean as v[0] = 0;         
+
+
+/* to identify the trend of the window for a specific variable */
+/* since the raw data are streamed as vectors, one need to specify
+   the index of the varibale (the argument d) and to eliminate the 
+    warm up phase, we need to do the baseline correction (the argument baseline) */
+create function window_trend(Stream of Window sw, Number d, Number baseline) -> Stream of Number
+  as streamof(select ols_a(project_bv(bv, d, baseline))
+  from Window w, Bag of Vector bv
+  where w in sw and bv = in(w));  
+
+/* this is the continuous query that stream data from trend.csv 
+   and continuously get out the trend of fx, this CQ joins a stream
+   s and a static table Man_process, in the future, the baseline could
+   not only be just a number but also a function */
+select in(window_trend(s, 1, baseline))
+from Stream of Window s, Number baseline, Man_process m
+where s = input("trend.csv", #'w_start', #'w_stop')
+and id(m) = 1 and fx(m) = baseline;        
+
+/* similarly this gets out the trend of fy */
+select in(window_trend(s, 2, baseline))
+from Stream of Window s, Number baseline, Man_process m
+where s = input("trend.csv", #'w_start', #'w_stop')
+and id(m) = 1 and fy(m) = baseline;         
+
+/* and the trend of fz for each window */
+select in(window_trend(s, 3, baseline))
+from Stream of Window s, Number baseline, Man_process m
+where s = input("trend.csv", #'w_start', #'w_stop')
+and id(m) = 1 and fz(m) = baseline;  
+
+
+/* after the warm up phase, the duration (length) of a cycle is fixed 
+   the spikes are identified by camparing the expected and actual duration 
+   the function return boolean indicating whether a cycle is */
+create function window_spike(Stream of Window sw, Number d, Number baseline, Number duration) -> Boolean
+  as select count(project_bv(bv, d, baseline)) < duration
+  from Window w, Bag of Vector bv
+  where w in sw and bv = in(w);  
+
+/* this checks if the cycles in the file spike.csv are spikes or not */
+select window_spike(input("spike.csv", #'w_start', #'w_stop'), 1, baseline, duration)
+from Number baseline, Number duration, Man_process m
+where id(m) = 2 and fx(m) = baseline and duration(m) = duration;      
+
+/* this checks the cycles in trend.csv */
+select window_spike(input("trend.csv", #'w_start', #'w_stop'), 1, baseline, duration)
+from Number baseline, Number duration, Man_process m
+where id(m) = 1 and fx(m) = baseline and duration(m) = duration;      
+
+
+/* finding local maxima in a cycle is implemented by extending the DSMS with 
+   foreign functions in python */
+extlang("python");
+create function smooth_py(Vector of Number bv, Number half_width) -> Vector of Number
+  as foreign 'py:smooth_func.amos_smooth';
+create function loc_max_py(Vector of Number bv) -> Vector of Number
+  as foreign 'py:smooth_func.amos_loc_max';
+create function loc_max_smooth_py(Vector of Number bv, Number half_width) -> Vector of Number
+  as foreign 'py:smooth_func.amos_loc_max_smooth';      
+
+
+/* the window are first smoothed */
+create function plot_window_smooth(Stream of Window sw, Number d, Number half_width) -> Integer
+  as plot_v(select smooth_py(bv, half_width)
+  from Vector of Number bv, Window w
+  where w in sw and bv = (vselect v[d] from Vector of Number v where v in in(w))); 
+
+/* this is a continuous query returns the index of the local maxia for each window in the stream */
+create function window_loc_max(Stream of Window sw, Number d, Number half_width) -> Stream of Vector of Number
+  as streamof(select loc_max_smooth_py(bv, half_width)
+  from Vector of Number bv, Window w
+  where w in sw and bv = (vselect v[d] from Vector of Number v where v in in(w)));   
+
+
+plot_window_smooth(input("localmax.csv", #'w_start', #'w_stop'), 5, 500);    
+
+/* for different ap:s, finding the local maxima for variable fx */
+in(window_loc_max(input("localmax.csv", #'w_start', #'w_stop'), 5, 300)); 
+
+plot_window_smooth(input("localmax.csv", #'w_start', #'w_stop'), 4, 300);   
+
+/* for different ap:s, finding the local maxima for variable fy */
+in(window_loc_max(input("localmax.csv", #'w_start', #'w_stop'), 4, 300));
+
+plot_window_smooth(input("localmax.csv", #'w_start', #'w_stop'), 6, 300);
+
+/* for different ap:s, finding the local maxima for variable fz */
+in(window_loc_max(input("localmax.csv", #'w_start', #'w_stop'), 6, 300));

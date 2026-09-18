@@ -1,0 +1,227 @@
+/*-*-sql-*-*******************************************************************/
+
+
+/* USAGE: Must be placed (along with the input data files patterns.nt and 
+   patterns2.nt) and run in/from the parent directory of the student
+   solutions. In Amos execute the following:
+
+< 'some_student_dir/a2kmeans.osql';
+< 'a2kmeans_validator.osql'
+
+*/
+
+create function rand_id(Bag of Object b)->Bag of (Integer i, Object)
+/* Assigns random ids to elements of a bag */
+  as for each Object o where o in b return (rand(1000000), o); 
+
+create function rand_sample(Bag of Object b, Integer k)->Bag of Object 
+/* Selects a random k-sized sample of a bag. 
+   NOTE: If k << count(b) sortbagby can be replaced with functions 
+         topk() or leastk() */  
+  as select vo[i][1]
+     from Integer i, Vector of Vector vo
+     where vo = sortbagby(rand_id(b), 1, 'inc')
+       and i < k; 
+
+create function col_means(Bag of Vector of Number bv)
+                          ->Vector of Number mv
+/* TODO: Calculate the columns-wise mean of the bag of vectors bv.
+   HINT: Use function aggv() and an appropriate aggregate function. */
+  as aggv(bv, #'avg');
+
+create function minimal_kmeans_file(Charstring datafile, 
+                                    Integer k, 
+                                    Integer n)
+                                    ->Bag of Vector
+/* Same as minimal_kmeans but the data points are first read from the 
+   datafile file and stored in the stored function datapoint. */ 
+as
+begin
+  clear_function('datapoint');
+  load_vdp(datafile);
+  return minimal_kmeans(k, n);
+end; 
+
+create function minimal_kmeans_bag(Bag of Vector of Number bvd, 
+                                   Integer k, 
+                                   Integer n)
+                                   ->Bag of Vector
+/* Same as minimal_kmeans but the data points are passed as a bag of 
+   vectors and subsequently are stored in the stored function datapoint. */ 
+as
+begin
+  clear_function('datapoint');
+  add datapoint(i) = v
+  from Integer i, Vector v
+  where (i, v) in enumerate(bvd);
+  return minimal_kmeans(k, n);
+end; 
+
+/**************************/
+/* Cluster data generator */
+/**************************/
+
+create function seed_3d_centroids(Integer n)->Bag of Vector of Number
+/* Generates random 3d centroinds at n unit locations 
+   from the space [1:10,1:10,1:10] */  
+  as rand_sample((select {i, j, k}
+                  from Integer i, Integer k, Integer j
+                  where i in iota(1,10)
+                    and j in iota(1,10)
+                    and k in iota(1,10)),n); 
+
+create function urrand(Real f, Real t)->Real
+/* Generates a real random from the distribution ~U(f,t), f<t. */
+  as ((rand(100000)/100000)*(t-f))+f;
+
+create function urrands(Real f, Real t, Integer d)->Bag of Real
+/* Generates a bag of n real random numbers with distribution ~U(f,t), f<t. */
+  as for each Integer i where i in iota(1,d) return urrand(f,t);
+
+create function urrandv(Real f, Real t, Integer d)->Vector of Real
+/* Generates a d-dimensional vector of real random numbers 
+   with distribution ~U(f,t), f<t. */
+  as vectorof(urrands(f,t,d));
+    
+create function uniform_cloud(Vector of Number c, Real pm, Integer n)
+                              ->Bag of Vector of Number 
+/* Generates a uniform cloud of n dim(c)-dimensional datapoints centered 
+   around c+-pm. */
+  as for each Integer i where i in iota(1,n) return c+urrandv(-pm,pm,dim(c));    
+
+create function clusterdata_3d(Integer k, Real pm, Integer n)
+                               ->Bag of Vector of Number
+/* Generates a 3d cluster dataset with k clusters 
+   each of which is uniromly distributed a respective 
+   cluster centroid c+-pm */
+  as select uniform_cloud(seed_3d_centroids(k), pm, n);
+
+/**************/
+/* Regression */
+/**************/
+
+create function printv(Vector v)->Boolean
+/* Prints the concatanation of the vector elements in v */
+  as print(concatagg(in(v)));
+
+create function vca2ca(Vector of Vector vca)->Bag of (Integer, Integer)
+/* Converts a vector of vectors into a bag of vectors, used with in conjuction 
+   with vectorize as a primitive form of bag materialization. */
+  as select p,c
+     from Integer p, Integer c
+     where {p,c} in vca;  
+
+create function test_clust_assignment(Bag of (Integer, Integer) ca, 
+                                      Integer k, Integer n)
+                                      ->Boolean
+/* Tests the validity of a clustering assignment w.r.t the extpected number
+   or objects and 1-to-1 assignment */
+as 
+begin
+  declare Vector of Vector vca, Integer cn, Boolean valid,
+          Integer sum_clust_sizes, Integer sum_num_assign;
+  set vca = vectorof(ca);
+  set cn = count(vca2ca(vca));
+  set sum_clust_sizes = 
+      sum(select cs 
+          from Integer c, Integer cs
+          where (c, cs) = groupby((select c, 1 
+                                   from Integer p, Integer c 
+                                   where (p,c) in vca2ca(vca)),
+                                  #'sum'));
+  set sum_num_assign = 
+      sum(select na 
+          from Integer c, Integer na
+          where (c, na) = groupby((select p, 1 
+                                   from Integer p, Integer c 
+                                   where (p,c) in vca2ca(vca)),
+                                  #'sum'));
+  set valid = (sum_clust_sizes + sum_num_assign) = (2 * n);
+  if ((n=cn) and valid) then
+    return TRUE
+  else
+  begin
+    printv({"Expected the clustering of ", n, " objects."});
+    if (valid) then
+      printv({"Instead ", cn, " objects were clustered in a valid way." })
+    else
+      printv({"Instead ", cn, " objects were clustered in an invalid way."});
+    /*disp_clustering3d(vca2ca(vca));*/
+    return FALSE;
+  end;
+end;
+
+create function regress_kmeans(Integer maxk, Integer numtrial)
+                               ->Boolean
+/* Performes numtrial number of times validity checks of 
+   kmeans clasterings (for varying values of k) of randomly 
+   generated */
+as 
+begin
+  declare Boolean res;
+  for each integer k where k in iota(1,maxk)
+    for each integer trial where trial in iota(1,numtrial)
+    begin
+      set res = test_clust_assignment(
+                  (select p,c
+                   from Integer p, Integer c, Vector of Number v
+                   where {c,p,v} = kmeans_bag(clusterdata_3d(k, 0.5, 20), k)), 
+                  k, k*20);
+    end;
+  return res;
+end;
+
+create function get_centroids_of_clustering(Bag of Vector clus)
+                               ->Bag of (Integer, Vector of Number) 
+/* Computes the centroids based on the input clustering clus */  
+  as groupby((select c, pv
+              from Integer c, Integer p, Vector of Number pv
+              where {c,p,pv} in clus),
+             #'col_means'); 
+
+create function calc_clust_mea(Vector of Vector vc, 
+                               Function daggfn)
+                               ->Bag of (Integer, Object) 
+/* Evaluates the (distance)-aggregate function daggfn on each cluster 
+   of the cluster assignment that is derived based on the enumerated 
+   vector of cluster centroids. */  
+  as groupby((select c, euclid(cv, datapoint(p))
+              from Integer c, Integer p, Vector of Number cv
+              where (p,c) in calc_cluster_assignment(
+                               p2c_distances(
+                                 vc2bc(vc)))
+                and {c,cv} in vc),
+             daggfn); 
+
+create function sumsquare(Bag of Number bn)->Number
+/* Calculates sum-of-squared of the bag of values in bn */ 
+ as sum(select n*n from Number n where n in bn);
+
+create function ref_sse(Vector of Vector vc)
+                    ->Number
+/* Calculates the SSE of a clustering based on the enumerated
+   vector of cluster centroids vc */
+ as sum(select ss
+        from Integer c, Number ss
+        where (c, ss) in calc_clust_mea(vc, #'sumsquare'));
+
+
+/* Regression test */
+
+lisp;
+(checkequal "K-means validity"
+ ((osql "regress_kmeans(5,2);")
+ '((TRUE))))
+
+(checkequal "Minimal K-means on patterns.osql"
+ ((osql "ref_sse(bc2vc(get_centroids_of_clustering(minimal_kmeans_file('patterns.nt',5,20)))) < 25;")
+ '((TRUE))))
+
+(checkequal "Minimal K-means on patterns2.osql"
+ ((osql "ref_sse(bc2vc(get_centroids_of_clustering(minimal_kmeans_file('patterns2.nt',5,20)))) < 120;")
+ '((TRUE))))
+
+:osql
+
+ 
+ 

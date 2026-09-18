@@ -1,0 +1,414 @@
+/* -------------- NAIVE BAYES CLASSIFIER FOR AMOS II --------------- */
+
+
+/* Utilities */
+create function logDivide(Real item1, Real item2)-> Real
+   as select logRatio
+      from Real logRatio
+      where (item2!=0.0 and logRatio=log10(item1/item2))
+         or (item2=0.0  and logRatio=10000);
+  
+create function skipline()->Charstring as '
+';
+
+create function extractAttributeValues(Charstring attribute, Vector of Record data)
+                -> Vector
+  as vectorof(select data[i][attribute]
+              from Integer i);
+
+create function orderItemsByAttribute(Charstring attribute, Vector of record data)
+                -> <Object attributeValue, Vector records>
+  as groupby((select item[attribute],item
+              from Record item, Integer i
+              where item=data[i]),
+     #'vectorof');
+
+
+/**********************************************/     
+/* BAYESIAN MODEL TO BE GENERATED AND UPDATED */
+/**********************************************/
+
+/* MODEL BASIC TYPES AND FUNCTIONS */
+
+create type NB_Model;
+   
+create function sampleSize(NB_Model)-> Integer as stored;
+
+create function classAttribute(NB_Model)-> Charstring as stored;
+
+/* DATA FOR EACH CLASS */
+
+create type ClassModel;
+
+create function inBayesModel(ClassModel)-> NB_Model as stored;
+create_index("inBayesModel", "NB_Model", "hash", "multiple");
+
+create function classModel(NB_Model NBModel)-> ClassModel classModel
+  as select classModel where inBayesModel(classModel)=NBModel;
+
+create function targetClass(ClassModel)-> Object classAttribute as stored;
+
+create function countClassItems(ClassModel)-> Integer as stored;
+
+create function priorProba(ClassModel classModel)-> Real 
+  as select proba
+     from Real proba, Integer sampleSize
+     where sampleSize=sampleSize(inBayesModel(classModel))
+       and ((sampleSize=0 and proba=0.0)
+         or (sampleSize!=0 and proba=countClassItems(classModel)/sampleSize));
+
+/* DISTRIBUTIONS FOR EACH ATTRIBUTE GIVEN THE CLASS */
+
+create type AttributeDistribution;
+
+create function inClassModel(AttributeDistribution)->ClassModel as stored;
+
+create function attributeDistributions(ClassModel classModel)
+                -> AttributeDistribution distribution
+  as select distribution where inClassModel(distribution)=classModel; 
+create_index("inClassModel", "ClassModel", "hash", "multiple");
+
+create function attribute(AttributeDistribution)-> Charstring as stored;
+create_index("attribute", "Charstring", "hash", "multiple");
+
+create function getProbability(AttributeDistribution, Object value)
+                -> Real probability
+  as foreign 'abstract-function';
+
+create function updateDistribution(AttributeDistribution, Vector)-> Boolean
+  as foreign 'abstract-function';
+
+create function updateDistributionAtom(AttributeDistribution, Object)-> Boolean
+  as foreign 'abstract-function';
+
+create function outputDetail(AttributeDistribution distribution)-> Charstring
+   as foreign 'abstract-function';
+
+   
+/****************************************************/   
+/* Classification with the generated model NB_Model */ 
+/****************************************************/
+
+/* MAXIMUM A POSTERIORI RULE */
+create function posteriorClassLogProba(ClassModel classModel, Record item)
+                -> Real probabilityLog
+  as log10(priorProba(classModel)) + 
+     sum((select log10(getProbability(distribution, 
+                                      item[attribute(distribution)]))
+          from AttributeDistribution distribution
+          where inClassModel(distribution)=classModel)
+         );
+
+create function maxClassLogProba(NB_Model model, Record item)
+                -> <Real probabilityLog, Object class>
+  as topk(materialize(select posteriorClassLogProba(classModel, item), 
+                  targetClass(classModel)
+           from ClassModel classModel
+           where classModel in classModel(model)),
+          1);          
+          
+create function B_CLASSIFY(NB_Model model, Vector of Record data)
+                -> Bag of <Record item, Object class, Real probabilityLog> 
+  as select item, class, probabilityLog
+     from Real probabilityLog, Record item, Object class
+     where item in data 
+       and <probabilityLog, class> = maxClassLogProba(model, item);    
+       
+/* LOG LIKELIHOOD RATIO RULE ADAPTED FOR BAYESIAN BINARY CLASSIFICATION */
+/* Only works with two classes ! */
+create function logLikelihoodRatio(ClassModel class1, ClassModel class2, Record item)
+                -> Real 
+  as logDivide(priorProba(class1),priorProba(class2)) +
+     sum((
+          select logDivide(getProbability(distribution1, value),getProbability(distribution2, value))
+          from AttributeDistribution distribution1, AttributeDistribution distribution2, 
+               Charstring attributeName, Object value
+          where inClassModel(distribution1)=class1
+            and inClassModel(distribution2)=class2
+            and attribute(distribution1)=attributeName
+            and attribute(distribution2)=attributeName
+            and item[attributeName]=value
+     ));     
+
+create function classifyItem(NB_Model model, Record item)
+                -> <Real logRatio, Object class>
+  as select logRatio, class
+     from Real logRatio, Object class,
+          ClassModel class1, ClassModel class2
+     where inBayesModel(class1)=model
+       and inBayesModel(class2)=model
+       and targetClass(class1)>targetClass(class2)
+       and logRatio=logLikelihoodRatio(class1, class2, item)
+       and ((class=targetClass(class1) and logRatio>0)
+         or (class=targetClass(class2) and logRatio<=0));       
+       
+ create function B_CLASSIFY_BINARY(NB_Model model, Vector of Record data)
+                -> Bag of <Record item, Object class, Real ratio>
+  as select item, class, power(10,logRatio)
+     from Record item, Object class, Real logRatio
+     where item in data 
+       and <logRatio, class> = classifyItem(model, item); 
+
+       
+
+/********************************/       
+/* DISTRIBUTIONS AND GENERATORS */
+/********************************/
+       
+/* GENERIC GENERATOR */
+
+create type DistributionGenerator;
+
+/* To be overloaded for each attribute classification type*/
+create function generateDistribution(DistributionGenerator)
+                -> AttributeDistribution
+  as foreign 'abstract-function';
+  
+     
+/* GENERATORS REQUIRING CLASS-INDEPENDANT PARAMETERS */
+
+/* Non-updatable parameters */
+
+create type StaticModelParameters;
+
+create function bindToModel(StaticModelParameters, NB_Model, Charstring attribute)
+                -> Boolean as true;
+
+/* Updatable parameters */     
+
+create type UpdatableStaticParameters under StaticModelParameters;
+
+create function updatableStaticParameters(NB_Model)-> Bag of UpdatableStaticParameters as stored;     
+
+create function attribute(UpdatableStaticParameters)-> Charstring as stored;
+
+create function update(UpdatableStaticParameters, Vector)-> Boolean
+  as foreign 'abstract-function';
+
+create function updateAtom(UpdatableStaticParameters, Object)-> Boolean
+  as foreign 'abstract-function';
+
+create function bindToModel(UpdatableStaticParameters parameters, NB_Model model,
+                  Charstring attribute)-> Boolean 
+  as begin
+     set attribute(parameters)=attribute;
+     add updatableStaticParameters(model)=parameters;
+     end;
+     
+/* Specification for model generator */
+
+create type RequiresStaticParameters;
+
+create function generateStaticParameters(RequiresStaticParameters)-> StaticModelParameters
+  as foreign 'abstract-function';
+
+create function getDistributionGenerator(StaticModelParameters)-> RequiresStaticParameters as stored;
+
+create function parameters(RequiresStaticParameters generator)-> StaticModelParameters
+  as select parameters
+     from StaticModelParameters parameters
+     where getDistributionGenerator(parameters)=generator;
+     
+/* Loads generators */    
+ 
+< 'BayesDistributions.amosql';     
+
+
+/*********************************/     
+/* GENERIC BAYES MODEL GENERATOR */
+/*********************************/
+
+/* MODEL INITIALIZATION */
+
+create function generateAttributeDistribution(Charstring attribute, 
+          DistributionGenerator generator, ClassModel classModel)-> Boolean
+  as begin
+     declare AttributeDistribution distribution;
+     set distribution=generateDistribution(generator);
+     set attribute(distribution)=attribute;
+     set inClassModel(distribution)=classModel;
+     end;
+
+create function generateClassModel(Object classValue,NB_Model outputModel)
+                -> ClassModel
+  as begin
+     declare ClassModel classModel;
+     create ClassModel instances classModel;
+     set countClassItems(classModel)=0;
+     set targetClass(classModel)=classValue;
+     set inBayesModel(classModel)=outputModel;  
+     result classModel;
+     end;
+     
+create function generateStaticParameters(NB_Model model, 
+                Bag of <Charstring, RequiresStaticParameters> generators)
+                -> Boolean
+  as for each original Charstring attribute, RequiresStaticParameters generator
+     where <attribute, generator> in generators
+          begin
+          declare StaticModelParameters staticParameters;
+          set staticParameters = generateStaticParameters(generator);
+          bindToModel(staticParameters, model, attribute);
+          end;
+          
+
+create function B_INITIALIZE_MODEL(Vector attributeTypes, 
+                Charstring classAttribute, Vector targetClassValues)
+                -> NB_Model outputModel
+  as begin 
+     declare NB_Model outputModel;
+     create NB_Model instances outputModel;
+     set sampleSize(outputModel)=0;
+     set classAttribute(outputModel)=classAttribute;
+                                          
+     print('Initializing class-independant classification parameters');
+     generateStaticParameters(outputModel, 
+          (select attribute, generator
+           from Charstring attribute, RequiresStaticParameters generator
+           where {attribute, generator} in attributeTypes));
+     
+     for each original Object classValue where classValue in targetClassValues
+          begin
+          declare ClassModel classModel;
+          print('Initializing class model for : '+classValue);
+          set classModel = generateClassModel(classValue, outputModel);
+          for each original Charstring attribute, DistributionGenerator generator
+                            where {attribute,generator} in attributeTypes
+               
+               begin
+               print('...Initializing attribute distribution for : '+attribute);
+               generateAttributeDistribution(attribute, generator, classModel);
+               end;
+          end;
+     
+     result outputModel;
+     print("Model initialized"+skipline());
+     end;
+
+/* LARNING WITH A BATCH OF EXAMPLES */ 
+
+/* Matches input data with distributions */
+
+create function mapDataToClassModel(Vector of Record data, 
+                                    NB_Model bayesModel)
+                -> Bag of <ClassModel classModel, Vector items>
+  as select classModel,items
+     from Object class
+     where <class, items> in 
+               orderItemsByAttribute(classAttribute(bayesModel), data)
+      and inBayesModel(classModel)=bayesModel
+       and targetClass(classModel)=class;   
+      
+create function mapDataToAttributeModel(Vector of Record data, 
+                                        ClassModel classModel)
+                -> Bag of <AttributeDistribution, Vector>
+  as select distribution,extractAttributeValues(attribute, data)
+     from AttributeDistribution distribution, Charstring attribute
+     where inClassModel(distribution)=classModel
+       and attribute=attribute(distribution);  
+     
+/* Main model updating functions */ 
+    
+create function updateStaticAttributes(NB_Model bayesModel,Vector of Record data)
+                -> Boolean
+  as for each original UpdatableStaticParameters parameters
+         where parameters in updatableStaticParameters(bayesModel)
+          update(parameters, extractAttributeValues(attribute(parameters),data));
+             
+create function updateClassModel(ClassModel classModel, Vector of Record data)
+                -> Boolean 
+  as begin
+     set countClassItems(classModel)=countClassItems(classModel)+dim(data);
+     for each original AttributeDistribution distribution, Vector items
+         where <distribution, items> in mapDataToAttributeModel(data, classModel)
+          updateDistribution(distribution, items);
+     end;    
+
+create function B_UPDATE_MODEL(NB_Model bayesModel, Vector of Record data)
+                -> Boolean 
+  as begin
+     declare Integer intialTotalCount;
+     set sampleSize(bayesModel)=sampleSize(bayesModel)+dim(data);
+               
+     print('Updating static parameters');
+     updateStaticAttributes(bayesModel, data);
+     
+    for each original ClassModel classModel, Vector items
+             where <classModel, items> in mapDataToClassModel(data,bayesModel)
+          begin
+          print('Updating model for class : '+targetClass(classModel));
+          updateClassModel(classModel,items);
+          end;          
+     end;
+
+
+/* LEARNING WITH A SINGLE EXAMPLE */ 
+
+/* Matches input data with distributions */
+
+create function mapDataToClassModelAtom(Record item, NB_Model bayesModel)
+                -> ClassModel
+  as select classModel
+     from ClassModel classModel
+     where inBayesModel(classModel)=bayesModel
+       and targetClass(classModel)=item[classAttribute(bayesModel)];
+
+create function mapDataToAttributeModelAtom(Record item, ClassModel classModel)
+                -> Bag of <AttributeDistribution, Object>    
+  as select distribution, item[attribute(distribution)]
+     from AttributeDistribution distribution
+     where inClassModel(distribution)=classModel;
+
+/* Update functions */   
+  
+create function updateClassModelAtom(ClassModel classModel,
+                Record item)-> Boolean
+  as begin
+     set countClassItems(classModel)=countClassItems(classModel) + 1;
+     for each original AttributeDistribution distribution, Object itemValue
+          where <distribution, itemValue> in mapDataToAttributeModelAtom(item, classModel)
+          updateDistributionAtom(distribution, itemValue);
+     end; 
+       
+create function updateStaticAttributesAtom(NB_Model bayesModel,Record item)
+                -> Boolean
+  as for each original UpdatableStaticParameters staticData
+              where staticData in updatableStaticParameters(bayesModel)
+          begin    
+          declare Charstring attribute;
+          set attribute=attribute(staticData);
+          updateAtom(staticData, item[attribute]);
+          end;
+          
+create function B_UPDATE_MODEL(NB_Model bayesModel, Record item)
+                -> Boolean 
+  as begin
+     declare ClassModel classModel;
+     set sampleSize(bayesModel)=sampleSize(bayesModel)+1;
+     updateStaticAttributesAtom(bayesModel, item);
+     set classModel = mapDataToClassModelAtom(item,bayesModel);
+     updateClassModelAtom(classModel,item);
+     end;     
+     
+     
+/* Display functions */
+
+create function outputDetail(ClassModel class)-> Charstring
+  as '.Class : ' + targetClass(class) + ' - Prior proba : ' + 
+     priorProba(class) +' - Attribute models :' + skipline() +
+     concatagg(
+        select outputDetail(attModel) 
+        from AttributeDistribution attModel 
+        where attModel in attributeDistributions(class)
+              ) + skipline();
+
+create function outputDetail(NB_Model model)-> Charstring
+  as skipline() + 'Naive Bayes model' + skipline() +skipline() +
+     concatagg(
+        select outputDetail(class) 
+        from ClassModel class 
+        where class in classModel(model)
+              );
+
+              
+commit; 

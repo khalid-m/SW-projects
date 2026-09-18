@@ -1,0 +1,199 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Silvia Stefanova, UDBL
+ * $RCSfile: RDFMap.amosql,v $
+ * $Revision: 1.1 $ $Date: 2008/02/04 08:51:54 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Generators for Topic Map RDF view definition functions
+ *
+ ****************************************************************************
+ * $Log: RDFMap.amosql,v $
+ * Revision 1.1  2008/02/04 08:51:54  silvias
+ * Mukunda's wrapper source files
+ *
+ * Revision 1.21  2008/01/11 14:05:56  silvias
+ * Delete the HashMap data structure from Java and put the checking for cross references in Amos
+ *
+ * Revision 1.20  2007/12/03 10:50:49  silvias
+ * SPARQL queries without FRIM clause
+ *
+ * Revision 1.19  2007/11/30 11:03:04  silvias
+ * *** empty log message ***
+ *
+ * Revision 1.18  2007/11/24 19:06:22  silvias
+ * Redifine TMURI as TMURI(TM_Object o, Charstring src)
+ *
+ * Revision 1.17  2007/11/07 13:36:47  silvias
+ * *** empty log message ***
+ *
+ * Revision 1.15  2007/10/19 09:42:57  silvias
+ * Added generation of TM_rdf_triples_lit function needed for SPARQL querying
+ *
+ * Revision 1.14  2007/10/18 13:23:26  silvias
+ * Removed call to patchSparQL
+ *
+ * Revision 1.13  2007/10/09 20:04:28  silvias
+ * *** empty log message ***
+ *
+ * Revision 1.12  2007/09/10 17:30:53  silvias
+ * *** empty log message ***
+ *
+ * Revision 1.11  2007/08/24 16:35:41  silvias
+ * Changed the name of the function "createUPV" to "exportTopicMap".
+ *
+ * Revision 1.10  2007/08/20 20:38:37  silvias
+ * Added function createUPV(upv, xtmfile)
+ *
+ * Revision 1.9  2007/08/16 16:33:24  silvias
+ * Added functions to generate more than one UPV over differnet xtm files
+ *
+ * Revision 1.8  2007/05/02 12:37:09  silvias
+ * Corrected function name UPVofURI
+ *
+ * Revision 1.7  2007/04/30 16:01:17  torer
+ * Included in image generation and materialization of functions defining
+ * the RDF view of Topic Maps
+ *
+ ****************************************************************************/
+create function RDF_classview(TM_Object t, Charstring file) -> 
+                <Charstring s, Charstring p, Charstring o>
+  as select s, p, o from integer num
+  where s = tmuri(t, file) and o = tmclassmap(typeof(t)) and
+        p = rdfschemauri();
+
+
+create function generate_rdfview_def_lit(Function fn)->Charstring fnd
+/*Generates a rdf view if the result of the binary function fn is a literal*/
+as select 
+"create function RDF_" + gn + "(Charstring fname)-><Charstring s, Charstring p, Charstring o>
+as select s,p,o
+   from "+ tp + " a, integer num
+   where "+ gn + "(a)=o and
+         TMURI(a,fname)=s and
+         p = \"" + tmpropmap(fn)+ "\";"
+
+     from Charstring gn, Charstring tp
+     where gn = generic_name(fn) and
+           tp = name(argument_types(fn)) and 
+		 fn =in(topicMapFunctions());
+
+create function generate_rdfview_def(Function fn)->Charstring fnd
+/*Generates a rdf view if the result of the binary function fn is an object*/
+  as select 
+"create function RDF_" + gn + "(Charstring fname)-><Charstring s, Charstring p, Charstring o>
+as select s,p,o
+   from "+ tp + " a, " + tr + " r, integer num
+      where "+ gn + "(a)=r and
+         TMURI(r,fname)=o and
+	 TMURI(a,fname)=s and
+         p = \"" + tmpropmap(fn)+ "\";"
+
+     from Charstring gn, Charstring tp, Charstring tr
+     where gn = generic_name(fn) and
+           tp = name(argument_types(fn))and
+   	   tr= name(result_types(fn)) and
+	   fn =in(topicMapFunctions());
+
+create function generate_rdfview(Function fn)->Object
+/*Generates a rdfview for a binary TM function */
+  as begin if is_literal(result_types(fn))
+           then result eval(generate_rdfview_def_lit(fn))
+           else result eval(generate_rdfview_def(fn));
+     end;
+
+create function generate_all_rdfviews()->Object
+  /* Generate all the rdf views over all existing TM functions */    
+  as begin
+	for each function f where f=in(topicMapFunctions())
+	     generate_rdfview(f);
+     end;
+
+create function make_statement(Charstring filen)->charstring
+  as begin
+    declare charstring nn, charstring fundef;
+    set nn="";	
+    for each charstring nam where nam = generic_name(topicMapFunctions())
+    	set nn = "rdf_" + nam + "(\""+filen+"\") = <s, p, o> " + "or " + nn;
+    result substring(nn, 0, char_length(nn)-5);
+    end;
+
+create function rdfclass_triples(Charstring f) ->
+       Bag of <Charstring s, Charstring p, Charstring o>
+  /* Generates triples <TM_object,#type,the_class>
+     for each imported TM object */
+  as  	select rdf_classview(t,f)
+        from TM_object t, integer num where idTMO(t)=<f, num>;
+
+create function UPVname(Charstring  xtmfile)->Charstring 
+as result substring(xtmfile,0,char_length(xtmfile)-5);
+
+create function generate_TM_rdf_triples(Charstring file, Charstring upv)->Charstring ch
+  /* Generates the triple view over the all imported xtm data */
+  as  
+ select  "create function tm_rdf_triples_"+upv+"()-> 
+                 Bag of <Charstring s, Charstring p, Charstring o>
+  	as select s,p,o 
+     	from charstring s, charstring p, charstring o
+     	where rdfclass_triples(\""+file+"\")=<s,p,o> 
+        	or tm_rdfschema_triples_mat()=<s,p,o> or " + make_statement(file)+";";
+
+
+create function generate_TM_rdf_triples_lit(Charstring file, Charstring upv)->Charstring ch
+  /* Overload the triple view function with dummy to patch SparQL parser*/
+  as  
+ select  "create function tm_rdf_triples_"+upv+"(Charstring lit)-> 
+                 Bag of <Charstring s, Charstring p>
+  	as select s,p 
+     	from charstring s, charstring p
+     	where tm_rdf_triples_"+upv+"()=<s,p,lit>;";
+
+create function UPV(Charstring file)->Charstring as stored;
+
+create function setUPV(Charstring file)->Charstring
+  as set UPV(file)= substring(extract_nickname(file),0,char_length(extract_nickname(file))-5);
+
+
+/*** Generate RDF view functions ***/
+
+generate_all_rdfviews(); /* Generates meta-functions for Topic Maps */
+
+materialize_TM_RDFschema_triples(); /* Materialize TM_rdfdata_triples() */
+
+
+create function generate#TMtable(Charstring upvname)->Charstring ch
+  /* Generates the triple view over the all imported xtm data */
+  as select 
+"create function #"+upvname+"()-> 
+                 Bag of <Charstring s, Charstring p, Charstring val>
+  as select tm_rdf_triples_"+upvname+"();";
+
+
+create function importTopicMap(Charstring upvname, Charstring xtmfile) -> Object
+/*Loads the xtm file and generates the UPV  if it has not been generated
+with the name given as function argument, i.e upvname*/
+as begin
+   declare Charstring upv, Charstring uri;
+   set upv=UPV(xtmfile);
+   if upv=nil then    
+      begin
+ 	 set UPV(xtmfile)=upvname; 
+	 loadXTM(xtmfile);
+	 eval(generate_TM_rdf_triples(xtmfile, upvname));
+	 eval(generate_TM_rdf_triples_lit(xtmfile, upvname));
+  	 set URIofUPV("tm_rdf_triples_"+upvname)=xtmfile;	 
+	 set uri= "tm_rdf_triples_"+upvname+"()";
+     	 eval(generate#TMtable(upvname));	
+      end;
+end;
+/*
+parteval("plus");
+parteval("oid_nr");
+parteval("filetmo");
+parteval("atoi");
+parteval("localname");
+*/
+
+
+

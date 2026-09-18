@@ -1,0 +1,130 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Silvia Stefanova UDBL
+ * $RCSfile: ddescribe.amosql,v $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Functions to deep DESCRIBE resources from the UPV
+ ******************************************************************************/
+
+create function notlike(Charstring str, Charstring pat)-> Boolean b
+   as multidirectional
+      ('bb' foreign 'notlike--');
+
+
+create function def()->(Charstring s,Charstring p,Charstring o)  ;
+
+
+create function make_def(Charstring upv)->Charstring
+/*Contsructs the def function*/
+as 
+	eval("create function def()->(Charstring,Charstring,Charstring) as 
+	     SELECT  ?s ?p ?o FROM Charstring s,Charstring p,Charstring o
+	     WHERE (s,p,o) in "+upv+"();");
+
+create function sparqlLiteral(Charstring ob)-> Boolean
+/*Returns true if ob is a SPARQL literal, false otherwise*/
+as select true where like(ob,"*^^xsd:*") or like(ob, "*XMLSchema*") or
+	(notlike(ob,"http://*") and notlike(ob,"_:*"));
+
+ create function sparqltypedLiteral(Charstring ob)-> Boolean
+/*Returns true if ob is a SPARQL typed literal*/
+as select true where like(ob,"*^^xsd:*") or like(ob, "*XMLSchema*");
+
+create function sparqlBlank(Charstring ob)-> Boolean
+/*Returns true if ob is a SPARQL blank,false otherwise*/
+as select true where like(ob,"_:*");
+
+create function sparqlIRI(Charstring ob)-> Boolean
+/*Returns true if ob is a SPARQL IRI,false otherwise*/
+as select true where (notlike(ob,"*^^xsd:*") or notlike(ob,"*XMLSchema*")) and  notlike(ob,"_:*")
+		and like(ob, "http://*");
+
+
+create function return_childnode(Charstring s1)->Charstring
+	as
+	select remove_null(ob) from Charstring ob, Charstring p
+	  where (s1, p, ob) in def();
+
+create function return_ancestornode(Charstring o1)->Charstring
+	as
+	select remove_null(sub) from Charstring sub, Charstring p
+	  where (sub, p, o1) in def();
+
+
+create function return_childnode_noschema(Charstring s1)->Charstring
+/*Returns the child nodes of node s1 without the nodes 
+ concerning the schema*/
+	as
+	select remove_null(ob) from Charstring ob, Charstring p
+	 where (s1, p, ob) in def()
+		and p != "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+		and notany(like(p,"*rdf-syntax*") );
+
+
+create function return_childnode_schema(Charstring s1)->Charstring
+/*Returns the child IRI  nodes of node s1 without the nodes 
+ concerning the schema*/
+	as
+	select ob from Charstring ob, Charstring p
+	 where (s1, p, ob) in def()
+		and p != "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+		and notlike(p,"*rdf-syntax*") and sparqlIRI(ob);
+
+
+
+create function nodes2(Charstring uri)->Bag of Charstring 
+as tclose(#'return_childnode',uri);
+
+create function nodes2_anc(Charstring uri)->Bag of Charstring 
+as tclose(#'return_ancestornode',uri);
+
+create function nodes1(Charstring uri)->Bag of Charstring 
+as traverse(#'return_childnode',uri);
+
+create function nodeslist()->Charstring as stored;
+
+create function maternodlist(Charstring uri)->Boolean
+as 
+   begin
+	set nodeslist()=NIL;
+	for each Charstring node where node in nodes2(uri)
+	add nodeslist()=node;
+    end;
+
+create function retrieve_po(Charstring s)->(Charstring, Charstring, Charstring)
+	as select s,p,o from Charstring p, Charstring o
+		 where (s, p, o) in def();
+
+
+create function describeObject1(Charstring uri)->Vector of (Charstring,Charstring,Charstring)
+as
+	for each Charstring s where s in nodes2(uri) 
+          return evalv("select s,p,o from Charstring p, Charstring o, Charstring s
+					 where s='" + s +"' and (s, p, o) in def();");
+	  
+
+
+
+create function describeObject2(Charstring uri)->(Charstring,Charstring,Charstring)
+as
+	retrieve_po(nodes2(uri));
+
+create function describeObject2_anc(Charstring uri)->(Charstring,Charstring,Charstring)
+as
+	retrieve_po(nodes2_anc(uri));
+
+create function describeObject22(Charstring uri)->(Charstring,Charstring,Charstring)
+as
+	for each Charstring s where s in nodes2(uri) 
+		return retrieve_po(s);
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,87 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 Tore Risch, UDBL
+ * $RCSfile: apply.osql,v $
+ * $Revision: 1.8 $ $Date: 2012/05/08 07:32:08 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Testing dynamic calls to functions
+ *
+ ****************************************************************************
+ * $Log: apply.osql,v $
+ * Revision 1.8  2012/05/08 07:32:08  torer
+ * Language switch missing
+ *
+ * Revision 1.7  2012/05/08 07:29:53  torer
+ * Language switch missing
+ *
+ * Revision 1.6  2012/05/07 17:48:38  torer
+ * Testing evalv()
+ *
+ * Revision 1.5  2011/03/10 10:33:05  torer
+ * Regression testing cachedApply
+ *
+ * Revision 1.4  2011/01/27 11:26:14  torer
+ * Changed from <...> to SQL's (...) notation for tuples (much nicer)
+ *
+ * Revision 1.3  2010/09/10 11:34:41  torer
+ * The bag bug did not happen after all
+ *
+ * Revision 1.2  2010/09/09 08:07:04  torer
+ * Testing typed extent
+ ****************************************************************************/
+
+lisp;
+
+(checkequal "eval"
+	    ((osql "evalv('select iota(1,2),iota(1,2);');")
+	     '((#(1 1)) (#(1 2)) (#(2 1)) (#(2 2))))
+            ((plan-trail _select_) '(AND IOTA IOTA))
+	    ((osql "evalv('select distinct iota(1,2)+iota(1,2);');")
+	     '((#(2)) (#(3)) (#(4))))
+	    )
+
+:osql
+
+create function afn(Integer x)-> Bag of (Integer y, Integer z) as stored;
+
+add afn(1) = (1,1);
+add afn(1) = (1,2);
+add afn(1) = (2,1);
+add afn(2) = (2,2);
+
+create function _iota(Number l, Number u)->Bag of Integer as stored;
+
+lisp;
+
+(checkequal "Forward apply"
+	    ((proccall(theresolvent 'iota)(vector 1 5)) t)
+	    ((osql "apply(#'iota',{1,5});")
+	     '((#(1)) (#(2)) (#(3)) (#(4)) (#(5))))
+            ((osql "apply(functionnamed('plus'),{1,2})[0];")
+             '((3)))
+	    )
+
+(checkequal 
+ "Inverse apply"
+ ((osql "select n from Number n where apply(#'sqrt',{n}) = {3};")
+  '((9)))
+ ((osql "select n from Number n 
+                   where apply(functionnamed('sqrt'),{n}) = {3};")
+  '((9)))
+ ((osql "select i,j,k from Number i, Number j, Number k
+                   where {i,j,k} in extent(#'afn');")
+  '((1 2 1) (1 1 2) (1 1 1) (2 2 2)))
+ )
+
+(checkequal 
+ "Cached function application"
+ ((osql "cachedApply(#'iota',{1,3},#'_iota');") '((1) (2) (3)))
+ ((osql "cachedApply(#'iota',{1,3},#'_iota');") '((3) (2) (1)))
+ )
+
+:osql
+
+rollback;
+

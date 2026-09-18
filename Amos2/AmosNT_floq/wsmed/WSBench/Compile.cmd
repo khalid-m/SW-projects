@@ -1,0 +1,1 @@
+javac -Xlint -classpath .;%AMOS_HOME%\bin\javaamos.jar; -d %AMOS_HOME%\wsmed\WSBench\classes %AMOS_HOME%\wsmed\WSBench\src\java\*.java

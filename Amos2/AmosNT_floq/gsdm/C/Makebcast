@@ -1,0 +1,43 @@
+AMOSHOME=../..
+
+BINDIR=$(AMOSHOME)/bin
+
+OBJDIR=.
+
+UDPLIBS=$(BINDIR)/libamos.a -lm -lnsl -lpthread -lrt
+
+
+# sources for the udp
+
+
+UDPSRCS = udp_test.c udp_producer.c udp_radiosource.c udp_streams.c udp_logging.c
+
+# generate a list of required obj files using the sources list
+#
+UDPOBJS = $(sort $(foreach src, $(UDPSRCS), $(OBJDIR)/$(notdir $(src:%.c=%.o))))
+
+# make all by default
+#
+default: all
+
+# phony rules don't produce real files
+#
+.PHONY: all clean
+
+# All targets
+#
+all: $(BINDIR)/bcast
+
+
+# rule to make broadcaster
+#
+$(BINDIR)/bcast: $(UDPOBJS) $(BINDIR)/amos2.dmp
+	$(CC) -DLINUX=1 -O2 -o $@ $(AMOSHOME)/gsdm/C/udp_test.c $(UDPOBJS) $(UDPLIBS)
+
+# rule to generalize c-sources compilation, no linking
+#
+$(OBJDIR)/%.o: %.c
+	$(CC) -O2 -o $@ -c $<
+
+
+

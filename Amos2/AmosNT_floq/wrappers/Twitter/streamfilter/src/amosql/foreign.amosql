@@ -1,0 +1,14 @@
+create function init(charstring url,charstring name,charstring pass)-> Integer as foreign "JAVA:JsonWrapper/initConn";
+
+create function jsonwrapper(Integer id,Record r)->Bag of Object as foreign "JAVA:JsonWrapper/jsonWrapper";
+
+create function jsonstream(Integer id,Record r)->stream of Object as streamof(jsonwrapper(id,r));
+
+create function logout(Integer i)-> charstring as foreign "JAVA:JsonWrapper/logout";
+
+/*show the available connections in the system*/
+create function available()-> Bag of Integer as foreign "JAVA:JsonWrapper/available";
+
+/*recieve JSON stream from twitter*/
+create function trackstream(Integer i,charstring k,Integer stop)->Stream of Record
+as section(jsonstream(i,Record({"track",k})),0,stop);

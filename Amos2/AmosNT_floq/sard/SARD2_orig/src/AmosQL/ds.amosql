@@ -1,0 +1,193 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2006 Johan Petrini UDBL
+ * $RCSfile: ds.amosql,v $
+ * $Revision: 1.1 $ $Date: 2013/08/09 14:18:12 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Definition of UPVs and data sources.
+ *
+ * One SWARD can have several clients, UPVs and data sources. 
+ * However, a each UPV is defined over only one data source. 
+ * There is a one-to-one mapping between a column in a data source and 
+ * the corresponding property identifier in the UPV defined over that 
+ * data source. 
+ * Each UPV is assigned a UPV data source (DS) for accessing a 
+ * particular data source e.g. a relational database. The DS is defined 
+ * only once for every accessed data source and is global in SWARD.
+ * This way several UPVs can share the same data source connection.
+ ****************************************************************************
+/* UPV. Populated once for each new RDF view.
+ */
+create function UPV(Charstring id)-><Charstring ds,Object uri>;
+
+/* Data source. Only populated once for each new data source.
+ */
+create function DS(Charstring id)-><Charstring url,
+                                    Charstring driver,
+                                    Charstring catalog,
+                                    Charstring schema,
+                                    Charstring user,
+                                    Charstring passw>;
+
+
+
+create function DSOfUPV(Charstring id)->Charstring ds 
+as 
+ select ds from Charstring uri where UPV(id)=<ds,uri>; 
+
+create function URIOfUPV(Charstring id)->Charstring uri 
+as 
+ select uri from Charstring ds where UPV(id)=<ds,uri>; 
+
+create function setURIOfUPV(Charstring upv,Charstring uri)->Boolean
+as
+ begin
+  declare Charstring ds;
+  set ds = dsofupv(upv);
+  set upv(upv)=<ds,uri>;
+  return true; 
+ end;
+
+create function UPVOfURI(Charstring uri)->Charstring
+ as 
+  begin
+   if(notany(select upv from Charstring upv where URIOfUPV(upv)=uri)) 
+   then
+   begin
+    for each Charstring upv where upv = in(select tmp from Charstring tmp where URIOfUPV(tmp)="")
+    return upv;
+   end
+   else
+   begin
+    for each Charstring upv where upv = in(select tmp from Charstring tmp where URIOfUPV(tmp)=uri)
+    return upv;
+   end;
+  end;
+
+
+/* Attributes of a UPV 
+ */
+create function defineUPV(Charstring ds,Charstring id)->Boolean 
+as
+begin
+ set upv(id)=<ds,nil>;
+ return true;
+end;
+
+create function defineUPV(Charstring ds,Charstring id,Object uri)->Boolean 
+as
+begin
+ set UPV(id)=<ds,uri>;
+ setURIOfUPV("s"+id,"http://user.it.uu.se/~udbl/sard"); 
+ return true;
+end;
+
+/* Attributes of a data source 
+ */
+create function defineDS(Charstring id,Charstring url,Charstring driver,Charstring catalog, Charstring schema, Charstring user, Charstring passw)->Boolean
+as
+begin
+ set DS(id)=<url,driver,catalog,schema,user,passw>;
+ return true;
+end;
+
+create function JDBCOfDS(Charstring id)->JDBC;
+
+create function URLOfDS(Charstring id)->Charstring url 
+as 
+ select url 
+ from Charstring driver,Charstring catalog, Charstring schema, Charstring user, Charstring passw
+ where DS(id)=<url,driver,catalog,schema,user,passw>; 
+
+create function driverOfDS(Charstring id)->Charstring driver 
+as 
+ select driver 
+ from Charstring url, Charstring catalog, Charstring schema, Charstring user, Charstring passw
+ where DS(id)=<url,driver,catalog,schema,user,passw>; 
+
+create function catalogOfDS(Charstring id)->Charstring catalog 
+as 
+ select catalog 
+ from Charstring url,Charstring driver,Charstring schema,Charstring user,Charstring passw
+ where DS(id)=<url,driver,catalog,schema,user,passw>; 
+
+create function schemaOfDS(Charstring id)->Charstring schema 
+as 
+ select schema 
+ from Charstring url,Charstring driver,Charstring catalog,Charstring user,Charstring passw
+ where DS(id)=<url,driver,catalog,schema,user,passw>; 
+
+create function userOfDS(Charstring id)->Charstring user 
+as 
+ select user 
+ from Charstring url,Charstring driver,Charstring catalog,Charstring schema,Charstring passw
+ where DS(id)=<url,driver,catalog,schema,user,passw>; 
+
+create function passOfDS(Charstring id)->Charstring passw 
+as 
+ select passw 
+ from Charstring url,Charstring driver,Charstring catalog,Charstring schema,Charstring user
+ where DS(id)=<url,driver,catalog,schema,user,passw>; 
+
+/* Help fns
+ */
+create function DSConnected(Charstring ds)->Boolean as stored;
+create function noc(Charstring ds)->Integer as stored;
+
+create function DSConnect(Charstring upv)->Boolean
+ as
+ begin
+  declare Charstring ds;
+  set ds = DSOfUPV(upv);
+  if(notany(DSConnected(ds))) then
+  begin
+   set JDBCOfDS(ds)=jdbc(ds,driverOfDS(ds));
+   connect(JDBCOfDS(ds),URLOfDS(ds),userOfDS(ds),passOfDS(ds));
+   set DSConnected(ds)=true;
+   set noc(DSOfUPV(upv))=1; 	
+  end
+  else
+  begin
+   set noc(DSOfUPV(upv))=noc(DSOfUPV(upv))+1;
+  end;
+ return true;
+ end;
+
+create function DSDisconnect(Charstring upv)->Boolean
+as
+ begin
+  declare Charstring ds;
+  set ds = DSOfUPV(upv);
+  if(noc(DSOfUPV(upv)) = 1) then
+  begin
+   set DSConnected(ds)=false;
+   set noc(ds) = noc(ds)-1;
+   disconnect(JDBCOfDS(ds));
+   end
+  else
+  begin
+   if(noc(DSOfUPV(upv)) > 1) then
+   begin
+    set noc(ds) = noc(ds)-1;
+   end;
+  end;
+  return true;
+ end;
+
+create function connectAllUPV()->Boolean
+as
+ begin
+  for each Charstring ds,Charstring uri, Charstring id where <ds,uri> = UPV(id)
+  begin
+   DSConnect(id);
+   return true;
+  end;
+ end;
+
+create function s_ofupv(Charstring upv)-> Charstring
+as
+	if (some(functionnamed("s"+upv))) then
+		return concat("s",upv);
+

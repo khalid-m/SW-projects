@@ -1,0 +1,87 @@
+OPTIONS {
+        package orwise;
+        Recursive(5): get(nextpage){
+	        concat title;
+ 	        concat url;
+	        concat subject;
+        };
+}
+
+SCHEMA {
+
+        String[] title;
+        String[] url;
+        String[] subject;
+        String nextpage;
+        String check;
+}
+
+EXTRACTION {
+
+        title = html.body[0]->p[i:*].a.txt
+        where html.body[0]->p[i].a.txt!=null;
+
+        url = html.body[0]->p[j:*].a@+href
+        where html.body[0]->p[j].a.txt!=null;
+
+        subject=html.body[0]->p[k:*].font[0].txt
+        where html.body[0]->p[k].font[0].txt!=null;
+
+        nextpage = html->a[k]@+href
+        where html->a[k].txt=~"Next";
+//1st        html.body[0].div[0].table[0].tr[0].td[12].a[0].span[0].b[0].pcdata[0].txt
+//2nd        html.body[0].div[0].table[0].tbody[0].table[0].tr[0].td[13].a[0].span[0].b[0].pcdata[0].txt
+
+      check = html.body[0].pcdata[1].txt;
+
+
+}
+
+RETRIEVAL {
+        search(int entries, String keyword, String language) {
+                METHOD: GET;
+                URL: "http://www.google.com/search";
+                PARAM:  "q"=$keyword$,        //e.g. boat+ship+-sailing+-steamboat
+                        "hs"="en",
+                        "sitesearch"="",
+                        "lr"=$language$,
+                        "num"=$entries$,
+                        "btnG"="Google+Search";
+        }
+
+        get(String url) {
+               GET "$url$" ;
+        }
+}
+
+JAVACODE {
+
+    public static void main(String args[]) throws Exception {
+
+      int pages=1;
+      int entriesPerPage=10;
+      try {
+                pages = Integer.parseInt(args[1].trim());
+                entriesPerPage = Integer.parseInt(args[2].trim());
+                }
+      catch (NumberFormatException nfe) {
+                System.out.println("NumberFormatException: " + nfe.getMessage());
+             }
+
+      try{
+      String keyword=args[3];
+      String language=args[4];
+
+      System.out.println("Pages: " + pages);
+      System.out.println("Entries per page: " + entriesPerPage);
+      System.out.println("Keyword: " + keyword);
+      System.out.println("Language: "+ language);
+      System.out.println(searchRecursive(pages, entriesPerPage, keyword, language));
+
+
+      }
+      catch(Error mae){
+        System.out.println("java altavista [Pages] [Entries Per Page] [Keyword] [language]");
+      }
+    }
+}

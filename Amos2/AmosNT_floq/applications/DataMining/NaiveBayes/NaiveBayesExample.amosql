@@ -1,0 +1,76 @@
+/* Demonstration file for the Naive Bayes classifier */
+
+/* The file NaiveBayes.amosql must previously have been run. */
+/* We want to predict the sex of a set of persons given their attributes. */
+
+/* Creation of the examples used for learning */
+create type Person properties (hair Charstring, 
+                               clothes Charstring, 
+                               footsize Integer, 
+                               height Integer, 
+                               weight Integer,
+                               gender Charstring);
+create Person(hair, clothes, footsize, height, weight, gender) instances ("short hair", "pants", 42, 180, 75, "male"), 
+                                               ("long hair", "skirt", 39, 160, 60, "female"), 
+                                               ("short hair", "skirt", 38, 175, 58, "female"), 
+                                               ("long hair", "pants", 40, 166, 50, "female"),
+                                               ("long hair", "pants", 43, 169, 65, "male"),
+                                               ("short hair", "pants", 44, 172, 90, "male");
+set :population=materialize(select p from Person p);
+
+
+/* The attributes "hair" is categorical. 
+Therefore, the generator HistogramGenerator will be used to create the distribution. */
+create HistogramGenerator instances :c1;
+
+/* The attributes "clothes" is categorical, but the "zero-probability poblem" might appear. 
+Therefore, the generator SmoothHistogramGenerator will be used to create the distribution. */
+create SmoothHistogramGenerator(smoothingStrengh) instances :c2(1);
+
+/* The attributes "foot size" and "height" are numeric. 
+They will respectively be represented by Poisson distributions and Normal distributions. */
+create PoissonGenerator instances :c3;
+create NormalGenerator instances :c4;
+
+/* The attribute "weight" is numeric. It will be discretized in two ways.
+- 3 bins of equal amplitude : UniformBinGenerator
+- Bins with width=stdDeviation, centered around the average*/
+create UniformBinGenerator(nbBins) instances :c5(2);
+create stdDeviationBinGenerator instances :c6;
+
+set :attributes={
+    {#'hair',:c1}, 
+    {#'clothes',:c2}, 
+    {#'footsize',:c3}, 
+    {#'height',:c4}, 
+    {#'weight',:c5},
+    {#'weight',:c6}
+};
+
+/* Main procedure call to perform the learning. Outputs a NB_model object. */
+set :class=B_LEARN(:population, 
+                   :attributes, 
+                    #'gender');
+/* Shows detail of the generated model :*/                    
+print(outputDetail(:class)); 
+
+/* Predicts class for 2 new persons */
+create Person(hair, clothes, footsize, height, weight) instances :p3("long hair", "skirt", 38, 161, 62), 
+                                                                 :p4("short hair", "shorts", 42, 180, 89);
+
+set :b = bag(:p3, :p4);
+
+B_CLASSIFY(:class, :b);
+
+lisp;
+
+(defun foo()(osql "B_CLASSIFY(:class, :b);"))
+
+(foo) ;; Just to make OSQL macro be expanded
+
+(rptq 100 (foo)) ;; measure time to invoke B_CLASSIFY 100 times
+
+:osql
+
+
+

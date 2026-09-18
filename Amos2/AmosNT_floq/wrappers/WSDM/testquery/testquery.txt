@@ -1,0 +1,55 @@
+
+importwsdl("http://ws.strikeiron.com/USDAData?WSDL");
+
+/* importwsdl("C:/AmosNT/wrappers/wsdm/wsdl/GoogleSearch.wsdl");*/
+
+
+/*********************************************************************************/
+
+
+callwebservice("http://ws.strikeiron.com/USDAData?WSDL","SearchFoodByDescription",{"Sweet","1900"});
+
+/* callwebservice("C:/AmosNT/wrappers/wsdm/wsdl/GoogleSearch.wsdl","doGoogleSearch",{"yZg2x6tQFHKtMvq1xyVJMib2LlD2yTbj","Database","0","10","true","","false","","latin1","latin1"});*/
+
+
+
+/********************************************************************************/
+
+
+
+create function SearchFoodByDescription(charstring FoodGroupCode)
+        ->charstring descr
+		as	
+		select descr
+		from   vector r,vector s,vector m, vector a, Integer i
+		where  r=callwebservice("http://ws.strikeiron.com/USDAData?WSDL",
+                                        "SearchFoodByDescription",a) and 
+                       a={"",FoodGroupCode}and 
+                       s=r[0] and m=s[i]and descr=m[1];
+
+create function food_cc()-> <charstring ndbnumber key, charstring foodgroupcode, charstring longdescr>
+as select v[0],v[2],v[1]
+   from vector of vector r, integer i, vector v
+   where r = callwebservice("http://ws.strikeiron.com/USDAData?WSDL",
+                            "SearchFoodByDescription",{"",""}) and
+         v = r[0][i];
+
+create_mapped_type("food",{"ndbnumber"},{"ndbnumber","foodcode","longdescr"}, "food_cc");
+
+/* test queries */
+
+select ld from food f, charstring ld where ld=longdescr(f) and like(ld,"Syr*");
+
+count(select f from food f);
+
+select longdescr(f) from food f where ndbnumber(f)="11897"; 
+ /* Can be speeded up by a factor 2 by calling searchfoodbydescription only once.
+    Problem: System does not understand that NDBNUMBER is a key. 
+    Such declarations are ignored for derived functions. */
+
+count(select f from food f where foodcode(f)="1900"); 293
+
+create function q5()->Charstring as
+  select longdescr(f) from food f where foodcode(f)="1900";
+  /* Will be 293 times too slow because of the 2 calls to 
+     searchfoodbydescription */

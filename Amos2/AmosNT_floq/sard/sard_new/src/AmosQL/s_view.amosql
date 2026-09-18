@@ -1,0 +1,464 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Silvia Stefanova UDBL
+ * $RCSfile: s_view.amosql,v $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: S-view definitions
+ ******************************************************************************/
+
+/****************SEparate views for each T, A and F **********************************************************************/
+
+create function gen_ClassT(Charstring upv, Charstring tn)->Charstring clause
+/*Class view for all non-link tables */
+as
+ select "(s=cMap('"+tn+"','"+upv+"') and
+	 p = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and
+	 val = 'http://www.w3.org/2000/01/rdf-schema#Class')";
+
+create function gen_Classes(Charstring upv)->Bag of Charstring
+/*generate a class view for all tables in cMap*/
+as
+ for each Charstring tn,Charstring cid 
+  where cMap(tn,upv)=cid
+  return gen_ClassT(upv,tn);
+
+
+create function gen_PropertyTA(Charstring upv,Charstring cn,Charstring tn)->
+ Charstring clause
+/*Property view for a non-foreign key attribute A(cn) in a non-link table T (tn)*/
+as
+ select  
+     "(( pMap('"+tn+"','"+cn+"','"+upv+"')=prop and
+        s = prop and
+        p = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and
+        val = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property') or
+       (pMap('"+tn+"','"+cn+"','"+upv+"')=prop and
+        s = prop and
+        p = 'http://www.w3.org/2000/01/rdf-schema#domain' and
+	cMap('"+tn+"','"+upv+"')=class and
+        val = class) or
+       (pMap('"+tn+"','"+cn+"','"+upv+"')=prop and
+        cMap('"+tn+"','"+upv+"')=class and
+	typeMap('"+tn+"','"+cn+"','"+upv+"')=xsd and
+	s = prop and
+	p = 'http://www.w3.org/2000/01/rdf-schema#range' and
+	val = xsd))";
+
+
+create function gen_Properties(Charstring upv)->Bag of Charstring
+/*generate a property view for all columns in pMap*/
+as
+ for each Charstring tn,Charstring pid,Charstring cn 
+  where pMap(tn,cn,upv)=pid
+  return gen_PropertyTA(upv,cn,tn);
+
+
+create function gen_LinkP(Charstring upv, Charstring tn,Charstring tn1,Vector of Charstring cn1,
+							Charstring tn2,Vector of Charstring cn2 )-> Charstring clause
+/*Linking property view for a many-to-many relationships, represenetd by tn*/
+as
+ select "( (rmmMap('"+tn+"',"+cn1+","+cn2+",'"+tn1+"','"+tn2+"','"+upv+"')=prop and
+	s = prop and
+	p = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and
+	val = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property') or
+	(rmmMap('"+tn+"',"+cn1+","+cn2+",'"+tn1+"','"+tn2+"','"+upv+"')=prop and
+          s = prop and
+          p = 'http://www.w3.org/2000/01/rdf-schema#domain' and
+	  cMap('"+tn1+"','"+upv+"')=class1 and
+          val = class1) or
+         (rmmMap('"+tn+"',"+cn1+","+cn2+",'"+tn1+"','"+tn2+"','"+upv+"')=prop and
+          s = prop and
+	  p = 'http://www.w3.org/2000/01/rdf-schema#range' and
+	   cMap('"+tn2+"','"+upv+"')=class2 and
+	  val = class2) ) ";
+
+
+create function gen_LinkPs(Charstring upv)->Bag of Charstring
+/*generate a property view for all columns in pMap*/
+as
+ for each Charstring tn,Vector of Charstring cn1, Vector of Charstring cn2,
+	Charstring tn1, Charstring tn2, Charstring prop 
+  where rmmMap(tn,cn1,cn2,tn1,tn2,upv)=prop
+  return gen_LinkP(upv,tn,tn1,cn1,tn2,cn2);
+
+
+create function gen_DClasses(Charstring upv)->Charstring
+  as concatagg(inject(gen_Classes(upv)," or "));
+
+
+create function gen_DProperties(Charstring upv)->Charstring
+  as concatagg(inject(gen_Properties(upv)," or "));
+
+
+create function gen_DLinkP(Charstring upv)->Charstring
+  as concatagg(inject(gen_LinkPs(upv)," or "));
+
+
+create function defineClasses(Charstring upv)->Boolean
+  as
+   begin
+    declare Charstring dpv;
+   set dpv=gen_DClasses(upv);
+    if (dpv != "") then
+    begin
+     eval("create function class_" + upv + "()-> 
+          (Charstring s,Charstring p,Charstring val) 
+          as 
+           select s,p,val 
+           from Charstring s, Charstring p, Charstring val
+           where " + gen_DClasses(upv) + ";");
+    end
+    else 
+    begin
+     eval("create function class_" + upv + "()-> 
+          (Charstring s,Charstring p,Charstring val) 
+          as 
+           select s,p,val where nil;");
+    end;
+  end;
+
+create function defineProperties(Charstring upv)->Boolean
+  as
+   begin
+    declare Charstring dpv;
+   set dpv=gen_DProperties(upv);
+    if (dpv != "") then
+    begin
+     eval("create function property_" + upv + "()-> 
+          (Charstring s,Charstring p,Charstring val) 
+          as 
+           select s,p,val 
+           from Charstring s, Charstring p, Charstring val,
+	  Charstring prop, Charstring class, Charstring xsd
+           where " + gen_DProperties(upv) + ";");
+    end
+    else 
+    begin
+     eval("create function property_" + upv + "()-> 
+          (Charstring s,Charstring p,Charstring val) 
+          as 
+           select s,p,val where nil;");
+    end;
+  end;
+
+
+create function defineProperties(Charstring upv)->Boolean
+  as
+   begin
+    declare Charstring dpv;
+   set dpv=gen_DProperties(upv);
+    if (dpv != "") then
+    begin
+     eval("create function property_" + upv + "()-> 
+          (Charstring s,Charstring p,Charstring val) 
+          as 
+           select s,p,val 
+           from Charstring s, Charstring p, Charstring val,
+	  Charstring prop, Charstring class, Charstring xsd
+           where " + gen_DProperties(upv) + ";");
+    end
+    else 
+    begin
+     eval("create function property_" + upv + "()-> 
+          (Charstring s,Charstring p,Charstring val) 
+          as 
+           select s,p,val where nil;");
+    end;
+  end;
+
+
+create function defineLinkProperties(Charstring upv)->Boolean
+  as
+   begin
+    declare Charstring dpv;
+   set dpv=gen_DLinkP(upv);
+    if (dpv != "") then
+    begin
+     eval("create function link_property_" + upv + "()-> 
+          (Charstring s,Charstring p,Charstring val) 
+          as 
+           select s,p,val 
+           from Charstring s, Charstring p, Charstring val,
+	  Charstring prop, Charstring class1, Charstring class2
+           where " + gen_DLinkP(upv) + ";");
+    end
+    else 
+    begin
+     eval("create function link_property_" + upv + "()-> 
+          (Charstring s,Charstring p,Charstring val) 
+          as 
+           select s,p,val where nil;");
+    end;
+  end;
+
+create function generate_S_view(Charstring upv)->Boolean
+  as
+   begin
+    defineClasses(upv);
+    defineProperties(upv);
+    defineLinkProperties(upv);
+    eval("create function s" + upv + "()->
+          (Charstring s,Charstring p,Literal val)
+         as
+          select s,p,val where class_" + upv +"() = (s,p,val) or
+			        property_"+ upv +"() = (s,p,val) or
+	        	       link_property_" + upv + "()= (s,p,val);");
+   end;
+
+
+
+
+
+/*****************Generic View Definitions ******************************/
+
+
+create function ClassT(Charstring upv, Charstring tn)-> (Charstring ,Charstring ,Charstring )
+/*Class view for a non-link table tn */
+as
+ select s,p,val
+ from Charstring val, Charstring s, Charstring p
+ where ( s=cMap(tn,upv) and
+        p = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" and
+        val ="http://www.w3.org/2000/01/rdf-schema#Class" ) or
+	(s=cMap(tn,upv) and 
+	 p='http://user.it.uu.se/~udbl/sard#TName' and
+	 val=tn) ; 
+
+
+create function Class_view(Charstring upv)-> (Charstring ,Charstring ,Charstring )
+/*Class view for all non-link tables */
+as
+ select s,p,val from Charstring tn,Charstring s,Charstring p,Charstring val
+ where (s,p,val) in ClassT(upv,tn);
+
+create function Class_view_n(Charstring upv)-> (Charstring ,Charstring ,Charstring )
+/*Class view for all non-link tables */
+as
+ select s,p,val from Charstring tn,Charstring s,Charstring p,Charstring val
+ where (s,p,val) in ClassT(upv,tn) and 
+  (tn,catalogOfDS(DSOfUPV(upv)),schemaOfDS(DSOfUPV(upv)), "TABLE") 
+		in tables(jdbcOfDS(DSOfUPV(upv))) ;
+
+
+
+
+
+create function PropertyTA(Charstring upv,Charstring cn,Charstring tn)-> (Charstring s,Charstring p,Charstring val)
+/*Property view for a non-foreign key attribute A(cn) in a non-link table T (tn)*/
+as
+ select s,p,val
+ from Charstring prop,Charstring xsd,Charstring class
+ where (pMap(tn,cn,upv)=prop and
+        s = prop and
+        p = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and
+        val = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property') or
+       (pMap(tn,cn,upv)=prop and
+        s = prop and
+        p = 'http://www.w3.org/2000/01/rdf-schema#domain' and
+	cMap(tn,upv)=class and
+        val = class) or
+       (pMap(tn,cn,upv)=prop and
+        cMap(tn,upv)=class and
+	typeMap(tn,cn,upv)=xsd and
+	s = prop and
+	p = 'http://www.w3.org/2000/01/rdf-schema#range' and
+	val = xsd) or
+	(pMap(tn,cn,upv)=prop and
+        s = prop and
+        p = 'http://user.it.uu.se/~udbl/sard#AName' and
+	val = cn ) or
+	(pMap(tn,cn,upv)=prop and
+         s = prop and
+	 p= 'http://user.it.uu.se/~udbl/sard#size' and 
+	 val = valueid(itoa(size(ret_columnO(tn,cn))),"http://www.w3.org/2001/XMLSchema#int") );
+
+
+create function Property_view(Charstring upv)-> (Charstring ,Charstring ,Charstring )
+/*Property view for all non-foreign key attributes in non-link tables */
+as
+ select s,p,val from Charstring tn,Charstring cn,Charstring s,Charstring p,Charstring val
+ where (s,p,val) in PropertyTA(upv,cn,tn);
+
+
+create function pKeyVector(Charstring upvname,Charstring catalog,Charstring schema,Charstring tabname)->Vector of Charstring
+/*Vector of the primari key attributes fo tabname*/
+as 
+ 	vectorOf(select pk from Charstring pk, Charstring kk where (pk,kk) in 
+			primary_keys(jdbcofDS(DSOfUPV(upvname)),catalog,schema,tabname));
+
+
+
+create function PKeyT(Charstring upv,Charstring tn)-> (Charstring s,Charstring p,Charstring val)
+/*Primary key view for a non-link table T (tn)*/
+as
+ select s,p,val
+ from Charstring class,Charstring cn,Integer ii, vector vv, 
+	Charstring prop, Charstring xsd
+ where (cMap(tn,upv)=class and
+        s = class and
+	p='http://user.it.uu.se/~udbl/sard#PRIMARY_KEY' and
+	val=concat(concat('_:',tn),'_PrK') ) or
+	(cMap(tn,upv)=class and
+	s=concat(concat('_:',tn),'_PrK') and
+	p='http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and
+	val='http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq') or 
+	(cMap(tn,upv)=class and
+	 s=concat(concat('_:',tn),'_PrK') and
+	 vv=pKeyVector(upv,catalogofds(DSofUPV(upv)),schemaofds(DSofUPV(upv)),tn) and
+	 p=concat('http://www.w3.org/1999/02/22-rdf-syntax-ns#_',itoa(ii+1)) and
+	 cn=vv[ii] and
+	 pMap(tn,cn,upv)=prop and
+	 val=prop )  or
+	( vv=pKeyVector(upv,catalogofds(DSofUPV(upv)),schemaofds(DSofUPV(upv)),tn) and
+	 cn=vv[ii] and
+	 pMap(tn,cn,upv)=prop and
+         s = prop and
+         p = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and
+         val = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property') or
+       (vv=pKeyVector(upv,catalogofds(DSofUPV(upv)),schemaofds(DSofUPV(upv)),tn) and
+	cn=vv[ii] and
+	pMap(tn,cn,upv)=prop and
+        s = prop and
+        p = 'http://www.w3.org/2000/01/rdf-schema#domain' and
+	cMap(tn,upv)=class and
+        val = class) or
+       (vv=pKeyVector(upv,catalogofds(DSofUPV(upv)),schemaofds(DSofUPV(upv)),tn) and
+	 cn=vv[ii] and
+	pMap(tn,cn,upv)=prop and
+        cMap(tn,upv)=class and
+	typeMap(tn,cn,upv)=xsd and
+	s = prop and
+	p = 'http://www.w3.org/2000/01/rdf-schema#range' and
+	val = xsd) or
+	(vv=pKeyVector(upv,catalogofds(DSofUPV(upv)),schemaofds(DSofUPV(upv)),tn) and
+	 cn=vv[ii] and
+	pMap(tn,cn,upv)=prop and
+         s = prop and
+	 p= 'http://user.it.uu.se/~udbl/sard#size' and 
+	 val = valueid(itoa(size(ret_columnO(tn,cn))),"http://www.w3.org/2001/XMLSchema#int") );
+
+create function PKey_view(Charstring upv)-> (Charstring ,Charstring ,Charstring )
+/*Primary key view for all non-link tables */
+as
+ select s,p,val from Charstring tn,Charstring s,Charstring p,Charstring val
+ where (s,p,val) in PKeyT(upv,tn);
+
+
+create function FFKeyVector(Charstring upvname,Charstring catalog,Charstring schema,Charstring tn, Charstring otn)
+					->Vector of Charstring
+ as vectorof(select fk from Charstring fk, Charstring ocn
+		where (otn,ocn,fk) in imported_keys(jdbcofDS(DSOfUPV(upvname)),catalog,schema,tn) );
+
+
+create function FKeyVector(Charstring upvname,Charstring catalog,Charstring schema,Charstring tn)->Vector of Charstring
+/*Vector of the foreign key attributes for tn*/
+as 
+ 	select FFKeyVector(upvname,catalog,schema,tn,otn ) from Charstring otn ,Charstring ocn,Charstring fk 
+		where (otn,ocn,fk) in imported_keys(jdbcofDS(DSOfUPV(upvname)),catalog,schema,tn);
+
+
+
+create function FKeyF(Charstring upv, Charstring tn, Charstring tn1)-> (Charstring s,Charstring p,Charstring val)
+/*Foreign key view for a foreign key, one-to-many relationship between tn and tn1 */
+as
+ select s,p,val
+ from  Charstring class,Charstring class1,
+	Charstring cn,Integer ii, Vector vv, Charstring prop,
+	Charstring p1, Charstring p2, Vector vv1, Charstring cn1,
+	Integer j, Integer k, Vector vv2
+ where (rcMap(tn,tn1,upv)=prop and
+	s = prop and
+	p = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and
+ 	val = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property') or
+        (rcMap(tn,tn1,upv)=prop and
+	 cMap(tn,upv,class) and
+         s = prop and
+	 p = 'http://www.w3.org/2000/01/rdf-schema#domain' and
+	 val = class) or
+	(rcMap(tn,tn1,upv)=prop and
+         cMap(tn1,upv)=class1 and
+  	 s = prop and
+	 p = 'http://www.w3.org/2000/01/rdf-schema#range' and
+	 val = class1) or
+	( cMap(tn,upv)=class and
+         s = class and
+	 p='http://user.it.uu.se/~udbl/sard#FOREIGN_KEY' and
+	 rcMap(tn,tn1,upv)=prop and
+	 val=prop ) or
+	(rcMap(tn,tn1,upv)=prop and
+	 s=prop and
+	 p='http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and
+	 val='http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq') or 
+	( rcMap(tn,tn1,upv)=prop and
+	 s=prop and
+	 vv=FFKeyVector(upv,catalogofds(DSofUPV(upv)),schemaofds(DSofUPV(upv)),tn,tn1) and
+	 p=concat('http://www.w3.org/1999/02/22-rdf-syntax-ns#_',itoa(ii+1)) and
+	 cn=vv[ii] and
+	 pMap(tn,cn,upv)=p1 and
+	 val=p1 ) or
+	(  vv2=FFKeyVector(upv,catalogofds(DSofUPV(upv)),schemaofds(DSofUPV(upv)),tn,tn1) and
+	  cn=vv2[j] and
+	  pMap(tn,cn,upv)=p1 and
+	  s= p1 and
+	  p='http://user.it.uu.se/~udbl/sard#REFERENCES' and
+	  vv1=pKeyVector(upv,catalogofds(DSofUPV(upv)),schemaofds(DSofUPV(upv)),tn1) and
+	  cn1=vv1[k] and
+	  pMap(tn1,cn1,upv)=p2 and
+	  val=p2 );
+
+
+create function FKey_view(Charstring upv)-> (Charstring ,Charstring ,Charstring )
+/*Foreign key view for all foreign key relationships */
+as
+ select s,p,val from Charstring tn,Charstring tn1,Charstring s,Charstring p,Charstring val
+ where (s,p,val) in FKeyF(upv,tn,tn1);
+
+
+create function LinkP(Charstring upv, Charstring tn )-> (Charstring s,Charstring p,Charstring val)
+/*Linking property view for a many-to-many relationships, represenetd by tn*/
+as
+ select s,p,val
+ from Vector of Charstring cn1,Vector of Charstring cn2,
+	Charstring tn1,Charstring tn2,Charstring prop,
+	Charstring class1, Charstring class2
+ where (rmmMap(tn,cn1,cn2,tn1,tn2,upv)=prop and
+	s = prop and
+	p = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and
+	val = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property') or
+	(rmmMap(tn,cn1,cn2,tn1,tn2,upv)=prop and
+          s = prop and
+          p = 'http://www.w3.org/2000/01/rdf-schema#domain' and
+	  cMap(tn1,upv)=class1 and
+          val = class1) or
+         (rmmMap(tn,cn1,cn2,tn1,tn2,upv)=prop and
+          s = prop and
+	  p = 'http://www.w3.org/2000/01/rdf-schema#range' and
+	   cMap(tn2,upv)=class2 and
+	  val = class2) or
+	(rmmMap(tn,cn1,cn2,tn1,tn2,upv)=prop and
+          s = prop and
+          p = 'http://user.it.uu.se/~udbl/sard#LName' and
+	  val = tn);
+
+
+create function LinkP_view(Charstring upv)-> (Charstring ,Charstring ,Charstring )
+/*Linking property view for all link table */
+as
+ select s,p,val from Charstring tn,Charstring s,Charstring p,Charstring val
+ where (s,p,val) in LinkP(upv,tn);
+
+
+
+create function s_view(Charstring upv)->(Charstring,Charstring,Charstring )
+as
+	select s,p,val from Charstring s,Charstring p,Charstring val
+	where (s,p,val) in Class_view(upv) or
+	      (s,p,val) in Property_view(upv) or
+	      (s,p,val) in PKey_view(upv) or
+	      (s,p,val) in FKey_view(upv) or
+	      (s,p,val) in LinkP_view(upv) ;
+
+
+

@@ -1,0 +1,624 @@
+/*-*-sql-*-*******************************************************************/
+
+logging off;
+create function tbasedir()->charstring;
+create function pbasedir()->charstring;
+create function lroutputbin()->numarray;
+create function last_clock()->real;
+create function clocks(integer)->real;
+create function lresult(integer L) -> <vector fov, real stime, real rtime>;
+create_index("lresult", "L", "hash", "multiple");
+create function lrinputfiles(integer num)->vector of charstring;
+
+set lrinputfiles(10) = {'/home/erikz/binbench/c10-200k.bin'};
+set lrinputfiles(64) = {'/scratch/erikz/c64-0', '/scratch/erikz/c64-1',
+'/scratch/erikz/c64-2', '/scratch/erikz/c64-3'};
+set lrinputfiles(52) = {'/scratch/erikz/c52-0', '/scratch/erikz/c52-1',
+'/scratch/erikz/c52-2'};
+
+create function hyb(stream of iarray s, integer fo)
+-> vector of stream of iarray as select preproc
+from vector of stream of iarray pre,
+vector of stream of iarray sposrep,
+vector of stream of iarray squeries,
+vector of stream of iarray preproc
+where preproc = vselect mergestreams({sposrep[i], squeries[i]}) from integer i
+and sposrep = hpartstreamv(pre[0], #'lrproute', fo, {fo}, 0)
+and squeries = hpartstreamv(pre[1], #'bcast', fo, expv(fo), 0)
+and pre = splitstream(s, 2, #'qdsplit');
+
+create function dlrnomysephyb(stream inputstream, vector of integer fo,
+                              integer L, charstring descr) -> object as
+select in(mergestreams({t2, t1, t0}))
+from stream of iarray input, charstring ofname,
+vector of stream proc, vector of stream postproc,
+stream t0, stream t1, stream t2
+where t2 = ostream(newspflex(streamof(writefiles(ofname + "-ib-2-", 10000000,
+  dtslrbin(lrf0(in(zipstreams(vectorize(select i, postproc[i*3 + 2]
+  from integer i where i in iota(0, dim(postproc)/3)))))))),
+  make_record({'hostname', 'gr49.uppmax.uu.se'})), 0)
+and t1 = ostream(newspflex(streamof(writefiles(ofname + "-ib-1-", 10000000,
+  dtslrbin(in_d(mergestreams(vectorize(select i, postproc[i*3 + 1]
+  from integer i where i in iota(0, dim(postproc)/3))))))),
+  make_record({'hostname', 'gr54.uppmax.uu.se'})), 0)
+and t0 = ostream(newspflex(streamof(writefiles(ofname + "-ib-0-", 10000000,
+  dtslrbin(in_d(mergestreams(vectorize(select i, postproc[i*3]
+  from integer i where i in iota(0, dim(postproc)/3))))))),
+  make_record({'hostname', 'gr55.uppmax.uu.se'})), 0)
+and postproc = splitstreams(proc, 3, #'oesplit')
+and proc = mapstreams(hyb(input, L), #'lrbin')
+and input = ostream(newspflex(inputstream,
+make_record({'hostname', 'gr41.uppmax.uu.se'})), 0)
+and ofname = lroutputfiles() + stringify(L) + descr;
+
+/* FE: Det är dlrnomysepib som gäller */
+
+create function dlrnomysepib(stream inputstream, vector of integer fo,
+                             integer L, charstring descr) -> object as
+select in(mergestreams({t2, t1, t0}))
+from stream of iarray input, charstring ofname,
+vector of stream xp, vector of stream proc, vector of stream postproc,
+stream t0, stream t1, stream t2
+where t2 = ostream(newspflex(streamof(writefiles(ofname + "-ib-2-", 10000000,
+  dtslrbin(lrf0(in(zipstreams(vectorize(select i, postproc[i*3 + 2]
+  from integer i where i in iota(0, dim(postproc)/3)))))))),
+  make_record({'hostname', 'gr49.uppmax.uu.se'})), 0)
+and t1 = ostream(newspflex(streamof(writefiles(ofname + "-ib-1-", 10000000,
+  dtslrbin(in_d(mergestreams(vectorize(select i, postproc[i*3 + 1]
+  from integer i where i in iota(0, dim(postproc)/3))))))),
+  make_record({'hostname', 'gr54.uppmax.uu.se'})), 0)
+and t0 = ostream(newspflex(streamof(writefiles(ofname + "-ib-0-", 10000000,
+  dtslrbin(in_d(mergestreams(vectorize(select i, postproc[i*3]
+  from integer i where i in iota(0, dim(postproc)/3))))))),
+  make_record({'hostname', 'gr55.uppmax.uu.se'})), 0)
+and postproc = splitstreams(proc, 3, #'oesplit')
+and proc = mapstreams(xp, #'lrbin')
+and xp = hpartstreamv(input, #'lrproute', L, fo, 0)
+and input = ostream(newspflex(inputstream,
+make_record({'hostname', 'gr41.uppmax.uu.se'})), 0)
+and ofname = lroutputfiles() + stringify(L) + descr;
+
+create function dlrnomysepob(stream inputstream, vector of integer fo_r, 
+            vector of integer fo_bc, integer L, charstring descr) -> object as
+select in(mergestreams({t0, t1, t2}))
+from stream of iarray input, charstring ofname,
+vector of stream of iarray s,
+vector of stream of iarray sposrep,
+vector of stream of iarray squeries,
+vector of stream proc,
+vector of stream postproc,
+stream t0, stream t1, stream t2
+where t2 = ostream(newspflex(streamof(writefiles(ofname + "-ob-2-", 10000000,
+  dtslrbin(lrf0(in(zipstreams(vectorize(select i, postproc[i*3 + 2]
+  from integer i where i in iota(0, dim(postproc)/3)))))))),
+  make_record({'hostname', 'gr49.uppmax.uu.se'})), 0)
+and t1 = ostream(newspflex(streamof(writefiles(ofname + "-ob-1-", 10000000,
+  dtslrbin(in_d(mergestreams(vectorize(select i, postproc[i*3 + 1]
+  from integer i where i in iota(0, dim(postproc)/3))))))),
+  make_record({'hostname', 'gr54.uppmax.uu.se'})), 0)
+and t0 = ostream(newspflex(streamof(writefiles(ofname + "-ob-0-", 10000000,
+  dtslrbin(in_d(mergestreams(vectorize(select i, postproc[i*3]
+  from integer i where i in iota(0, dim(postproc)/3))))))),
+  make_record({'hostname', 'gr55.uppmax.uu.se'})), 0)
+and postproc = splitstreams(proc, 3, #'oesplit')
+and proc = mapstreams(
+  (vselect mergestreams({sposrep[i], squeries[i]}) from integer i),
+  #'lrbin')
+and sposrep = hpartstreamv(s[0], #'lrproute', L, fo_r, 0)
+and squeries = hpartstreamv(s[1], #'bcast', L, fo_bc, 0)
+and s = splitstream(input, 2, #'qdsplit')
+and input = ostream(newspflex(inputstream,
+make_record({'hostname', 'gr41.uppmax.uu.se'})), 0)
+and ofname = lroutputfiles() + stringify(L) + descr;
+
+create function dlrnomysepsamp(stream inputstream, vector of integer fo,
+                               integer L, integer samprate, charstring descr)
+-> object as select in(mergestreams({t2, t1, t0}))
+from stream of iarray input, charstring ofname,
+vector of stream xp, vector of stream proc, vector of stream postproc,
+stream t0, stream t1, stream t2
+where t2 = ostream(newspflex(streamof(writefiles(ofname + "-2-", 10000000,
+  dtslrbin(winagg(lrf0(in(zipstreams(vectorize(select i, postproc[i*3 + 2]
+  from integer i where i in iota(0, dim(postproc)/3))))), 1, samprate)[0]))),
+  make_record({'hostname', 'gr49.uppmax.uu.se'})), 0)
+and t1 = ostream(newspflex(streamof(writefiles(ofname + "-1-", 10000000,
+  dtslrbin(winagg(in_d(mergestreams(vectorize(select i, postproc[i*3 + 1]
+  from integer i where i in iota(0, dim(postproc)/3)))), 1, samprate)[0]))),
+  make_record({'hostname', 'gr54.uppmax.uu.se'})), 0)
+and t0 = ostream(newspflex(streamof(writefiles(ofname + "-0-", 10000000,
+  dtslrbin(winagg(in_d(mergestreams(vectorize(select i, postproc[i*3]
+  from integer i where i in iota(0, dim(postproc)/3)))), 1, samprate)[0]))),
+  make_record({'hostname', 'gr55.uppmax.uu.se'})), 0)
+and postproc = splitstreams(proc, 3, #'oesplit')
+and proc = mapstreams(xp, #'lrbin')
+and xp = hpartstreamv(input, #'lrproute', L, fo, 0)
+and input = ostream(newspflex(inputstream,
+make_record({'hostname', 'gr41.uppmax.uu.se'})), 0)
+and ofname = lroutputfiles() + stringify(L) + descr;
+
+create function dlrnomy(vector of integer fo, integer L)
+-> <vector, real, real> as
+select fo, rt, st
+from real rt, real st
+where <rt, st> = writefiles("/scratch/erikz/c" + stringify(L) + ".out", 
+10000000,
+(select dtslrbin(in_d(mergestreams(concat({abagg}, alla))))
+from stream of iarray input,
+vector of stream xp, vector of stream proc, vector of stream postproc,
+vector of stream alla, stream abagg
+where abagg = ostream(newsp(lrf(zipstreams(vectorize(select i, postproc[i*2+1]
+  from integer i where i in iota(0, dim(postproc)/2))))), 0)
+and alla = vectorize(select i, postproc[i*2]
+  from integer i where i in iota(0, dim(postproc)/2))
+and postproc = splitstreams(proc, 2, #'accbalsplit')
+and proc = mapstreams(xp, #'lrbin')
+and xp = hpartstreamv(input, #'lrproute', L, fo, 0)
+and input = ostream(newspflex(lreadfast(lrinputfiles(L), L),
+make_record({'hostname', 'gr41.uppmax.uu.se'})), 0)));
+
+lisp;
+(imagesize 150000000)
+;"
+
+
+(checkequal "proctimedir string"
+((osql "
+set tbasedir() = '/scratch/erikz/e/' + stringify(experiment()) + '/times';
+set pbasedir() = '/scratch/erikz/e/' + stringify(experiment()) + '/proctime';
+count(pbasedir());")
+'((1))))
+
+(checkequal "Experiment number & output dir"
+ ((osql "count(experiment());") '((1)))
+ ((directoryp (caar (osql "tbasedir();"))) t))
+
+(osql "proctime_dir(pbasedir());")
+
+;; FE: sp_imagesize() satte upp imagen till nåt stort i början så att vi inte
+;; drabbades av pekarfel när imagen expanderade under körning.
+;; Felet är *nog* åtgärdat nu, så du behöver *nog* inte sätta upp imagen 
+;; såhär längre.
+
+(osql "sp_imgsize(100000000);")
+
+;; dessa är inte så intressanta längre. Du behöver nog inte sätta upp enligt
+;; dessa om du stänger av tidsstämpling med sp_ts(0).
+
+(osql "delay_file(tbasedir() + '/ret');")
+(osql "sp_report_freq(11.0);")
+
+;; (checkequal "L=10 binary@200k: read-dp-tree-[map-split+MySQL]-abagg(zip)-merge"
+;;  ((osql "clear_function('lroutputbin');
+;; set last_clock() = real(now());
+;; add lroutputbin() = in(mergestreams(concat({abagg}, concat(alla, mypost))))
+;; from stream of iarray input, vector of stream of iarray dp,
+;; vector of stream xp, vector of stream proc, vector of stream postproc,
+;; vector of stream alla, stream abagg, vector of stream mypre,
+;; vector of stream my, vector of stream mypost, integer L
+;; where abagg = ostream(newsp(lrf(zipstreams(vectorize(select i, postproc[i*2+1]
+;;   from integer i where i in iota(0, dim(postproc)/2))))), 0)
+;; and alla = vectorize(select i, postproc[i*2]
+;;   from integer i where i in iota(0, dim(postproc)/2))
+;; and postproc = splitstreams(proc, 2, #'accbalsplit')
+;; and proc = mapstreams(xp, #'lrbin')
+;; and mypost = mapstreams(my, #'vstream2iastream')
+;; and my = mapflexv({{'mei.it.uu.se', 'lr', mypre[0]}}, #'dailyexp',
+;;                  make_record({'hostname', 'mei.it.uu.se', 'exe', 'javascsq'}))
+;; and mypre = mapstreams({dp[1]}, #'iastream2vstream')
+;; and xp = hpartstreamv(dp[0], #'lrproute', L, {L}, 0)
+;; and dp = splitstream(input, 2, #'dpartitionbin_nc')
+;; and input = ostream(newspflex(lreadfast(lrinputfiles(L), L),
+;; make_record({'hostname', 'gr41.uppmax.uu.se'})), 0)
+;; and L = 10;
+;; print({'duration TINY TEST ', real(now()) - last_clock()});")
+;; '((TRUE))))
+;; (checkequal "LRbin counts"
+;; ((osql "
+;; count(select v from darray v where v=lroutputbin() and eventtype(v)=0.0);")
+;; '((90971)))
+;; ((osql "
+;; count(select v from darray v where v=lroutputbin() and eventtype(v)=1.0);")
+;; '((19)))
+;; ((osql "
+;; count(select v from darray v where v=lroutputbin() and eventtype(v)=2.0);")
+;; '((981)))
+;; ((osql "
+;; count(select v from iarray v where v=lroutputbin() and eventtype(v)=3);")
+;; '((4))))
+
+;; FE: dtslrbin är ett bra nollte test
+;; FE: Putsa gärna upp denna test och kopiera in i lr/src/test.osql
+
+(checkequal "dtslrbin"
+ ((osql "set last_clock() = real(now());
+set :count = count(select dtslrbin(d)from darray d where d in 
+   stract(newsp(streamof(realify(iastream2v(i_hybrid(64, 5, 10)))))));
+print({'duration ', real(now()) - last_clock()});
+:count;")
+'((10000))))
+
+(checkequal "10 flat dlrnomy"
+ ((osql "
+reset_ipr();
+set last_clock() = real(now());
+set :count = count(dlrnomy({10}, 10));
+print({'duration ', real(now()) - last_clock()});
+print(:count);
+:count;
+")
+'((1))))
+
+(osql "set clocks(1) = rnow();")
+
+;; FE: Bra första test "10 flat dlrnomysepib"
+;; FE: Även enligt Tore: vill kunna köra den här på en 
+;; stand-alone PC. 10 motorvägar med 200k rader är nog lagom.
+
+;; OBS: Binärrepresentation. Finns för linux. Måste genereras för Windows.
+
+(checkequal "10 flat dlrnomysepib"
+ ((osql "
+reset_ipr();
+set last_clock() = real(now());
+set :count = count(
+  dlrnomysepib(lreadfast(lrinputfiles(10), 10), {10}, 10, 'rtest'));
+print({'duration ', real(now()) - last_clock()});
+:count;
+")
+'((3))))
+
+;; (checkequal "10 flat dlrnomysephyb"
+;;  ((osql "
+;; reset_ipr();
+;; set last_clock() = real(now());
+;; set :count = count(
+;;   dlrnomysephyb(lreadfast(lrinputfiles(10), 10), {10}, 10, 'hybtest'));
+;; print({'duration ', real(now()) - last_clock()});
+;; :count;
+;; ")
+;; '((3))))
+
+(checkequal "LRbin IB output file counts"
+((osql "extract(newspflex(
+streamof(count(readfile('/scratch/erikz/lroutput/c10rtest-ib-0-0'))),
+make_record({'hostname', 'gr55.uppmax.uu.se'})));")
+'((90971)))
+((osql "extract(newspflex(
+streamof(count(readfile('/scratch/erikz/lroutput/c10rtest-ib-1-0'))),
+make_record({'hostname', 'gr54.uppmax.uu.se'})));")
+'((19)))
+((osql "extract(newspflex(
+streamof(count(readfile('/scratch/erikz/lroutput/c10rtest-ib-2-0'))),
+make_record({'hostname', 'gr49.uppmax.uu.se'})));")
+'((981))))
+
+(checkequal "LRbin timestamps"
+((osql "set :vend = 
+in(select na2vec(v) from darray v where v = extract(newspflex(
+section(streamof(readfile(
+        '/scratch/erikz/lroutput/c10rtest-ib-2-0')), 981, 981),
+make_record({'hostname', 'gr49.uppmax.uu.se'}))));
+
+set :vstart = 
+in(select na2vec(v) from darray v where v = extract(newspflex(
+section(streamof(readfile(
+        '/scratch/erikz/lroutput/c10rtest-ib-2-0')), 1, 1),
+make_record({'hostname', 'gr49.uppmax.uu.se'}))));
+
+:vstart[1];")
+'((1.0)))
+((osql ":vend[1];")
+'((316.0)))
+((progn
+  (osql "
+set :now_end = rnow() - :vend[2];
+set :end_start = :vend[2] - :vstart[2];")
+  (formatl t "[now_end " (roundto amos_now_end 3)
+             "] [end_start " (roundto amos_end_start 3) "]" t)
+    (and (< amos_now_end 10.0) (> amos_now_end 0.0))) t)
+((and (< amos_end_start 3.5) (> amos_end_start 0.0)) t))
+
+(checkequal "LRbin timestamps type 0"
+((osql "set :vend = iastream2v(stract(newspflex(section(streamof(readfile(
+        '/scratch/erikz/lroutput/c10rtest-ib-0-0')), 90971, 90971),
+        make_record({'hostname', 'gr55.uppmax.uu.se'}))));
+set :vstart = iastream2v(stract(newspflex(section(streamof(readfile(
+        '/scratch/erikz/lroutput/c10rtest-ib-0-0')), 1, 1),
+        make_record({'hostname', 'gr55.uppmax.uu.se'}))));
+:vstart[2];")
+'((0.0)))
+((osql ":vend[2];")
+'((316.0)))
+((progn
+  (osql "
+set :now_end = rnow() - :vend[3];
+set :end_start = :vend[3] - :vstart[3];")
+  (formatl t "[now_end " (roundto amos_now_end 3)
+             "] [end_start " (roundto amos_end_start 3) "]" t)
+    (and (< amos_now_end 10.0) (> amos_now_end 0.0))) t)
+((and (< amos_end_start 3.5) (> amos_end_start 0.0)) t))
+
+(checkequal "plrstat response time analysis"
+((osql "set :vstart = clocks(1);
+        extract(newspflex(streamof(
+        plrstat('/scratch/erikz/lroutput', 'c10rtest-ib-0-', '/home/erikz/rt', 
+        :vstart, 1000)),
+        make_record({'hostname', 'gr55.uppmax.uu.se'})));")
+ '((90))))
+
+(checkequal "10 flat dlrnomysepob"
+ ((osql "
+reset_ipr();
+set last_clock() = real(now());
+set :count = count(
+  dlrnomysepob(lreadfast(lrinputfiles(10), 10), {10}, {10}, 10, 'rtest'));
+print({'duration ', real(now()) - last_clock()});
+:count;
+")
+'((3))))
+
+(checkequal "LRbin OB output file counts"
+((osql "extract(newspflex(
+streamof(count(readfile('/scratch/erikz/lroutput/c10rtest-ob-0-0'))),
+make_record({'hostname', 'gr55.uppmax.uu.se'})));")
+'((90971)))
+((osql "extract(newspflex(
+streamof(count(readfile('/scratch/erikz/lroutput/c10rtest-ob-1-0'))),
+make_record({'hostname', 'gr54.uppmax.uu.se'})));")
+'((19)))
+((osql "extract(newspflex(
+streamof(count(readfile('/scratch/erikz/lroutput/c10rtest-ob-2-0'))),
+make_record({'hostname', 'gr49.uppmax.uu.se'})));")
+'((981))))
+
+(checkequal "LRbin timestamps"
+((osql "set :vend = 
+in(select na2vec(v) from darray v where v = extract(newspflex(
+section(streamof(readfile(
+        '/scratch/erikz/lroutput/c10rtest-ob-2-0')), 981, 981),
+make_record({'hostname', 'gr49.uppmax.uu.se'}))));
+
+set :vstart = 
+in(select na2vec(v) from darray v where v = extract(newspflex(
+section(streamof(readfile(
+        '/scratch/erikz/lroutput/c10rtest-ob-2-0')), 1, 1),
+make_record({'hostname', 'gr49.uppmax.uu.se'}))));
+
+:vstart[1];")
+'((1.0)))
+((osql ":vend[1];")
+'((316.0)))
+((progn
+  (osql "
+set :now_end = rnow() - :vend[2];
+set :end_start = :vend[2] - :vstart[2];")
+  (formatl t "[now_end " (roundto amos_now_end 3)
+             "] [end_start " (roundto amos_end_start 3) "]" t)
+    (and (< amos_now_end 10.0) (> amos_now_end 0.0))) t)
+((and (< amos_end_start 3.5) (> amos_end_start 0.0)) t))
+
+(checkequal "LRbin timestamps type 0"
+((osql "set :vend = iastream2v(stract(newspflex(section(streamof(readfile(
+        '/scratch/erikz/lroutput/c10rtest-ob-0-0')), 90971, 90971),
+        make_record({'hostname', 'gr55.uppmax.uu.se'}))));
+set :vstart = iastream2v(stract(newspflex(section(streamof(readfile(
+        '/scratch/erikz/lroutput/c10rtest-ob-0-0')), 1, 1),
+        make_record({'hostname', 'gr55.uppmax.uu.se'}))));
+:vstart[2];")
+'((0.0)))
+((osql ":vend[2];")
+'((316.0)))
+((progn
+  (osql "
+set :now_end = rnow() - :vend[3];
+set :end_start = :vend[3] - :vstart[3];")
+  (formatl t "[now_end " (roundto amos_now_end 3)
+             "] [end_start " (roundto amos_end_start 3) "]" t)
+    (and (< amos_now_end 10.0) (> amos_now_end 0.0))) t)
+((and (< amos_end_start 3.5) (> amos_end_start 0.0)) t))
+
+(checkequal "plrstat response time analysis"
+((osql "set :vstart = clocks(1);
+        extract(newspflex(streamof(
+        plrstat('/scratch/erikz/lroutput', 'c10rtest-ob-0-', '/home/erikz/rt', 
+        :vstart, 1000)),
+        make_record({'hostname', 'gr55.uppmax.uu.se'})));")
+ '((90))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;; "MODERATELY SIZED TESTS" ;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(osql "sp_ts(0);")
+(osql "sp_profile(0);")
+(osql "sp_imgsize(100000000);")
+
+;; (checkequal "64 exp OB last 10 minutes maxspeed"
+;;   ((osql "reset_ipr();
+;;    count(dlrnomysepob(lreadbins(lrinputfiles(64)),
+;;                       {2,32}, {2,4,8}, 64, 'exp-last10max'));")
+;;  '((3))))
+
+;; FE: Bra test "64 exp IB last 10 minutes maxspeed"
+
+;; (checkequal "64 exp IB last 10 minutes maxspeed"
+;;   ((osql "reset_ipr();
+;;    count(dlrnomysepib(lreadbins(lrinputfiles(64)),
+;;                     {2, 4, 8}, 64, 'exp-last10max'));")
+;;  '((3))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;; "BIG ONES BELOW" ;;;;;;; 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; FE: Här är de riktiga experimenten som ligger till grund för DASFAA 2010
+
+
+;; FE: Ställ upp indatafilerna till nr 49..76 för de sista trekvart
+
+;;(osql "set lrinputfiles(64) = vselect '/scratch/erikz/ezgen/bin/64/c' + 
+;;         stringify(i) from integer i where i in iota(49, 76);")
+
+;;(checkequal "64 exp last 45 RT"
+;; ((osql "reset_ipr();
+;;  count(dlrnomysepib(lreadbins(lrinputfiles(64)),
+;;                   {2, 4, 8}, 64, 'exp-last45-rtflush'));")
+;;'((3))))
+
+;; FE: Ställ upp indatafilerna till nr 0..76 för hela tretimmarsköret
+
+(osql "set lrinputfiles(64) = vselect '/scratch/erikz/ezgen/bin/64/c' + 
+       stringify(i) from integer i where i in iota(0, 76);")
+
+;; FE: sp_ts(1) ställer på tidsstämplandet. 
+;; (osql "sp_ts(1);")
+;; sp_ts_freq(37.5): genererar en tidsstämpel var 37.5:e sekund i avsändande
+;; process (input i dlrnomysepib)
+;; (osql "sp_ts_freq(37.5);")
+;; sp_report_freq(43.0): var 43:e sekund rapporterar mottagande processer till
+;; koordinatorn
+;; (osql "sp_report_freq(43.0);")
+
+;; FE: Jag rekommenderar att du stänger av tidsstämplandet helt och hållet.
+;; Detta görs med sp_ts(0);
+
+;; FE: I DASFAA'10 jämfördes 64 exp RT med 64 flat RT.
+;; FE: Den intressanta är 64 exp RT.
+
+;; (checkequal "64 exp RT"
+;;  ((osql "reset_ipr();
+;;   count(dlrnomysepib(lreadbins(lrinputfiles(64)),
+;;                    {2, 4, 8}, 64, 'exp-a-'));")
+;; '((3))))
+
+(checkequal "64 flat RT"
+ ((osql "reset_ipr();
+ count(dlrnomysepib(lreadbins(lrinputfiles(64)), {64}, 64, 'flat-rtflush'));")
+'((3))))  
+
+;; (checkequal "64 2max RT"
+;;  ((osql "reset_ipr();
+;;   count(dlrnomysepib(lreadbins(lrinputfiles(64)),
+;;                    {2, 32}, 64, '2max-rtflush'));")
+;; '((3))))
+
+;; (checkequal "64 bin RT"
+;;  ((osql "reset_ipr();
+;;   count(dlrnomysepib(lreadbins(lrinputfiles(64)),
+;;                    {2, 2, 2, 2, 2, 2}, 64, 'bin-rtflush'));")
+;; '((3))))
+
+;;(osql "sp_flush(1);")
+;;(osql "sp_flush_freq(0.02);")
+;;(osql "sp_imgsize(100000000);")
+
+;;(checkequal "64 exp RT + timestamps"
+;; ((osql "reset_ipr();
+;;  count(dlrnomysepib(lreadbins(lrinputfiles(64)),
+;;                   {2, 4, 8}, 64, 'exp-hb-'));")
+;;'((3))))
+
+(sleep 10)
+(osql "dumpstat(tbasedir() + '/dumpstat');")
+(sleep 10)
+
+;"
+
+:osql
+q();
+
+/*
+writefile(concat("lr", concat(stringify(experiment()), ".bw")), 
+(select {L, fov, rt, st, rt - st}
+from integer L, vector fov, real rt, real st
+where <fov, rt, st> = lresult(L)));
+*/
+
+/*
+
+create function lrinputfiles(integer num)->vector of charstring;
+set lrinputfiles(64) = vselect '/scratch/erikz/ezgen/64/cdp' + 
+         stringify(i) from integer i where i in iota(0, 76);
+
+writefiles("/scratch/erikz/ezgen/64/c", 10000000,
+(select extract(newspflex(vstream2iastream(lreadfast(
+vselect '/scratch/erikz/ezgen/64/cdp' + 
+         stringify(i) from integer i where i in iota(0, 76), 64)),
+                    make_record({'hostname', 'gr54.uppmax.uu.se'})))
+from vector of charstring ff where ff = lrinputfiles(64)));
+
+set :vstart = in(
+ select na2vec(v) from darray v
+ where v in extract(newspflex(
+  section(streamof(readfile('/scratch/erikz/lroutput/c64exp-2-0')), 1, 1),
+  make_record({'hostname', 'gr49.uppmax.uu.se'}))));
+
+select {w[1], w[2] - :vstart[2]}
+ from darray v, vector of real w
+ where v in extract(newspflex(
+  section(streamof(readfile('/scratch/erikz/lroutput/c64exp-2-0')), 1, 10),
+  make_record({'hostname', 'gr49.uppmax.uu.se'})))
+ and w = na2vec(v);
+
+writefile('/home/erikz/t2ts', (select {w[1], w[2] - :vstart[2]}
+ from darray v, vector of real w
+ where v in extract(newspflex(
+  streamof(readfile('/scratch/erikz/lroutput/c64exp-2-0')),
+  make_record({'hostname', 'gr49.uppmax.uu.se'})))
+ and w = na2vec(v)));
+
+
+set :vstart = in(
+ select na2vec(v) from darray v
+ where v in extract(newspflex(
+  section(streamof(readfile('/scratch/erikz/lroutput/c64exp-0-0')), 1, 1),
+  make_record({'hostname', 'gr55.uppmax.uu.se'}))));
+
+select {w[2], w[3] - :vstart[3] - w[2]}
+ from darray v, vector of real w
+ where v in extract(newspflex(
+  section(streamof(winagg(
+  readfile('/scratch/erikz/lroutput/c64exp-0-0'), 1, 1000)[0]), 1, 10),
+  make_record({'hostname', 'gr55.uppmax.uu.se'})))
+ and w = na2vec(v);
+
+writefile('/home/erikz/t0ts13', (
+select {w[2], w[3] - :vstart[3] - w[2]}
+ from darray v, vector of real w
+ where v in extract(newspflex(
+  streamof(winagg(
+  readfile('/scratch/erikz/lroutput/c64exp-0-13'), 1, 1000)[0]),
+  make_record({'hostname', 'gr55.uppmax.uu.se'})))
+ and w = na2vec(v)));
+
+
+create function vstart(charstring infile)->darray
+as extract(newspflex(section(streamof(
+readfile('/scratch/erikz/lroutput/' + infile)), 1, 1),
+make_record({'hostname', 'gr55.uppmax.uu.se'}))); 
+
+
+create function t1()-><integer, real> as
+select integer(v[1]), v[2] 
+from darray v
+where v = extract(newspflex(
+streamof(readfile('/scratch/erikz/lroutput/c64exp-rtflush-1-0')),
+make_record({'hostname', 'gr54.uppmax.uu.se'})));
+
+create function t2()-><integer, real> as
+select integer(v[1]), v[2] 
+from darray v
+where v = extract(newspflex(
+streamof(readfile('/scratch/erikz/lroutput/c64exp-rtflush-2-0')),
+make_record({'hostname', 'gr49.uppmax.uu.se'})));
+
+writefile("t1_per_second", {groupby(t1(), #'count')});
+writefile("t2_per_second", {groupby(t2(), #'count')});
+
+
+extract(newspflex(streamof(
+plrstat('/scratch/erikz/lroutput', 
+'c64exp-a--ib-0-', '/home/erikz/expbadsch', 0.0, 10000)),
+make_record({'hostname', 'gr55.uppmax.uu.se'})));
+
+*/

@@ -1,0 +1,128 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year>2010, 2012 <author>Mikael Lax, Minpeng Zhu, UDBL
+ * $RCSfile: test.amosql,v $
+ * $Revision: 1.2 $ $Date: 2012/05/08 07:29:56 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: regression test
+ *
+ ****************************************************************************/
+
+/* this creates a mapped type books and directs sparql queries to the endpoint specified in the second argument
+ * (by default, Joseki listens on port 2020 and comes preconfigured with the books dataset) */
+
+set :books = sparql("books","http://localhost:2020/books");
+
+/* interface test, list all books */
+/* creator is optional since one book is missing it */
+create function sparql_test() -> <charstring, charstring>
+as select v[0], v[1] from vector v where
+v = sparql_query("PREFIX dc: <http://purl.org/dc/elements/1.1/> 
+                  SELECT ?title ?creator 
+                  WHERE {?s dc:title ?title 
+                         OPTIONAL {?s dc:creator ?creator}}",
+                  "http://localhost:2020/books");
+
+/* select all subjects */
+create function query1() -> charstring
+as
+select s(b) from books b;
+
+/* select everything */
+create function query2() -> <charstring,charstring,charstring>
+as 
+select s(b),p(b),o(b) from books b;
+
+/* show properties and values of one book */
+create function query3() -> <charstring,charstring>
+as
+select p(b),o(b) from books b 
+where s(b)="<http://example.org/book/book6>";
+
+/* show title and creator of all books */
+create function query4() -> <charstring,charstring>
+as
+select o(b1),o(b2) from books b1, books b2 
+where 
+p(b1)="<http://purl.org/dc/elements/1.1/title>" and 
+p(b2)="<http://purl.org/dc/elements/1.1/creator>" and 
+s(b1)=s(b2);
+
+create function query4a(Charstring url) -> <charstring,charstring>
+as
+select o(b1),o(b2) from books b1, books b2 
+where 
+p(b1)=url and 
+p(b2)="<http://purl.org/dc/elements/1.1/creator>" and 
+s(b1)=s(b2);
+
+create function query4b(Charstring url, Charstring url2) -> <charstring,charstring>
+as
+select o(b1),o(b2) from books b1, books b2 
+where 
+p(b1)=url and 
+p(b2)=url2 and 
+s(b1)=s(b2);
+
+/* select title and author stored as vcard */
+/* a 6-way join, a bit cumbersome to write */
+create function query5() -> <charstring title,
+                             charstring FN,
+                             charstring Family,
+                             charstring Given>
+as
+select o(b1), o(b3), o(b5), o(b6) 
+from books b1, books b2, books b3, books b4, books b5, books b6
+where
+p(b1)="<http://purl.org/dc/elements/1.1/title>" and
+p(b2)="<http://purl.org/dc/elements/1.1/creator>" and 
+s(b1)=s(b2) and
+o(b2)=s(b3) and
+p(b3)="<http://www.w3.org/2001/vcard-rdf/3.0#FN>" and
+o(b2)=s(b4) and
+p(b4)="<http://www.w3.org/2001/vcard-rdf/3.0#N>" and
+o(b4)=s(b5) and
+p(b5)="<http://www.w3.org/2001/vcard-rdf/3.0#Family>" and
+o(b4)=s(b6) and
+p(b6)="<http://www.w3.org/2001/vcard-rdf/3.0#Given>";
+
+
+lisp;
+
+(checkequal "SparQL interface function test"
+	((osql "sparql_test();")
+	 '(("Harry Potter and the Deathly Hallows" "J.K. Rowling") ("Harry Potter and the Chamber of Secrets" "") ("Harry Potter and the Goblet of Fire" "") ("Harry Potter and the Half-Blood Prince" "J.K. Rowling") ("Harry Potter and the Philosopher's Stone" "J.K. Rowling") ("Harry Potter and the Prisoner Of Azkaban" "") ("Harry Potter and the Order of the Phoenix" "J.K. Rowling")))
+)
+
+(quote
+(checkequal "select all subjects"
+	((osql "query1();")
+	 '(("") ("") ("<http://example.org/book/book5>") ("<http://example.org/book/book5>") ("<http://example.org/book/book3>") ("<http://example.org/book/book3>") ("<http://example.org/book/book1>") ("<http://example.org/book/book1>") ("<http://example.org/book/book6>") ("<http://example.org/book/book6>") ("") ("") ("<http://example.org/book/book4>") ("<http://example.org/book/book2>") ("<http://example.org/book/book2>") ("<http://example.org/book/book7>") ("<http://example.org/book/book7>")))
+)
+)
+
+(quote
+(checkequal "select everything"
+	((osql "query2();")
+	 '(("" "<http://www.w3.org/2001/vcard-rdf/3.0#FN>" "J.K. Rowling") ("" "<http://www.w3.org/2001/vcard-rdf/3.0#N>" "") ("<http://example.org/book/book5>" "<http://purl.org/dc/elements/1.1/title>" "Harry Potter and the Order of the Phoenix") ("<http://example.org/book/book5>" "<http://purl.org/dc/elements/1.1/creator>" "J.K. Rowling") ("<http://example.org/book/book3>" "<http://purl.org/dc/elements/1.1/title>" "Harry Potter and the Prisoner Of Azkaban") ("<http://example.org/book/book3>" "<http://purl.org/dc/elements/1.1/creator>" "") ("<http://example.org/book/book1>" "<http://purl.org/dc/elements/1.1/title>" "Harry Potter and the Philosopher's Stone") ("<http://example.org/book/book1>" "<http://purl.org/dc/elements/1.1/creator>" "J.K. Rowling") ("<http://example.org/book/book6>" "<http://purl.org/dc/elements/1.1/title>" "Harry Potter and the Half-Blood Prince") ("<http://example.org/book/book6>" "<http://purl.org/dc/elements/1.1/creator>" "J.K. Rowling") ("" "<http://www.w3.org/2001/vcard-rdf/3.0#Family>" "Rowling") ("" "<http://www.w3.org/2001/vcard-rdf/3.0#Given>" "Joanna") ("<http://example.org/book/book4>" "<http://purl.org/dc/elements/1.1/title>" "Harry Potter and the Goblet of Fire") ("<http://example.org/book/book2>" "<http://purl.org/dc/elements/1.1/title>" "Harry Potter and the Chamber of Secrets") ("<http://example.org/book/book2>" "<http://purl.org/dc/elements/1.1/creator>" "") ("<http://example.org/book/book7>" "<http://purl.org/dc/elements/1.1/title>" "Harry Potter and the Deathly Hallows") ("<http://example.org/book/book7>" "<http://purl.org/dc/elements/1.1/creator>" "J.K. Rowling")))
+)
+)
+
+(checkequal "show properties and values of one book"
+	((osql "query3();")
+	 '(("<http://purl.org/dc/elements/1.1/title>" "Harry Potter and the Half-Blood Prince") ("<http://purl.org/dc/elements/1.1/creator>" "J.K. Rowling")))
+)
+
+
+(checkequal "show title and creator of all books"
+	((osql "query4();")
+	 '(("Harry Potter and the Deathly Hallows" "J.K. Rowling") ("Harry Potter and the Chamber of Secrets" "") ("Harry Potter and the Half-Blood Prince" "J.K. Rowling") ("Harry Potter and the Philosopher's Stone" "J.K. Rowling") ("Harry Potter and the Prisoner Of Azkaban" "") ("Harry Potter and the Order of the Phoenix" "J.K. Rowling")))
+)
+
+
+(checkequal "select title and author stored as vcard, a 6-way join"
+	((osql "query5();")
+	 '(("Harry Potter and the Chamber of Secrets" "J.K. Rowling" "Rowling" "Joanna") ("Harry Potter and the Prisoner Of Azkaban" "J.K. Rowling" "Rowling" "Joanna")))
+)

@@ -1,0 +1,49 @@
+create type address properties (street charstring, 
+				postcode charstring,
+				city charstring);
+create type department properties (name charstring, addr address);
+create type employee properties (income number, taxes number);
+create type manager under employee;
+create function name(employee nonkey)->charstring as stored;
+create function addr(employee nonkey) ->address as stored;
+create function dept(employee nonkey)->department as stored;
+create function bonus(manager) -> integer as stored;
+create function grossincome(employee e) -> number as select income(e);
+create function grossincome(manager m) -> number as 
+	select employee.income->number(m) + bonus(m);
+create function netincome(employee e) -> number as 
+	select employee.grossincome->number(e) * taxes(e);
+create function netincome(manager m) -> number as 
+	select manager.grossincome->number(m) * taxes(m);
+create function mgr (department) -> manager;
+create function mgr(employee e) -> manager as 
+	select mgr(dept(e));
+
+create address (city) instances
+	:addr1("linköping"),
+	:addr2("linköping"),
+	:addr3("linköping"),
+	:addr4("linköping"),
+	:addr5("linköping"),
+	:addr6("norköping"),
+	:addr7("jonköping"),
+	:addr8("stockholm"),
+	:addr9("herbru"),
+	:addr10("linköping");
+
+create department(name, addr) instances 
+	:toys("toys", :addr10),
+	:shoes("shoes", :addr10),
+	:cloths("cloths", :addr10);
+create manager(name, income, dept, bonus, taxes) instances
+	:boss("boss", 12000, :toys, 1000, .25),
+	:harold("harold", 12000, :shoes, 2000, .25);
+set mgr(:toys) = :harold;
+set mgr(:shoes) = :harold;
+create employee(name, income, dept, addr, taxes) instances
+	:e1 ("employee1", 10000, :toys, :addr1, .25),
+	:e2 ("employee2", 10000, :toys, :addr2, .25),
+	:e3 ("employee3", 10000, :toys, :addr3, .25),
+	:e4 ("employee4", 10000, :toys, :addr4, .25),
+	:e5 ("employee5", 10000, :toys, :addr5, .25);
+

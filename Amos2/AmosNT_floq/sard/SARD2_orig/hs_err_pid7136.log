@@ -1,0 +1,198 @@
+#
+# A fatal error has been detected by the Java Runtime Environment:
+#
+#  EXCEPTION_STACK_OVERFLOW (0xc00000fd) at pc=0x4ad866e9, pid=7136, tid=8152
+#
+# JRE version: 7.0-b147
+# Java VM: Java HotSpot(TM) Client VM (21.0-b17 mixed mode windows-x86 )
+# Problematic frame:
+# C  [amos2.dll+0x366e9]
+#
+# Failed to write core dump. Minidumps are not enabled by default on client versions of Windows
+#
+# If you would like to submit a bug report, please visit:
+#   http://bugreport.sun.com/bugreport/crash.jsp
+# The crash happened outside the Java Virtual Machine in native code.
+# See problematic frame for where to report the bug.
+#
+
+---------------  T H R E A D  ---------------
+
+Current thread (0x00d7a000):  JavaThread "main" [_thread_in_native, id=8152, stack(0x00ef0000,0x00f40000)]
+
+siginfo: ExceptionCode=0xc00000fd, ExceptionInformation=0x00000001 0x00ef0f38 
+
+Registers:
+EAX=0x0005b364, EBX=0x4aedfb34, ECX=0x0000e9d8, EDX=0x4aedfa74
+ESP=0x00ef0f3c, EBP=0x00ef1010, ESI=0x0005b358, EDI=0x4aedfb40
+EIP=0x4ad866e9, EFLAGS=0x00010216
+
+Top of Stack: (sp=0x00ef0f3c)
+0x00ef0f3c:   00000000 00000000 00000000 00000000
+0x00ef0f4c:   00000000 00000000 00000000 00000000
+0x00ef0f5c:   00000000 00000000 00000000 00000000
+0x00ef0f6c:   00000000 00000000 00000000 00000000
+0x00ef0f7c:   00000000 00000000 00000000 00000000
+0x00ef0f8c:   00000000 00000000 00000000 00000000
+0x00ef0f9c:   00000000 00000000 00000000 00000000
+0x00ef0fac:   00000000 00000000 00000000 00000000 
+
+Instructions: (pc=0x4ad866e9)
+0x4ad866c9:   5d 5b c3 5f 5e 5d 8b c1 5b c3 8b 41 04 5f 5e 5d
+0x4ad866d9:   5b c3 90 90 90 90 90 55 8b ec 81 ec d4 00 00 00
+0x4ad866e9:   53 8b 1d 28 29 dc 4a 33 c0 56 8b 75 08 57 8b 7d
+0x4ad866f9:   14 89 45 ec 89 45 dc a1 a0 30 e9 4a 89 3d d4 3b 
+
+
+Register to memory mapping:
+
+EAX=0x0005b364 is an unknown value
+EBX=0x4aedfb34 is an unknown value
+ECX=0x0000e9d8 is an unknown value
+EDX=0x4aedfa74 is an unknown value
+ESP=0x00ef0f3c is pointing into the stack for thread: 0x00d7a000
+EBP=0x00ef1010 is pointing into the stack for thread: 0x00d7a000
+ESI=0x0005b358 is an unknown value
+EDI=0x4aedfb40 is an unknown value
+
+
+Stack: [0x00ef0000,0x00f40000],  sp=0x00ef0f3c,  free space=3k
+Native frames: (J=compiled Java code, j=interpreted, Vv=VM code, C=native code)
+C  [amos2.dll+0x366e9]  evallist+0x9
+C  [amos2.dll+0x369a1]  evallist+0x2c1
+C  [amos2.dll+0x382c9]  evalfn+0x29
+C  [amos2.dll+0x4f6d7]  condfn+0xc7
+C  [amos2.dll+0x37055]  evallist+0x975
+C  [amos2.dll+0x382c9]  evalfn+0x29
+C  [amos2.dll+0x4f6d7]  condfn+0xc7
+C  [amos2.dll+0x37055]  evallist+0x975
+C  [amos2.dll+0x4f661]  condfn+0x51
+C  [amos2.dll+0x36f5f]  evallist+0x87f
+C  [amos2.dll+0x36f5f]  evallist+0x87f
+C  [amos2.dll+0x4fa51]  setqfn+0x31
+C  [amos2.dll+0x369a1]  evallist+0x2c1
+C  [amos2.dll+0x369a1]  evallist+0x2c1
+C  [amos2.dll+0x382c9]  evalfn+0x29
+
+Java frames: (J=compiled Java code, j=interpreted, Vv=VM code)
+j  callin.Connection.amosTopLoop(Ljava/lang/String;)V+0
+j  JavaAMOS.main([Ljava/lang/String;)V+33
+v  ~StubRoutines::call_stub
+
+---------------  P R O C E S S  ---------------
+
+Java Threads: ( => current thread )
+  0x4a595000 JavaThread "Service Thread" daemon [_thread_blocked, id=9068, stack(0x4ab80000,0x4abd0000)]
+  0x4a585000 JavaThread "C1 CompilerThread0" daemon [_thread_blocked, id=10028, stack(0x4ab30000,0x4ab80000)]
+  0x4a583c00 JavaThread "Attach Listener" daemon [_thread_blocked, id=7280, stack(0x4a930000,0x4a980000)]
+  0x4a580c00 JavaThread "Signal Dispatcher" daemon [_thread_blocked, id=7980, stack(0x4a740000,0x4a790000)]
+  0x4a52b000 JavaThread "Finalizer" daemon [_thread_blocked, id=9712, stack(0x4aa40000,0x4aa90000)]
+  0x4a526000 JavaThread "Reference Handler" daemon [_thread_blocked, id=2576, stack(0x4a790000,0x4a7e0000)]
+=>0x00d7a000 JavaThread "main" [_thread_in_native, id=8152, stack(0x00ef0000,0x00f40000)]
+
+Other Threads:
+  0x00d1f800 VMThread [stack: 0x00e20000,0x00e70000] [id=9916]
+  0x4a5a0400 WatcherThread [stack: 0x4ac50000,0x4aca0000] [id=7820]
+
+VM state:not at safepoint (normal execution)
+
+VM Mutex/Monitor currently owned by a thread: None
+
+Heap
+ def new generation   total 19648K, used 3593K [0x04720000, 0x05c70000, 0x19c70000)
+  eden space 17472K,   8% used [0x04720000, 0x04882598, 0x05830000)
+  from space 2176K, 100% used [0x05830000, 0x05a50000, 0x05a50000)
+  to   space 2176K,   0% used [0x05a50000, 0x05a50000, 0x05c70000)
+ tenured generation   total 43712K, used 19494K [0x19c70000, 0x1c720000, 0x44720000)
+   the space 43712K,  44% used [0x19c70000, 0x1af79a70, 0x1af79c00, 0x1c720000)
+ compacting perm gen  total 12288K, used 3368K [0x44720000, 0x45320000, 0x48720000)
+   the space 12288K,  27% used [0x44720000, 0x44a6a2c0, 0x44a6a400, 0x45320000)
+No shared spaces configured.
+
+Code Cache  [0x02720000, 0x02848000, 0x04720000)
+ total_blobs=571 nmethods=419 adapters=85 free_code_cache=31614Kb largest_free_block=32372928
+
+Dynamic libraries:
+0x012f0000 - 0x0131e000 	C:\Windows\SysWOW64\java.exe
+0x77580000 - 0x77700000 	C:\Windows\SysWOW64\ntdll.dll
+0x75ec0000 - 0x75fd0000 	C:\Windows\syswow64\kernel32.dll
+0x766d0000 - 0x76717000 	C:\Windows\syswow64\KERNELBASE.dll
+0x76c70000 - 0x76d10000 	C:\Windows\syswow64\ADVAPI32.dll
+0x76ec0000 - 0x76f6c000 	C:\Windows\syswow64\msvcrt.dll
+0x76a80000 - 0x76a99000 	C:\Windows\SysWOW64\sechost.dll
+0x76da0000 - 0x76e90000 	C:\Windows\syswow64\RPCRT4.dll
+0x74fd0000 - 0x75030000 	C:\Windows\syswow64\SspiCli.dll
+0x74fc0000 - 0x74fcc000 	C:\Windows\syswow64\CRYPTBASE.dll
+0x77080000 - 0x77180000 	C:\Windows\syswow64\USER32.dll
+0x76be0000 - 0x76c70000 	C:\Windows\syswow64\GDI32.dll
+0x76390000 - 0x7639a000 	C:\Windows\syswow64\LPK.dll
+0x76b40000 - 0x76bdd000 	C:\Windows\syswow64\USP10.dll
+0x721b0000 - 0x7234e000 	C:\Windows\WinSxS\x86_microsoft.windows.common-controls_6595b64144ccf1df_6.0.7601.17514_none_41e6975e2bd6f2b2\COMCTL32.dll
+0x75030000 - 0x75087000 	C:\Windows\syswow64\SHLWAPI.dll
+0x76f80000 - 0x76fe0000 	C:\Windows\system32\IMM32.DLL
+0x751a0000 - 0x7526c000 	C:\Windows\syswow64\MSCTF.dll
+0x67f80000 - 0x6803e000 	C:\Program Files (x86)\Java\jre7\bin\msvcr100.dll
+0x550e0000 - 0x55401000 	C:\Program Files (x86)\Java\jre7\bin\client\jvm.dll
+0x72a90000 - 0x72a97000 	C:\Windows\SysWOW64\WSOCK32.dll
+0x76ad0000 - 0x76b05000 	C:\Windows\syswow64\WS2_32.dll
+0x76100000 - 0x76106000 	C:\Windows\syswow64\NSI.dll
+0x729d0000 - 0x72a02000 	C:\Windows\SysWOW64\WINMM.dll
+0x77550000 - 0x77555000 	C:\Windows\syswow64\PSAPI.DLL
+0x723b0000 - 0x723bc000 	C:\Program Files (x86)\Java\jre7\bin\verify.dll
+0x685e0000 - 0x68600000 	C:\Program Files (x86)\Java\jre7\bin\java.dll
+0x687b0000 - 0x687c3000 	C:\Program Files (x86)\Java\jre7\bin\zip.dll
+0x00260000 - 0x0026c000 	C:\AmosNT\bin\JavaAmos.dll
+0x4ad50000 - 0x4ae9c000 	C:\AmosNT\bin\amos2.dll
+0x00270000 - 0x0027c000 	C:\AmosNT\bin\bt.dll
+0x00340000 - 0x00353000 	C:\AmosNT\bin\xt.dll
+0x00580000 - 0x00599000 	C:\AmosNT\bin\ssdm.dll
+0x00d20000 - 0x00d33000 	C:\AmosNT\bin\python_ext.dll
+0x4b660000 - 0x4b866000 	C:\Windows\SysWOW64\python25.dll
+0x75270000 - 0x75eba000 	C:\Windows\syswow64\SHELL32.dll
+0x7c340000 - 0x7c396000 	C:\Windows\SysWOW64\MSVCR71.dll
+0x68440000 - 0x68454000 	C:\Program Files (x86)\Java\jre7\bin\net.dll
+0x72950000 - 0x7298c000 	C:\Windows\system32\mswsock.dll
+0x6fdc0000 - 0x6fdc6000 	C:\Windows\System32\wship6.dll
+0x726b0000 - 0x726b5000 	C:\Windows\System32\wshtcpip.dll
+0x72900000 - 0x72944000 	C:\Windows\SysWOW64\DNSAPI.dll
+0x72a70000 - 0x72a8c000 	C:\Windows\SysWOW64\IPHLPAPI.DLL
+0x72a60000 - 0x72a67000 	C:\Windows\SysWOW64\WINNSI.DLL
+0x72830000 - 0x72836000 	C:\Windows\SysWOW64\rasadhlp.dll
+0x72780000 - 0x727b8000 	C:\Windows\System32\fwpuclnt.dll
+0x72d50000 - 0x72d66000 	C:\Windows\SysWOW64\CRYPTSP.dll
+0x72d10000 - 0x72d4b000 	C:\Windows\system32\rsaenh.dll
+0x70940000 - 0x70957000 	C:\Windows\SysWOW64\USERENV.dll
+0x740a0000 - 0x740ab000 	C:\Windows\SysWOW64\profapi.dll
+0x729c0000 - 0x729d0000 	C:\Windows\system32\NLAapi.dll
+0x729b0000 - 0x729c0000 	C:\Windows\system32\napinsp.dll
+0x72990000 - 0x729a2000 	C:\Windows\system32\pnrpnsp.dll
+0x728f0000 - 0x728f8000 	C:\Windows\System32\winrnr.dll
+0x688b0000 - 0x688bf000 	C:\Program Files (x86)\Java\jre7\bin\nio.dll
+
+VM Arguments:
+jvm_args: -Xms64m -Xmx1024m 
+java_command: JavaAMOS sard2.dmp
+Launcher Type: SUN_STANDARD
+
+Environment Variables:
+CLASSPATH=C:/AmosNT/bin/javaamos.jar;.;C:/AmosNT/jarlib/mysql-connector-java-5.1.6-bin.jar;C:\MSQL_JDBC\lib\msbase.jar;C:\MSQL_JDBC\lib\msutil.jar;C:\MSQL_JDBC\lib\mssqlserver.jar;
+PATH=C:\XEmacs\XEmacs-21.4.5i586-pc-win32;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Program Files\Mimer SQL 10.0\;C:\Program Files (x86)\Mimer SQL 10.0 32-bit Client;C:\Program Files (x86)\Graphviz 2.28\bin;C:\Program Files (x86)\Microsoft SQL Server\100\Tools\Binn\;C:\Program Files\Microsoft SQL Server\100\Tools\Binn\;C:\Program Files\Microsoft SQL Server\100\DTS\Binn\;C:\Program Files (x86)\Microsoft SQL Server\100\Tools\Binn\VSShell\Common7\IDE\;C:\Program Files (x86)\Microsoft Visual Studio 9.0\Common7\IDE\PrivateAssemblies\;C:\Program Files (x86)\Microsoft SQL Server\100\DTS\Binn\;C:\Microsoft Visual Studio\Common\Tools\WinNT;C:\Microsoft Visual Studio\Common\MSDev98\Bin;C:\Microsoft Visual Studio\Common\Tools;C:\Microsoft Visual Studio\VC98\bin;C:\utils;C:\Program Files (x86)\Java\jdk1.7.0\bin;C:\AmosNT\bin;C:\root\bin;C:\Program Files\Mimer SQL 10.0;C:\AmosNT\bin;C:\Program Files\gnuplot\bin;C:\Program Files (x86)\Google\google_appengine;C:\XEmacs\XEmacs-21.4.5\i586-pc-win32;C:\Python25;C:\Program Files (x86)\Google\google_appengine\
+USERNAME=minzh812
+OS=Windows_NT
+PROCESSOR_IDENTIFIER=Intel64 Family 6 Model 23 Stepping 10, GenuineIntel
+
+
+
+---------------  S Y S T E M  ---------------
+
+OS: Windows 7 , 64 bit Build 7601 Service Pack 1
+
+CPU:total 4 (4 cores per cpu, 1 threads per core) family 6 model 23 stepping 10, cmov, cx8, fxsr, mmx, sse, sse2, sse3, ssse3, sse4.1
+
+Memory: 4k page, physical 4058364k(1641148k free), swap 8114868k(2500604k free)
+
+vm_info: Java HotSpot(TM) Client VM (21.0-b17) for windows-x86 JRE (1.7.0-b147), built on Jun 27 2011 02:25:52 by "java_re" with unknown MS VC++:1600
+
+time: Mon Oct 28 15:29:35 2013
+elapsed time: 2814 seconds
+

@@ -1,0 +1,132 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Cheng Xu, UDBL
+ * $RCSfile: window_process.osql,v $
+ *
+ * Description: window based processing
+ *
+ ****************************************************************************
+ * $Log: window_process.osql,v $
+ * Revision 1.6  2013/10/29 15:24:37  chexu484
+ * index access works with window, e.g. window[0]
+ *
+ * Revision 1.5  2013/04/22 08:39:36  chexu484
+ * aggregate_function
+ *
+ * Revision 1.4  2013/04/20 14:11:22  chexu484
+ * new way to define aggreagtion function over window
+ *
+ * Revision 1.3  2012/07/30 22:16:02  chexu484
+ * moving average for stream or window (sub-stream)
+ *
+ * Revision 1.2  2012/05/22 11:53:03  chexu484
+ * retrieve_events(Stream of Window sw) -> Bag of (Object event)
+ *
+ * Revision 1.1  2012/02/15 14:50:07  chexu484
+ * *** empty log message ***
+ *
+ * Revision 1.1  2011/11/30 21:27:02  chexu484
+ * operators on window and drilling model
+ *
+ *
+ ****************************************************************************/
+
+create function vref(Window w, Integer i) -> Object
+  as multidirectional
+	('bbf' foreign 'wrefbbf')
+	('bff' foreign 'wrefbff');
+
+/* agv over the window where accessor function takes other args such as index */
+create function window_average(Window w, Function accessor, Vector arg) -> Number
+  as avg(select value
+     	 from Object v, Number value
+	 where {value} = apply(accessor, concat({v}, arg))
+	 and v in w); 
+
+/* agv over the window */
+create function window_average(Window w, Function accessor) -> Number
+  as avg(select value
+     	 from Object v, Number value
+	 where {value} = apply(accessor, {v})
+	 and v in w); 
+
+create function retrieve_events(Stream of Window sw) -> Bag of (Object event)
+  /* Function to retrieve the events from each window in a stream */
+  as select event
+     from Window w
+     where w in sw and event in w; 
+
+/* the following are vector oriented ordinary least squares algorithm */
+
+create function sum_of_squares(Bag of Number bn) -> Number
+  as sum(select power(n - navg, 2)
+     	 from Number n, Number navg
+	 where n in bn and navg = avg(bn)); 
+
+create function sum_of_cross_products(Bag of Vector xy) -> Number
+  as sum(select (x - xavg) * (y - yavg)
+     	 from Number x, Number y, Number xavg, Number yavg
+	 where {x, y} in xy
+	 and xavg = avg(select xx from Number xx, Number yy where {xx, yy} in xy)
+	 and yavg = avg(select yy from Number xx, Number yy where {xx, yy} in xy));
+
+
+/* ifsome execution order */
+create function ols_a(Bag of Vector xy) -> Number
+  as begin
+       declare Number sxy, Number sxx, Bag of Number bx;
+       set bx = (select xx from Number xx, Number yy where {xx, yy} in xy);
+       set sxy = sum_of_cross_products(xy);	  
+       set sxx = sum_of_squares(bx);
+       if sxx = 0 then return 0
+       else return sxy / sxx;
+     end;
+/*
+  as select ifsome(sum_of_squares(by) > 0,
+     	    	   sum_of_cross_products(xy) / sum_of_squares(by),
+		   0)
+     from Bag of Number by
+     where by = (select yy from Number xx, Number yy where (xx, yy) in xy);       
+*/    
+
+create function ols_b(Bag of Vector xy) -> Number
+  as select yavg - ols_a(xy) * xavg
+     from Number xavg, Number yavg
+     where xavg = avg(select xx from Number xx, Number yy where {xx, yy} in xy)
+     and yavg = avg(select yy from Number xx, Number yy where {xx, yy} in xy);
+
+create function ols_a_of_window_v(Window w) -> Number a
+  as select a
+  from Bag of Vector xy
+  where xy in w
+  and a = ols_a(xy);
+
+create function ols_line_of_window(Window w) -> Bag of Vector
+  as select {i, a * i + b}
+  from Bag of Vector xy, Number a, Number b, Number i
+  where xy in w
+  and a = ols_a(xy)
+  and b = ols_b(xy)
+  and i in (select v[0] from Vector v where v in xy);
+
+
+/* a simple moving average */
+create function simple_move_average(Stream of Number s, Integer sub_size, Integer sub_slide)
+       					      	     			  -> Stream of Number
+  as streamof(simple_move_average0(s, sub_size, sub_slide));
+
+create function simple_move_average(Window w, Integer sub_size, Integer sub_slide)
+       					      	      			 -> Window
+  as select ww
+  from Window ww, Stream of Number input, Stream output
+  where input = window2substream(w)
+  and output = simple_move_average(input, sub_size, sub_slide)
+  and output = window2substream(ww);
+
+
+create function aggregate_function(Charstring aggname, Charstring initfn,
+			        Charstring addfn, Charstring removefn)
+						-> Function
+  as eval("create function " + aggname + "(Window w) -> object as window_agg(w, '" + aggname +
+      "', #'" + initfn + "', #'" + addfn + "', #'" + removefn + "');");

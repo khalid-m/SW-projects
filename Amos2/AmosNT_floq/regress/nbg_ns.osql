@@ -1,0 +1,45 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 Erik Zeitler, UDBL
+ * $RCSfile: nbg_ns.osql,v $
+ * $Revision: 1.4 $ $Date: 2012/01/16 10:16:04 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Name server schema for testing background receiver
+ *
+ ****************************************************************************
+ * $Log: nbg_ns.osql,v $
+ * Revision 1.4  2012/01/16 10:16:04  torer
+ * Regression testing without debugging enabled with
+ *   testmaster 1
+ *
+ * Revision 1.3  2012/01/10 07:32:37  torer
+ * New tuple format
+ *
+ * Revision 1.2  2011/01/27 11:26:15  torer
+ * Changed from <...> to SQL's (...) notation for tuples (much nicer)
+ *
+ * Revision 1.1  2010/12/16 14:31:14  zeitler
+ * lprint + lread tests
+ *
+ * Revision 1.1  2010/11/18 12:15:20  zeitler
+ * Background thread recv test
+ *
+ *
+ ****************************************************************************/
+
+create function bglisteners() -> (charstring name, charstring host, 
+                                  integer port);
+
+create function bglisteners(charstring name)-> (charstring host, integer port)
+  as select host, port
+     where (name, host, port) in bglisteners();
+
+nameserver("s");
+
+lisp;
+(if (debugging-enabled) (trace server-eval))
+:osql
+
+listen();

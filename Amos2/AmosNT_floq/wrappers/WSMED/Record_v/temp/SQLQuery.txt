@@ -1,0 +1,31 @@
+
+/*************WSMED****************/
+
+importwsdl("C:/AmosNT/wrappers/WSMED/Record_v/wsdl/TerraService2.wsdl");
+
+importwsdl("C:/AmosNT/wrappers/WSMED/Record_v/wsdl/PlaceLookup.wsdl");
+
+<'src/amosql/place.amosql';
+<'src/amosql/placedetails.amosql';
+
+putsoaphvalue( 'wsdl/PlaceLookup.wsdl', 'GeoPlaces', 'GetPlaceDetails', {'CHARSTRING','CHARSTRING'},{'5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'});
+
+putsoaphvalue( 'wsdl/PlaceLookup.wsdl', 'GeoPlaces', 'GetAllStates', {},{'5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'});
+
+
+/******************************SQL queries**********************************/
+ 
+sql("select s.placename, p.placename, s.lon, s.lat,s.placetypeid from PlaceDetails p, Place s where s.city='Atlanta' and p.city=s.city and p.state='GA' and s.imagepresence='true' and s.maxitems=100");
+
+sql("select s.placename, p.placename, s.lon, s.lat,s.placetypeid from PlaceDetails p, Place s, States st where s.city='Atlanta' and p.city=s.city and st.state=p.state and st.statename=s.statename  and s.imagepresence='true' and s.maxitems=100");
+
+sql("select statename  from  States st where  st.state='GA'");
+
+sql("select  p.placename, st.statename from PlaceDetails p,  States st where p.city='Atlanta' and st.state=p.state");
+
+
+
+
+
+
+

@@ -1,0 +1,49 @@
+create function wsnew_function(Charstring name, Charstring query,Integer userId)->Vector as ship("P"+userId,"new_function('"+name+"','"+query+"');");
+
+
+create function define_operation(Charstring oname, Charstring query, Integer userId)->Charstring as begin
+                                       wsnew_function(oname, query,userId);
+                                       result "true";
+                                       end;
+     
+create function wsnew_function_load()->Vector as ship("WSBench","new_function_load();");
+create function wsnew_function_load(Charstring peer)->Vector as ship(peer,"new_function_load();");
+
+create function ch_vec(charstring o_name)->Vector of Charstring as cast(unstringify(o_name) as Vector of Charstring);
+
+create function deploy_service(charstring o_name,Charstring ws_name, Integer userId)->Charstring as begin 
+                                   wsnew_function_load("P"+userId);
+                                   load_amosql(getenv('AMOS_HOME')+'wsmed/WSBench/src/amosql/user_defined_wsop_wsmed.amosql');
+                                   deploy_wsdl(ch_vec(o_name),ws_name+'.wsdl',ws_name); 
+                                   result "true";
+                                   end;														
+
+create function execute(Charstring oname,charstring delay, Integer no_tup, Vector opara,Integer userId)-> Vector  as
+                   begin
+                      result apply(functionnamed(oname),concat(opara,{no_tup,cast(unstringify(delay) as real),"P"+userId})) ;
+                   end;
+
+
+create function execute_operation(Charstring oname, Charstring opara, charstring delay, Integer no_tup,Integer userId)->Vector as vectorof(execute(oname,delay,no_tup,cast(unstringify(opara) as vector),userId));
+
+/*set deploy_dir()= getenv('AMOS_HOME')+'\wsmed\\wsdl\\';*/
+
+/*To copy the user created WSDLs in the IT department server*/
+
+/*set deploy_dir()="Z:/public_html/WSMED/WSBench/USERWSDL/";*/
+
+set deploy_dir()="C:/wamp/www/wsdl/";
+
+deploy_wsdl({'define_operation','deploy_service','execute_operation'},'WSBENCH.wsdl','WSbench');
+
+
+
+                   
+
+
+
+
+
+
+
+                                      

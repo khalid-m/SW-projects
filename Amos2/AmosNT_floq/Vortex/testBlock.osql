@@ -1,0 +1,67 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: testBlock.osql,v $
+ * $Revision: 1.2 $ $Date: 2013/11/18 20:49:03 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: <description>
+ *
+ ****************************************************************************
+ * $Log: testBlock.osql,v $
+ * Revision 1.2  2013/11/18 20:49:03  torer
+ * Java sgream client test failed! It is now removed!
+ *
+ * Revision 1.1  2013/11/15 16:21:20  chexu484
+ * *** empty log message ***
+ *
+ * Revision 1.1  2006/02/12 20:01:08  torer
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+
+< '..\schema\SmartVortexSchema.osql'; /* The generic Smart Vortex schema 
+                                         based on D3.1 */
+
+< '..\Hagglunds\HagglundsCOOLERWrapper.osql'; /* The general Hagglunds stream wrapper that handles
+                              streams that logged in logdirectory from Hagglund */
+
+
+< '..\Hagglunds\HagglundsCOOLERModel.osql'; /* The Specefic Statistical Model from Hagglunds */
+
+
+< '..\Hagglunds\HagglundsCOOLERValidator.osql'; /* validate the stream based on the statistics */
+
+
+< '..\Hagglunds\HagglundsCOOLERMetaData.osql'; /* Populate the Smart Vortex database with hagglunds metadata */
+
+/* IMPORTANT: JUST FOR TESTING!!! */
+create function hagglunds() -> Stream of Vector of Number
+  as learn_n_validate(hagglundsRecords('hsCOOLER'), #'buildStats', 2000, #'validateCOOLER');
+
+/* Volvo */
+
+/* simulated canbus stream, i.e. streaming from csv file */
+< '../Volvo/RecordedCanBusWrapper.osql';
+
+/* the wheel loader wrapper: */
+< '../Volvo/WheelLoaderWrapper.osql';
+
+/* the wheel loader model: */
+< '../Volvo/WheelLoaderModel.osql';
+
+/* IMPORTANT: JUST FOR TESTING!!! */
+create function volvo() -> stream of Vector of Number
+  as streamof(select windowKurtosis(w, signals())
+              from Window w
+              where w in partwindowize(simCanBusStream("../Volvo/data/cbd.csv"), #'partitionBy'));
+
+
+lisp;
+(register-init-form '(progn (trace-packets t)
+			    (debugging t)(setq _batch_ t)))
+
+:osql
+
+save "testBlock.dmp";

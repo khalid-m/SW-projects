@@ -1,0 +1,75 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2008 Ruslan Fomkin, UDBL
+ * $RCSfile: sobject.stat.osql,v $
+ * $Revision: 1.4 $ $Date: 2008/05/05 08:59:45 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ ****************************************************************************
+ * $Log: sobject.stat.osql,v $
+ * Revision 1.4  2008/05/05 08:59:45  ruslan
+ * minor fix
+ *
+ * Revision 1.3  2008/05/04 12:12:11  ruslan
+ * default value of zalpha is 1.65
+ *
+ * Revision 1.2  2008/05/01 10:47:19  ruslan
+ * specifying file makes call to the wrapper in streaming approach
+ *
+ * Revision 1.1  2008/03/01 15:59:44  ruslan
+ * collecting cardinality statistics on slots and using in query optimization
+ *
+ ****************************************************************************/
+
+
+create function tocollectstat(charstring fn) -> boolean as
+begin
+	slotstat(false);
+	grouping(true);
+	ungroup(true);
+	reoptimize0(fn);
+	set_alpha_delta(1.65,0.15);
+	collectstat();
+	profiling(true);
+	sobjectstat();
+end;
+
+create function tocollectstat(charstring fn, real zAlpha, real Delta) -> 
+	boolean as
+begin
+	slotstat(false);
+	grouping(true);
+	ungroup(true);
+	reoptimize0(fn);
+	set_alpha_delta(zAlpha,Delta);
+	collectstat();
+	profiling(true);
+	sobjectstat();
+end;
+
+create function tocollectstatNaive(charstring fn) -> boolean as
+begin
+	grouping(true);
+	ungroup(true);
+	reoptimize0(fn);
+	set_alpha_delta(1.65,0.15);
+	collectstatNaive();
+	profiling(true);
+	sobjectstat();
+	slotstat(true);
+end;
+
+create function tocollectstatNaive(charstring fn, real zAlpha, real Delta) -> 
+	boolean as
+begin
+	grouping(true);
+	ungroup(true);
+	reoptimize0(fn);
+	set_alpha_delta(zAlpha,Delta);
+	collectstatNaive();
+	profiling(true);
+	sobjectstat();
+	slotstat(true);
+end;

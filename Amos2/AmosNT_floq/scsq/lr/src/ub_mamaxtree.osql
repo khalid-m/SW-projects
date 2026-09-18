@@ -1,0 +1,35 @@
+/*-*-sql-*-*******************************************************************/
+
+create function file_mamaxtree(charstring file, integer inl, integer mult)
+-> vector of vector of number as
+select in(zipstreams(premerge))
+from stream of numarray src, vector of stream premerge, vector of stream maxt,
+integer q
+where premerge = mapflex(maxt, #'stcount', {'rem':'mrg'})
+and maxt = rbhpartstreamv(streamof(multi2na(in(src), 15)), #'lrprfn', #'q2bfn',
+q, optv(q, 0.58, 5), 0)
+and src = ostream(newspflex(streamof(clrmultiply(in(
+lreadfastbins({file})), inl, mult)), {'hostnum':0, 'rem':'src'}), 0)
+and q = inl*mult;
+
+create function x_file_mamaxtree(charstring file, integer inl, integer mult)
+-> vector as begin
+reset_ipr();
+set res() = file_mamaxtree(file, inl, mult);
+return {inl*mult, file, exectime(res()), countsum(res()),
+psum(remcpu('src')), psum(lrpcpu()), psum(remcpu('mrg'))};
+sleep(0.1);
+end;
+
+create function ub_file_mamaxtree(charstring file, integer inl, 
+vector of integer mults) -> object as begin
+for each integer mult where mult in mults begin
+declare charstring outputfilename;
+set outputfilename = "mamaxtree-" + "m" + stringify(mult) + "_inl_" + 
+stringify(inl);
+add rrp_res() = x_file_mamaxtree(file, inl, mult);
+print(rrp_res());
+writefile("dp-" + outputfilename, {dprofile()});
+end;
+write_ntuples(rrp_res(), "mamaxtree_" + timestamp());
+end;

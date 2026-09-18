@@ -1,0 +1,78 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Thanh Truong, UDBL
+ * $RCSfile: experiment2.osql,v $
+ * $Revision: 1.2 $ $Date: 2011/11/02 16:56:30 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Experiments for AQTI with Color Histogram using Manhattan
+ *
+ ****************************************************************************
+ * $Log: experiment2.osql,v $
+ * Revision 1.2  2011/11/02 16:56:30  thatr500
+ * Use a new term "AQUIT" (Algebraic Query Inequality Transformation)
+ *
+ * Revision 1.1  2011/09/15 12:23:14  thatr500
+ * experimentation with real dataset ColorHistogram and ColorMoments
+ *
+ *
+ ****************************************************************************/
+load_amosql('data-schema.osql');
+
+/* For fast search among values of data function class_members: */
+create_index("known_data","v","XT","multiple");
+
+/* Overriding positions of identifier, and values in rows of mining file*/
+set idpos() = 0;
+set valposl()=  vectorof(iota(1, 9));
+
+/*Add data from file*/
+/*http://archive.ics.uci.edu/ml/datasets/Corel+Image+Features
+Color Moments: 9 dimensions (3 x 3) 
+- the 9 values are: (one for each of H,S, and V in HSV color space) 
+-- mean, 
+-- standard deviation, and 
+-- skewness. 
+- Euclidean distance between Color Moments of two images can be used to represent the dis-similarity (distance) between two images. 
+*/
+add_dfn('ColorMoments.asc', #'known_data', idpos(), valposl());
+
+/*Normalize the computed distance into [0, 1]
+Another inequalities from mathematics theory said that 
+absolute value of arithmetic mean is smaller or equal to quadratic mean. 
+We can use this knowledge to normalize our index for any real value of 
+*/
+
+/*Normalize the distance into [0, 1] used in this experiment.
+Because we use similarity as a real number from 0 to 1, 
+we need to normalized the computed distance into [0,1].
+There are several formulate to do so. Each formulate takes distance function
+as an input. Such formulate is considered as similarity function.
+*/
+
+
+/*
+for each Integer i where i in iota(1, 10) 
+         q(500, 0.75);
+
+
+select euclid(v1, v2) from Vector of Number v1, Vector of Number v2
+where v1 in known_data(id1) and v2 in known_data(id2)
+and id1 = 500, id2 = 1000;
+
+ similar 0.75
+ MBTREE 4.156 s
+ XT     6.444 s        
+
+ similar 0.1
+ MBTREE 4.382 s 
+*/
+
+create function q2(Number id1, Number similar)->Number id2 as 
+select id2 from  Vector of Number v1, Vector of Number v2, Number d
+  where v1 in known_data(id1)
+  and   v2 in known_data(id2)       
+  and   d = euclid(v1, v2)
+  and   d < similar;
+

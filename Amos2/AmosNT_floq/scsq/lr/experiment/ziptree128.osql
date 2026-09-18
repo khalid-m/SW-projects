@@ -1,0 +1,31 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 Erik Zeitler, UDBL
+ * $RCSfile: ziptree128.osql,v $
+ * $Revision: 1.1 $ $Date: 2010/07/15 17:46:07 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Zipstream tree experiments
+ *
+ ****************************************************************************
+ ****************************************************************************/
+
+/* run experiments. Add results to results table. write results to file */
+
+add ub_zipmapmatree_res(128,16,1) = ub_zipmapmatree(128, 100, 16, 1);
+add ub_zipmapmatree_res(128,16,2) = ub_zipmapmatree(128, 100, 16, 2);
+add ub_zipmapmatree_res(128,16,4) = ub_zipmapmatree(128, 100, 16, 4);
+add ub_zipmapmatree_res(128,16,8) = ub_zipmapmatree(128, 100, 16, 8);
+add ub_zipmapmatree_res(128,16,11) = ub_zipmapmatree(128, 100, 16, 11);
+add ub_zipmapmatree_res(128,16,12) = ub_zipmapmatree(128, 100, 16, 12);
+add ub_zipmapmatree_res(128,16,16) = ub_zipmapmatree(128, 100, 16, 16);
+add ub_zipmapmatree_res(128,16,32) = ub_zipmapmatree(128, 100, 16, 32);
+add ub_zipmapmatree_res(128,16,64) = ub_zipmapmatree(128, 100, 16, 64);
+add ub_zipmapmatree_res(128,16,128) = ub_zipmapmatree(128, 100, 16, 128);
+
+write_ntuples(
+(select concat({w,m,f}, ub_zipmapmatree_res(w,m,f)) from integer w, integer m, integer f),
+"ub_tree_" + timestamp());
+
+q();

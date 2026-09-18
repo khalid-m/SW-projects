@@ -1,0 +1,107 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title>Grand Challenge: Implementation by Frequently Emitting Parallel Windows and User-Defined Aggregate Functions</title>
+  </head>
+
+  <body>
+    <h1>Grand Challenge: Implementation by Frequently Emitting Parallel Windows and User-Defined Aggregate Functions</h1>
+
+
+<u>The paper</u>
+<p>
+The paper is available here: <a href="debs307g-Badiozamany.pdf">Grand Challenge: Implementation by Frequently Emitting Parallel Windows and User-Defined Aggregate Functions</a>
+<p>
+<u>Installation</u>
+<p>
+
+Our implementation can run on any Windows machine.<br>
+
+1) Download <a href="Epic.zip">Epic.zip</a> to some folder, e.g. C:\
+and unzip it there.<br>
+
+2) Download <a
+href="http://lafayette.tosm.ttu.edu/debs2013/grandchallenge/full-game.gz">full-game</a>
+and extract it into 'C:\Epic\debs2013\data\full-game'.<br>
+
+After this the system is ready to run.<br><br>
+
+<u>Running the DEBS Challenge</u>
+<p>
+
+To run the entire DEBS Challenge script execute the command:
+<p>
+<b>all.cmd</b>
+<p>
+The DEBS Challenge output streams are saved in the folder 'output' as
+CSV files named:<br><br>
+
+q1a.csv (current running statistics)<br>
+q1b_1M.csv (aggregate running statistics for 1 minute window)<br>
+q1b_5M.csv (aggregate running statistics for 5 minute window)<br>
+q1b_20M.csv (aggregate running statistics for 20 minute window)<br>
+q1b_landmark.csv (aggregate running statistics for the entire game)<br>
+q2playerpossession.csv<br>
+q2teampossession_1min.csv<br>
+q2teampossession_20min.csv<br>
+q2teampossession_5min.csv<br>
+q2teampossession_landmark.csv<br>
+q3_1M.csv  (1 minute heatmap*)<br>
+q3_5M.csv  (5 minute heatmap*)<br>
+q3_10M.csv (10 minute heatmap*)<br>
+q3_landmark.csv (The entire game heatmap*)<br>
+q4.csv<br><br>
+
+*Contains the four output streams corresponding to the four grid settings, each stream output is tagged as specified in the paper.
+
+<p>You can also run separately each of the queries with the commands:<br>
+
+q1.cmd<br>
+q2.cmd<br>
+q3.cmd<br>
+q4.cmd<br>
+
+<p>
+<u>Delay logging</u>
+<p>
+
+The system has a facility to log the time spent in the system for
+producing each row in the output CSV files. To run the DEBS Challenge
+with this delay logging turned on, execute:
+<p>
+<b>all_delays.cmd</b>
+<p>
+When delay propagation is turned on, the system registers when a CSV
+tuple arrives into the system and propagates this timestamp
+downstream. In the output CSV log files there are two extra elements
+first in each row, containing:<br>
+i) the wall time when the latest input
+CSV row that contributed to the result row arrived into the system <br>
+ii) the wall time when the output CSV row was printed to the log
+file.
+<p>
+The delay (in seconds) for producing an output CSV tuple is the
+difference between the two time stamps.  
+<br>The wall time is defined as the number of seconds since 14:29:22 on 2013-05-17.
+<p>Note that running the system using all_delays.cmd adds around 10% over head. The overhead is due to the high cost in obtaining time-of-day from the OS several times for each incoming tuple. Recall that each tuple communicated and/or written to disk (e.g. high output rate in Q3) triggers a system wall clock query.
+<p>
+<u>Computing the delay statistics per output file</u>
+<p>
+To compute average and standar deviation of the delay per output csv file (as in figure 6 in the paper), after the system has finished executing <i>all_delays.cmd</i> run:
+<p>
+<b> delays.cmd</b>
+<p>
+<i>delays.cmd</i> scans all output CSV files and writes into <i>delay.csv</i> the average and standard deviation of delays per file.
+We recommend openning the <i>delay.csv</i> in Microsoft Excel where line feed charachters are correctly detected.
+
+
+
+
+    <hr>
+    <address><a href="mailto:cheng.xu@it.uu.se"></a></address>
+<!-- Created: Tue May 21 17:22:00 W. Europe Daylight Time 2013 -->
+<!-- hhmts start -->
+Last modified: Wed May 22 13:20:49 W. Europe Daylight Time 2013
+<!-- hhmts end -->
+  </body>
+</html>

@@ -1,0 +1,7 @@
+lisp;
+
+(load-amosql "regress/base.osql")
+(load-amosql "regress/window.osql")
+(load-amosql "regress/stream.osql")
+(load-amosql "regress/join.osql")
+(load-amosql "regress/aggregate.osql")

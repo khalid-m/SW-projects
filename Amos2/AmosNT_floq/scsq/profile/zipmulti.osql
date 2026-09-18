@@ -1,0 +1,83 @@
+/*-*-sql-*-*******************************************************************/
+
+lisp;
+
+(stop-profile) (start-profile)
+(checkequal "zipmulti profile"
+((osql "count(zipmulti({
+newsp(streamof(select darray(20) from integer i where i in iota(1, 200000))),
+newsp(streamof(select darray(10) from integer i where i in iota(1, 400000)))},5));")
+'((800000))))
+(print (profile))
+
+(stop-profile) (start-profile)
+(checkequal "zip profile (baseline)"
+((osql "count(zip({
+newsp(streamof(select darray(5) from integer i where i in iota(1, 800000))),
+newsp(streamof(select darray(5) from integer i where i in iota(1, 800000)))}));")
+'((800000))))
+(print (profile))
+
+(stop-profile) (start-profile)
+(checkequal "zip w/o multi (no OH -> max perf)"
+((osql "count(zip({
+newsp(streamof(select darray(20) from integer i where i in iota(1, 200000))),
+newsp(streamof(select darray(10) from integer i where i in iota(1, 200000)))}));")
+'((200000))))
+(print (profile))
+
+(stop-profile) (start-profile)
+(checkequal "zipmulti profile many senders"
+((osql "count(zipmulti(spv(
+vselect streamof((
+select darray({1.0,2.0,3.0,4.0,5.0,6.0}) from integer i where i in iota(1, 30000)))
+from integer i where i in iota(1,20)),2));")
+'((90000))))
+(print (profile))
+
+(stop-profile) (start-profile)
+(checkequal "zip profile many senders (baseline)"
+((osql "count(zip(spv(
+vselect streamof((
+select darray({1.0,2.0}) from integer i where i in iota(1, 90000)))
+from integer i where i in iota(1,20))));")
+'((90000))))
+(print (profile))
+
+(stop-profile) (start-profile)
+(checkequal "zipmulti profile many senders"
+((osql "count(zip(spv(vselect streamof((
+select darray({1.0,2.0,3.0,4.0,5.0,6.0}) from integer i where i in iota(1, 30000)))
+from integer i where i in iota(1,20))));")
+'((30000))))
+(print (profile))
+
+
+
+:osql
+q();
+
+
+
+scsq
+
+lisp;
+
+(storagestat t)
+
+(new-emitarr
+(make-array 4 :initial-element (init-iarray #(1 2 3 4 5)))
+(init-iarray #(1 0 3 0))
+2)
+
+(new-emitarr
+(concatvector (make-array 3 :initial-element (init-iarray #(1 2 3 4 5)))
+#(nil))
+(init-iarray #(1 0 3 0))
+2)
+
+(na-project (init-iarray #(1 2 3 4 5)) 1 2)
+
+create function zm()->vector as
+zipmulti({newsp(streamof(iarray({1,2,3,4}))),
+newsp(streamof(iarray({1,2,3,4})))},2);

@@ -1,0 +1,54 @@
+/*-*-sql-*-*******************************************************************/
+
+create function scpu(integer rep) -> vector of number as
+select in(mergestreams(mapstreams(split, #'stcount')))
+from vector of stream split, stream src
+where split = splitflexra(src, 1, #'lrproute', {0, 1}, {'spprof':1})
+and src = ostream(newsp(i_hybrid(64, 5, rep)), 0);
+
+create function rbcpu(integer rep) -> vector of number as
+select in(mergestreams(mapstreams(split, #'stcount')))
+from vector of stream split, stream src
+where split = splitflexra(src, 1, #'lrprfn', #'q2bfn', {0, 1}, {'spprof':1})
+and src = ostream(newsp(i_hybrid(64, 5, rep)), 0);
+
+lisp;
+(checkequal "CPU consumption and breakdown"
+ ((let ((a (caar (osql "scpu(10);"))))
+   (elt a 3))
+ 10000)
+  ((osql "select
+          from real r, charstring k, number n
+          where <r, k, n> in breakdown()
+          and some(like(k, 'samples'));")
+  '((TRUE)))
+ ((let ((a (caar (osql "rbcpu(10);"))))
+   (elt a 3))
+ 10000)
+  ((osql "select
+          from real r, charstring k, number n
+          where <r, k, n> in breakdown()
+          and some(like(k, 'samples'));")
+  '((TRUE))))
+:osql
+
+/*
+
+create function sbd(integer rep, integer numexp)->boolean as begin
+for each original integer i where i in iota(1, numexp) begin
+scpu(rep);
+write_ntuples({breakdown()}, "s_bd" + stringify(rep) + "_" + stringify(i));
+end;
+end;
+
+create function rbd(integer rep, integer numexp)->boolean as begin
+for each original integer i where i in iota(1, numexp) begin
+rbcpu(rep);
+write_ntuples({breakdown()}, "rb_bd" + stringify(rep) + "_" + stringify(i));
+end;
+end;
+
+sbd(1000, 5);
+rbd(1000, 5);
+
+*/

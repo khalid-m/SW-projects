@@ -1,0 +1,140 @@
+/* import data store schema information from GAE */
+/*
+accessBigtable("ds1", "Bigtable", "http://oddse2010.appspot.com/simpleprotocol");
+accessBigtable("ds2", "Bigtable", "http://oddseminzh812.appspot.com/simpleprotocol");
+*/
+
+set :ds1 = Bigtableds("ds1");
+set :ds2 = Bigtableds("ds2");
+
+
+accessBigtable(:ds1,  "http://oddse2010.appspot.com/simpleprotocol");
+accessBigtable(:ds2,  "http://oddse2010.appspot.com/simpleprotocol");
+
+create function q1()-> Bag of (Object, Object)
+  as select V1[1],v2[1] from Vector v1, Vector v2 where
+  v1 in gql('ds1',"select * from CITY where POPULATION > 2000000") and
+  v2 in gql('ds2',"select * from STATE where SHORTNAME = '"+v1[0]+"'");
+
+lisp;
+
+(checkequal 
+ "checking populated local meta data from GAE data store"
+ ((osql "bigTableURL('ds1');") 
+  '(("http://oddse2010.appspot.com/simpleprotocol")))
+ ((osql "bigTables('ds1');")
+  '(("STATE") ("CITY")))
+ ((osql "bigTableAttributes('ds1', 'CITY');") 
+  '((2 "POPULATION" "INTEGER" "non-key" "index") (1 "CITYNAME" "CHARSTRING" "key" "index") (0 "STATE" "CHARSTRING" "non-key" "index")))
+ ((osql "bigTableKeyAttribute('ds1', 'CITY');") '(("CITYNAME")))
+)
+
+
+(checkequal
+ "testing gql foreign function for querying Bigtable part I" 
+ ((osql "gql('ds1','select * from CITY where CITYNAME > ?', {'Zurich city'});")
+  '((#("IA" "Zwingle city" 100)) (#("LA" "Zwolle town" 1783)) (#("TX" "deCordova city" 2809))))
+ ((osql "gql('ds1', 'select * from CITY where CITYNAME >= ?', {'Zurich city'});")
+  '((#("KS" "Zurich city" 126)) (#("IA" "Zwingle city" 100)) (#("LA" "Zwolle town" 1783)) (#("TX" "deCordova city" 2809))))
+ ((osql "gql('ds1', 'select * from CITY where CITYNAME > ? 
+                      and CITYNAME < ?', {'Chickasha city','Chicopee city'});")
+  '((#("CA" "Chico city" 76774))))
+ )
+
+
+(checkequal
+ "testing gql foreign function for querying Bigtable part II"
+ ((osql "gql('ds1','select * from CITY where POPULATION > ?', {8000000});")
+  '((#("NY" "New York city" 8008686))))
+ ((osql "gql('ds1','select * from CITY where POPULATION >= ?', {2896017});")
+  '((#("IL" "Chicago city" 2896017)) (#("CA" "Los Angeles city" 3695426)) (#("NY" "New York city" 8008686))))
+ ((osql "gql('ds1','select * from CITY where POPULATION > ? and 
+                      POPULATION < ?', {1500000, 2000000});") 
+  '((#("PA" "Philadelphia city" 1517542)) (#("TX" "Houston city" 1973727))))
+ ((osql "gql('ds1', 'select * from CITY where POPULATION > ? and STATE = ?', {800000, 'CA'});")
+  '((#("CA" "San Jose city" 901024)) (#("CA" "San Diego city" 1223418)) (#("CA" "Los Angeles city" 3695426))))
+ )
+
+(checkequal
+ "querying multi databases from Bigtable"
+ ((osql "q1();")
+  '(("Chicago city" "IL") ("Los Angeles city" "CA") ("New York city" "NY")))
+) 
+
+(checkequal
+ "inserting a new tuple into GAE data store"
+ ((osql "insertBigTable('ds1','CITY',{'CITYNAME', 'POPULATION', 'STATE'},{'New city XX', 9999999, 'CA'});")
+  '((#("success"))))
+)
+
+
+(checkequal
+ "testing insert function"
+ ((osql "gql('ds1','select * from CITY where POPULATION > ?', {8000000});")
+  '((#("NY" "New York city" 8008686)) (#("CA" "New city XX" 9999999))))
+)
+
+
+(checkequal
+ "getting a tuple from GAE data store"
+ ((osql "getBigTable('ds1','CITY',{'New city XX'});")
+  '((#("CA" "New city XX" 9999999))))
+)
+
+
+(checkequal
+ "deleting a tuple from GAE data store"
+ ((osql "deleteBigTable('ds1','CITY',{'New city XX'});")
+  '((#("success"))))
+)
+
+
+(checkequal
+ "testing delete function"
+ ((osql "gql('ds1','select * from CITY where POPULATION > ?', {8000000});")
+  '((#("NY" "New York city" 8008686))))
+)
+
+
+(checkequal
+ "Rewrites of core cluster functions (querying single table)"
+ ((osql "select cityname(c) from City_ds1 c where population(c) > 8000000;") 
+  '(("New York city")))
+ ((osql "select cityname(c) from City_ds1 c 
+         where population(c) > 1500000 and
+               population(c) < 2000000;")
+  '(("Philadelphia city") ("Houston city")))
+ ((osql "select cityname(c) from City_ds1 c where population(c)>800000 and
+                                       state(c)='CA';")
+  '(("San Jose city") ("San Diego city") ("Los Angeles city")))
+)
+
+
+(checkequal
+ "Rewrites of core cluster functions (rewriting join)"
+ ((osql "select cityname(c), fullname(s)
+         from City_ds1 c, State_ds2 s
+         where population(c)>800000 and 
+	       shortname(s)>'PL' and
+               state(c) = shortname(s);" )
+  '(("San Antonio city" "Texas") ("Dallas city" "Texas") ("Houston city" "Texas")))
+ ((osql "select cityname(c), fullname(s)
+         from City_ds1 c, State_ds2 s
+         where population(c)>1500000 and 
+               population(c)<2000000 and 
+               shortname(s)>'PL' and 
+	       state(c) = shortname(s);" )
+  '(("Houston city" "Texas")))
+ ((osql "select cityname(c), fullname(s) 
+     from City_ds1 c, State_ds2 s 
+     where population(c)>=500000 and 
+	   population(c)<2500000 and
+	   shortname(s)<'WY' and
+	   shortname(s)>'TX' and
+	   cityname(c)>'Dallas city' and    
+           state(c) = shortname(s);")
+  '(("Seattle city" "Washington") ("Milwaukee city" "Wisconsin")))
+)
+
+
+:osql

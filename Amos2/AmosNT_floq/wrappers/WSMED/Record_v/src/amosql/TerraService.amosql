@@ -1,0 +1,31 @@
+/******** Search Definition***********/ 
+
+/*create function GetPlaceList(charstring placename,integer maxitems,charstring imagepresence)-><charstring city,charstring state, charstring country,real lon, real lat,integer availablethememask,charstring placetypeid,integer population>
+	as select re00["City"],re00["State"],re00["Country"],re01["Lon"],re01["Lat"],re0["AvailableThemeMask"],re0["PlaceTypeId"],re0["Population"] 
+	   from record out, sequence res0, record re0, record re00, record re01
+	  where out =cwo("http://terraservice.net/TerraService2.asmx?wsdl","GetPlaceList",make_record({'GetPlaceList',make_record({'placeName',placename,'MaxItems',maxitems,'imagePresence',imagepresence})}))and res0=out["GetPlaceListResult"]and re0=elementOf(res0)and re00=re0["Place"] and re01=re0["Center"]; */
+
+create function GetPlaceList(charstring placename,integer maxitems,charstring imagepresence)-><charstring city,charstring state, charstring country,real lon, real lat,integer availablethememask,charstring placetypeid,integer population>
+	as select re00["City"],re00["State"],re00["Country"],re01["Lon"],re01["Lat"],re0["AvailableThemeMask"],re0["PlaceTypeId"],re0["Population"] 
+	   from sequence out, record inr,record re, sequence res0, record re1,record re0, record re00, record re01
+	  where out =cwo("C:/AmosNT/wrappers/WSMED/Record_v/wsdl/TerraService2.wsdl","TerraService","GetPlaceList",{placename,maxitems,imagepresence},{})and inr=in(out)and re=inr["GetPlaceListResponse"]and res0=re["GetPlaceListResult"]and re1=elementOf(res0)and re0=re1["PlaceFacts"] and  re00=re0["Place"] and re01=re0["Center"]; 
+/**********helping function ***********/
+
+lisp;
+(defun GetPlaceList_f (fno placename maxitems imagepresence city state country lon lat availablethememask placetypeid population)
+	(mapfunctionres 'GetPlaceList (list placename maxitems imagepresence) nil
+		  (f/l (row)
+		       (osql-result  placename maxitems imagepresence (nth 0 row)(nth 1 row)(nth 2 row)(nth 3 row)(nth 4 row)(nth 5 row)(nth 6 row)(nth 7 row)))))
+:osql
+create function GetPlaceList_cc()-><charstring placename,integer maxitems,charstring imagepresence,charstring city, charstring state, charstring country, real lon, real lat,integer availablethememask, charstring placetypeid,integer population> as foreign "GetPlaceList_f";
+
+
+/********** WSMED view defintion ***********/
+
+create function #Place(charstring placename,charstring city,charstring state, charstring country)-><integer maxitems,charstring imagepresence,real lon, real lat,integer availablethememask,charstring placetypeid,integer population> as select maxitems, imagepresence,lon,lat,availablethememask,placetypeid,population where GetPlaceList_cc()=<placename, maxitems,imagepresence,city, state, country, lon, lat, availablethememask, placetypeid,population>; 
+
+
+
+
+
+

@@ -1,0 +1,219 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2009 Gyozo Gidofalvi, UDBL
+ * $RCSfile: NNet_demo.osql,v $
+ * $Revision: 1.2 $ $Date: 2009/08/03 13:26:43 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: OSQL script to demonstate the use of backpropagation 
+ * feed-forward neural networks for streams.  
+ *
+ ****************************************************************************
+ * $Log: NNet_demo.osql,v $
+ * Revision 1.2  2009/08/03 13:26:43  gyogi445
+ * Novelty detection via independently trained "compression" neural networks
+ *
+ * Revision 1.1  2006/02/12 14:18:08  gyogi445
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+
+/* Simulating the output of a random NN with given structure in random inputs */
+simrand_NN(1000, randNNweights({2,6,3,2}), #"SIGMOID");
+
+/* Measuring the execution time of evaluating the output of a 
+   random NN with given structure for 9300 four-dimensional inputs   */
+print('Simulating a random NN ((4),6,3,1) with N(0,1) distrib. random 
+       weights for 9300 four-dimensional inputs ');
+set :t0 = now();
+count(select eval_NN({v[7], v[9], v[11], v[13]}, rw, 
+                     cast(vrep({#"sigmoid"}, 3) as Vector of Function))  
+      from Vector of Number v, Vector of Vector of Vector of Number rw 
+      where rw = randNNweights({4,6,3,1})
+        and v = readfile("C:/data/iStreams/M4_join.out"));
+set :t1 = now();
+elapsed_sec(:t0, :t1);
+
+/* Demonstration of the evaluation of a neural network on a stream.
+   The NN evaluator is implemented as a stream transducer. */
+select in(section(sNNet(s, NN_structure, actfn, NN_instance_name), 9000, 10000))
+from Stream of Vector of Number s,
+     Vector of Integer NN_structure,
+     Function actfn,
+     Charstring NN_instance_name,
+     Vector of Integer input_cols,
+     Charstring filename  
+where s = streamColsFromFile(filename, input_cols)
+  and NN_structure = {4, 6, 3, 1}
+  and input_cols = {7, 9, 11, 13}
+  and actfn = #'sigmoid'
+  and NN_instance_name = "mynet01"
+  and filename = "C:/data/iStreams/M4_join.out"; 
+
+/* Query that demonstrates how a NN learns to approximate s1. 
+   Result vectors show the current squared error, 
+   the MSE (mean squared error) so far, 
+   and the variance of the squared errors so far. */
+in(savgstdev(streamof(select (o-t)*(o-t) 
+         from Number o, Number t, Stream of Vector of Vector of Number s
+         where {{o}, {t}} = in(sann(s, {2,8,1}, 0.5, "LEARN", "APPROX", "mynet1"))
+           and s = s1(10000))));
+
+/* Query that demonstrates how a NN learn to approximate s1.
+   Results vactors show the MAE (mean absolute error)
+   on the last 1000 observations, and the standard deviation of
+   the absolute errors on the last 1000 observations */
+avgstdev(winagg((select abs(o-t)
+         from Number o, Number t, Stream of Vector of Vector of Number s
+         where {{o}, {t}} = in(sann(s, {2,8,1}, 0.5, "LEARN", "APPROX", "mynet1"))
+           and s = s1(10000)), 1000, 1000));
+
+/* Query to demonstrate how a NN learns to approximate s2: switch
+   Result vectors show the current squared distance (error) between o and t,
+   the MSE so far, and the variance of the squared errors so far */ 
+in(savgstdev(streamof(select vsum((o-t)*(o-t)) 
+         from Vector of Number o, Vector of Number t, Stream of Vector of Vector of Number s
+         where {o, t} = in(sann(s, {2,8,2}, 0.5, "LEARN", "APPROX", "mynet1"))
+           and s = s2(10000))));
+
+/* Query that demonstrates how a NN learn to approximate s2: switch
+   Results vactors show the MAE (mean absolute error)
+   on the last 1000 observations, and the standard deviation of
+   the absolute errors on the last 1000 observations */
+avgstdev(winagg((select vsum((o-t)*(o-t)) 
+         from Vector of Number o, Vector of Number t, Stream of Vector of Vector of Number s
+         where {o, t} = in(sann(s, {2,8,2}, 0.5, "LEARN", "APPROX", "mynet1"))
+           and s = s2(10000)), 1000, 1000));
+
+/* Query to demonstrate how a NN learns to classify AND
+   Result vectors show the current squared distance (error) between o and t,
+   the MSE so far, and the variance of the squared errors so far */ 
+in(savgstdev(streamof(select (o-t)*(o-t) 
+         from Number o, Number t, Stream of Vector of Vector of Number s
+         where {{o}, {t}} = in(sann(s, {2,8,1}, 0.5, "LEARN", "CLASSIF", "mynet1"))
+           and s = slogop(10000, #"andop"))));
+
+/* Query to demonstrate how a NN learns to classify AND
+   Results vectors show the MAE (mean absolute error)
+   on the last 1000 observations, and the standard deviation of
+   the absolute errors on the last 1000 observations */
+in(avgstdev(winagg((select abs(o-t) 
+         from Number o, Number t, Stream of Vector of Vector of Number s
+         where {{o}, {t}} = in(sann(s, {2,8,1}, 0.5, "LEARN", "CLASSIF", "mynet1"))
+           and s = slogop(10000, #"andop")), 1000, 1000)));
+
+/* Query to demonstrate how a NN learns to approximate AND
+   Results vectors show the MAE (mean absolute error)
+   on the last 1000 observations, and the standard deviation of
+   the absolute errors on the last 1000 observations */
+in(avgstdev(winagg((select abs(o-t) 
+         from Number o, Number t, Stream of Vector of Vector of Number s
+         where {{o}, {t}} = in(sann(s, {2,8,1}, 0.5, "LEARN", "APPROX", "mynet1"))
+           and s = slogop(10000, #"andop")), 1000, 1000)));
+
+/* Query to demonstrate how a NN learns to classify NOR
+   Results vectors show the MAE (mean absolute error)
+   on the last 1000 observations, and the standard deviation of
+   the absolute errors on the last 1000 observations */
+in(avgstdev(winagg((select abs(o-t) 
+         from Number o, Number t, Stream of Vector of Vector of Number s
+         where {{o}, {t}} = in(sann(s, {2,8,1}, 0.5, "LEARN", "CLASSIF", "mynet1"))
+           and s = slogop(10000, #"norop")), 1000, 1000)));
+
+/* Query to demonstrate how a NN learns to classify XOR
+   Results vectors show the MAE (mean absolute error)
+   on the last 1000 observations, and the standard deviation of
+   the absolute errors on the last 1000 observations */
+in(avgstdev(winagg((select abs(o-t) 
+         from Number o, Number t, Stream of Vector of Vector of Number s
+         where {{o}, {t}} = in(sann(s, {2,8,1}, 0.5, "LEARN", "CLASSIF", "mynet1"))
+           and s = slogop(10000, #"xorop")), 1000, 1000)));
+
+/* Query to demonstrate how a NN learns to approximate XOR
+   Results vectors show the MAE (mean absolute error)
+   on the last 1000 observations, and the standard deviation of
+   the absolute errors on the last 1000 observations */
+in(avgstdev(winagg((select abs(o-t) 
+         from Number o, Number t, Stream of Vector of Vector of Number s
+         where {{o}, {t}} = in(sann(s, {2,8,1}, 0.5, "LEARN", "APPROX", "mynet1"))
+           and s = slogop(10000, #"xorop")), 1000, 1000)));
+
+/* Standard Error Estimates for NN via the bootstrap pairs approach
+
+   The idea is to train or evaluate several trained networks and compare
+   the individual network errors to the mean error to derive and estimate
+   on the standard error of the prediction / approximation. The individual 
+   networks must be trained on the same sample size but the samples should 
+   be randonly sampled WITH replacement from the training set. To acomplish
+   the above task one needs to perofrm several independent computations 
+   in parallel and evalaute the merged results. the independent computations
+   can be done by seperate threads, processes or even processors on a mutli
+   processor system. While the user should be able to have optional control 
+   over the above choice, it should also be seemlessly integrated into the 
+   data stream query language and processing system. For now, since basic 
+   paralelization methods are implemented for processes, processes will be 
+   as a computation unit, i.e. each streamed NN will be a processs on its own.
+   
+   NOTE: HENCE THE QUERIES BELLOW NEED A COORDINATOR!      
+
+*/
+
+/* The input stream (stream-vector-vector-number) to a NN */
+in(s2(5));
+
+/* Training and evaluating an ensemble of NNs to approximate 
+   / predict the target stream with standard error estimates 
+   for each predicted dimension */    
+in(sann_err(s2(1000), {2,6,1}, 0.5, "LEARN", "APPROX", 5));
+
+/* Create a NN weight file */
+writefile("NN.out", randNNweights({2,6,1}));
+
+writefile("NN2.out", randNNweights({2,6,1}));
+
+/* Run the above query but initialize all NNs from the same
+   weight file */
+in(sannf_err(s2(100), {"NN.out", "NN2.out"}, 0.5, "LEARN", "APPROX", 2));
+
+
+/* Multi-dimensional input stream to be monitored */  
+in(s3(5));
+
+/* Detecting novelty in a multi-dimensional stream by training
+   and evaluating and ensemble of compressions NNs to reproduce 
+   the input stream. An input element in the stream is considered 
+   novel / raises an alarm when the ensample of NNs is not able to 
+   reconstruct it within standard error bounds. */
+in(snovelty2(s3(10000), {2,6,2}, 5));
+
+/* Query that restores-saves weights of a network from-to a file 
+   before-after training/evaluations */   
+in(sann1ff(s2(100), "NN.out", "NNnew.out", 0.5, "LEARN", "APPROX"));
+
+
+/* Init NNE */
+initNNE({3,2,1}, 2);
+
+/* Init + train NNE */
+trainNNE(s2(1000), initNNE({2,3,2}, 5), 0.5, "APPROX", 10, 10, 10);
+
+/* Init + train + save NNE */
+saveNNE(trainNNE(s2(1000), initNNE({2,3,2}, 5), 0.5, "APPROX", 10, 10, 10), "NNE");
+
+/* Load + train + save (i.e., update) NNE */
+saveNNE(trainNNE(s2(1000), loadNNE("NNE"), 0.5, "APPROX", 10, 10, 10), "NNE2");
+
+/* Load + eval NNE */
+in(evalNNE1(s2(10), loadNNE("NNE"), "APPROX"));
+
+/* TO DO: evalNNE1 does not work through mapstreamsargv !!!*/
+
+set :argv =  {{},{},{{}},{{{-0.2330952900002,0.171042671706967,-0.355695219371657},{-0.141802590941374,0.0770676277675184,-0.265921317496805},{0.252775997007421,0.678075287985243,-0.19506356639422}},{{0.0151368399674821,-0.0851772140416851,0.589798858475224,-0.169637189028601},{0.216385334107536,0.422147967946121,0.496743360136578,0.535840103497817}}},{{}},0.0,"EVAL","APPROX"};
+
+in(sANN_wwo(s2(10), :argv));
+
+in(in(mapstreamsargv({s2(10), s2(10)}, {:argv, :argv}, #'sANN_wwo')));
+
+
+

@@ -1,0 +1,17 @@
+create function rdql(Charstring source, Charstring query)->Vector
+  as select call_function(source,"rdql",{query},50);
+
+create function WS_operations()-> function as stored;
+
+/*add WS_operations()=functionnamed("Charstring.Charstring.rdql->Vector");*/
+
+add WS_operations()=resolvents(functionnamed("RDQL"));
+
+create function fun_descr(Function f)-> 
+	<Charstring name, Vector args> 
+  as select name(f), arg_descr(f);
+
+create function WS_operations_descr()-> <Charstring name, Vector args> 
+  as select fun_descr(WS_operations());
+
+add WS_operations()=resolvents(functionnamed("WS_OPERATIONS_DESCR"));

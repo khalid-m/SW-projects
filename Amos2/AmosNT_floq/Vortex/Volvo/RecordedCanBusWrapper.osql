@@ -1,0 +1,53 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: 2013 Tore Risch, UDBL
+ * $RCSfile: RecordedCanBusWrapper.osql,v $
+ * $Revision: 1.5 $ $Date: 2013/11/20 21:42:40 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: CANBUS stream wrapper reading a recorded CanBus CSV file
+ ****************************************************************************
+ * $Log: RecordedCanBusWrapper.osql,v $
+ * Revision 1.5  2013/11/20 21:42:40  chexu484
+ * change the frame id to the right number
+ *
+ * Revision 1.4  2013/11/13 18:33:47  chexu484
+ * kurtosis
+ *
+ * Revision 1.3  2013/11/12 13:25:45  torer
+ * *** empty log message ***
+ *
+ * Revision 1.2  2013/11/11 13:55:22  torer
+ * Vector based canbus wrapper model
+ *
+ * Revision 1.1  2013/11/09 15:35:11  torer
+ * Volvo wrappers added
+ *
+ ****************************************************************************/
+
+create function canBusStream(Charstring settings) 
+                           -> Stream of Vector of Number
+  as streamof(cast(csv_file_stream("data/CanBus_Recorded.csv") as Bag of Vector of Number));
+
+create function simCanBusStream(Charstring file)
+                           -> Stream of Vector of Number
+  as streamof(cast(csv_file_stream(file) as Bag of Vector of Number));
+
+
+/*
+
+create function roundoff(Charstring file) -> Bag of Vector of Number
+  as for each Vector of Number v where v in csv_file_stream(file)
+	begin
+	  if v[0] = 2364540000 then
+	    begin
+	      if dim(v) = 10 then set_vref(v, 0, -1930424573.0)
+	      else set_vref(v, 0, -1930424829.0);
+	      return v;
+	    end
+          else return v;
+	end;
+
+writecsvfile("cbd.csv", roundoff("canbusdata.csv"));
+*/

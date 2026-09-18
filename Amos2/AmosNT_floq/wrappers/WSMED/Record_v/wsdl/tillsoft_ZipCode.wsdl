@@ -1,0 +1,354 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wsdl:definitions xmlns:http="http://schemas.xmlsoap.org/wsdl/http/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:s="http://www.w3.org/2001/XMLSchema" xmlns:s0="http://www.tilisoft.com/ws/LocInfo/literalTypes" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:i0="http://www.tilisoft.com/ws/LocInfo/DataObjects/ZipCodeData.xsd" xmlns:tns="http://www.tilisoft.com/ws/LocInfo/" xmlns:tm="http://microsoft.com/wsdl/mime/textMatching/" xmlns:mime="http://schemas.xmlsoap.org/wsdl/mime/" targetNamespace="http://www.tilisoft.com/ws/LocInfo/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+  <wsdl:import namespace="http://www.tilisoft.com/ws/LocInfo/DataObjects/ZipCodeData.xsd" location="http://www.tilisoft.com/ws/LocInfo/ZipCode.asmx?schema=ZipCodeData" />
+  <wsdl:types>
+    <s:schema elementFormDefault="qualified" targetNamespace="http://www.tilisoft.com/ws/LocInfo/literalTypes">
+      <s:import namespace="http://www.tilisoft.com/ws/LocInfo/DataObjects/ZipCodeData.xsd" schemaLocation="http://www.tilisoft.com/ws/LocInfo/DataObjects/ZipCodeData.xsd"/>
+      <s:element name="GetDistance">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="ZipCode1" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="ZipCode2" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ZipCodeInfo">
+	  <s:complexType>
+	    <s:sequence>
+  		<s:element minOccurs="1" maxOccurs="1" name="ZIPCODE" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="CITY" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="STATE" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="FIPS" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="COUNTY" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="COUNTYAREA_SQMI" type="s:double" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="LATITUDE" type="s:double" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="LONGITUDE" type="s:double" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="AREACODE" type="s:string" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="TIMEZONECODE" type="s:int" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="TIMEZONENAME" type="s:string" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="MILES" type="s:int" /> 
+  	    </s:sequence>
+  	</s:complexType>
+     </s:element>
+
+      <s:element name="GetDistanceResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="GetDistanceResult" type="s:double" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetInfo">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="ZipCode" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetInfoResponse">
+        <s:complexType>
+          <s:sequence>
+            <!--<s:element minOccurs="0" maxOccurs="1" name="GetInfoResult" type="i0:ZipCodeInfo" />-->
+		<s:element minOccurs="1" maxOccurs="1" name="ZIPCODE" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="CITY" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="STATE" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="FIPS" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="COUNTY" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="COUNTYAREA_SQMI" type="s:double" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="LATITUDE" type="s:double" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="LONGITUDE" type="s:double" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="AREACODE" type="s:string" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="TIMEZONECODE" type="s:int" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="TIMEZONENAME" type="s:string" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="MILES" type="s:int" /> 
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ListInRange">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="ZipCode" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="Miles" type="s:double" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ListInRangeResponse">
+        <s:complexType>
+          <s:sequence>
+            <!--<s:element minOccurs="0" maxOccurs="1" name="ListInRangeResult"  type="s0:ZipCodeInfo" />-->
+		<s:element minOccurs="1" maxOccurs="1" name="ZIPCODE" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="CITY" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="STATE" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="FIPS" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="COUNTY" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="COUNTYAREA_SQMI" type="s:double" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="LATITUDE" type="s:double" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="LONGITUDE" type="s:double" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="AREACODE" type="s:string" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="TIMEZONECODE" type="s:int" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="TIMEZONENAME" type="s:string" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="MILES" type="s:int" /> 
+           </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ListByAreaCode">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="AreaCode" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ListByAreaCodeResponse">
+        <s:complexType>
+          <s:sequence>
+            <!--<s:element minOccurs="0" maxOccurs="1" name="ListByAreaCodeResult" type="tns:ZipCodeInfo" />-->
+		 <s:element minOccurs="1" maxOccurs="1" name="ZIPCODE" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="CITY" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="STATE" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="FIPS" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="COUNTY" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="COUNTYAREA_SQMI" type="s:double" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="LATITUDE" type="s:double" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="LONGITUDE" type="s:double" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="AREACODE" type="s:string" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="TIMEZONECODE" type="s:int" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="TIMEZONENAME" type="s:string" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="MILES" type="s:int" /> 
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ListByTimeZoneCode">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="TimeZoneCode" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ListByTimeZoneCodeResponse">
+        <s:complexType>
+          <s:sequence>
+            <!--<s:element minOccurs="0" maxOccurs="1" name="ListByTimeZoneCodeResult" type="s0:ZipCodeInfo" />-->
+		<s:element minOccurs="1" maxOccurs="1" name="ZIPCODE" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="CITY" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="STATE" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="FIPS" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="COUNTY" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="COUNTYAREA_SQMI" type="s:double" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="LATITUDE" type="s:double" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="LONGITUDE" type="s:double" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="AREACODE" type="s:string" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="TIMEZONECODE" type="s:int" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="TIMEZONENAME" type="s:string" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="MILES" type="s:int" /> 
+           </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ListByCity">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="City" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="StateAbbr" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="ExactCity" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ListByCityResponse">
+        <s:complexType>
+          <s:sequence>
+            <!--<s:element minOccurs="0" maxOccurs="1" name="ListByCityResult" type="s0:ZipCodeInfo" />-->
+		<s:element minOccurs="1" maxOccurs="1" name="ZIPCODE" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="CITY" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="STATE" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="FIPS" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="COUNTY" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="COUNTYAREA_SQMI" type="s:double" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="LATITUDE" type="s:double" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="LONGITUDE" type="s:double" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="AREACODE" type="s:string" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="TIMEZONECODE" type="s:int" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="TIMEZONENAME" type="s:string" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="MILES" type="s:int" /> 
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ListByCounty">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="County" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="StateAbbr" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ListByCountyResponse">
+        <s:complexType>
+          <s:sequence>
+            <!--<s:element minOccurs="0" maxOccurs="1" name="ListByCountyResult" type="s0:ZipCodeInfo" />-->
+		<s:element minOccurs="1" maxOccurs="1" name="ZIPCODE" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="CITY" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="STATE" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="FIPS" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="COUNTY" type="s:string" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="COUNTYAREA_SQMI" type="s:double" /> 
+  		<s:element minOccurs="1" maxOccurs="1" name="LATITUDE" type="s:double" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="LONGITUDE" type="s:double" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="AREACODE" type="s:string" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="TIMEZONECODE" type="s:int" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="TIMEZONENAME" type="s:string" /> 
+	  	<s:element minOccurs="1" maxOccurs="1" name="MILES" type="s:int" /> 
+           </s:sequence>
+        </s:complexType>
+      </s:element>
+    </s:schema>
+  </wsdl:types>
+  <wsdl:message name="GetDistanceSoapIn">
+    <wsdl:part name="parameters" element="tns:GetDistance" />
+  </wsdl:message>
+  <wsdl:message name="GetDistanceSoapOut">
+    <wsdl:part name="parameters" element="tns:GetDistanceResponse" />
+  </wsdl:message>
+  <wsdl:message name="GetInfoSoapIn">
+    <wsdl:part name="parameters" element="tns:GetInfo" />
+  </wsdl:message>
+  <wsdl:message name="GetInfoSoapOut">
+    <wsdl:part name="parameters" element="tns:GetInfoResponse" />
+  </wsdl:message>
+  <wsdl:message name="ListInRangeSoapIn">
+    <wsdl:part name="parameters" element="tns:ListInRange" />
+  </wsdl:message>
+  <wsdl:message name="ListInRangeSoapOut">
+    <wsdl:part name="parameters" element="tns:ListInRangeResponse" />
+  </wsdl:message>
+  <wsdl:message name="ListByAreaCodeSoapIn">
+    <wsdl:part name="parameters" element="tns:ListByAreaCode" />
+  </wsdl:message>
+  <wsdl:message name="ListByAreaCodeSoapOut">
+    <wsdl:part name="parameters" element="tns:ListByAreaCodeResponse" />
+  </wsdl:message>
+  <wsdl:message name="ListByTimeZoneCodeSoapIn">
+    <wsdl:part name="parameters" element="tns:ListByTimeZoneCode" />
+  </wsdl:message>
+  <wsdl:message name="ListByTimeZoneCodeSoapOut">
+    <wsdl:part name="parameters" element="tns:ListByTimeZoneCodeResponse" />
+  </wsdl:message>
+  <wsdl:message name="ListByCitySoapIn">
+    <wsdl:part name="parameters" element="tns:ListByCity" />
+  </wsdl:message>
+  <wsdl:message name="ListByCitySoapOut">
+    <wsdl:part name="parameters" element="tns:ListByCityResponse" />
+  </wsdl:message>
+  <wsdl:message name="ListByCountySoapIn">
+    <wsdl:part name="parameters" element="tns:ListByCounty" />
+  </wsdl:message>
+  <wsdl:message name="ListByCountySoapOut">
+    <wsdl:part name="parameters" element="tns:ListByCountyResponse" />
+  </wsdl:message>
+  <wsdl:portType name="ZipCodeSoap">
+    <wsdl:operation name="GetDistance">
+      <documentation xmlns="http://schemas.xmlsoap.org/wsdl/">Get distance in miles between two zip codes.</documentation>
+      <wsdl:input message="tns:GetDistanceSoapIn" />
+      <wsdl:output message="tns:GetDistanceSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetInfo">
+      <documentation xmlns="http://schemas.xmlsoap.org/wsdl/">Get all information based on a zip code.</documentation>
+      <wsdl:input message="tns:GetInfoSoapIn" />
+      <wsdl:output message="tns:GetInfoSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="ListInRange">
+      <documentation xmlns="http://schemas.xmlsoap.org/wsdl/">List all zip code information with x miles of a zip code.</documentation>
+      <wsdl:input message="tns:ListInRangeSoapIn" />
+      <wsdl:output message="tns:ListInRangeSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="ListByAreaCode">
+      <documentation xmlns="http://schemas.xmlsoap.org/wsdl/">List all zip code information based on an area code.</documentation>
+      <wsdl:input message="tns:ListByAreaCodeSoapIn" />
+      <wsdl:output message="tns:ListByAreaCodeSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="ListByTimeZoneCode">
+      <documentation xmlns="http://schemas.xmlsoap.org/wsdl/">List all zip code information based on a time zone code.</documentation>
+      <wsdl:input message="tns:ListByTimeZoneCodeSoapIn" />
+      <wsdl:output message="tns:ListByTimeZoneCodeSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="ListByCity">
+      <documentation xmlns="http://schemas.xmlsoap.org/wsdl/">List all zip code information based on city and state.</documentation>
+      <wsdl:input message="tns:ListByCitySoapIn" />
+      <wsdl:output message="tns:ListByCitySoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="ListByCounty">
+      <documentation xmlns="http://schemas.xmlsoap.org/wsdl/">List all zip code information based on county and state.</documentation>
+      <wsdl:input message="tns:ListByCountySoapIn" />
+      <wsdl:output message="tns:ListByCountySoapOut" />
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="ZipCodeSoap" type="tns:ZipCodeSoap">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" style="document" />
+    <wsdl:operation name="GetDistance">
+      <soap:operation soapAction="http://www.tilisoft.com/ws/LocInfo/GetDistance" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetInfo">
+      <soap:operation soapAction="http://www.tilisoft.com/ws/LocInfo/GetInfo" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ListInRange">
+      <soap:operation soapAction="http://www.tilisoft.com/ws/LocInfo/ListInRange" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ListByAreaCode">
+      <soap:operation soapAction="http://www.tilisoft.com/ws/LocInfo/ListByAreaCode" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ListByTimeZoneCode">
+      <soap:operation soapAction="http://www.tilisoft.com/ws/LocInfo/ListByTimeZoneCode" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ListByCity">
+      <soap:operation soapAction="http://www.tilisoft.com/ws/LocInfo/ListByCity" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ListByCounty">
+      <soap:operation soapAction="http://www.tilisoft.com/ws/LocInfo/ListByCounty" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="ZipCode">
+    <documentation xmlns="http://schemas.xmlsoap.org/wsdl/">A Web Service that provides FREE location information based on data related to US zip code.</documentation>
+    <wsdl:port name="ZipCodeSoap" binding="tns:ZipCodeSoap">
+      <soap:address location="http://www.tilisoft.com/ws/LocInfo/ZipCode.asmx" />
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

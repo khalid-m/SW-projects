@@ -1,0 +1,177 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Ruslan Fomkin, UDBL
+ * $RCSfile: stream.structs.2005.osql,v $
+ * $Revision: 1.32 $Date: 2010/02/02 20:59:12 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Regression test for ALEH project for streamed approach with 
+ * ontology implemented with use of structs, which represent objects in
+ * transient way. Wrapper streams events as structs. For each event particles
+ * are materialized as structs and added to event structs.
+ * Cut query according 2005 paper.
+ ****************************************************************************
+ * $Log: stream.structs.2005.osql,v $
+ * Revision 1.32  2010/02/02 20:59:12  torer
+ * Integer overflow errors fixed
+ *
+ * Revision 1.31  2009/10/03 11:23:10  torer
+ * Change in default cost model
+ *
+ * Revision 1.30  2008/09/03 11:24:23  ruslan
+ * Implementations of the both analyses are moved in one file and function names correspond to the thesis
+ *
+ * Revision 1.29  2008/09/03 10:08:21  ruslan
+ * abs was missing in the definition of okjets
+ *
+ * Revision 1.28  2008/08/18 11:59:47  ruslan
+ * names are corrected according the schema in the thesis
+ *
+ * Revision 1.27  2008/05/25 15:08:01  ruslan
+ * cost hint for wrapper functions
+ *
+ * Revision 1.26  2008/05/20 07:25:04  ruslan
+ * using multidirectional
+ *
+ * Revision 1.25  2008/05/19 15:02:02  ruslan
+ * removing type check affects costs
+ *
+ * Revision 1.24  2008/05/15 15:27:18  ruslan
+ * multidirection particle-event relationship. interface of root_scan_project_addslots is improved
+ *
+ * Revision 1.23  2008/05/12 15:42:36  ruslan
+ * cost model of closednf is improved
+ *
+ * Revision 1.22  2008/05/10 13:17:16  ruslan
+ * wrapper returns only sobject without the key vector, names of wrapper functions in correspondance with the Thesis, aleh_stream is used to stream events instead of filename
+ *
+ * Revision 1.21  2008/05/06 12:26:14  ruslan
+ * files should be given
+ *
+ * Revision 1.20  2008/05/06 08:21:09  ruslan
+ * new definition of the view
+ *
+ * Revision 1.19  2008/05/05 08:01:27  ruslan
+ * corresponds to the new view definition
+ *
+ * Revision 1.18  2008/04/03 14:02:35  ruslan
+ * corrected master file -> correct dmp.
+ *
+ * Revision 1.17  2008/03/16 14:43:52  ruslan
+ * partial evaluation of predicates is moved to separate file
+ *
+ * Revision 1.16  2008/03/14 13:56:57  ruslan
+ * cost for operators is 1 by default
+ *
+ * Revision 1.15  2008/03/10 15:59:03  ruslan
+ * type containers defined. this removes some type check, but not all of them, while they still can be removed somehow. missing cost models
+ *
+ * Revision 1.14  2008/03/06 15:40:00  ruslan
+ * cost model for vector is done in more natural way. only fanout is passed from get_slot to vrefbff
+ *
+ * Revision 1.13  2008/02/28 13:14:37  ruslan
+ * using sobjects
+ *
+ * Revision 1.12  2008/02/17 08:58:14  ruslan
+ * using not in over tuple instead of multiple !=
+ *
+ * Revision 1.11  2008/02/13 14:23:29  ruslan
+ * cost models for somec, notanyc, and minagg4 were missing.
+ *
+ * Revision 1.10  2008/02/12 14:40:11  ruslan
+ * caching okjets. removing symetric pairs in twoleptoncut
+ *
+ * Revision 1.9  2008/02/11 12:58:47  ruslan
+ * key declarations
+ *
+ * Revision 1.8  2008/02/07 11:08:02  ruslan
+ * tuple implementation in jetCut
+ *
+ * Revision 1.7  2008/02/06 12:50:11  ruslan
+ * undo caching of isolated leptons
+ *
+ * Revision 1.6  2008/02/05 15:28:46  ruslan
+ * caching isolated leptons for 2005
+ *
+ * Revision 1.5  2008/02/05 11:28:19  ruslan
+ * with declared keys
+ *
+ * Revision 1.4  2008/02/02 10:15:29  ruslan
+ * invmass over tuples of particles
+ *
+ * Revision 1.3  2008/02/01 13:53:40  ruslan
+ * invmass over vector has own implementation
+ *
+ * Revision 1.2  2008/01/10 11:02:48  ruslan
+ * current regress for 2005 moved to the main regress, which is part of main Amos regression test
+ *
+ * Revision 1.1  2008/01/10 10:52:33  ruslan
+ * working version for cuts from Christian's paper (2005)
+ *
+ ****************************************************************************/
+
+cd('regress');
+
+create function idExpCuts() -> integer as
+select eventid(ev) from event ev where 
+	ev=fourcuts("../../wrappers/ROOTWrap/t.root");
+
+lisp;
+(checkequal "Checking fourcuts with simple ranksort optimization without 
+collected statistics"
+	    ((lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'idexpcuts->integer)) '(2 10))
+	     '(26118450 5435817984.0))
+	    ((osql "idExpCuts();")
+	     '((140) (1285) (2202) (2247) (2526) (3572) (3969) (5809) (6637) 
+	       (7515) (8175) (8340) (11243) (11984) (12093) (12497) (13387) 
+	       (14539) (14842) (15357) (15579) (15815) (16818) (17051) (17562)
+	       (19166) (20761) (22290) (22926) (23524) (23583) (24455))))
+(princ "Time to execute fourcuts with simple cost model ")
+(print (timer2 (osql "idExpCuts();")))
+:osql
+
+grouping(true);
+reoptimize0("idexpcuts->integer");
+profiling(true);
+lisp;
+(checkequal "Doing dynamic profiling of groups"
+	    ((osql "idExpCuts();")
+	     '((140) (1285) (2202) (2247) (2526) (3572) (3969) (5809) (6637) 
+	       (7515) (8175) (8340) (11243) (11984) (12093) (12497) (13387) 
+	       (14539) (14842) (15357) (15579) (15815) (16818) (17051) (17562)
+	       (19166) (20761) (22290) (22926) (23524) (23583) (24455))))
+(princ "Time to execute fourcuts after profiling ")
+(print (timer2 (osql "idExpCuts();")))
+(checkequal "Checking that profiled result is correct"
+	    ((second (lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'idexpcuts->integer)) 
+	      '(2 10)))
+	     '5435817984.0)
+	    ((osql "idExpCuts();")
+	     '((140) (1285) (2202) (2247) (2526) (3572) (3969) (5809) (6637) 
+	       (7515) (8175) (8340) (11243) (11984) (12093) (12497) (13387) 
+	       (14539) (14842) (15357) (15579) (15815) (16818) (17051) (17562)
+	       (19166) (20761) (22290) (22926) (23524) (23583) (24455))))
+:osql
+
+create function idPaperCuts() -> integer as
+select eventid(ev) from event ev where
+        ev=optfourcuts("../../wrappers/ROOTWrap/t.root");
+
+lisp;
+(checkequal "Checking opt four cuts with default ranksort optimization with
+simple ALEH cost model"
+            ((lr2i10nl
+              (exec-cost-of-fn (getfunctionnamed 'idpapercuts->integer))
+              '(2 10))
+             '(26118450 5435817984.0))
+            ((osql "idPaperCuts();")
+             '((140) (1285) (2202) (2247) (2526) (3572) (3969) (5809) (6637) 
+	       (7515) (8175) (8340) (11243) (11984) (12093) (12497) (13387) 
+	       (14539) (14842) (15357) (15579) (15815) (16818) (17051) (17562)
+	       (19166) (20761) (22290) (22926) (23524) (23583) (24455))))
+(princ "Time to execute opt fourcuts with simple ALEH cost model ")
+(print (timer2 (osql "idPaperCuts();")))
+:osql

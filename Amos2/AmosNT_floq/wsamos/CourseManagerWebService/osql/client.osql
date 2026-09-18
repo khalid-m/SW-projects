@@ -1,0 +1,22 @@
+lisp;
+(foreign-lispfn 
+ generate_client((charstring id)(charstring home))()
+ (let (image log)
+   (cond ((null home)(formatl t "CM_HOME not set!" t)(quit)))
+   (setq image (concat home "/WEB-INF/client.dmp"))
+   (setq log (concat home "/WEB-INF/" id "_client.log"))
+   (formatl t "Client log: " log t)
+   (register-init-form `(progn (redirect-basic-stdout , log)
+                               (print _system-version_)
+                               (trace-packets t)
+                                ))
+   (formatl t "Client image " image t)
+   (saveimage image)
+   (quit)))
+
+(setq _PERSISTENT-INTERFACE-VARIABLES_ t)
+
+(setq _batch_ t)
+
+:osql
+

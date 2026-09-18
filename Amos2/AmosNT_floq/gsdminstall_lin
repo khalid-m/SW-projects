@@ -1,0 +1,7 @@
+#!/bin/bash
+echo "Installing GSDM"
+cd "${AMOS_HOME}/gsdm/C"
+make -f Makebcast
+cd ..
+../bin/bcast -O createdmp.osql
+../bin/bcast gsdm.dmp -O createcoord.osql

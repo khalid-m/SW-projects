@@ -1,0 +1,90 @@
+/*-*-sql-*-****************************************************
+ * AMOS2
+ *
+ * account balance answer ************************************/
+
+create function account_balance_cache(Integer vid) -> Bag of <Integer time, Real bal> as stored;
+
+create function get_max_time(Integer vid) -> Integer
+  as maxagg(select time from Integer time, Real bal
+	    where <time, bal> in account_balance_cache(vid));
+
+create function add_account_balance_cache(Integer vid, Integer time, Real bal) -> Boolean
+  as begin
+	add account_balance_cache(vid) = <time, bal>;
+	if count(account_balance_cache(vid)) > 3
+	then remove account_balance_cache(vid) = <maxtime, balance>
+	     from Integer maxtime, Real balance
+	     where maxtime = get_max_time(vid);
+     end;
+
+create function minute_before(Integer vid, Integer sec) -> Bag of <Integer time, Real bal>
+  as select time, bal
+     from Integer time, Real bal
+     where <time, bal> in account_balance_cache(vid)
+     and time >= sec - 60;
+
+
+
+create function /*add*/result_account_balance_answer(Integer vid, Integer sec, Integer qid) -> Vector /* Boolean */
+  as begin
+	if some(account_balance_cache(vid)) then
+	  begin
+	    if notany(minute_before(vid, sec)) then
+		for each Integer time, Real bal where <time, bal> in account_balance_cache(vid)
+							and time = get_max_time(vid)
+		begin
+		/*print({2, vid, sec, qid, time, bal});*/
+		/*result {2, vid, sec, qid, time, bal};*/
+		swtype2(vid, sec, qid, (select time, bal
+				       from Integer time, Real bal
+				       where <time, bal> in account_balance_cache(vid)
+				       and time = get_max_time(vid)))
+		end
+		/*
+		wtype2(vid, sec, qid, (select time, bal
+				       from Integer time, Real bal
+				       where <time, bal> in account_balance_cache(vid)
+				       and time = get_max_time(vid)))
+		*/
+	    else
+		for each Integer time, Real bal where <time, bal> in minute_before(vid, sec)
+		begin
+		/*print({2, vid, sec, qid, time, bal});*/
+		/*result {2, vid, sec, qid, time, bal};*/
+		swtype2(vid, sec, qid, minute_before(vid, sec));
+		end;
+		/*
+		wtype2(vid, sec, qid, minute_before(vid, sec));
+		*/
+	  end;
+     end;
+
+/* codes took from Erik */
+create function abanswer(integer qid)-> integer;
+create_index("abanswer","qid","hash","multiple");
+
+create function abtime(integer qid)->integer;
+create_index("abtime","qid","hash","multiple");
+
+create function qid(vector x)->integer as
+select x[3];
+
+create function ptime(vector x)->integer as
+select x[4];
+
+create function ptoll(vector x)->integer as
+select x[5];
+
+create function mylrf0(Vector w)->Vector as
+select {x[0], x[1], x[2], x[3], lastupdated, toll}
+from Real toll, Real lastupdated, Vector x
+where toll = real(sum(select ptoll(p) from vector p where p in w))
+and lastupdated = real(maxagg(select ptime(p) from vector p where p in w))
+and x = w[0];
+
+/* the following should be included if you REALLY want a correct validation
+	else
+	  wtype2(vid, sec, qid, (select 0, 0.0));
+     end;
+*/

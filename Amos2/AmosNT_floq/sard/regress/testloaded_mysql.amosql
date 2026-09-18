@@ -1,0 +1,16 @@
+set :a = jdbc("myds", "com.mysql.jdbc.Driver");
+set :dburl = "jdbc:mysql://localhost:3306/";
+connect(:a, :dburl + "example", "sard", "sard");
+lisp;
+(checkequal "ReloadDB, table Authors"
+        ((osql "sql(:a,'select * from authors;');")
+        '((#(1 "GREG" "BARISH"))(#(2 "TIMOTHY" "BUDD"))) ))
+
+(checkequal "ReloadDB, table Relatedservices"
+        ((osql "sql(:a,'select * from relatedservices;');")
+        '((#("ABC1234H" 1 "Issuing a birth certificate")) (#("ABC1234I" 2 "Online payment"))) ))
+
+
+:osql
+disconnect(:a);
+quit;

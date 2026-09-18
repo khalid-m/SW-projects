@@ -1,0 +1,88 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2013 Andrej Andrejev, UDBL
+ * $RCSfile: bulkloader_ms.osql,v $
+ * $Revision: 1.3 $ $Date: 2013/07/28 06:20:36 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Bulk-loader function for MySQL-based RDF store
+ *
+ ****************************************************************************
+ * $Log: bulkloader_ms.osql,v $
+ * Revision 1.3  2013/07/28 06:20:36  andan342
+ * Bulk-loading binary chunks into MS SQL Server,
+ * moved array chunk file generation from dumper.lsp to nma-filedump function in C
+ *
+ * Revision 1.2  2013/07/19 19:53:16  andan342
+ * Using CHAR instead of VARCHAR to store hex chunks under MS SQL server,
+ * updated the instructions for bulk loading
+ *
+ * Revision 1.1  2013/07/18 15:03:29  andan342
+ * Added bulk-load functionality for MS SQL Server backend (with hexadecimal chunk storage only)
+ *
+ * Revision 1.2  2013/01/21 16:49:21  andan342
+ * Storing chunksize in Parameter table inside RDF store, comes as a parameter to setup.cmd script
+ * Added test script for bulk-loading
+ *
+ * Revision 1.1  2013/01/11 17:30:49  andan342
+ * Added bulk-loading and dumper functionality
+ *
+  *
+ ****************************************************************************/
+
+/* Load all 7 tables */
+
+create function fmtDir() -> Charstring as stored;
+
+set fmtDir() = getenv('AMOS_HOME')+"/SQoND/storage/sql/bulkloader/fmt/";
+
+create function acVolumeFile(Charstring dumpfileprefix, Integer i) -> Charstring
+  as dumpfileprefix + "_ac" + i + hex_based({".dat", ".csv"});
+
+/* Making use of MS SQL Server format files created with command:
+
+bcp <dbname>.dbo.<tablename> format nul -f fmt/<filename>.Fmt -n -T
+
+that were to set all storage types to SQLCHAR, prefix length to 0, field length to 0,
+added delimiters and removed 'graph' fields
+
+If isHex=0, binary files are loaded into ArrayChunks  instead, compatible with ones created with command
+
+bcp <dbname>.dbo.ArrayChunks out <filename> -n -T
+
+*/
+
+
+create function BulkLoad(JDBC conn, Charstring dumpfileprefix) -> Boolean as
+begin
+  declare Integer i;
+
+  sql(conn, "DELETE FROM Parameters");
+
+  sql(conn, "BULK INSERT Parameters FROM '"+ dumpfileprefix +"_par.csv' WITH ( FIELDTERMINATOR=',' )");
+
+  sql(conn, "ALTER TABLE arrayChunks ALTER COLUMN chunk " + hex_based({"BINARY(", "CHAR("})
+            + stringify((1 + cast(tlvar('isHex') as Integer)) * cast(sql(conn, "SELECT value FROM parameters WHERE name='chunksize'")[0] as Integer)) 
+            + ")");
+
+  sql(conn, "DELETE FROM URI");
+
+  sql(conn, "BULK INSERT URI FROM '"+ dumpfileprefix +"_uri.csv' WITH ( FORMATFILE='"+ fmtDir() +"URI.Fmt', KEEPIDENTITY)");
+
+  sql(conn, "BULK INSERT URITriples FROM '"+ dumpfileprefix +"_ut.csv' WITH ( FORMATFILE='"+ fmtDir() +"URITriples.Fmt')");
+
+  sql(conn, "BULK INSERT LongStrings FROM '"+ dumpfileprefix +"_ls.csv' WITH ( FORMATFILE='"+ fmtDir() +"LongStrings.Fmt', KEEPIDENTITY)");
+
+  sql(conn, "BULK INSERT LiteralTriples FROM '"+ dumpfileprefix +"_lt.csv' WITH ( FORMATFILE='"+ fmtDir() +"LiteralTriples.Fmt')");
+
+  sql(conn, "BULK INSERT ArrayTriples FROM '"+ dumpfileprefix +"_at.csv' WITH ( FORMATFILE='"+ fmtDir() +"ArrayTriples.Fmt', KEEPIDENTITY)");
+
+  set i = 0;
+  while file_exists(acVolumeFile(dumpfileprefix,i)) do
+    print("Loading "+acVolumeFile(dumpfileprefix,i));
+    sql(conn, "BULK INSERT ArrayChunks FROM '"+ acVolumeFile(dumpfileprefix, i)
+              + hex_based({"' WITH ( DATAFILETYPE='native')", "' WITH ( FORMATFILE='"+ fmtDir() +"ArrayChunks.Fmt')"}));
+    set i = i + 1;
+  end while;
+end;

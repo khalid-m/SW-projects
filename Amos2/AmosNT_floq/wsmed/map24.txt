@@ -1,0 +1,10 @@
+calculateRoute ( "DE 197947163" ,"", ""  , "" , "","", 5  , "fastest", "Car"  ,0, 0 , 0 , 0, 'True', 'True'  , 'en' , "" , "" , "Düsseldorfer" , "63571" ,"Eschborn" , "" , "" , "" , "de" , 0.0 , 0.0  , "" , "" ,"Mainkai", "" , "Frankfurt", "" ,"", "" , "" , 0.0, 0.0, 0.0, 0.0, "" ,"" , "" , "" ,"", "" , "" , "" ,"","",0.0,0.0,{""} , 0 , "" ,"" ,"", "","" );
+
+
+
+
+
+findsignature({"FJX5aae1ceaa7e01cff2edc1c1ca3f85X13" ,"", ""  , "" , "","", 5  , "fastest", "Car"  ,0, 0 , 0 , 0, 'True', 'True'  , 'en' , "" , "" , "Düsseldorfer" , "63571" ,"Eschborn" , "" , "" , "" , "de" , 0.0 , 0.0  , "" , "" ,"Mainkai", "" , "Frankfurt", "" ,"", "" , "" , 0.0, 0.0, 0.0, 0.0, "" ,"" , "" , "" ,"", "" , "" , "" ,"","",0.0,0.0,{""} , 0 , "" ,"" ,"", "","" })= input_elementtype("wsdl/Map24.wsdl","Map24Routing",#[OID 1655]);
+
+
+decode(#[OID 1655],{"FJX5aae1ceaa7e01cff2edc1c1ca3f85X13" ,"", ""  , "" , "","", 5  , "fastest", "Car"  ,0, 0 , 0 , 0, 'True', 'True'  , 'en' , "" , "" , "Düsseldorfer" , "63571" ,"Eschborn" , "" , "" , "" , "de" , 0.0 , 0.0  , "" , "" ,"Mainkai", "" , "Frankfurt", "" ,"", "" , "" , 0.0, 0.0, 0.0, 0.0, "" ,"" , "" , "" ,"", "" , "" , "" ,"","",0.0,0.0,{""} , 0 , "" ,"" ,"", "","" });

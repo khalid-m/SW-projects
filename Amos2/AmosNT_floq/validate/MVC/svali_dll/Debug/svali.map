@@ -1,0 +1,178 @@
+ svali
+
+ Timestamp is 52864c89 (Fri Nov 15 17:32:09 2013)
+
+ Preferred load address is 10000000
+
+ Start         Length     Name                   Class
+ 0001:00000000 00004775H .text                   CODE
+ 0001:00004775 0001000bH .textbss                CODE
+ 0002:00000000 000002e1H .rdata                  DATA
+ 0002:000002f0 00000163H .edata                  DATA
+ 0003:00000000 00000104H .CRT$XCA                DATA
+ 0003:00000104 00000104H .CRT$XCZ                DATA
+ 0003:00000208 00000104H .CRT$XIA                DATA
+ 0003:0000030c 00000104H .CRT$XIZ                DATA
+ 0003:00000410 00000000H .data                   DATA
+ 0003:00000410 00000044H .bss                    DATA
+ 0004:00000000 0000003cH .idata$2                DATA
+ 0004:0000003c 00000014H .idata$3                DATA
+ 0004:00000050 0000013cH .idata$4                DATA
+ 0004:0000018c 0000013cH .idata$5                DATA
+ 0004:000002c8 00000354H .idata$6                DATA
+
+  Address         Publics by Value              Rva+Base     Lib:Object
+
+ 0001:00000120       _a_initialize_extension    10001120 f   svaliDll.obj
+ 0001:00000140       _make_swinfn               10001140 f   swin.obj
+ 0001:00000360       _free_swin                 10001360 f   swin.obj
+ 0001:00000550       _copy_swinfn               10001550 f   swin.obj
+ 0001:000007b0       _swin_setterfn             100017b0 f   swin.obj
+ 0001:00000990       _swin_typefn               10001990 f   swin.obj
+ 0001:00000a00       _swin_extentfn             10001a00 f   swin.obj
+ 0001:00000a70       _swin_setextentfn          10001a70 f   swin.obj
+ 0001:00000ba0       _swin_sizefn               10001ba0 f   swin.obj
+ 0001:00000c10       _swin_setsizefn            10001c10 f   swin.obj
+ 0001:00000c90       _swin_logicsizefn          10001c90 f   swin.obj
+ 0001:00000d10       _swin_setlogicsizefn       10001d10 f   swin.obj
+ 0001:00000e10       _swin_gettsfn              10001e10 f   swin.obj
+ 0001:00000e80       _swin_settsfn              10001e80 f   swin.obj
+ 0001:00000fb0       _swin_getallaggsfn         10001fb0 f   swin.obj
+ 0001:00001020       _swin_setallaggsfn         10002020 f   swin.obj
+ 0001:00001150       _swin_getaggfn             10002150 f   swin.obj
+ 0001:00001400       _swin_addaggfn             10002400 f   swin.obj
+ 0001:00001660       _register_swincell         10002660 f   swin.obj
+ 0001:000016d0       _inwindowbf                100026d0 f   swin.obj
+ 0001:00001b70       _wrefbbf                   10002b70 f   swin.obj
+ 0001:00002050       _wrefbff                   10003050 f   swin.obj
+ 0001:00002600       _windowcountbf             10003600 f   swin.obj
+ 0001:00002780       _window2listfn             10003780 f   swin.obj
+ 0001:000028f0       _window2vectorfn           100038f0 f   swin.obj
+ 0001:00002ad0       _timefnMapper              10003ad0 f   swin.obj
+ 0001:00002b20       _list_swin_addfn           10003b20 f   swin.obj
+ 0001:00003270       _register_swinfns          10004270 f   swin.obj
+ 0001:0000348e       _lerror                    1000448e f   scsqlib:amos2.dll
+ 0001:00003494       _getreal                   10004494 f   scsqlib:amos2.dll
+ 0001:0000349a       _new_object                1000449a f   scsqlib:amos2.dll
+ 0001:000034a0       _dealloc_object            100044a0 f   scsqlib:amos2.dll
+ 0001:000034a6       _release                   100044a6 f   scsqlib:amos2.dll
+ 0001:000034ac       _new_integer               100044ac f   scsqlib:amos2.dll
+ 0001:000034b2       _new_real                  100044b2 f   scsqlib:amos2.dll
+ 0001:000034b8       _assocfn                   100044b8 f   scsqlib:amos2.dll
+ 0001:000034be       _cons                      100044be f   scsqlib:amos2.dll
+ 0001:000034c4       _extfunction1              100044c4 f   scsqlib:amos2.dll
+ 0001:000034ca       _extfunction4              100044ca f   scsqlib:amos2.dll
+ 0001:000034d0       _a_definetype              100044d0 f   scsqlib:amos2.dll
+ 0001:000034d6       _resetfn                   100044d6 f   scsqlib:amos2.dll
+ 0001:000034dc       _a_result                  100044dc f   scsqlib:amos2.dll
+ 0001:000034e2       _clearstack                100044e2 f   scsqlib:amos2.dll
+ 0001:000034e8       _interror                  100044e8 f   scsqlib:amos2.dll
+ 0001:000034ee       _a_error                   100044ee f   scsqlib:amos2.dll
+ 0001:000034f4       _a_round                   100044f4 f   scsqlib:amos2.dll
+ 0001:000034fa       _listtoarrayfn             100044fa f   scsqlib:amos2.dll
+ 0001:00003500       _a_map_done                10004500 f   scsqlib:amos2.dll
+ 0001:00003506       _a_mapfunctionC            10004506 f   scsqlib:amos2.dll
+ 0001:0000350c       _tconcfn                   1000450c f   scsqlib:amos2.dll
+ 0001:00003512       _extfunction3              10004512 f   scsqlib:amos2.dll
+ 0001:00003518       _extfunction2              10004518 f   scsqlib:amos2.dll
+ 0001:0000351e       _a_register_error          1000451e f   scsqlib:amos2.dll
+ 0001:00003524       _a_extimpl                 10004524 f   scsqlib:amos2.dll
+ 0001:00003530       __setjmp3                  10004530 f   MSVCRT:MSVCRT.dll
+ 0001:00003536       __ftol                     10004536 f   MSVCRT:MSVCRT.dll
+ 0001:0000353c       __CRT_INIT@12              1000453c f   MSVCRT:crtdll.obj
+ 0001:000035e7       __DllMainCRTStartup@12     100045e7 f   MSVCRT:crtdll.obj
+ 0001:00003684       _free                      10004684 f   MSVCRT:MSVCRT.dll
+ 0001:0000368a       __initterm                 1000468a f   MSVCRT:MSVCRT.dll
+ 0001:00003690       __onexit                   10004690 f   MSVCRT:atonexit.obj
+ 0001:000036bc       _atexit                    100046bc f   MSVCRT:atonexit.obj
+ 0001:000036ce       _malloc                    100046ce f   MSVCRT:MSVCRT.dll
+ 0001:000036d4       _DllMain@12                100046d4 f   MSVCRT:dllmain.obj
+ 0001:000036f4       ___dllonexit               100046f4 f   MSVCRT:MSVCRT.dll
+ 0001:000036fa       _DisableThreadLibraryCalls@4 100046fa f   kernel32:KERNEL32.dll
+ 0001:00004780       __enc$textbss$begin        10005780     <linker-defined>
+ 0001:00014780       __enc$textbss$end          10015780     <linker-defined>
+ 0002:00000020       __real@8@00000000000000000000 10016020     swin.obj
+ 0002:0000002c       ??_C@_09DDID@copy?9swin?$AA@ 1001602c     swin.obj
+ 0002:00000038       ??_C@_09BCCL@make?9swin?$AA@ 10016038     swin.obj
+ 0002:00000044       ??_C@_04BMIH@swin?$AA@     10016044     swin.obj
+ 0002:0000004c       ??_C@_0M@CAEP@window2list?$AA@ 1001604c     swin.obj
+ 0002:0000005c       ??_C@_0O@CAIC@window2vector?$AA@ 1001605c     swin.obj
+ 0002:0000006c       ??_C@_0BA@GODM@list?9window?9add?$AA@ 1001606c     swin.obj
+ 0002:00000080       ??_C@_0BC@LNJL@window?9setallaggs?$AA@ 10016080     swin.obj
+ 0002:00000098       ??_C@_0BC@HOLG@window?9getallaggs?$AA@ 10016098     swin.obj
+ 0002:000000b0       ??_C@_0O@DDGJ@window?9getagg?$AA@ 100160b0     swin.obj
+ 0002:000000c0       ??_C@_0O@LLKN@window?9addagg?$AA@ 100160c0     swin.obj
+ 0002:000000d0       ??_C@_0L@IOEC@swin?9getts?$AA@ 100160d0     swin.obj
+ 0002:000000e0       ??_C@_0L@MIC@swin?9setts?$AA@ 100160e0     swin.obj
+ 0002:000000f0       ??_C@_0O@DDJC@set?9logicsize?$AA@ 100160f0     swin.obj
+ 0002:00000100       ??_C@_0P@HMNF@swin?9logicsize?$AA@ 10016100     swin.obj
+ 0002:00000114       ??_C@_0L@NLIC@set?9phsize?$AA@ 10016114     swin.obj
+ 0002:00000124       ??_C@_09HCGD@swin?9size?$AA@ 10016124     swin.obj
+ 0002:00000130       ??_C@_0O@IGIL@window?9extent?$AA@ 10016130     swin.obj
+ 0002:00000140       ??_C@_0BB@GELD@window?9setextent?$AA@ 10016140     swin.obj
+ 0002:00000154       ??_C@_0M@CFAJ@window?9type?$AA@ 10016154     swin.obj
+ 0002:00000164       ??_C@_0M@EFCE@swin?9setter?$AA@ 10016164     swin.obj
+ 0002:00000174       ??_C@_07JFEM@wrefbff?$AA@  10016174     swin.obj
+ 0002:00000180       ??_C@_07MPOG@wrefbbf?$AA@  10016180     swin.obj
+ 0002:0000018c       ??_C@_0BK@DFP@window?5index?5out?5of?5bound?$AA@ 1001618c     swin.obj
+ 0002:000001ac       ??_C@_0O@ECCB@windowcountbf?$AA@ 100161ac     swin.obj
+ 0002:000001bc       ??_C@_0L@EJIN@inwindowbf?$AA@ 100161bc     swin.obj
+ 0003:00000000       ___xc_a                    10017000     MSVCRT:cinitexe.obj
+ 0003:00000104       ___xc_z                    10017104     MSVCRT:cinitexe.obj
+ 0003:00000208       ___xi_a                    10017208     MSVCRT:cinitexe.obj
+ 0003:0000030c       ___xi_z                    1001730c     MSVCRT:cinitexe.obj
+ 0003:00000414       _swintype                  10017414     <common>
+ 0003:00000424       _WINDOW_INDX_OUT_OF_BOUND  10017424     <common>
+ 0003:00000428       __adjust_fdiv              10017428     <common>
+ 0003:00000434       ___onexitend               10017434     <common>
+ 0003:00000444       ___onexitbegin             10017444     <common>
+ 0003:00000448       __pRawDllMain              10017448     <common>
+ 0004:00000000       __IMPORT_DESCRIPTOR_amos2  10018000     scsqlib:amos2.dll
+ 0004:00000014       __IMPORT_DESCRIPTOR_MSVCRT 10018014     MSVCRT:MSVCRT.dll
+ 0004:00000028       __IMPORT_DESCRIPTOR_KERNEL32 10018028     kernel32:KERNEL32.dll
+ 0004:0000003c       __NULL_IMPORT_DESCRIPTOR   1001803c     scsqlib:amos2.dll
+ 0004:0000018c       __imp__DisableThreadLibraryCalls@4 1001818c     kernel32:KERNEL32.dll
+ 0004:00000190       \177KERNEL32_NULL_THUNK_DATA 10018190     kernel32:KERNEL32.dll
+ 0004:000001bc       __imp___onexit             100181bc     MSVCRT:MSVCRT.dll
+ 0004:000001c0       __imp___adjust_fdiv        100181c0     MSVCRT:MSVCRT.dll
+ 0004:000001c4       __imp__malloc              100181c4     MSVCRT:MSVCRT.dll
+ 0004:000001c8       __imp___initterm           100181c8     MSVCRT:MSVCRT.dll
+ 0004:000001cc       __imp__free                100181cc     MSVCRT:MSVCRT.dll
+ 0004:000001d0       __imp___ftol               100181d0     MSVCRT:MSVCRT.dll
+ 0004:000001d4       __imp___setjmp3            100181d4     MSVCRT:MSVCRT.dll
+ 0004:000001d8       __imp____dllonexit         100181d8     MSVCRT:MSVCRT.dll
+ 0004:000001dc       \177MSVCRT_NULL_THUNK_DATA 100181dc     MSVCRT:MSVCRT.dll
+ 0004:0000020c       __imp__extfunction4        1001820c     scsqlib:amos2.dll
+ 0004:00000210       __imp__a_definetype        10018210     scsqlib:amos2.dll
+ 0004:00000214       __imp__resetfn             10018214     scsqlib:amos2.dll
+ 0004:00000218       __imp__a_result            10018218     scsqlib:amos2.dll
+ 0004:0000021c       __imp__clearstack          1001821c     scsqlib:amos2.dll
+ 0004:00000220       __imp__resetlabelp         10018220     scsqlib:amos2.dll
+ 0004:00000224       __imp__topenv              10018224     scsqlib:amos2.dll
+ 0004:00000228       __imp__interror            10018228     scsqlib:amos2.dll
+ 0004:0000022c       __imp_____                 1001822c     scsqlib:amos2.dll
+ 0004:00000230       __imp__extfunction1        10018230     scsqlib:amos2.dll
+ 0004:00000234       __imp__a_round             10018234     scsqlib:amos2.dll
+ 0004:00000238       __imp__listtoarrayfn       10018238     scsqlib:amos2.dll
+ 0004:0000023c       __imp__a_map_done          1001823c     scsqlib:amos2.dll
+ 0004:00000240       __imp__a_mapfunctionC      10018240     scsqlib:amos2.dll
+ 0004:00000244       __imp__tconcfn             10018244     scsqlib:amos2.dll
+ 0004:00000248       __imp__extfunction3        10018248     scsqlib:amos2.dll
+ 0004:0000024c       __imp__extfunction2        1001824c     scsqlib:amos2.dll
+ 0004:00000250       __imp__a_register_error    10018250     scsqlib:amos2.dll
+ 0004:00000254       __imp__a_extimpl           10018254     scsqlib:amos2.dll
+ 0004:00000258       __imp__cons                10018258     scsqlib:amos2.dll
+ 0004:0000025c       __imp__assocfn             1001825c     scsqlib:amos2.dll
+ 0004:00000260       __imp__new_real            10018260     scsqlib:amos2.dll
+ 0004:00000264       __imp__new_integer         10018264     scsqlib:amos2.dll
+ 0004:00000268       __imp__release             10018268     scsqlib:amos2.dll
+ 0004:0000026c       __imp__dealloc_object      1001826c     scsqlib:amos2.dll
+ 0004:00000270       __imp__new_object          10018270     scsqlib:amos2.dll
+ 0004:00000274       __imp__getreal             10018274     scsqlib:amos2.dll
+ 0004:00000278       __imp__begin_image         10018278     scsqlib:amos2.dll
+ 0004:0000027c       __imp__a_error             1001827c     scsqlib:amos2.dll
+ 0004:00000280       __imp__lerror              10018280     scsqlib:amos2.dll
+ 0004:00000284       \177amos2_NULL_THUNK_DATA  10018284     scsqlib:amos2.dll
+
+ entry point at        0001:000035e7
+

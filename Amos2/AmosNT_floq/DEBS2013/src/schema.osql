@@ -1,0 +1,434 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: schema.osql,v $
+ * $Revision: 1.44 $ $Date: 2013/10/31 12:34:12 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: schema for the football game
+ *
+ ****************************************************************************
+ * $Log: schema.osql,v $
+ * Revision 1.44  2013/10/31 12:34:12  sobso953
+ * Adding team-id()
+ *
+ * Revision 1.43  2013/05/23 14:04:54  thatr500
+ * - removed addSeed / sampleRate
+ * - modified index.html
+ *
+ * Revision 1.42  2013/04/16 05:46:29  torer
+ * Using assignfunction
+ *
+ * Revision 1.41  2013/04/11 17:53:24  chexu484
+ * break event taken care
+ *
+ * Revision 1.40  2013/04/11 16:05:14  thatr500
+ * Changed to 1 second window size in Q1a.
+ *
+ * Revision 1.39  2013/04/11 14:09:38  chexu484
+ * q3 output revert back to vector instead of numarray because writecsvfile()
+ * doesn't take numarray
+ * schema.osql, secondhalfend() changed
+ *
+ * Revision 1.38  2013/04/10 14:41:17  chexu484
+ * bug fix
+ *
+ * Revision 1.37  2013/04/10 09:36:36  chexu484
+ * write to csv file
+ *
+ * Revision 1.36  2013/04/09 18:56:38  thatr500
+ * No windows overlapping with the game break
+ *
+ * Revision 1.35  2013/04/09 18:43:13  sobso953
+ * -Sampling added
+ * -Q1 writes to file
+ *
+ * Revision 1.34  2013/04/09 11:50:17  sobso953
+ * -
+ *
+ * Revision 1.33  2013/04/09 09:52:30  thatr500
+ * Added test_Q2.osql
+ *
+ * Revision 1.32  2013/04/09 09:18:30  larme597
+ * Moved isBallHitter() to schema.osql.
+ *
+ * Revision 1.31  2013/04/09 08:25:09  larme597
+ * Hitacc() moved  here from q2.osql.
+ *
+ * Revision 1.30  2013/04/08 15:36:32  thatr500
+ * removed parteval on ballsensors
+ *
+ * Revision 1.29  2013/04/08 10:50:09  chexu484
+ * comments added
+ *
+ * Revision 1.28  2013/04/08 10:22:49  torer
+ * More comments needed, Cheng!
+ *
+ * Revision 1.27  2013/04/08 09:47:33  torer
+ * Bug in secondhalfend(). Comments.
+ *
+ * Revision 1.26  2013/04/08 09:32:35  torer
+ * Order of ball properties + comments
+ *
+ * Revision 1.25  2013/04/08 08:39:24  torer
+ * Provably incorrect code
+ *
+ * Revision 1.24  2013/04/05 17:15:47  larme597
+ * new functions firsthalf() and secondhalfend().
+ *
+ * Revision 1.23  2013/04/04 15:13:08  thatr500
+ * added comments
+ *
+ * Revision 1.22  2013/04/04 09:49:46  sobso953
+ * "theresolvent" used to map the Amos2 function playersensor
+ * to the corresponding lisp function. Now 20% faster!
+ *
+ * Revision 1.21  2013/04/03 14:18:18  thatr500
+ * - Renamed misc/twindowize to twindowize3
+ * - Added guards to not compute any result during the half break
+ *
+ * Revision 1.20  2013/04/03 12:02:32  sobso953
+ * New strategy for Q3 added:
+ * 1 second sub-window aggregation done at the q3 front end
+ * resulting in reduction of the input stream rate.
+ *
+ * Revision 1.19  2013/04/02 12:01:40  larme597
+ * Field borders now in metres, not in mm.
+ *
+ * Revision 1.18  2013/03/29 16:49:54  thatr500
+ * Added player running statistic
+ *
+ * Revision 1.17  2013/03/28 16:41:19  thatr500
+ * Added some logic code for Q1a
+ *
+ * Revision 1.16  2013/03/27 17:55:49  thatr500
+ * moved Q2 to Numarray
+ *
+ * Revision 1.15  2013/03/26 17:36:09  chexu484
+ * Q3 completed!
+ * Note: if we are going to print the result stream on stout, we should keep
+ * the sp logging off otherwise the result stream is streamed to log file again
+ *
+ * Revision 1.14  2013/03/26 14:25:15  chexu484
+ * Bug fix
+ *
+ * Revision 1.13  2013/03/25 21:31:33  torer
+ * Minor improvements
+ *
+ * Revision 1.12  2013/03/25 16:14:56  thatr500
+ * changed signature for 'which team'
+ *
+ * Revision 1.11  2013/03/24 21:51:33  chexu484
+ * Q2 broadcast done, check main.osql
+ *
+ * Revision 1.10  2013/03/22 13:37:21  thatr500
+ * added function whichteam
+ *
+ * Revision 1.9  2013/03/19 18:00:39  sobso953
+ * x() and y() functions defined in the schema for lisp.
+ *
+ * Revision 1.8  2013/03/18 16:38:08  thatr500
+ * *** empty log message ***
+ *
+ * Revision 1.7  2013/03/12 19:15:26  chexu484
+ * 1. game start time changed
+ *    from 10748401988186756 to 10753295594424116 (schema.osql)
+ * 2. start2ndhalf() -> Number added
+ * 3. 1sthalf and 2ndhalf interrupt stream merged with event stream
+ *
+ * Check main.osql
+ *
+ * Revision 1.6  2013/03/08 13:50:50  thatr500
+ * - file organization changed
+ * - schema changed (startgameinpico added)
+ *
+ * Revision 1.5  2013/03/08 08:30:37  sobso953
+ * Stream schema updated.
+ *
+ * Revision 1.4  2013/03/06 16:27:28  thatr500
+ * - Added Incremental ball possession calculation
+ * - Incorporated new schema
+ *
+ * Revision 1.3  2013/03/06 16:06:46  larme597
+ * Added stream vector schema.
+ *
+ * Revision 1.2  2013/02/08 11:11:51  thatr500
+ * - Added input stream from reading data file
+ * - Filtered input stream for Q1A
+ * - Q1A skeleton
+ *
+ * Revision 1.1  2013/01/25 16:33:08  chexu484
+ * debs Grand Challenge starts here
+ *
+ *
+ ****************************************************************************/
+/*--------------META DATA------------------------------------------------*/
+/* ball id maps to sensor id */
+create function ball(Number bid) -> Integer sid key 
+  /* Sensor id SID for a given ball BID */
+  as stored;
+
+create function ballsensors()-> Bag of Number 
+  /* The SIDs of the ball sensors */
+  as select sid
+     from Number sid, Number bid  
+     where ball(bid) = sid;
+
+/* team id maps to player id */
+create function team(Integer tid) -> Bag of Integer pid
+   /* The player ids PID in team TID */
+   as stored;
+
+/* player info */
+create function player(Number pid) -> Charstring name
+  /* The name of player PID */
+  as stored;
+
+create function playerSensor(Number sid) -> Number pid
+  /* The player id PID of sensor SID */
+  as stored;
+
+create function referee(Number rid) -> (Number left, Number right)
+  /* two sensors of the referee id RID */
+  as stored;
+
+/*--------------EVENT DATA------------------------------------------------*/
+/* sensor readings */
+create function sensor(Number sid) -> Bag of Vector of Number
+  /* Cheng? */
+  as stored;
+
+create function psfrequency()->Number
+  /* Cheng? */
+  as 200;
+
+create function ballfrequency()->Number
+  /* The frequency of the ball readings */
+  as 2000;
+
+create function reportfrequency() -> Number
+  /* Cheng? */
+  as 50;
+
+create function microWinSize()-> Number as
+  /* Cheng? */
+  1.0;
+/*2013-04-11 Change to 1 second according to FAQ#15*/
+
+/* Stream schema */
+create function ts(vector of number v) -> Number
+  /* Event time stamp */
+  as v[0];
+create function sid(vector of number v) -> number
+  /* Sensor id */
+  as floor(v[1]);
+create function x(vector of number v) -> number
+  /* X position */
+  as v[2];
+create function y(vector of number v) -> number
+  /* Y position */
+  as v[3];
+create function z(vector of number v) -> number
+  /* Z position */
+  as v[4];
+create function vabs(vector of number v) -> number
+  /* Velosity */
+  as v[5] ;
+create function aabs(vector of number v) -> number
+  /* Acceleration */
+  as v[9] ;
+create function vx(vector of number v) -> number
+  /* Speed in X direction */
+  as v[6] ;
+create function vy(vector of number v) -> number
+  /* Speed in Y direction */
+  as v[7];
+create function vz(vector of number v) -> number
+  /* Speed in Z direction */
+  as v[8];
+create function ax(vector of number v) -> number
+  /* Acceleration in X direction */
+  as v[10];
+create function ay(vector of number v) -> number
+  /* Acceleration in Y direction */
+  as v[11];
+create function az(vector of number v) -> number
+  /* Acceleration in Z direction */
+  as v[12];
+
+create function ts(Numarray v) -> Number as v[0];
+create function sid(Numarray v) -> number as floor(v[1]);
+create function x(Numarray v) -> number as v[2];
+create function y(Numarray v) -> number as v[3];
+create function z(Numarray v) -> number as v[4];
+create function vabs(Numarray v) -> number as v[5] ;
+create function vx(Numarray v) -> number as v[6] ;
+create function vy(Numarray v) -> number as v[7];
+create function vz(Numarray v) -> number as v[8];
+create function aabs(Numarray v) -> number as v[9] ;
+create function ax(Numarray v) -> number as v[10];
+create function ay(Numarray v) -> number as v[11];
+create function az(Numarray v) -> number as v[12];
+
+create function pico2sec(Number pico) -> Number
+  as pico * 10^-12;
+
+lisp;
+(defun x (v) (na-elt v 2))
+(defun y (v) (na-elt v 3))
+(defun debsts (v) (na-elt v 0))
+:osql
+
+create function hitacc() -> Number
+  /* The ball acceleration threshold for hitting the ball */
+  as 55.0;
+
+create function isBallHitter(Numarray v) -> Boolean
+  /* Is a tuple a ball hitter event? */
+  as dim(v) = 3;
+
+create function start1sthalf()-> Number 
+  /* Start time of 1st half of the game */
+  as 10753295594424116; /*10753295594424116 10748401988186756*/
+
+create function start2ndhalf() -> Number
+  /* Start time of second half of the game */
+  as 13086639146403495;
+
+create function end1sthalf()-> Number 
+  /* Duration of first half of the game */
+  as pico2sec(12557295594424116 - start1sthalf());
+
+create function end2ndhalf()-> Number 
+  /* Duration of the whole game, including the break */
+  as pico2sec(14879639146403495 - start1sthalf());
+
+create function firsthalf() -> number
+  /* Duration of first half of game in seconds */
+  as pico2sec(12557295594424116 - start1sthalf());
+
+create function secondhalf() -> Number
+  /* Start of second half in seconds after start of first half */
+  as pico2sec(start2ndhalf() - start1sthalf());
+
+create function secondhalfend() -> number
+  /* Duration of whole game, including the break, in seconds */
+  as end2ndhalf();
+
+
+/*--------------UTILITY FUNCTIONS--------------------------------------------*/
+create function isInterrupt(Vector of Number v)->Boolean 
+  /* Is v an interrupt event? */
+  as sid(v) = -1;
+
+create function isInterrupt(Numarray v)->Boolean 
+  /* Is v an interrupt event? */
+  as sid(v) = -1;
+
+create function isInterruptBegin(Vector of Number v)->Boolean 
+  /* Check if current event indicates that an interrupt is raised by referee */
+  as isInterrupt(v) and v[2]=1;
+
+create function isInterruptBegin(Numarray v)->Boolean 
+  /* Check if current event indicates that an interrupt is raised by referee */
+  as isInterrupt(v) and v[2]=1;
+
+create function isInterruptEnd(Vector of Number v)->Boolean 
+  /* Check if current event indicates that an interrupt is stopped */
+  as isInterrupt(v) and v[2]=0;
+
+create function isInterruptEnd(Numarray v)->Boolean 
+  /* Check if current event indicates that an interrupt is stopped */
+  as isInterrupt(v) and v[2]=0;
+
+create function isPlayer(Vector of Number v)->Boolean 
+  /* Is v a player event? */
+  as some(select playerSensor(sid(v)));
+
+create function isPlayer(Numarray v)->Boolean
+  /* Is v a player event? */
+  as some(select playerSensor(sid(v)));
+
+create function isBall(Vector of Number v)->Boolean 
+  /* Is v a ball event? */
+  as sid(v) in ballsensors();
+
+create function isBall(Numarray v)->Boolean 
+  /* Is v a ball event? */
+  as select sid(v) in ballsensors();
+
+create function isLeftSensor(Number sid) -> Boolean
+  /* Is SID a left sensor of a player or the referee? */
+  as sid in {13, 97, 47, 49, 19, 53, 23, 57, 59,
+             61, 99, 63, 65, 67, 69, 71, 73, 75, 105};
+
+create function isRightSensor(Number sid) -> Boolean
+  /* Is SID a right sensor of a player or the referee? */
+  as sid in {14, 98, 16, 88, 52, 54, 24, 58, 28,
+	     62, 100, 64, 66, 68, 38, 40, 74, 44, 106};
+
+create function ballIn(Vector of Number v) -> Boolean 
+  /* Is the ball in the field? 
+     Approximate since the field is not a perfect rectangle.
+     The corners should perhaps be separate functions */
+  as 0.0 <= x(v) and 
+     x(v) <= 52.477 and  
+     -33.939 <= y(v) and 
+     y(v) <= 33.941;
+
+create function ballIn(Numarray v) -> Boolean
+  /* Is the ball in the field? */
+  as  0.0 <= x(v) and 
+      x(v) <= 52.477 and 
+      -33.939 <= y(v) and 
+      y(v) <= 33.941;
+
+create function whichteam(Number pid)->Number
+  /* To which team does player PID belong */
+  as select tid 
+     from Number tid 
+     where pid in team(tid);
+parteval("whichteam"); /* Never changes! */
+
+/*returns the team for which the player pid plays
+[a faster version of whichteam()]*/
+create function team_id(number pid)->number as
+begin
+	if (pid>=1) and (pid<=8) then
+		return 1;
+	if (pid>=9) and (pid<=16) then
+		return 2;
+	if (pid<1) or (pid>16)then return -1;
+end;
+parteval('team_id');
+
+create function isInterruptBreakStart(Numarray v)->Boolean 
+  /* Check if current event indicates that an interrupt is a break start */
+  as isInterrupt(v) and v[2]=-2;
+
+create function isInterruptBreakEnd(Numarray v)->Boolean 
+  /* Check if current event indicates that an interrupt is a break start */
+  as isInterrupt(v) and v[2]=-3;
+
+create function isInterruptBreakStartv(Vector of Number v)->Boolean 
+  /* Check if current event indicates that an interrupt is a break start */
+  as isInterrupt(v) and v[2]=-2;
+
+create function isInterruptBreakEndv(Vector of Number v)->Boolean 
+  /* Check if current event indicates that an interrupt is a break start */
+  as isInterrupt(v) and v[2]=-3;
+
+create function isBreakInterrupt(Numarray e) -> Boolean
+  as isInterrupt(e) and (e[2] = -2 or e[2] = -3);
+
+lisp;
+
+(defglobal _playersensor_ (theresolvent 'playersensor))
+
+(defun playersensor (sid)
+  (let (res)
+    (assignfunction _playersensor_ (vector sid) '(res))
+    res))
+
+:osql

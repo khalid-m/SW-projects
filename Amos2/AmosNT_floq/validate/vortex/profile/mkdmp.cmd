@@ -1,0 +1,1 @@
+svali -O "profile-config.osql"

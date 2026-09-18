@@ -1,0 +1,423 @@
+/*-*-sql-*-*******************************************************************/
+
+/* 
+
+   Help directives and skeleton for databased projection based 
+   frequent itemset and associations rule mining. Read all 
+   comments and code. 
+
+   Students are expected to follow the directives and complete / replace 
+   / correct code where necessary (marked with TODO) according 
+   to the function signatures, descriptions, HINTS, and NOTES.
+   Students are encouraged to experiment with explicit or implicit 
+   options and alternative implementations. 
+
+*/
+
+/* Disable logging */
+logging off;
+  
+/****************/
+/****************/
+/****************/
+/* TRANSACTIONS */
+/****************/
+/****************/
+/****************/
+
+/* Table to store transactions */
+create function transact(Integer t)->Bag of Integer i as stored;
+/* TODO: Use function create_index() to index the transact() function. 
+         Refer to the manual. Which attributes should be indexed and what 
+         type of index should be used should become clearer from how the 
+         function transact() will be used in the following queries. */
+create_index('transact', 'i', 'hash', 'multiple');
+
+create function enumerate(Bag of Vector bv) ->Bag of <Integer i, Vector>
+/* Enumerates a bag of vectors bv from 1 to count(bv) */
+as 
+begin
+  set i = 0;
+  for each original Vector w where w in bv
+  begin
+    set i = i + 1;
+    result <i, w>;
+  end;
+end; 
+
+create function load_transact(Charstring file)->Boolean
+/* Loads stored function transact from a file of transactions */
+  as add transact(i) = in(v)
+     from Integer i, Vector v, Bag of Vector bv
+     where <i, v> in enumerate(bv)
+       and bv = (read_ntuples(file)); 
+
+create function transact_bt()->Bag of <Integer, Integer>
+/* Dispays transact as a bag of tuples */
+  as select t, i 
+     from Integer t, Integer i 
+     where i in transact(t);
+
+create function num_transact()->Integer
+/* Returns the number of transactions */
+  as count(select distinct t
+           from Integer t, Integer i
+           where <t,i> in transact_bt());
+
+create function items_suppby(Bag of <Integer, Integer> bt)
+                             ->Bag of <Integer, Vector>
+/* Calculates a list of supporting tids for each unique item
+   in the bag of transactions bt */
+  as select groupby((select i, t
+                     from Integer t, Integer i
+                     where <t,i> in bt),
+                    #'vectorof');   
+
+create function item_suppby(Bag of <Integer, Integer> bt, Integer i)
+                            ->Bag of Integer
+/* Returns the tids that support the item i */
+  as select t
+     from Vector of Integer tids, Integer t
+     where <i, tids> in items_suppby(bt)
+       and t in tids;
+
+create function freq_items(Bag of <Integer, Integer> bt, 
+                           Integer minsupp)
+                           -> Bag of <Integer, Integer>
+/* Calculates the supports of frequent items based on bt, 
+   bag of tid-item tuples */
+  as select i, supp 
+     from Integer i, Integer supp, Vector vtid   
+     where <i, vtid> in items_suppby(bt)  
+       and supp = dim(vtid)
+       and supp >= minsupp;    
+
+create function irpft(Bag of <Integer, Integer> bt, 
+                      Integer minsupp, 
+                      Integer pitem)
+                      ->Bag of <Integer, Integer>
+/* Calculates the pitem-related frequent item projection
+   of the bag of transactions bt. */  
+as select tid, item
+   from Integer tid, Integer item, Integer s
+   where <tid, item> in bt
+     and <item, s> in freq_items(bt, minsupp)
+     and tid in item_suppby(bt, pitem)
+     and item > pitem;
+
+create function fim_tcf(Bag of <Integer, Integer> bt,
+                        Integer minsupp,
+                        Vector of Vector prefix_supp)
+                        ->Bag of <Bag of <Integer, Integer>,
+                                  Integer,
+                                  Vector of Vector>
+/* Transitions function that generates all irpft-s of a bag
+   of transations based on the minsupp and constructs the 
+   coresponding expanded itemset prefix and its support. 
+   fim_tcf() defines a tree of tuples of irpft and associated 
+   prefix.   
+NOTE: irpft() must be evaluated as an expression at the top of the 
+      select instead of in the where-clause. This is crutial, because
+      if for some projecting frequent item pi irpft() result in NIL, 
+      i.e, an empty projected table, the pi-explanded prefix must 
+      still be emitted, which would not be the case if irpft() was 
+      evaluated to NIL in the where-clause. */
+  as select irpft(mbt, minsupp, pi),
+            minsupp,
+            {concat(prefix_supp[0],{pi}),{supp}}
+     from Integer pi, Integer supp, 
+          Bag of <Integer, Integer> mbt
+     where <pi, supp> in freq_items(mbt, minsupp)
+       and mbt = materialize(bt); 
+                         
+create function fim_traverse(Bag of <Integer, Integer> bt,
+                             Integer minsupp)
+                             ->Bag of Vector of Vector
+/* Performs FIM using the pattern growth approach: filter - 
+   project - filter. It uses traverse to traverse the 
+   <irpft,prefix>-tree defined by fim_tcf.
+   The output is a bag of prefixes, i.e., frequent itemsets that
+   are represented as vectors of items with corresponding support 
+   count: {{items},{supp}}. */
+  as select newp_s
+     from Bag of <Integer, Integer> pbt,
+          Integer s,
+          Vector of Vector newp_s
+     where <pbt, s, newp_s> in traverse(#'fim_tcf', 
+                                        bt, minsupp, {{},{num_transact()}});
+
+create function fim(Integer minsupp)->Bag of Vector of Vector 
+/* Funtion to call fim easily with ABSOLUTE support count */
+  as fim_traverse(transact_bt(), minsupp);
+
+create function fim(Real minsupp)->Bag of Vector of Vector 
+/* Funtion to call FIM easily with RELATIVE support */
+  as fim(round(minsupp*num_transact()));
+
+create function fim_file(Charstring file, Real minsupp)
+                         ->Bag of Vector of Vector 
+/* Function to call FIM with transactions read from a file */
+as 
+begin
+  clear_function('transact');
+  load_transact(file);
+  result fim(minsupp);
+end;
+
+/*********************/
+/*********************/
+/*********************/
+/* FREQUENT ITEMSETS */
+/*********************/
+/*********************/
+/*********************/      
+
+/* Table to store the FIM mining results */
+create function FIS(Vector is)->Integer as stored;
+
+create function storeFIS(Vector of Vector fis_supp)->boolean 
+/* Adds fis_supp to FIS(). */
+as
+begin
+  add FIS(fis)=supp from Vector fis, Integer supp
+  /* SORTING of 'is' IS NOT NECESSARY, BECAUSE FREQUENT 
+     ITEMSETS ARE EXPANDED IN LEXICAL ORDER DURING MINING */ 
+  where {fis,{supp}} = fis_supp;
+end;
+ 
+/************************************/
+/************************************/
+/************************************/
+/* ARM: RULE GENERATION AND TESTING */
+/************************************/
+/************************************/
+/************************************/
+
+create function vproject(Vector v, Object p)->Vector
+/* Returns a vector containing the elements of the 
+   imput vector v that are larger than p */
+  as vectorof(select o 
+              from object o
+              where o in v
+              and o > p);
+
+create function vsubset_tcf(Vector v, Vector rv)
+                            ->Bag of <Vector, Vector>
+/* Transition functions that produces the children of v,
+   i.e., vproject(v,p) for all p in v and accumulates 
+   the projecting object p by appending it to the input
+   vector rv. */
+  as select pv, concat(rv, {p})
+     from Object p, Vector pv
+     where p in v
+       and pv = vproject(v,p);
+
+create function vsubset_traverse(Vector v)->Bag of Vector
+/* Generates all the subsets of the elements of vector v
+   by traversing the tree defined by vsubset_tcf() */
+  as select rv
+     from Vector ov, Vector rv
+     where <ov, rv> in traverse(#'vsubset_tcf', v, {}); 
+
+create function vdiff(vector v1, vector v2) -> vector 
+/* Returns as a vector the elements of vector v1 that are not in v2 */
+  as sort(select i 
+          from object i
+          where i in v1 
+            and notany(select where i in v2)); 
+
+create function properARcands(Vector of Integer v)->Bag of Vector of Vector 
+/* Generates all possibible (PROPER, i.e. {} is exluded) (candidate) 
+   Association Rules (ARs) that a (frequent) itemset v can generate */ 
+  as select {head, tail}
+     from Vector of Integer head, Vector of Integer tail
+     where head in vsubset_traverse(v)
+       and tail = vdiff(v, head)
+       and dim(head) > 0
+       and dim(tail) > 0;
+
+create function ARfromFIS(Real minconf)
+                          ->Bag of <Integer rule_length, 
+                                    Vector of Integer head, 
+                                    Vector of integer tail, 
+                                    Real conf, 
+                                    Integer abs_rule_supp>
+/* TODO: Compute confident rules from the frequent itemsets in FIS.
+   HINT: Use functions properARcands(), FIS(), and dim(). */
+  as select rule_length, head, tail, conf, abs_rule_supp
+     from Vector of Integer fis, 
+          Integer hsupp, 
+          Real conf
+     where abs_rule_supp=FIS(fis) 
+       and {head,tail} in properARcands(fis)
+       and rule_length = dim(head)+dim(tail)
+       and hsupp = FIS(head)
+       and conf = abs_rule_supp/hsupp
+       and conf >= minconf;   
+
+create function arm(Real minsupp, Real minconf)
+                    ->Bag of <Vector of Integer,
+                              Vector of Integer, 
+                              Real, Real>
+/* Performs AR Mining on transact() using the 
+   support-confidence framework */
+as
+begin
+  declare Integer numtid; 
+  set numtid = num_transact();
+  clear_function('FIS');
+  /* search and store frequent itemsets */ 
+  storeFIS(fim(minsupp));  
+  /* search confident rules and output in order */  
+  result (select prec, cons, roundto(conf, 4), roundto(rsupp/numtid, 4)
+          from Vector of Vector v, Integer i,
+               Integer len, 
+               Vector of Integer prec, 
+               Vector of Integer cons, 
+               Integer rsupp, 
+               Real conf
+          where v = sortbagby((ARfromFIS(minconf)), 
+                              {1,4,5}, {"dec", "dec", "dec"})
+            and {len, prec, cons, conf, rsupp} = v[i]
+            and i in iota(0,dim(v)-1));
+end;
+
+create function arm_file(Charstring file, Real minsupp, Real minconf)
+                         ->Bag of <Vector of Integer,
+                                   Vector of Integer, 
+                                   Real, Real>
+/* Mines ARs from transaction read in from a file */
+as 
+begin
+  clear_function('transact');
+  load_transact(file);
+  result arm(minsupp, minconf);
+end;
+
+lisp;
+(checkequal "frequent itemset mining correctness"
+ ((osql "fim_file(getenv('AMOS_HOME')+'/applications/datamining/data/beer.nt', 0.1);")
+ '((#(#() #(10))) (#(#(1) #(7))) (#(#(1 2) #(4))) (#(#(1 2 3) #(3))) (#(#(1 3) #(4))) (#(#(1 3 4) #(1))) (#(#(1 4) #(1))) (#(#(2) #(7))) (#(#(2 3) #(5))) (#(#(2 3 4) #(1))) (#(#(2 4) #(1))) (#(#(3) #(6))) (#(#(3 4) #(2))) (#(#(4) #(2))))))
+
+(checkequal "association rule mining correctness"
+ ((osql "arm_file(getenv('AMOS_HOME')+'/applications/datamining/data/beer.nt', 0.1, 0.5);")
+ '((#(2 4) #(3) 1.0 0.1) (#(1 4) #(3) 1.0 0.1) (#(1 3) #(2) 0.75 0.3) (#(1 2) #(3) 0.75 0.3) (#(2 3) #(1) 0.6 0.3) (#(3) #(1 2) 0.5 0.3) (#(3 4) #(2) 0.5 0.1) (#(3 4) #(1) 0.5 0.1) (#(4) #(2 3) 0.5 0.1) (#(4) #(1 3) 0.5 0.1) (#(4) #(3) 1.0 0.2) (#(3) #(2) 0.8333 0.5) (#(2) #(3) 0.7143 0.5) (#(3) #(1) 0.6667 0.4) (#(2) #(1) 0.5714 0.4) (#(1) #(3) 0.5714 0.4) (#(1) #(2) 0.5714 0.4) (#(4) #(2) 0.5 0.1) (#(4) #(1) 0.5 0.1))
+))
+
+:osql
+
+
+/* Diagnostics functions */
+
+create function transact_vt()->Bag of <Integer, Vector of Integer>
+/* Returns the items in each transaction as a vector of integers. */
+  as groupby(transact_bt(), #'vectorof');
+
+lisp;
+     
+(defun match-ordered-seq (x y)
+   "Function to match two ordered sequences"
+   (let ((lkey 0)
+         (rkey 0)
+         (lsize (length x))
+         (rsize (length y))
+         (res (vector))
+         cmp)
+    (loop 
+      (cond ((>= lkey lsize)(return res))
+            ((>= rkey rsize)(return res))
+            ((= 0 (setq cmp (compare (aref x lkey)(aref y rkey))))
+             (setq res (push-vector res (aref x lkey)))
+             (1++ lkey)
+             (1++ rkey))
+            ((> cmp 0) (1++ rkey))
+            (t (1++ lkey))))))
+
+(defun match-ordered-seq--+ (fno x y r)
+   (osql-result x y (match-ordered-seq x y)))
+
+:osql
+
+create function match_ordered_seq (Vector x, Vector y)->Vector
+/* Matches two ordered sequences */
+  as foreign 'match-ordered-seq--+';
+
+create function naive_intersect(Vector x, Vector y)->Vector
+/* Calculates the intersection of two vectors naively */
+  as vectorof(select x[i] 
+              from Integer i
+              where x[i] in y);
+
+create function smart_intersect_ofsorted(Vector x, Vector y)->Vector
+/* Implements the merge-join/sort like intersection 
+   of two sorted vectors */               
+  as match_ordered_seq(x,y);
+
+create function vsort(Vector v)->Vector
+/* Sorts a vector */
+  as sort(in(v)); 
+
+create function smart_intersect(Vector x, Vector y)->Vector
+/* Implements the merge-join/sort like intersection 
+   of two unsorted vectors. Vectors are sorted internally. */ 
+  as match_ordered_seq(vsort(x),vsort(y));
+
+create function is_subset(Vector a, Vector b)->Boolean
+/* Checks if the elements of a (set a) are a subset of the elements
+   of b (set b) */
+  as select dim(a)=dim(smart_intersect(a,b));
+
+create function itemset_supp(Vector of Integer iset)->Integer
+/* Claculates the support of an itemset in the transaction base */
+  as count(select is_subset(iset, items_in_t)
+           from Integer t, Vector of Integer items_in_t
+           where <t,items_in_t> in transact_vt());   
+
+create function validate_fis(Bag of Vector of Vector bfis)
+                             -> Bag of Vector
+/* Validates a bag of frequent itemsets output by fim w.r.t the 
+   actual support of the same itemsets calculated directly 
+   from the transactions in transact() */
+  as select {fis, supp, asupp}
+     from Vector of Integer fis, Integer supp, Integer asupp
+     where {fis, {supp}} in bfis
+       and asupp = itemset_supp(fis)
+       and asupp != supp; 
+
+create function vunion(Vector a, Vector b)->Vector
+/* Calculates the union of the elements in vector a and b */
+  as sort(select distinct e
+          from Object e
+          where e in a or e in b);
+
+create function rule_conf_supp_transact(Vector of Integer head,
+                                        Vector of Integer tail)
+                                        -><Real, Real>
+/* Calculates the confidence and relative support of a rule
+   directly from the transactions */
+  as select roundto(ars/ahs,4), roundto(ars/num_transact(),4)
+     from Integer ars, Integer ahs, Vector of Integer r
+     where r = vunion(head, tail)
+       and ars = itemset_supp(r)
+       and ahs = itemset_supp(head); 
+
+create function validate_rules(Bag of Vector br)->Bag of Vector
+/* Validates a bag of rules output by arm w.r.t the 
+   actual confidence and support of the same rules 
+   calculated directly from the transactions in transact() */
+  as select {head, tail, conf, supp, aconf, asupp}
+     from Vector of Integer head, Vector of Integer tail,
+          Real conf, Real supp, Real aconf, Real asupp
+     where {head, tail, conf, supp} in br
+       and <aconf, asupp> = rule_conf_supp_transact(head, tail)
+       and (aconf != conf or asupp != supp); 
+
+create function regress_arm()->Vector
+/* Performs association rule mining for various values of 
+   minsupp and minconf on the transactions in transact() */
+  as sort(select sort(arm(ms,mc))
+          from Real ms, Real mc
+          where ms in vectorof(iota(1,10))/20
+            and mc in vectorof(iota(10,20))/20);
+
+

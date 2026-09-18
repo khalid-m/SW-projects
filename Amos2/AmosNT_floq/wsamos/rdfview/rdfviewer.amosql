@@ -1,0 +1,67 @@
+lisp;
+(foreign-lispfn start_javaamos((charstring image)(charstring peer) (charstring classpath) )()
+                (system (concat "start java -ms64m -mx512m  -cp " classpath " SWARD " image " -s " peer)))
+
+:osql
+create function peer_running(Charstring peer, Charstring image, Charstring classpath) -> Boolean
+ as if is_running(upper(peer)) then result true
+          else start_javaamos(image, peer, classpath);
+
+
+create function restart_swatm_peer(Charstring peer, Charstring xtm)-> Boolean
+as
+	begin
+		declare Charstring semma_classpath, Charstring semma_image;
+		set semma_classpath = "%AMOS_HOME%/bin/javaamos.jar;%AMOS_HOME%/bin/sward.jar;%AMOS_HOME%/bin/RDFAmos.jar;%AMOS_HOME%/wrappers/TopicMap/lib/swatm.jar;%AMOS_HOME%/wrappers/TopicMap/lib/tm4j-0.9.7.jar;%AMOS_HOME%/wrappers/TopicMap/lib/resolver.jar;%AMOS_HOME%/wrappers/TopicMap/lib/mango.jar;%AMOS_HOME%/wrappers/TopicMap/lib/commons-logging.jar";
+		set semma_image = "%AMOS_HOME%/wrappers/TopicMap/tamos.dmp";
+		kill_peer(peer);
+		start_javaamos(semma_image, peer, semma_classpath);
+		wait_for(peer, 10);
+		call_function(peer, "importTopicMap", {xtm}, 1);
+	end;
+
+
+
+create function rdql(Charstring source, Charstring query)->Vector
+  as select call_function(source,"rdql",{query},50);
+
+create function rdqlBinds(Charstring source, Charstring query)->Vector
+  as select call_function(source,"rdqlbinds",{query},50);
+
+create function sql2(Charstring source, Charstring query)->Vector
+  as select call_function(source,"sql",{query},50);
+
+create function sqlBinds(Charstring source, Charstring query)->Vector
+  as select call_function(source,"sqlBinds",{query},50);
+
+create function sparql(Charstring source, Charstring query)->Vector
+  as select call_function(source,"sparql",{query},50);
+
+create function sparqlBinds(Charstring source, Charstring query)->Vector
+  as select call_function(source,"sparqlBinds",{query},50);
+
+create function WS_operations()-> function as stored;
+
+/*add WS_operations()=functionnamed("Charstring.Charstring.rdql->Vector");*/
+
+add WS_operations()=resolvents(functionnamed("RDQL"));
+add WS_operations()=resolvents(functionnamed("RDQLBINDS"));
+add WS_operations()=resolvents(functionnamed("SQL2"));
+add WS_operations()=resolvents(functionnamed("SQLBINDS"));
+add WS_operations()=resolvents(functionnamed("SPARQL"));
+add WS_operations()=resolvents(functionnamed("SPARQLBINDS"));
+add WS_operations()=resolvents(functionnamed("RESTART_SWATM_PEER"));
+
+/*add WS_operations()=resolvents(functionnamed("SQL"));*/
+
+create function fun_descr(Function f)-> 
+	<Charstring name, Vector args> 
+  as select name(f), arg_descr(f);
+
+create function WS_operations_descr()-> <Charstring name, Vector args> 
+  as select fun_descr(WS_operations());
+
+add WS_operations()=resolvents(functionnamed("WS_OPERATIONS_DESCR"));
+
+register("RDFVIEWER");
+listen();

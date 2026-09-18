@@ -1,0 +1,126 @@
+/*
+* This script demonstrates dynamic cost model with final optimization by randomopt on top level. Reoptimizing of
+* during probing is done by ranksort.
+*/
+
+cd(getenv('AMOS_HOME')+'\\aleh\\osql');
+<'schema.osql';
+<'parameters.osql';
+load_lisp('../lsp/aggregations.lsp');
+<'cuts.clustered.osql';
+<'test.osql';
+load_lisp('../lsp/w.cost_model.lsp');
+load_root_file('../../wrappers/ROOTWrap/t.root');
+openwritefile('../result.txt');
+declare real :s;
+
+aggstat(true);
+testloop2(0,100);
+aggstat(false);
+optmethod('randomopt');
+optlevel(30,1000);
+reoptimize('test2');
+set :s=clock();
+test2();
+print(clock()-:s);
+
+aggstat(true);
+optmethod('ranksort');
+reoptimize('expcuts');
+for each event e, parameters g where id(e)>=100 and id(e)<200 id(expcuts(e,g));
+aggstat(false);
+optmethod('randomopt');
+reoptimize('test2');
+set :s=clock();
+test2();
+print(clock()-:s);
+
+aggstat(true);
+optmethod('ranksort');
+reoptimize('expcuts');
+for each event e, parameters g where id(e)>=200 and id(e)<300 id(expcuts(e,g));
+aggstat(false);
+optmethod('randomopt');
+reoptimize('test2');
+set :s=clock();
+test2();
+print(clock()-:s);
+
+aggstat(true);
+optmethod('ranksort');
+reoptimize('expcuts');
+for each event e, parameters g where id(e)>=300 and id(e)<400 id(expcuts(e,g));
+aggstat(false);
+optmethod('randomopt');
+reoptimize('test2');
+set :s=clock();
+test2();
+print(clock()-:s);
+
+aggstat(true);
+optmethod('ranksort');
+reoptimize('expcuts');
+for each event e, parameters g where id(e)>=400 and id(e)<500 id(expcuts(e,g));
+aggstat(false);
+optmethod('randomopt');
+reoptimize('test2');
+set :s=clock();
+test2();
+print(clock()-:s);
+
+aggstat(true);
+optmethod('ranksort');
+reoptimize('expcuts');
+for each event e, parameters g where id(e)>=500 and id(e)<600 id(expcuts(e,g));
+aggstat(false);
+optmethod('randomopt');
+reoptimize('test2');
+set :s=clock();
+test2();
+print(clock()-:s);
+
+aggstat(true);
+optmethod('ranksort');
+reoptimize('expcuts');
+for each event e, parameters g where id(e)>=600 and id(e)<700 id(expcuts(e,g));
+aggstat(false);
+optmethod('randomopt');
+reoptimize('test2');
+set :s=clock();
+test2();
+print(clock()-:s);
+
+aggstat(true);
+optmethod('ranksort');
+reoptimize('expcuts');
+for each event e, parameters g where id(e)>=700 and id(e)<800 id(expcuts(e,g));
+aggstat(false);
+optmethod('randomopt');
+reoptimize('test2');
+set :s=clock();
+test2();
+print(clock()-:s);
+
+aggstat(true);
+optmethod('ranksort');
+reoptimize('expcuts');
+for each event e, parameters g where id(e)>=800 and id(e)<900 id(expcuts(e,g));
+aggstat(false);
+optmethod('randomopt');
+reoptimize('test2');
+set :s=clock();
+test2();
+print(clock()-:s);
+
+aggstat(true);
+optmethod('ranksort');
+reoptimize('expcuts');
+for each event e, parameters g where id(e)>=900 and id(e)<1000 id(expcuts(e,g));
+aggstat(false);
+optmethod('randomopt');
+reoptimize('test2');
+set :s=clock();
+test2();
+print(clock()-:s);
+
+closewritefile();

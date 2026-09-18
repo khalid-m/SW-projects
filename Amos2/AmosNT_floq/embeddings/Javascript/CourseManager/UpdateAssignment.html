@@ -1,0 +1,168 @@
+<html>
+    <head>
+        <title>Update assignment status</title>
+        <script type="text/javascript" src="scripts/cookies.js"></script>
+        <script type="text/javascript" src="scripts/SOAPClient.js"></script>
+        <script type="text/javascript" src="scripts/utility.js"></script>
+        <script type="text/javascript" language="javascript">
+            var oMyObject = window.dialogArguments;
+            var sname = oMyObject.selectedName;
+            var cname = oMyObject.courseName;
+            var assistantName = "";
+            var error;
+
+            function studInfoFull(){
+                error = null;
+                SOAPClient.invoke("SELECTSTUDENTINFOFULL", [sname,cname], false, studInfoFull_callBack, error_callBack);
+            }
+
+            function studInfoFull_callBack(o, xmlDoc)
+            {
+                var tblHead = "<tr style='background-color:lightgrey'><th>Full Name</th><th>e-mail</th><th>Unix Name</th><th>P Number</th><th>Group</th></tr>";
+                var table = resultToTable(o,null,tblHead);
+                document.getElementById("studInfoDiv").innerHTML = table;
+            }
+
+            function listGroupMember(){
+                error = null;
+                SOAPClient.invoke("LISTGROUPMEMBERS", [sname,cname], false, listGroupMember_callBack, error_callBack);
+            }
+
+            function listGroupMember_callBack(o, xmlDoc)
+            {
+                var tblHead = "<tr style='background-color:lightgrey'><th>Name</th><th>e-mail</th><th>Group No.</th></tr>";
+                var table = resultToTable(o,null,tblHead);
+                document.getElementById("groupMemberDiv").innerHTML = table;
+            }
+
+            function assignmentList() {
+                error = null;
+                SOAPClient.invoke("ASSIGNMENTINFO", [cname], false, listAssignment_callBack, error_callBack);
+            }
+
+            function listAssignment_callBack(o, xmlDoc)
+            {
+                var selectList = populateOptions(o,0,"assignmentInfo");
+                document.getElementById("assignmentInfoDiv").appendChild(selectList);
+            }
+
+            function updateStudentAssignment(assignmentStatus) {
+                error = null;
+                var assignNum = parseInt(document.getElementById("assignmentInfo").value);
+
+                var soapParams=[sname,assignNum,assignmentStatus,assistantName,cname];
+                SOAPClient.invoke("UPDATESTUDENTASSIGNMENTEXP", soapParams, true, updateStudentAssignment_callBack, error_callBack);
+            }
+
+            function updateStudentAssignment_callBack(o, xmlDoc)
+            {
+                if ("succ" == o){
+                    alert("Update student assignment successfully.");
+                }else {
+                    alert("Update student assignment failed.");
+                }
+            }
+
+            function updateGroupAssignment(assignmentStatus) {
+                error = null;
+                var assignNum = parseInt(document.getElementById("assignmentInfo").value);
+
+                var soapParams=[sname,assignNum,assignmentStatus,assistantName,cname];
+                SOAPClient.invoke("UPDATEGROUPASSIGNMENTEXP", soapParams, true, updateGroupAssignment_callBack, error_callBack);
+            }
+
+            function updateGroupAssignment_callBack(o, xmlDoc)
+            {
+                if ("succ" == o){
+                    alert("Update group assignment successfully.");
+                }else {
+                    alert("Update group assignment failed.");
+                }
+            }
+
+            function error_callBack(e, errorCode){
+                if (e != null){
+                    error = e;
+                    document.getElementById("updateDiv").style.display='none';
+                    document.getElementById("errorDiv").innerHTML="Error callBack:<br>" + error + "<br><br>Error code:<br>" + errorCode;
+                }
+            }
+
+            function btnUpdate_onclick(){
+                var assignmentStatus = radioAssignmentStatue();
+                var applyTo = radioApplyTo();
+                if (assignmentStatus == null){
+                    alert("please select a assignment status.");
+                }else if (applyTo == null){
+                    alert("please select apply to.");
+                }else{
+                    if (applyTo == "student"){
+                        updateStudentAssignment(assignmentStatus);
+                    }else{
+                        updateGroupAssignment(assignmentStatus);
+                    }
+                }
+            }
+
+            function radioAssignmentStatue(){
+                var allNodes=document.frmAssignment.assignmentStatus;
+                for(var i=0; i<allNodes.length; i++){
+                    if(allNodes[i].checked){
+                        return(allNodes[i].value);
+                    }
+                }
+                return null;
+            }
+
+            function radioApplyTo(){
+                var allNodes=document.frmApplyTo.applyTo;
+                for(var i=0; i<allNodes.length; i++){
+                    if(allNodes[i].checked){
+                        return(allNodes[i].value);
+                    }
+                }
+                return null;
+            }
+
+            function btnClose_onclick(){
+                window.close();
+            }
+
+            function window_onload(){
+                if (getCookie("name")==""||getCookie("name")==null){
+                    alert("You don't have authority to view this page.");
+                    document.all.aLogout.href='index.html';
+                    document.all.aLogout.click();
+                }
+                assistantName = getCookie("name");
+                studInfoFull();
+                listGroupMember();
+                assignmentList();
+            }
+        </script>
+    </head>
+    <body onload="return window_onload();">
+        <div id="updateDiv" style="display:block;">
+            The student to be updated is:<br>
+            <div id="studInfoDiv"></div><br><br>
+            Your group consists of:<br>
+            <div id="groupMemberDiv"></div><br><br>
+            <hr<b>Choose an assignment:</b><br>
+            <div id="assignmentInfoDiv"></div><br><br>
+            <b>Choose an assignment status:</b><br>
+            <form name="frmAssignment">
+                <INPUT type="radio" name="assignmentStatus" value="UNKNOWN"> UNKNOWN<BR>
+                <INPUT type="radio" name="assignmentStatus" value="PASSED"> PASSED<BR>
+                <INPUT type="radio" name="assignmentStatus" value="FAILED"> FAILED<BR>
+            </form>
+            <b>Update the assignment status for:</b><br>
+            <form name="frmApplyTo">
+                <INPUT type="radio" name="applyTo" value="student">The selected student<BR>
+                <INPUT type="radio" name="applyTo" value="group" >All students in the selected group<BR>
+            </form>
+            <INPUT type="button" value="Update assignment" onclick="return btnUpdate_onclick();">
+        </div>
+        <div id="errorDiv"></div>
+        <INPUT type="button" value="Close" onclick="return btnClose_onclick();">
+    </body>
+</html>

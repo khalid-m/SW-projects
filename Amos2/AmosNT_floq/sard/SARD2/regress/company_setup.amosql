@@ -1,0 +1,59 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Johan Petrini, UDBL
+ *		2010,2013 Silvia Stefanova
+ * 
+ * Description: Setup of master regression test of SARD2 system exporting 
+ * and querying the Company relational database.
+ *****************************************************************************/
+/* Settings 
+ */
+
+/* Define UPVDS for Company relational database.
+ * Only done once for each relational database by admin.
+ */
+defineDS("COMPANYDS",
+         getenv("URLDB"),
+         getenv("DRIVERDB"),
+         getenv("CATALOGDB"),
+         "",
+         getenv("USERDB"),
+         getenv("PASSWORDDB"));
+
+/* Define UPV 'Comp' associated with UPV data source 'CompDS'. 
+ */
+defineUPV("COMPANYDS","Comp","http://udbl.it.uu.se/upv/comp/");
+
+
+/* Initialize predefined UPV data source assigned to UPV 'Comp'. 
+ */
+DSConnect("Comp");	
+
+wrapRDB(jdbcOfDS("COMPANYDS"), getenv("NAMEDB"), getenv("CATALOGDB"), "");
+
+
+set pMap("orders","ORDERID","Comp")=uri("http://user.it.uu.se/~udbl/sard/regress#orders/orderid");
+/*set pMap("orders","OCUSTID","Comp")="http://user.it.uu.se/~udbl/sard/regress#orders/ocustid";*/
+set pMap("orders","CLERK","Comp")=uri("http://user.it.uu.se/~udbl/sard/regress#orders/clerk");
+set pMap("customer","CUSTID","Comp")=uri("http://user.it.uu.se/~udbl/sard/regress#customer/custid");
+set pMap("customer","MKTSEGMENT","Comp")=uri("http://user.it.uu.se/~udbl/sard/regress#customer/mktsegment");
+set pMap("lineitem","PARTID","Comp")= uri("http://user.it.uu.se/~udbl/sard/regress#lineitem/partid");
+set pMap("lineitem","QUANTITY","Comp")= uri("http://user.it.uu.se/~udbl/sard/regress#lineitem/quantity");
+set pMap("lineitem","LINENUMBER","Comp")= uri("http://user.it.uu.se/~udbl/sard/regress#lineitem/linenumber");
+set pMap("lineitem","LORDERID","Comp")= uri("http://user.it.uu.se/~udbl/sard/regress#lineitem/lorder");
+
+set cMap("customer","Comp")=uri("http://user.it.uu.se/~udbl/sard/regress#customer");
+set cMap("orders","Comp")=uri("http://user.it.uu.se/~udbl/sard/regress#orders");
+set cMap("lineitem","Comp")= uri("http://user.it.uu.se/~udbl/sard/regress#lineitem");
+set ucMap("customer","Comp")="http://user.it.uu.se/~udbl/sard/regress#customer";
+set ucMap("orders","Comp")="http://user.it.uu.se/~udbl/sard/regress#orders";
+set ucMap("lineitem","Comp")="http://user.it.uu.se/~udbl/sard/regress#lineitem";
+
+set rcMap("orders","customer","Comp")=uri("http://user.it.uu.se/~udbl/sard/regress#OrderedBy");
+set rcMap("lineitem","orders", "Comp")=uri("http://user.it.uu.se/~udbl/sard/regress#Orders_of_lineitem");
+
+assign_typeMap("Comp", getenv("CATALOGDB"), "");
+
+
+

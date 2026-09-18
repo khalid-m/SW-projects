@@ -1,0 +1,156 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Tore Risch, UDBL
+ * $RCSfile: cfunctions.osql,v $
+ * $Revision: 1.5 $ $Date: 2011/01/27 11:26:14 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Testing foreign functions implemented in C
+ *
+ ****************************************************************************
+ * $Log: cfunctions.osql,v $
+ * Revision 1.5  2011/01/27 11:26:14  torer
+ * Changed from <...> to SQL's (...) notation for tuples (much nicer)
+ *
+ * Revision 1.4  2011/01/01 19:21:22  torer
+ * iota now over type Number, not Integer
+ *
+ * Revision 1.3  2009/10/02 20:24:13  zeitler
+ * Name change avgstdev - vavgstdev
+ * New avgstdev
+ *
+ * Revision 1.2  2008/11/17 20:28:59  torer
+ * Testing general functional expressions
+ *
+ * Revision 1.1  2007/11/07 14:40:19  torer
+ * Testing C foreign functions
+ * Testing Linear Road
+ *
+ ****************************************************************************/
+lisp;
+
+(defglobal amos_type _type_)
+
+(checkequal 
+ "amosfns.c"
+ ((osql "iota(1,3);") '((1) (2) (3))) ;; iota
+ ((osql "1+2;") '((3)))
+ ((osql "1+2.1;") '((3.1)))
+ ((osql "2-1;") '((1)))
+ ((osql "1*2;") '((2)))
+ ((osql "1*2.1;") '((2.1)))
+ ((osql "1/2;") '((0.5)))
+ ((osql "2/1;") '((2)))
+ ((osql "2.1/2;") '((1.05)))
+ ((osql "1 != 2;") '((TRUE))) ;; nebb
+ ((osql "1 != 1;") nil) ;; nebb
+ ((osql "1<2;") '((true))) ;; lt
+ ((osql "1<1;") nil) ;; lt
+ ((osql "1<=1;") '((true))) ;; le
+ ((osql "1<=0;") nil) ;; le
+ ((osql "1>1;") nil) ;; gt
+ ((osql "1>0;") '((true)));;gt
+ ((osql "1>=1;") '((true)));;ge
+ ((osql "1>=2;") nil) ;;ge
+ ((osql "mod(2,3);") '((2))) ;; mod
+ ((osql "mod(3.1,2.2)*10;") '((9.0))) ;; mod
+ ((osql "{1,2,3};") '((#(1 2 3))))
+ ((osql "select i from integer i where {i,i,i}={1,1,1};")
+    '((1))) ;; vector + equalfb
+ ((osql "abs(2);") '((2)))
+ ((osql "abs(-2);") '((2)))
+ ((osql "abs(2.1);") '((2.1)))
+ ((osql "abs(-2.1);") '((2.1)))
+ ((osql "{1,2,3}[1];") '((2))) ;; vrefbbf
+ ((osql "select {1,2,3}[i] from integer i;") '((1) (2) (3))) ;; vrefbff
+ ((osql "typenamed('object');") (list2 _object_))
+ ((osql "{1,2,3}[2];") '((3)))
+ ((osql "{}[0];") nil)
+ ((osql "{}[-1];") nil)
+ ((osql "select o from object o, integer i where {1,2,3}[i]=o;")
+  '((1) (2) (3)))
+ ((osql "{1,2,3}*{4,5,6};") '((32)))
+ ((osql "select x, y from number x, number y where {x,y}={1,2};")
+  '((1 2)))
+ )
+
+(defglobal fno1 (getfunctionnamed 'number.number.iota->integer))
+
+(checkequal "mapfuntion-apply"
+   ((let (res)(mapfunction-apply fno1 (vector 1 3)(f/l (x)(push x res)))res)
+    '(3 2 1))
+)
+
+(checkequal "lispfns.c"
+  ((callfunction fno1 (vector 1 3)) '(#(1) #(2) #(3)))
+)
+
+(checkequal "aggops.c"
+ ((osql "count(bag(1,2,3));") '((3)))
+ ((osql "count(bag(1,2,4))=3;") '((TRUE)))
+ ((osql "count(bag(1,2,3,4))=3;") NIL)
+ ((osql "count(bag(1))=3;") NIL)
+ ((osql "sum(iota(1,3));") '((6)))
+ ((osql "sum(real(iota(1,3)));") '((6.0)))
+ ((osql "integer(plus(vavgstdev({1,2,3})));") '((3)))
+ ((osql "vavgstdev({});") '((NIL NIL)))
+ ((osql "vavgstdev({1});") '((1.0 NIL)))
+)
+
+(foreign-lispfn truee nil nil (foreign-result))
+
+(checkequal "degerenerate FF true"
+  ((osql "truee();") '((true)))
+)
+
+:osql
+create function f1(charstring) -> integer;
+create function f2(charstring) -> integer;
+
+add f1('a') = 1;
+add f2('b') = 1;
+
+create function f() -> integer
+  as select i
+     from integer i, charstring c1, charstring c2
+     where i = f1(c1) and
+           i = f2(c2);
+
+lisp;
+
+(checkequal "many wildcards in ObjectLog"
+   ((osql "f();") '((1))))
+
+:osql
+
+create function products(bag of (real,real) v) -> bag of real p
+  /* declarative definition */
+  as select x*y from real x, real y 
+                where (x,y) in v;
+    
+create function wavg(bag of (real,real) b)->real
+  as select sum(products(b));
+
+declare bag of (real,real) :b;
+set :b = bag({0.6, 1.0},{0.1, 2.0}, {0.3,5.0});
+
+lisp;
+
+(checkequal "memory bug"
+   ((osql "wavg(:b);") '((2.3)))
+)
+:osql
+
+create function multest(Number x, Number y, Number z) -> Boolean
+  as x*y=z;
+
+lisp;
+(checkequal "Rebinding in-parameter"
+  ((osql "multest(1,2,3);") nil)
+  ((osql "multest(1,2,2);") '((true)))
+)
+
+:osql
+
+rollback;

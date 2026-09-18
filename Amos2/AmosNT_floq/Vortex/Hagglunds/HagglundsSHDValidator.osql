@@ -1,0 +1,42 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Cheng Xu, UDBL
+ * $RCSfile: HagglundsSHDValidator.osql,v $
+ *
+ * Description: the validator for Specefic Heat Dissipation
+ *
+ ****************************************************************************
+ * $Log: HagglundsSHDValidator.osql,v $
+ * Revision 1.1  2012/12/18 17:35:00  chexu484
+ * hagglunds validation
+ *
+ *
+ ****************************************************************************/
+
+
+create function validateSHD(Record rec, Number ref, Number threshold)
+                                                -> (Number ts, Number measured,
+						    Number expected, Number invalid)
+  as select ts, measured, expected, invalid
+  where ts = rec["ts"]
+  and measured = measuredSHD(rec)
+  and expected = expectedSHD(rec)
+  and invalid = ifsome(abs(measured - expected) > threshold, 1, 0)
+  and rec["DIN01"] = 1;
+
+create function validateHagglundsSHD(HagglundsStream hs)
+                     -> Stream of (Number /* ts */, Number /* measured */,
+                                   Number /* expected */, Number /* invalid */)
+  as streamof(select ts, measured, expected, invalid
+              from Number ts, Number measured, Number expected, Number invalid
+              where (ts, measured, expected, invalid) in
+                     model_n_validate(streamTuples(hs), #'expectedSHD', #'validateSHD', #'th', {hs}));
+
+
+/*** Convenience functions ***/
+
+create function validateHagglundsSHD(Charstring hlundid)
+                     -> Stream of (Number /* ts */, Number /* measured */,
+                                   Number /* expected */, Number /* invalid */)
+  as validateHagglundsSHD(theHagglundsStream(hlundid));

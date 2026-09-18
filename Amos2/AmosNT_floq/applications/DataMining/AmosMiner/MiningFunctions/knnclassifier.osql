@@ -1,0 +1,102 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: Group members, UDBL
+ * $RCSfile: knnclassifier.osql,v $
+ * $Revision: 1.24 $ $Date: 2013/11/21 11:11:52 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Definition of KNN-Classifier
+ *
+ ****************************************************************************/
+ 
+/*************************************************************************
+DEFINITION OF BASIC KNN CLASSIFIER FUNCTIONS
+**************************************************************************/
+
+create function k_votes(Vector of Number x, Number k, Function disfn,
+                        Bag of (Number, Vector of Number) cp)
+                      -> Bag of (Number class, Number count)
+  /* Function voting classes among K nearest neighbours of a query point x */
+  as groupby((select cl, 1
+		from Number cl, Number dist
+		where (dist, cl) in k_nearest(x, k, disfn, cp))
+	     ,#'count');
+
+create function knn_classify_value(Vector of Number x, Integer k,
+	                           Function disfn, 
+                                   Bag of (Number, Vector of Number) cp)
+	                         -> Number class   
+  /* 
+     Input parameters 
+       - x               : A data value to be classified
+       - k               : Classify based on K nearest neighbours
+       - disfn           : Used distance function
+       - cp              : A set of classified points.
+     
+     Function return class identifier found for x
+     Output parameter
+       - class: The class identifier found for x */
+  as select cid from Number cid, Number votes
+     where (votes, cid) in
+            topk((select vo, class 
+                  from Number vo, Number class 
+                  where (class, vo) in 
+                        k_votes(x, k, disfn, cp)), 1);
+ 
+create function knn_classify_values(Bag of Vector of Number ucp,
+	                            Integer k, Function disfn, 
+                                    Bag of (Number, Vector of Number) cp)
+	                          -> Bag of (Number cid, Vector of Number val)
+  /* 
+     Input parameters
+        - ucp                 : Unclassified points
+        - k                   : Number of Nearest neighbours
+        - disfn               : Distance function
+          
+     Function classifies a bag of unclassified data. Then it returns
+     a bag of classified data
+     Output parameters
+        - cid                 : Class identifier  
+        - val                 : Value belonging to cid
+  */	
+  as select classid, val from Number classid, Vector of Number val
+     where val in ucp
+       and classid = knn_classify_value(val, k, disfn, cp);
+
+/*****************************************************************************
+CROSS-VALIDATION FUNCTIONS
+******************************************************************************/
+create function 
+       invalid_classification_values (Integer k, Function disfn, 
+                                      Bag of (Number, Vector of Number) cm)
+                                    -> Bag of (Number class, 
+                                               Vector of Number val)
+
+ /*  Brute force Leave-One-Out cross validation
+     Input parameters
+        - k                   : Number of Nearest neghbours
+        - disfn               : Distance function
+        - cm                  : Bag of classified data
+
+     The function returns a bag of (class, value) pairs where 
+     Output parameters
+        - class               : A class identifier
+        - val                 : A value incorrectly classified to class 
+*/
+
+  as select classid, ve from Vector of Number ve, Number classid
+     where (classid,ve) in cm and
+           classid != 
+             knn_classify_value(ve, k, disfn,
+                                (select c,v 
+                                 from Number c, Vector of Number v
+                                 where (c,v) in cm and
+                                       ve != v));
+
+/*****************************************************************************
+NORMALIZATION UTILITIES
+******************************************************************************/
+
+create function maxnormagg(Bag of Number x) -> Number
+  as maxagg(abs(in(x)));

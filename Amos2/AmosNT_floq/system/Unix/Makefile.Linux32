@@ -1,0 +1,28 @@
+SRC= JavaCallin.cpp JavaCallout.cpp
+
+JAVA_INCLUDE=$(JAVA_HOME)/include
+OBJDIR=./$(ARCHITECTURE)
+CFLAGS =  -I$(JAVA_INCLUDE)/linux -I$(JAVA_INCLUDE) -I$(AMOS_HOME)/C \
+-I$(AMOS_HOME)/system/include -I$(AMOS_HOME)/system/C -O2 -DUNIX=1 -DLINUX=1 -m32
+
+BINDIR=$(AMOS_HOME)/bin
+CC = gcc
+
+all: $(BINDIR)/javaamos.jar ../C/javaamos.c
+	$(CC) -O2  -rdynamic -o$(BINDIR)/javaamos -m32 -I ../include ../C/javaamos.c \
+           $(OBJDIR)/getexename.o
+
+$(BINDIR)/libJavaAmos.so: $(BINDIR)/libamos.so ../C/*.cpp
+	cd ../C/ && $(CC) $(CFLAGS) -c $(SRC)
+	g++ -m32 -O2 -shared -rdynamic -o$(BINDIR)/libJavaAmos.so -L$(BINDIR) \
+            ../C/JavaCallin.o ../C/JavaCallout.o \
+            -lamos -lm -lnsl -lpthread 
+
+$(BINDIR)/javaamos.jar: $(BINDIR)/libJavaAmos.so
+	cd ../../Java && make 
+	cd ../../wrappers/JDBC && export CLASSPATH=../../bin/javaamos.jar:. &&\
+           make
+
+clean:
+	rm ../C/JavaCallout.o ../C/JavaCallin.o $(BINDIR)/javaamos.jar \
+           $(BINDIR)/libJavaAmos.so

@@ -1,0 +1,117 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Thanh Truong, UDBL
+ * $RCSfile: bt.osql,v $
+ * $Revision: 1.5 $ $Date: 2012/01/04 14:54:39 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Test for BT as a dll
+ *
+ ****************************************************************************
+ * $Log: bt.osql,v $
+ * Revision 1.5  2012/01/04 14:54:39  thatr500
+ * fixed regression test
+ *
+ * Revision 1.4  2011/04/29 13:32:41  thatr500
+ * *** empty log message ***
+ *
+ * Revision 1.3  2011/04/27 16:27:35  thatr500
+ * *** empty log message ***
+ *
+ * Revision 1.2  2011/04/20 20:55:15  thatr500
+ * full tests
+ *
+ * Revision 1.1  2011/04/19 18:08:19  thatr500
+ * add test for BT as a DLL
+ *
+ ****************************************************************************/
+
+
+/*From a state to several cities of it*/
+create function cityofstate(Charstring state)-> Charstring city;
+
+/*Create a Linear Hashing index on position 1*/
+create_index("cityofstate", "city", "MBTREE", "multiple");
+
+/*Drop the default Hash index */
+drop_index("cityofstate", "state");
+
+
+/*Populate data*/
+add cityofstate("New York") = "New York";
+
+add cityofstate("California") = "Los Angeles";
+add cityofstate("California") = "SanDiego";
+add cityofstate("California") = "San Jose";
+add cityofstate("Texas") = "Dallas";
+add cityofstate("Texas") = "San Antionio";
+add cityofstate("Arizona") = "Phoneix";
+add cityofstate("Pennsylvania") = "Philadelphia";
+
+print("---Testing multiple---------");
+add cityofstate("New Year") = "New York";
+remove cityofstate("Pennsylvania") = "Philadelphia";
+
+/*Deletion is not working*/
+create function q()-> <Charstring , Charstring >
+as 
+  select c, s from Charstring c, Charstring s
+  where cityofstate(s) = c;
+
+create function q1(Charstring city)->Charstring
+as 
+  select s from Charstring s
+  where cityofstate(s) = city;
+
+lisp;
+(setq qres 
+	'(("Dallas" "Texas") 
+          ("Los Angeles" "California") 
+          ("New York" "New Year") 
+          ("New York" "New York") 
+          ("Phoneix" "Arizona") 
+          ("San Antionio" "Texas") 
+          ("San Jose" "California") 
+          ("SanDiego" "California")))
+
+(checkequal 
+ "Full scan BT"
+ ((osql "q();")
+ qres))
+
+(checkequal 
+ "Index scan BT"
+ ((osql "q1('Dallas');")
+  '(("Texas"))))
+
+(checkequal 
+ "Full scan BT"
+ ((osql "q();")
+ qres))
+
+(checkequal 
+ "Index scan BT"
+ ((osql "q1('Dallas');")
+  '(("Texas"))))
+
+(checkequal 
+ "Full scan BT"
+ ((osql "q();")
+ qres))
+
+(checkequal 
+ "Index scan BT"
+ ((osql "q1('Dallas');")
+  '(("Texas"))))
+
+(checkequal 
+ "Full scan BT"
+ ((osql "q();")
+ qres))
+
+(checkequal 
+ "Index scan BT"
+ ((osql "q1('Dallas');")
+  '(("Texas"))))
+:osql

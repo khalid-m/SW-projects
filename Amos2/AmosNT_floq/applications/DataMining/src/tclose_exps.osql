@@ -1,0 +1,258 @@
+/*-*-sql-*-*******************************************************************/
+
+/* 
+
+/* Example of using tclose to traverse a tree where each node in the tree
+   is associated with a bag. Consequently the signature of the closed 
+   transition function is of the form:
+   f(Bag b, Object optinal_args)->Bag of <Bag, Object> */
+
+/* Task 1. subset generation */
+
+create function t(Integer i)->Boolean as stored;
+clear_function("t");
+
+add t(1)=TRUE;
+add t(2)=TRUE;
+add t(3)=TRUE;
+add t(4)=TRUE;
+add t(5)=TRUE; 
+ 
+create function showt()->Bag of Integer
+/* Select the integer in stored function t */
+  as select i from Integer i where t(i);
+
+create function bagproject(Bag b, Object p)
+                           ->Bag
+/* Returns a CLOSED bag of the elements of b that are grater than p. 
+   NOTE: The inner select is sufficient, the rest is for "debugging". */
+  as select pb
+     from Bag pb
+     where pb = (select o 
+                 from object o
+                 where o in b
+                 and o > p)
+       /*and dp("called bagproject",100)*/;
+
+/* Sample call:
+
+in(bagproject((select iota(1,10)),2));
+
+*/
+
+create function bagchild(Bag b, Vector rv)->Bag of <Bag, Vector>
+/* Generates all the children of a node in the tree. 
+   Note: Materialization is necessary to avoid recomputation. 
+   If materialization is not used, the bag pb might be represented 
+   as a closure, i.e., a function with all its arguments bound. 
+   As the input bag b is a result of the tclose-application of 
+   bagchild, b might also be a closure. Effectively, pb might be 
+   a nested closure, which will be computed recursively from the 
+   top level. */
+  as select pb, concat(rv, {p})
+     from Object p, Bag pb
+     where p in b
+       and pb = materialize(bagproject(b,p));
+
+/* Sample calls: 
+
+bagchild((select iota(1,3)), {});
+
+select vectorof(ob), rv
+from Bag ob, Vector rv 
+where <ob, rv> in bagchild((select iota(1,3)), {});
+
+*/
+
+create function bagchild_nomat(Bag b, Vector rv)->Bag of <Bag, Vector>
+/* Generates all the children of a node in the tree. */
+  as select pb, concat(rv, {p})
+     from Object p, Bag pb
+     where p in b
+       and pb = bagproject(b,p);
+
+/* Sample call:
+
+bagchild_nomat((select iota(1,3)), {});
+
+select vectorof(ob), rv
+from Bag ob, Vector rv 
+where <ob, rv> in bagchild_nomat((select iota(1,3)), {});
+
+*/
+
+create function bagtclose(Function tf, Bag b)->Bag of <Vector, Vector>
+/* tclose on bag-valued (aggregate) transition function tf with input b */
+  as select vectorof(ob), rv
+     from Bag ob, Vector rv
+     where <ob, rv> in tclose(tf, b, {}); 
+
+create function bagtraverse(Function tf, Bag b)->Bag of <Vector, Vector>
+/* traverse on bag-valued (aggregate) transition function tf with input b */
+  as select vectorof(ob), rv
+     from Bag ob, Vector rv
+     where <ob, rv> in traverse(tf, b, {}); 
+
+/* T1Q1: tclose with unmaterialized tf */   
+bagtclose(#'bagchild_nomat', showt());
+
+/* T1Q2: tclose with materialized tf */   
+bagtclose(#'bagchild', showt());
+/* GYG NOTE: This does not behave like one whould expect, i.e., 
+   tclose stops when the empty bag is encountered for the second
+   time, eventhough its stack of unexlored children is not empty. */ 
+
+/* T1Q3: traverse with unmaterialized tf */   
+bagtraverse(#'bagchild_nomat', showt());
+
+/* T1Q4: traverse with materialized tf */   
+bagtraverse(#'bagchild', showt());
+
+/* Timing experiments */
+
+set :i = 10;
+
+count(bagtclose(#'bagchild_nomat', (select iota(1,:i))));
+
+count(bagtclose(#'bagchild', (select iota(1,:i))));
+
+count(bagtraverse(#'bagchild_nomat', (select iota(1,:i))));
+
+count(bagtraverse(#'bagchild', (select iota(1,:i))));
+
+
+/* Task 1 but using Vectors as a way of materialization */
+
+create function vecproject(Vector b, Object p)
+                           ->Vector
+  as vectorof(select o 
+              from object o
+              where o in b
+              and o > p);
+
+create function vecchild(Vector v, Vector rv)->Bag of <Vector, Vector>
+  as select pv, concat(rv, {p})
+     from Object p, Vector pv
+     where p in v
+       and pv = vecproject(v,p);
+
+create function vectraverse(Vector v)->Bag of <Vector, Vector>
+  as select ov, rv
+     from Vector ov, Vector rv
+     where <ov, rv> in traverse(#'vecchild', v, {}); 
+
+create function vectclose(Vector v)->Bag of <Vector, Vector>
+  as select ov, rv
+     from Vector ov, Vector rv
+     where <ov, rv> in tclose(#'vecchild', v, {}); 
+
+/* T1Q2v: tclose with vector-materialization */
+vectclose(vectorof(showt()));
+/* Same problem with tclose in case of Vector-materialization */
+
+/* T1Q4v: traverse with vector-materialization */
+vectraverse(vectorof(showt()));
+
+
+/* Timing experiments */
+
+set :i = 10;
+
+count(vectclose(vectorof(iota(1,:i))));
+
+count(vectraverse(vectorof(iota(1,:i))));
+
+/* Summary: The speedup due to list-based materialization
+   is equivalent to the one due to vector-based materialization.
+ 
+   traverse works fine for tree traversal where the transition
+   function at a leaf node results in NIL like:
+ 
+   bagchild(Bag(),{}); 
+
+   or 
+
+   vecchild({},{});      
+
+   tclose, on materialized bags only, does NOT expand all child nodes 
+   on its stack once it encounters the same state. This is unclear why? 
+   Also, it is unclear why the same behaviour is NOT observed on 
+   non-materialized bags. 
+
+*/    
+
+/* Task 2: Itarate until convergence using tclose 
+
+   Example of using tclose for checking for convergence of the 
+   iterative application of a bag-value (aggregate) transition 
+   function. Currently tclose does not check for bag equality.
+   Hence, one must construct single-valued application specific
+   convergence criteria function ccf. The transition function should 
+   be a closed function that returns a bag of tuples where the 
+   first element in the tuple is ccf(cb), where cb is the child 
+   bag of the input bag b. */
+
+create function bagidiv2(Bag of Number b)->Bag of Bag of Number
+/* Calculates a closed bag containing elements of b (integer) divided by 2.
+   NOTE: The inner select is sufficient, the rest is for "debugging". */
+  as select db 
+     from Bag of Number db
+     where db = (select floor(n/2)
+                 from Number n
+                 where n in b)
+       /*and dp("called bagidiv2",100)*/;
+
+create function ccf(Bag of Number b)-> Number
+/* Applications specific ccf, i.e., div(0/2)=0. */
+  as sum(b);
+
+create function bagchild_idiv2(Number c, Bag of Number b)
+                               ->Bag of <Number, Bag of Number>
+/* Generates a tuple containing the ccf evaluated on the bagchild of b
+   and bagchild(b). Since cb might be (nested) closure and is 
+   referenced 2 times, materialization is key to avoid recomputation. */ 
+  as select ccf(cb), cb
+     from Bag of Number cb
+     where cb = materialize(bagidiv2(b));
+
+create function bagconverge_tclose(Bag of Number ib)->Bag of <Number, Vector>
+/* tclose function iterating the bagchild_idiv2 function until the first value
+   in the result tuple converges */
+  as select c, vectorof(ob)
+     from Number c, Bag of Number ob
+     where <c, ob> in tclose(#'bagchild_idiv2', -1, ib);
+
+/* Sample call:
+
+bagconverge_tclose((select iota(1,10)));
+
+*/
+
+/* Alternatively, one can map a bag to a SORTED vector for which 
+   tclose correctly evaluates equality. */
+
+create function vecchild_idiv2(Vector of Number vb)
+                               ->Bag of Vector of Number
+  as sort(bagidiv2(in(vb)));
+
+create function vecconverge_tclose(Bag of Number ib)->Bag of Vector of Number
+/* tclose function iterating the bagchild_idiv2 function until the first value
+   in the result tuple converges */
+  as select ov
+     from Vector of Number ov
+     where ov in tclose(#'vecchild_idiv2', sort(ib));
+
+/* Sample call: 
+
+vecconverge_tclose(iota(1,10));
+
+*/
+
+/* NOTE: In general, this vector representation is a somewhat clumsy but effective
+         way of of manual materalization that is correctly used by tclose. In this
+         particular case however, it is far less efficient than checking for 
+         convergence using a low-cost ccf function. The resaon is that sorting and 
+         comparing long vecors is more expensive then calculating and comparing sums 
+         of bags.  
+
+*/  

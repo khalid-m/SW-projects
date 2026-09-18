@@ -1,0 +1,86 @@
+/* send event to MySQL and fetch result every second*/
+create function callLR0( vector of integer x) -> vector of integer as
+begin 
+
+	return (select {x[0], x[1], 0, x[9], res[0]}
+	from vector res
+	where res = sql(my_jdbc(),
+                   "select toll from historical_toll where vid=? and day=? and xway=?",
+                   {x[2], x[14], x[4]})	and x[0] = 3);
+		 
+end;
+/*
+create function lsproc_dexp(integer port, integer id, integer local)
+       -> integer as foreign 'lsprocdexp';
+*/
+create function stream_to_vector(stream s)->vector of integer
+  as select v
+     from vector of integer v
+     where v in s;
+
+create function mysql_nodes(Integer connection_id)
+  -> <charstring host, charstring dbname, charstring dbuser, 
+      charstring dbpass, Integer port > as stored;
+create function daily_exp_node()
+  -> <charstring host, charstring dbname, charstring dbuser, 
+      charstring dbpass, Integer port > as stored;
+
+
+/* handles daily exp queries. query_mysql() in ../src/myhistory.osql */
+create function scsqMySQLExp( Stream s)
+                               -> Vector as 
+  begin 
+
+  /*set my_jdbc() = jdbc("lrdb", "com.mysql.jdbc.Driver");
+  select connect(my_jdbc(), "jdbc:mysql://" + hostname() + ":" + port + "/" + dbname, dbuser, dbpass ) 
+  from Charstring dbname, Charstring dbuser, 
+       Charstring dbpass, Integer port , Integer i
+  where mysql_nodes(i) = <hostname(), dbname, dbuser, dbpass, port>;*/
+
+  return (concat({hostname()},tslrhoho(query_mysql_ts(vector_in(s)))));
+
+end;
+
+/* entry function for daily exp node */
+create function lr_dailyexp( Stream s)
+                             -> Stream as
+ select streamof( scsqMySQLExp( s ) );
+
+
+/* removed ostream(newsp(),0)*/
+/* run SCSQ-MySQL parallelized */
+create function distr_run_lr( Charstring filename, Charstring targethost,
+                              Charstring targetpath)
+                              ->Vector 
+as 
+  select in(mrg)
+	from stream of iarray src, stream mrg, Vector of Stream of iarray si, Vector of Stream so_hist
+	where    
+	mrg = mergestreams(so_hist)
+        and so_hist = mapstreams( si, #'lr_dailyexp')
+        and si = splitstream( src, 1, #'idexpmodpartition')
+	and src = streamof(clrmultiply(ts_iarray(in(lreadfastbin(filename)),12),64, 2));
+/* run SCSQ-MySQL in one node */
+create function run_single_node(Charstring filename, Charstring dbname, 
+                                Charstring host, Charstring dbuser, 
+                                Charstring dbpass, Integer port)
+                                -> Vector of Integer as
+begin declare stream of iarray src; 
+  set my_jdbc() = jdbc("lrdb", "com.mysql.jdbc.Driver");
+  connect(my_jdbc(), "jdbc:mysql://" + host + ":" + port + "/"
+         + dbname, dbuser, dbpass );
+  set src = streamof(clrmultiply(ts_iarray(in(lreadfastbin(filename)),12),64, 2));
+ return tslrhoho(query_mysqlbin_ts(iarray_in_ts(src)));
+end;
+
+create function irun_single_node(Charstring filename, Charstring dbname,
+                                Charstring host, Charstring dbuser,
+                                Charstring dbpass, Integer port)
+                                -> Vector of Integer as
+begin
+  set my_jdbc() = jdbc("lrdb", "com.mysql.jdbc.Driver");
+  connect(my_jdbc(), "jdbc:mysql://" + host + ":" + port + "/"
+         + dbname, dbuser, dbpass );
+
+  return tslrhoho(query_mysql_ts(vector_in(streamof(ts_iarray(in(lreadfastbin(filename)),12)))));
+end;

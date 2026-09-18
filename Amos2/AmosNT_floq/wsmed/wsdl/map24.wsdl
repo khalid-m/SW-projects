@@ -1,0 +1,714 @@
+<?xml version="1.0" ?>
+<!-- (c) 2006 Mapsolute GmbH, all rights reserved -->
+<definitions name="Map24Routing" targetNamespace="urn:Map24Routing" xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="urn:Map24Routing" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" >
+<!-- The Map24 Routing Service is used for calculating routes (calculateRoute operation). -->
+<!-- Since the calculated route is stored on the server for 45 minutes, it is possible to retrieve an already calculated route from the server with the fetchRoute operation -->
+<!-- Furthermore, it is possible to retrieve the coordinates (fetchRouteLinks operation) or the shape points (fetchRouteShape operation) of the route. -->
+<!-- Modifications since version 1.3: -->
+<!--  - Encoding style of all array types. -->
+<!--  - DescriptionLanguage in CalculateRouteRequest -->
+<!--  - Field Country is new in Route.Segment -->
+<!--  - Method FetchRouteResponse fetchRoute(FetchRouteRequest) -->
+<!--  - Routing will NOT take place if Geocoded Start- or End- -->
+<!--    Address is of Quality Mismatch. -->
+<!--  - Elimination of pairs of identical points (start, vias, target). -->
+<!-- Modifications since version 1.4: -->
+<!--  - support MinQualityOfGeocodeResults in CalculateRouteRequest. -->
+  <types>
+    <xsd:schema elementFormDefault="qualified" xmlns:tns="urn:Map24Routing" targetNamespace="urn:Map24Routing" >
+<xsd:complexType name="RequestHeader_CustomerKeyValuePair">
+  <xsd:sequence>
+  <xsd:element name="Key" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Value" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+ </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="ArrayOfCustomerKeyValuePair">
+   <xsd:sequence>
+     <xsd:element name="RequestHeader_CustomerKeyValuePair" type="tns:RequestHeader_CustomerKeyValuePair" minOccurs="1" maxOccurs="unbounded" />
+  </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="ResponseHeader">
+   <xsd:annotation>
+    <xsd:documentation>The ResponseHeader element is part of any response from the Map24 Web Services.</xsd:documentation>
+    <xsd:documentation>ResponseHeader returns the elements that were sent in the RequestHeader of the corresponding request.</xsd:documentation>
+    <xsd:documentation>Map24ID: ID of the customer that uses the Map24 Web services.</xsd:documentation>
+    <xsd:documentation>ClientID: ID of the client that has initiated the request.</xsd:documentation>
+    <xsd:documentation>RequestID: ID of the request. Can be used for logging and debugging the request.</xsd:documentation>
+    <xsd:documentation>AuthenticationKey: May contain some encrypted code that will be evaluated</xsd:documentation>
+    <xsd:documentation>depending on the customer&apos;s settings (MD-5, RSA, etc.)</xsd:documentation>
+    <xsd:documentation>CustomerHashtable: May contain customer-specific data that was set in the request.</xsd:documentation>
+    <xsd:documentation>This data will not be interpreted by the Map24 Web services.</xsd:documentation>
+   </xsd:annotation>
+  <xsd:sequence>
+  <xsd:element name="Map24ID" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="ClientID" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="RequestID" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="ResponseID" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="CustomerHashtable" type="tns:ArrayOfCustomerKeyValuePair" nillable="true" minOccurs="0" maxOccurs="1"/>
+ </xsd:sequence>
+</xsd:complexType>
+<xsd:simpleType name="GeocodedAddress_Quality">
+  <xsd:restriction base="xsd:string">
+    <xsd:enumeration value="Mismatch"/>
+    <xsd:enumeration value="Exact"/>
+    <xsd:enumeration value="Street"/>
+    <xsd:enumeration value="ZIP"/>
+    <xsd:enumeration value="District"/>
+    <xsd:enumeration value="City"/>
+    <xsd:enumeration value="State"/>
+    <xsd:enumeration value="Country"/>
+  </xsd:restriction>
+</xsd:simpleType>
+<xsd:complexType name="Coordinate">
+   <xsd:annotation>
+    <xsd:documentation>A Coordinate is defined by its Longitude and Latitude.</xsd:documentation>
+    <xsd:documentation>In the MapTP world longitudes and latitudes are represented</xsd:documentation>
+    <xsd:documentation>in decimal degrees and minutes (WGS 84 format).</xsd:documentation>
+   </xsd:annotation>
+  <xsd:sequence>
+  <xsd:element name="Longitude" type="xsd:double"  minOccurs="1" maxOccurs="1"/>
+  <xsd:element name="Latitude" type="xsd:double"  minOccurs="1" maxOccurs="1"/>
+ </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="GeocodedAddress_Alternative">
+   <xsd:annotation>
+    <xsd:documentation>A single geocoding result to a given address.</xsd:documentation>
+    <xsd:documentation>The address is taken from the address entries of the geocoder&apos;s database.</xsd:documentation>
+    <xsd:documentation>This means, that even if the address was misspelled in the request, the address in the result set is spelled correctly.</xsd:documentation>
+    <xsd:documentation>The geocoded address contains the street, city, zip code, and country.</xsd:documentation>
+    <xsd:documentation>Quality: The quality of the result.</xsd:documentation>
+   </xsd:annotation>
+  <xsd:sequence>
+  <xsd:element name="ID" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="HouseNo" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Street" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="ZIP" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="City" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="District" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="County" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="State" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Country" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Quality" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Similarity" type="xsd:float"  minOccurs="1" maxOccurs="1"/>
+  <xsd:element name="Coordinate" type="tns:Coordinate" nillable="true" minOccurs="0" maxOccurs="1"/>
+ </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="ArrayOfAlternative">
+   <xsd:sequence>
+     <xsd:element name="GeocodedAddress_Alternative" type="tns:GeocodedAddress_Alternative" minOccurs="1" maxOccurs="unbounded" />
+  </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="GeocodedAddress">
+   <xsd:annotation>
+    <xsd:documentation>Quality levels of a geocoded address (Alternative), sorted from best to worst:</xsd:documentation>
+    <xsd:documentation>Exact: Result matches the given address up to house number.</xsd:documentation>
+    <xsd:documentation>Street: Result matches on street level.</xsd:documentation>
+    <xsd:documentation>ZIP: Result matches on ZIP code area level.</xsd:documentation>
+    <xsd:documentation>District: Result matches on city district level.</xsd:documentation>
+    <xsd:documentation>City: Result matches on city level.</xsd:documentation>
+    <xsd:documentation>State: Result matches on state level.</xsd:documentation>
+    <xsd:documentation>Country: Result matches on country level.</xsd:documentation>
+    <xsd:documentation>Mismatch: No result found.</xsd:documentation>
+   </xsd:annotation>
+  <xsd:sequence>
+  <xsd:element name="ID" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="HouseNo" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Street" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="ZIP" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="City" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="District" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="County" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="State" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Country" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Alternatives" type="tns:ArrayOfAlternative" nillable="true" minOccurs="0" maxOccurs="1"/>
+ </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="ArrayOfViaAddress">
+  <xsd:sequence>
+     <xsd:element name="GeocodedAddress" type="tns:GeocodedAddress" minOccurs="1" maxOccurs="unbounded" />
+  </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="RouteViaPoint">
+   <xsd:annotation>
+    <xsd:documentation>RouteViaPoint describes a fixed waypoint on a route.</xsd:documentation>
+    <xsd:documentation>A calculated route will cross all via points supplied in a request.</xsd:documentation>
+    <xsd:documentation>Latitude, Longitude: Coordinates of the via point in decimal minutes (WGS 84).</xsd:documentation>
+    <xsd:documentation>Street (optional): If supplied, the Routing Service will set the via point on the given street, even if the coordinate of the via point is closer to another street.</xsd:documentation>
+   </xsd:annotation>
+  <xsd:sequence>
+  <xsd:element name="Longitude" type="xsd:double"  minOccurs="1" maxOccurs="1"/>
+  <xsd:element name="Latitude" type="xsd:double"  minOccurs="1" maxOccurs="1"/>
+  <xsd:element name="Street" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+ </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="ArrayOfVia">
+   <xsd:sequence>
+     <xsd:element name="RouteViaPoint" type="tns:RouteViaPoint" minOccurs="1" maxOccurs="unbounded" />
+  </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="RouteSegmentDirectionHint">
+   <xsd:annotation>
+    <xsd:documentation>Describes the driving direction to turn to.</xsd:documentation>
+    <xsd:documentation>Hint: Textual description of the direction (SharpLeft, Left, SlightLeft, Straight, SlightRight, Right, SharpRight and U-Turn</xsd:documentation>
+    <xsd:documentation>Value: The angle in the range between -180 and 180 degrees. Examples: 90: left, 0: straight, -90: right.</xsd:documentation>
+   </xsd:annotation>
+  <xsd:sequence>
+  <xsd:element name="Hint" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Value" type="xsd:int"  minOccurs="1" maxOccurs="1"/>
+ </xsd:sequence>
+</xsd:complexType>
+<xsd:simpleType name="RouteSegmentStreetClass">
+   <xsd:annotation>
+    <xsd:documentation>The street class that is related to the route segment</xsd:documentation>
+    <xsd:documentation>Freeway: Freeway / motorway</xsd:documentation>
+    <xsd:documentation>FederalRoad1: Federal major roads of high importance</xsd:documentation>
+    <xsd:documentation>FederalRoad2: Other federal roads of minor importance</xsd:documentation>
+    <xsd:documentation>FederalRoad3: Secondary roads.</xsd:documentation>
+    <xsd:documentation>LocalRoad1: Local connecting roads.</xsd:documentation>
+    <xsd:documentation>LocalRoad2: Local roads of high importance.</xsd:documentation>
+    <xsd:documentation>LocalRoad3: Local roads.</xsd:documentation>
+    <xsd:documentation>LocalRoad4: Local roads of minor importance.</xsd:documentation>
+    <xsd:documentation>LocalRoad5: Other minor roads.</xsd:documentation>
+    <xsd:documentation>OtherRoad: Streets that are not listed among others.</xsd:documentation>
+    <xsd:documentation>Ferry: Ferries.</xsd:documentation>
+    <xsd:documentation>TrainFerry: Train ferries.</xsd:documentation>
+   </xsd:annotation>
+  <xsd:restriction base="xsd:string">
+    <xsd:enumeration value="Freeway"/>
+    <xsd:enumeration value="FederalRoad1"/>
+    <xsd:enumeration value="FederalRoad2"/>
+    <xsd:enumeration value="FederalRoad3"/>
+    <xsd:enumeration value="LocalRoad1"/>
+    <xsd:enumeration value="LocalRoad2"/>
+    <xsd:enumeration value="LocalRoad3"/>
+    <xsd:enumeration value="LocalRoad4"/>
+    <xsd:enumeration value="LocalRoad5"/>
+    <xsd:enumeration value="OtherRoad"/>
+    <xsd:enumeration value="Ferry"/>
+    <xsd:enumeration value="TrainFerry"/>
+  </xsd:restriction>
+</xsd:simpleType>
+<xsd:complexType name="RouteSegmentDescription">
+   <xsd:annotation>
+    <xsd:documentation>Textual information on a route&apos;s segment.</xsd:documentation>
+    <xsd:documentation>Coordinate: The coordinates of the bounding box of the route segment.</xsd:documentation>
+   </xsd:annotation>
+  <xsd:sequence>
+  <xsd:element name="Text" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Coordinate" type="tns:Coordinate" nillable="true" minOccurs="0" maxOccurs="1"/>
+ </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="ArrayOfDescription">
+  <xsd:sequence>
+     <xsd:element name="RouteSegmentDescription" type="tns:RouteSegmentDescription" minOccurs="1" maxOccurs="unbounded" />
+  </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="CoordinatesArray">
+   <xsd:annotation>
+    <xsd:documentation>The CoordinatesArray provides a compact representation of a sequence of coordinates.</xsd:documentation>
+    <xsd:documentation>The Longitudes and Latitudes are encoded as strings separated with pipe ( | ) signs.</xsd:documentation>
+   </xsd:annotation>
+ <xsd:sequence>
+   <xsd:element name="Longitudes" type="xsd:string" minOccurs="1" maxOccurs="1" />
+   <xsd:element name="Latitudes" type="xsd:string" minOccurs="1" maxOccurs="1" />
+ </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="RouteSegmentTMCHint">
+   <xsd:annotation>
+    <xsd:documentation>Only available if you have a license for retrieving traffic information:</xsd:documentation>
+    <xsd:documentation>Contains traffic information along the calculated route.</xsd:documentation>
+    <xsd:documentation>Length: Length of the route segment that is affected</xsd:documentation>
+    <xsd:documentation>Code: TMC code that specifies the type of traffic information</xsd:documentation>
+   </xsd:annotation>
+  <xsd:sequence>
+  <xsd:element name="Length" type="xsd:int"  minOccurs="1" maxOccurs="1"/>
+  <xsd:element name="Code" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+ </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="ArrayOfRouteSegmentTMCHint">
+  <xsd:sequence>
+      <xsd:element  name="RouteSegmentTMCHint" type="tns:RouteSegmentTMCHint" minOccurs="1" maxOccurs="unbounded" />
+  </xsd:sequence>	
+</xsd:complexType>
+<xsd:complexType name="Property">
+   <xsd:annotation>
+    <xsd:documentation>Property is used for setting a request parameter that </xsd:documentation>
+    <xsd:documentation>is not explicitely specified in the WSDL interface.</xsd:documentation>
+    <xsd:documentation>For information on existing properties refer to the documentation</xsd:documentation>
+    <xsd:documentation>of the respective Web service.</xsd:documentation>
+    <xsd:documentation>Key: ID of the property in the Map24 Web Service.</xsd:documentation>
+    <xsd:documentation>Value: The value of the property.</xsd:documentation>
+   </xsd:annotation>
+  <xsd:sequence>
+  <xsd:element name="Key" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Value" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+ </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="ArrayOfProperty">
+ <xsd:sequence>
+     <xsd:element name="Property" type="tns:Property" minOccurs="1" maxOccurs="unbounded" />
+  </xsd:sequence> 
+</xsd:complexType>
+<xsd:complexType name="MapCoordinatesArray">
+   <xsd:annotation>
+    <xsd:documentation>The CoordinatesArray provides a compact representation of a sequence of coordinates.</xsd:documentation>
+    <xsd:documentation>The Longitudes and Latitudes are encoded as strings separated with pipe ( | ) signs.</xsd:documentation>
+   </xsd:annotation>
+ <xsd:sequence>
+   <xsd:element name="X" type="xsd:string" minOccurs="1" maxOccurs="1" />
+   <xsd:element name="Y" type="xsd:string" minOccurs="1" maxOccurs="1" />
+ </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="RouteSegment">
+   <xsd:annotation>
+    <xsd:documentation>A route consists of several RouteSegment elements. A route segment is always related to a street segment.</xsd:documentation>
+    <xsd:documentation>Start: The segment&apos;s start coordinate in decimal minutes (WGS 84)</xsd:documentation>
+    <xsd:documentation>SegmentLength: Lenght of the route segment in meters.</xsd:documentation>
+    <xsd:documentation>Time: The estimated time needed to traverse the segment in seconds.</xsd:documentation>
+    <xsd:documentation>Direction: The driving direction (see RouteSegmentDirectionHint element).</xsd:documentation>
+    <xsd:documentation>StreetName: The name of the street related to the segment.</xsd:documentation>
+    <xsd:documentation>StreetNumber: The number of the street related to the segment.</xsd:documentation>
+    <xsd:documentation>StreetClass: The type of the street related to the segment (see RouteSegmentStreetClass element).</xsd:documentation>
+    <xsd:documentation>City: The name of the city the route segment is located in (if available).</xsd:documentation>
+    <xsd:documentation>CityDistrict: The name of the city district the route segment is located in (if available).</xsd:documentation>
+    <xsd:documentation>Country: he ISO code of the country the route segment is located in (if available).</xsd:documentation>
+    <xsd:documentation>SignPost: Information on traffic signs along the route segment (if available).</xsd:documentation>
+    <xsd:documentation>FreewayExit: Information on a freeway exit (if available).</xsd:documentation>
+    <xsd:documentation>ExitNumber: The number of the freeway exit to be taken (if available).</xsd:documentation>
+    <xsd:documentation>Descriptions: Textual descriptions for the segment (see RouteSegmentDescription element).</xsd:documentation>
+    <xsd:documentation>Coordinates: The coordinates of the segment&apos;s waypoints (only available if the IgnoreWaypoints flag is set to true in the calculateRoute request).</xsd:documentation>
+    <xsd:documentation>RoundaboutExitNumber: Dprecated. Only supported for compatibility reasons.</xsd:documentation>
+    <xsd:documentation>Properties: Additional information</xsd:documentation>
+   </xsd:annotation>
+  <xsd:sequence>
+  <xsd:element name="Start" type="tns:Coordinate" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="SegmentLength" type="xsd:int"  minOccurs="1" maxOccurs="1"/>
+  <xsd:element name="Time" type="xsd:int"  minOccurs="1" maxOccurs="1"/>
+  <xsd:element name="Direction" type="tns:RouteSegmentDirectionHint" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="StreetName" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="StreetNumber" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="StreetClass" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="City" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="CityDistrict" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Country" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="SignPost" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="FreewayExit" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="ExitNumber" type="xsd:int" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Descriptions" type="tns:ArrayOfDescription" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Via" type="xsd:boolean"  minOccurs="1" maxOccurs="1"/>
+  <xsd:element name="Coordinates" type="tns:CoordinatesArray" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="RoundaboutExitNumber" type="xsd:int" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="TMCHints" type="tns:ArrayOfRouteSegmentTMCHint" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Properties" type="tns:ArrayOfProperty" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="MapCoordinates" type="tns:MapCoordinatesArray" nillable="true" minOccurs="0" maxOccurs="1"/>
+ </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="ArrayOfSegment">
+  <xsd:sequence>
+     <xsd:element name="RouteSegment" type="tns:RouteSegment" minOccurs="1" maxOccurs="unbounded" />
+  </xsd:sequence> 
+</xsd:complexType>
+<xsd:complexType name="Route">
+   <xsd:annotation>
+    <xsd:documentation>A Route consists of a sequence of route segments from the route&apos;s start to its destination point.</xsd:documentation>
+    <xsd:documentation>Start: The route&apos;s start coordinate.</xsd:documentation>
+    <xsd:documentation>Destination: The route&apos;s destination coordinate.</xsd:documentation>
+    <xsd:documentation>Segments: Sequence of route segments along the route.</xsd:documentation>
+    <xsd:documentation>RouteID: Unique identifier of the calculated route. Must be used for referencing the route from other Map24 Web services.</xsd:documentation>
+    <xsd:documentation>TotalLength: The total length of the route in meters.</xsd:documentation>
+    <xsd:documentation>TotalTime: The assumed time that it takes to traverse the route (in minutes).</xsd:documentation>
+   </xsd:annotation>
+  <xsd:sequence>
+  <xsd:element name="Start" type="tns:Coordinate" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Vias" type="tns:ArrayOfVia" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Destination" type="tns:Coordinate" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Segments" type="tns:ArrayOfSegment" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="RouteID" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="TotalLength" type="xsd:int"  minOccurs="1" maxOccurs="1"/>
+  <xsd:element name="TotalTime" type="xsd:int"  minOccurs="1" maxOccurs="1"/>
+ </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="CalculateRouteResponse">
+   <xsd:annotation>
+    <xsd:documentation>CalculateRouteResponse contains the result of the calculateRoute operation.</xsd:documentation>
+    <xsd:documentation>The StartAddress, DestinationAddress and ViaAddresses fields contain the geocoded input addresses (geocoding was performed by Map24 Geocoder)</xsd:documentation>
+    <xsd:documentation>The calculated route is contained in the Route element.</xsd:documentation>
+   </xsd:annotation>
+  <xsd:sequence>
+  <xsd:element name="ResponseHeader" type="tns:ResponseHeader" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="StartAddress" type="tns:GeocodedAddress" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="DestinationAddress" type="tns:GeocodedAddress" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="ViaAddresses" type="tns:ArrayOfViaAddress" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Route" type="tns:Route" nillable="true" minOccurs="0" maxOccurs="1"/>
+ </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="RequestHeader">
+   <xsd:annotation>
+    <xsd:documentation>Every request to the Map24 Web services must enclose a RequestHeader.</xsd:documentation>
+    <xsd:documentation>The information that is passed in the RequestHeader is used for authenticating </xsd:documentation>
+    <xsd:documentation>the request and associating it with a Map24 session.</xsd:documentation>
+    <xsd:documentation>Map24ID: ID of the customer that uses the Map24 Web services.</xsd:documentation>
+    <xsd:documentation>ClientID: ID of the client that has initiated the request.</xsd:documentation>
+    <xsd:documentation>RequestID: ID of the request. Can be used for logging and debugging the request.</xsd:documentation>
+    <xsd:documentation>AuthenticationKey: May contain some encrypted code that will be evaluated</xsd:documentation>
+    <xsd:documentation>depending on the customer&apos;s settings (MD-5, RSA, etc.)</xsd:documentation>
+    <xsd:documentation>CustomerHashtable: You may fill this hashtable with customer-specific data.</xsd:documentation>
+    <xsd:documentation>This data will not be interpreted by the Map24 Web services and will be </xsd:documentation>
+    <xsd:documentation>returned in the response.</xsd:documentation>
+   </xsd:annotation>
+  <xsd:sequence>
+  <xsd:element name="Map24ID" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="ClientID" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="RequestID" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="AuthenticationKey" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="CustomerHashtable" type="tns:ArrayOfCustomerKeyValuePair" nillable="true" minOccurs="0" maxOccurs="1"/>
+ </xsd:sequence>
+</xsd:complexType>
+<xsd:simpleType name="RouteCalculationMode">
+   <xsd:annotation>
+    <xsd:documentation>CalculationMode may be either "shortest" or "fastest" (default). The shortest route is not necessarily the fastest.</xsd:documentation>
+   </xsd:annotation>
+  <xsd:restriction base="xsd:string">
+    <xsd:enumeration value="Fastest"/>
+    <xsd:enumeration value="Shortest"/>
+    <xsd:enumeration value="Matrix"/>
+  </xsd:restriction>
+</xsd:simpleType>
+<xsd:simpleType name="RoutingRequestVehicleType">
+   <xsd:annotation>
+    <xsd:documentation>The Vehicle Type.</xsd:documentation>
+    <xsd:documentation>Possible values: "Car" or "Pedestrian". In case of "Pedestrian" motorways are not used and one-way rules are ignored.</xsd:documentation>
+   </xsd:annotation>
+  <xsd:restriction base="xsd:string">
+    <xsd:enumeration value="Truck"/>
+    <xsd:enumeration value="Car"/>
+    <xsd:enumeration value="Pedestrian"/>
+  </xsd:restriction>
+</xsd:simpleType>
+<xsd:complexType name="RoutingRequestSpeedClassification">
+   <xsd:annotation>
+    <xsd:documentation>The assumed average speed on different road types (in kilometers per hour).</xsd:documentation>
+    <xsd:documentation>The value is taken into account when calculating the fastest route.</xsd:documentation>
+    <xsd:documentation>Possible road types (with default setting in kilometers per hour): </xsd:documentation>
+    <xsd:documentation>Motorway (120), CountryRoad (60), CityRoad (40), Ferry(20)</xsd:documentation>
+   </xsd:annotation>
+  <xsd:sequence>
+  <xsd:element name="Motorway" type="xsd:int"  minOccurs="1" maxOccurs="1"/>
+  <xsd:element name="CountryRoad" type="xsd:int"  minOccurs="1" maxOccurs="1"/>
+  <xsd:element name="CityRoad" type="xsd:int"  minOccurs="1" maxOccurs="1"/>
+  <xsd:element name="Ferry" type="xsd:int"  minOccurs="1" maxOccurs="1"/>
+ </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="Address">
+   <xsd:annotation>
+    <xsd:documentation>A common non-geocoded address.</xsd:documentation>
+    <xsd:documentation>An Address element contains the subelements Country, </xsd:documentation>
+    <xsd:documentation>State, County, City, ZIP, Street and HouseNo.</xsd:documentation>
+   </xsd:annotation>
+  <xsd:sequence>
+  <xsd:element name="ID" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="HouseNo" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Street" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="ZIP" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="City" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="District" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="County" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="State" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Country" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+ </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="CoordinateAndAddress">
+   <xsd:annotation>
+    <xsd:documentation>A point on the map that is specified either by a coordinate or an address.</xsd:documentation>
+    <xsd:documentation>Address means a common non-geocoded address. </xsd:documentation>
+    <xsd:documentation>Coordinate is a longitude/latitude pair in decimal degrees and minutes (WGS 84 format).</xsd:documentation>
+   </xsd:annotation>
+  <xsd:sequence>
+  <xsd:element name="Address" type="tns:Address" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Coordinate" type="tns:Coordinate" nillable="true" minOccurs="0" maxOccurs="1"/>
+ </xsd:sequence>
+</xsd:complexType>
+<xsd:simpleType name="CalculateRouteRequest_ViaPointProperty">
+  <xsd:restriction base="xsd:string">
+    <xsd:enumeration value="TRANSIT"/>
+    <xsd:enumeration value="EXACT"/>
+  </xsd:restriction>
+</xsd:simpleType>
+<xsd:complexType name="ArrayOfCalculateRouteRequest_ViaPointProperty">
+  <xsd:sequence>
+     <xsd:element name="CalculateRouteRequest_ViaPointProperty" type="xsd:string" minOccurs="1" maxOccurs="unbounded" />
+  </xsd:sequence> 
+</xsd:complexType>
+<xsd:complexType name="CalculateRouteRequest_ViaPoint">
+   <xsd:annotation>
+    <xsd:documentation>When specifying via points in a calculateRoute operation, the Route will be calculated along the specified via points.</xsd:documentation>
+    <xsd:documentation>It is possible to specify either the coordinates or the address of the via points. If addresses are specified,the coordinates will be calculated from the address using the Map24 Geocoder.</xsd:documentation>
+    <xsd:documentation>If ViaPointProperty TRANSIT is set, the route will pass by this point, but not necessarily exactly match the point.TransitRadius specifies how far the route can be away from the via point.</xsd:documentation>
+   </xsd:annotation>
+  <xsd:sequence>
+  <xsd:element name="Address" type="tns:Address" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Coordinate" type="tns:Coordinate" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="ViaPointProperties" type="tns:ArrayOfCalculateRouteRequest_ViaPointProperty" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="TransitRadius" type="xsd:int"  minOccurs="1" maxOccurs="1"/>
+ </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="ArrayOfCalculateRouteRequest_ViaPoint">
+  <xsd:sequence>
+     <xsd:element name="CalculateRouteRequest_ViaPoint" type="tns:CalculateRouteRequest_ViaPoint" minOccurs="1" maxOccurs="unbounded" />
+  </xsd:sequence> 
+</xsd:complexType>
+<xsd:complexType name="CalculateRouteRequest">
+   <xsd:annotation>
+    <xsd:documentation>CalculateRouteRequest holds the parameters for a calculateRoute operation.</xsd:documentation>
+    <xsd:documentation>The Map24 Routing Service calculates a route from the start to the destination node along the via points. It is possible to specify either the coordinates or the address for each of these points. If addresses are specified,  the coordinates will be calculated from the address using the Map24 Geocoder.</xsd:documentation>
+    <xsd:documentation>CalculationMode: Either &quot;Shortest&quot; or &quot;Fastest&quot; (default).</xsd:documentation>
+    <xsd:documentation>VehicleType: Either &quot;Car&quot; (default) or &quot;Pedestrian&quot;.</xsd:documentation>
+    <xsd:documentation>Start: The start point of the route (either coordinate or address). Destination: The destination point of the route (either coordinate or address).Via Points: Via points of the route (either coordinate or address).</xsd:documentation>
+    <xsd:documentation>IgnoreWaypoints: TRUE: Only one coordinate per route segment will be returned. FALSE (default): All waypoints are returned.</xsd:documentation>
+    <xsd:documentation>DescriptionLanguage: ISO language code for the textual route description. Default: The language associated with the Map24ID is used.</xsd:documentation>
+    <xsd:documentation>The following description languages are supported: cs, de, dk, en, es, fi, fl, fr, it, nl, no, pl, pt, ru, sv, tr</xsd:documentation>
+    <xsd:documentation>The distance unit used with these ISO codes is kilometers, miles will be applied for the languages en_gb, en_us, se, us.</xsd:documentation>
+    <xsd:documentation>MinQualityOfGeocodeResults: If the route&apos;s points are specified by an address, this field specifies the minimum quality of the result.</xsd:documentation>
+    <xsd:documentation>If the geocoded address does not meet this quality, the route will not be calculated. Default quality: Street level.</xsd:documentation>
+    <xsd:documentation>Properties: Key: &quot;DetailedRoute&quot;, Value: &quot;TRUE&quot;: The response will contain the city districts as well as more detailed information about streets outside of built-up areas than in the compact version.</xsd:documentation>
+    <xsd:documentation>ATTENTION: Field Vias is DEPREACTED and will not be supported in Map24 Web services v1.6 or higher.</xsd:documentation>
+   </xsd:annotation>
+  <xsd:sequence>
+  <xsd:element name="MaxNoOfGeocodeAlternatives" type="xsd:int"  minOccurs="1" maxOccurs="1"/>
+  <xsd:element name="CalculationMode" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="VehicleType" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="SpeedClassification" type="tns:RoutingRequestSpeedClassification" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="IgnoreWaypoints" type="xsd:boolean"  minOccurs="1" maxOccurs="1"/>
+  <xsd:element name="IgnoreDescription" type="xsd:boolean"  minOccurs="1" maxOccurs="1"/>
+  <xsd:element name="DescriptionLanguage" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Start" type="tns:CoordinateAndAddress" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Destination" type="tns:CoordinateAndAddress" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Vias" type="tns:ArrayOfVia" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="ViaPoints" type="tns:ArrayOfCalculateRouteRequest_ViaPoint" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="LoadTMCs" type="xsd:boolean"  minOccurs="1" maxOccurs="1"/>
+  <xsd:element name="RoutingServiceID" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="MinQualityOfGeocodeResults" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Properties" type="tns:ArrayOfProperty" nillable="true" minOccurs="0" maxOccurs="1"/>
+ </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="FetchRouteResponse">
+   <xsd:annotation>
+    <xsd:documentation>FetchRouteResponse is the response of the Routing-Services method fetchRoute(FetchRouteRequest)</xsd:documentation>
+    <xsd:documentation>Field Route is the actual Route, it may be empty if no Route could be found for the given RouteID.</xsd:documentation>
+   </xsd:annotation>
+  <xsd:sequence>
+  <xsd:element name="ResponseHeader" type="tns:ResponseHeader" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Route" type="tns:Route" nillable="true" minOccurs="0" maxOccurs="1"/>
+ </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="FetchRouteRequest">
+   <xsd:annotation>
+    <xsd:documentation>FetchRouteRequest holds the parameters for retrieving a previously calculated Route from the Routing service.</xsd:documentation>
+    <xsd:documentation>RouteID: ID of the previously calculated route.</xsd:documentation>
+    <xsd:documentation>IgnoreWaypoints: TRUE: Only one coordinate per route segment will be returned. FALSE (default): All waypoints are returned.</xsd:documentation>
+    <xsd:documentation>DescriptionLanguage: ISO language code for the textual route description. Default: The language associated with the Map24ID is used.</xsd:documentation>
+    <xsd:documentation>The following description languages are supported: cs, de, dk, en, es, fi, fl, fr, it, nl, no, pl, pt, ru, sv, tr</xsd:documentation>
+    <xsd:documentation>The distance unit used with these ISO codes is kilometers, miles will be applied for the languages en_gb, en_us, se, us.</xsd:documentation>
+   </xsd:annotation>
+  <xsd:sequence>
+  <xsd:element name="RouteID" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="SpeedClassification" type="tns:RoutingRequestSpeedClassification" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="IgnoreWaypoints" type="xsd:boolean"  minOccurs="1" maxOccurs="1"/>
+  <xsd:element name="LoadTMCs" type="xsd:boolean"  minOccurs="1" maxOccurs="1"/>
+  <xsd:element name="DescriptionLanguage" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="RoutingServiceID" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Properties" type="tns:ArrayOfProperty" nillable="true" minOccurs="0" maxOccurs="1"/>
+ </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="FetchRouteLinksResponse">
+   <xsd:annotation>
+    <xsd:documentation>FetchRouteLinksResponse contains the response of the fetchRouteLinks operation</xsd:documentation>
+    <xsd:documentation>Coordinates: The coordinates of the route segments.</xsd:documentation>
+   </xsd:annotation>
+  <xsd:sequence>
+  <xsd:element name="ResponseHeader" type="tns:ResponseHeader" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="RouteID" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Coordinates" type="tns:CoordinatesArray" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="MapCoordinates" type="tns:MapCoordinatesArray" nillable="true" minOccurs="0" maxOccurs="1"/>
+ </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="FetchRouteLinksRequest">
+   <xsd:annotation>
+    <xsd:documentation>FetchRouteLinksRequest holds the parameters for the fetchRouteLinks operation.</xsd:documentation>
+   </xsd:annotation>
+  <xsd:sequence>
+  <xsd:element name="RouteID" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="RoutingServiceID" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="RequestProperties" type="tns:ArrayOfProperty" nillable="true" minOccurs="0" maxOccurs="1"/>
+ </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="FetchRouteShapeResponse">
+   <xsd:annotation>
+    <xsd:documentation>FetchRouteShapeResponse is the response of the fetchRouteShape operation.</xsd:documentation>
+    <xsd:documentation>Coordinates: The shape points of each route segment of a calculated route.</xsd:documentation>
+   </xsd:annotation>
+  <xsd:sequence>
+  <xsd:element name="ResponseHeader" type="tns:ResponseHeader" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="RouteID" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Coordinates" type="tns:CoordinatesArray" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="MapCoordinates" type="tns:MapCoordinatesArray" nillable="true" minOccurs="0" maxOccurs="1"/>
+ </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="FetchRouteShapeRequest">
+   <xsd:annotation>
+    <xsd:documentation>FetchRouteShapeRequest holds the parameters for the fetchRouteShape operation.</xsd:documentation>
+   </xsd:annotation>
+  <xsd:sequence>
+  <xsd:element name="RouteID" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="RoutingServiceID" type="xsd:string" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="RequestProperties" type="tns:ArrayOfProperty" nillable="true" minOccurs="0" maxOccurs="1"/>
+ </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="CalculateRoutesIsolineResponse">
+   <xsd:annotation>
+    <xsd:documentation>CalculateRoutesIsolineResponse is the response of the calculateRoutesIsoline operation.</xsd:documentation>
+   </xsd:annotation>
+  <xsd:sequence>
+  <xsd:element name="ResponseHeader" type="tns:ResponseHeader" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Start" type="tns:Coordinate" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="TravelTime" type="xsd:int" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="TravelDistance" type="xsd:int" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Isoline" type="tns:CoordinatesArray" nillable="true" minOccurs="0" maxOccurs="1"/>
+ </xsd:sequence>
+</xsd:complexType>
+<xsd:complexType name="CalculateRoutesIsolineRequest">
+   <xsd:annotation>
+    <xsd:documentation>CalculateRoutesIsolineRequest holds the parameters for the calculateRoutesIsoline operation.</xsd:documentation>
+    <xsd:documentation>TravelTime (unit: seconds)</xsd:documentation>
+   </xsd:annotation>
+  <xsd:sequence>
+  <xsd:element name="Start" type="tns:Coordinate" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="TravelTime" type="xsd:int" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="TravelDistance" type="xsd:int" nillable="true" minOccurs="0" maxOccurs="1"/>
+  <xsd:element name="Properties" type="tns:ArrayOfProperty" nillable="true" minOccurs="0" maxOccurs="1"/>
+ </xsd:sequence>
+</xsd:complexType>
+    </xsd:schema>
+  </types>
+  <message name="calculateRouteRequest" >
+    <part name="RequestHeader" type="tns:RequestHeader" />
+    <part name="CalculateRouteRequest" type="tns:CalculateRouteRequest" />
+  </message>
+  <message name="calculateRouteResponse" >
+    <part name="CalculateRouteResponse" type="tns:CalculateRouteResponse" />
+  </message>
+  <message name="fetchRouteRequest" >
+    <part name="RequestHeader" type="tns:RequestHeader" />
+    <part name="FetchRouteRequest" type="tns:FetchRouteRequest" />
+  </message>
+  <message name="fetchRouteResponse" >
+    <part name="FetchRouteResponse" type="tns:FetchRouteResponse" />
+  </message>
+  <message name="fetchRouteLinksRequest" >
+    <part name="RequestHeader" type="tns:RequestHeader" />
+    <part name="FetchRouteLinksRequest" type="tns:FetchRouteLinksRequest" />
+  </message>
+  <message name="fetchRouteLinksResponse" >
+    <part name="FetchRouteLinksResponse" type="tns:FetchRouteLinksResponse" />
+  </message>
+  <message name="fetchRouteShapeRequest" >
+    <part name="RequestHeader" type="tns:RequestHeader" />
+    <part name="FetchRouteShapeRequest" type="tns:FetchRouteShapeRequest" />
+  </message>
+  <message name="fetchRouteShapeResponse" >
+    <part name="FetchRouteShapeResponse" type="tns:FetchRouteShapeResponse" />
+  </message>
+  <message name="calculateRoutesIsolineRequest" >
+    <part name="RequestHeader" type="tns:RequestHeader" />
+    <part name="CalculateRoutesIsolineRequest" type="tns:CalculateRoutesIsolineRequest" />
+  </message>
+  <message name="calculateRoutesIsolineResponse" >
+    <part name="CalculateRoutesIsolineResponse" type="tns:CalculateRoutesIsolineResponse" />
+  </message>
+  <portType name="Map24RoutingPortType" >
+    <operation name="calculateRoute" >
+    <!-- The method calculateRoute is for calculating a route from a start point to an end point via optional via points. -->
+      <input message="tns:calculateRouteRequest" />
+      <output message="tns:calculateRouteResponse" />
+    </operation>
+    <operation name="fetchRoute" >
+    <!-- use this method to retrieve a opreviously calculated Route -->
+    <!-- from the Routing-Engine. -->
+    <!-- The flag IgnoreWaypoints indicates if the Route-polygons geometry -->
+    <!-- shall be returned and is set to TRUE by default. -->
+      <input message="tns:fetchRouteRequest" />
+      <output message="tns:fetchRouteResponse" />
+    </operation>
+    <operation name="fetchRouteLinks" >
+    <!-- Method fetchRouteLinks is for retrieving the coordinates -->
+    <!-- along the nodes of the Segments from the RouteID of a -->
+    <!-- previously calculated Route. -->
+      <input message="tns:fetchRouteLinksRequest" />
+      <output message="tns:fetchRouteLinksResponse" />
+    </operation>
+    <operation name="fetchRouteShape" >
+    <!-- Method fetchRouteShape is for retrieving the coordinates -->
+    <!-- along the nodes of the Shape from the RouteID of a -->
+    <!-- previously calculated Route. -->
+      <input message="tns:fetchRouteShapeRequest" />
+      <output message="tns:fetchRouteShapeResponse" />
+    </operation>
+    <operation name="calculateRoutesIsoline" >
+    <!-- Method calculateRoutesIsoline returns the Border of an area that can be reached from a starting-point within a certain time. -->
+      <input message="tns:calculateRoutesIsolineRequest" />
+      <output message="tns:calculateRoutesIsolineResponse" />
+    </operation>
+  </portType>
+  <binding name="Map24RoutingBinding" type="tns:Map24RoutingPortType" >
+    <soap:binding style="rpc" transport="http://schemas.xmlsoap.org/soap/http" />
+      <operation name="calculateRoute" >
+        <soap:operation soapAction="urn:Map24Routing#calculateRoute" />
+        <input>
+          <soap:body namespace="urn:Map24Routing" use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" />
+        </input>
+        <output>
+          <soap:body namespace="urn:Map24Routing" use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" />
+        </output>
+      </operation>
+      <operation name="fetchRoute" >
+        <soap:operation soapAction="urn:Map24Routing#fetchRoute" />
+        <input>
+          <soap:body namespace="urn:Map24Routing" use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" />
+        </input>
+        <output>
+          <soap:body namespace="urn:Map24Routing" use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" />
+        </output>
+      </operation>
+      <operation name="fetchRouteLinks" >
+        <soap:operation soapAction="urn:Map24Routing#fetchRouteLinks" />
+        <input>
+          <soap:body namespace="urn:Map24Routing" use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" />
+        </input>
+        <output>
+          <soap:body namespace="urn:Map24Routing" use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" />
+        </output>
+      </operation>
+      <operation name="fetchRouteShape" >
+        <soap:operation soapAction="urn:Map24Routing#fetchRouteShape" />
+        <input>
+          <soap:body namespace="urn:Map24Routing" use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" />
+        </input>
+        <output>
+          <soap:body namespace="urn:Map24Routing" use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" />
+        </output>
+      </operation>
+      <operation name="calculateRoutesIsoline" >
+        <soap:operation soapAction="urn:Map24Routing#calculateRoutesIsoline" />
+        <input>
+          <soap:body namespace="urn:Map24Routing" use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" />
+        </input>
+        <output>
+          <soap:body namespace="urn:Map24Routing" use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" />
+        </output>
+      </operation>
+  </binding>
+  <service name="Map24Routing" >
+    <port name="Map24RoutingPort" binding="tns:Map24RoutingBinding" >
+      <soap:address location="http://maptp11.map24.com/map24/webservices1.5?soap=Map24Routing" />    </port>
+  </service>
+</definitions>

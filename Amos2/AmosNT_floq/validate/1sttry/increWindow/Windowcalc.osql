@@ -1,0 +1,133 @@
+/* vectors of position reports:
+	0: type
+	1: time
+	2: vid
+	3: speed
+	4: xway
+	5: lane
+	6: direction
+	7: segment
+	8: position
+*/
+
+create function inwindow(Window w) -> Bag of Object as
+	foreign 'inwindowbf';
+
+/* position reports stream */
+create function input(Charstring filename) -> Bag of Vector as
+  select v from Vector of Integer v where v[0] /*report type*/ = 0 and v in readfile(filename);
+
+/* aggregation on stopped cars */
+create function stopped_cars(Bag bv) -> Bag of <Vector, Integer> as
+  groupby((select {v[2] /*vid*/, v[4] /*xway*/, v[5] /*lane*/, v[6] /*dir*/, v[7] /*seg*/, v[8] /*pos*/}, v[2] /*vid*/
+	   from Vector of Integer v where v in bv and v[3] /*speed*/ = 0),
+	   #'count');
+
+/* accident detection */
+/* bv: all the position reports (represented as vectors) within two minutes */
+create function acc_detection_helper(Bag bv) -> Bag of Vector /* {min, xway, dir, seg}*/ as
+  select {minute, xway, dir, seg}
+	from Integer minute, Integer xway, Integer dir, Integer seg, Integer vidcounts
+	where <{xway, dir, seg}, vidcounts> in
+		groupby((select {v[1]/*xway*/, v[3]/*dir*/, v[4]/*seg*/}, v[0]/*vid*/
+			 from Vector of Integer v
+			 where v in (select v from Vector of Integer v, Integer counts
+			 		      where <v, counts> in stopped_cars(bv)
+			 		      and counts > 3)), #'count')
+	and vidcounts > 1
+	and minute = ceiling(div(maxagg(select v[1]/*time*/ from Vector of Integer v where v in bv), 60));
+
+/****************************** comment out ****************************************************************
+create function acc_detection(Window ww) -> Bag of Vector as
+  select acc_detection_helper(inwindow(ww));
+
+create function w_window_acc(Charstring filename) -> Bag of Vector as
+  select acc_detection(ww)
+	from window ww
+	where ww in windowagg_c(windowagg_t(input(filename), 1), 120, 1);
+************************************************************************************************************/
+
+create function w_window_acc(Charstring filename) -> Bag of Vector as
+  select acc_detection_helper(inwindow(cast(inwindow(ww) as window)))
+	from window ww
+	where ww = windowagg_c(windowagg_t(input(filename), 1), 120, 1);
+
+create function w_create_window(Charstring filename, Integer size, Integer slide) -> Bag of Window as
+  windowagg_c(windowagg_t(input(filename), 1), size, slide);
+
+create function w_create_window_c(Charstring filename, Integer size, Integer slide) -> Bag of Window as
+  windowagg_c(input(filename), size, slide);
+
+
+/* the measurements of creating windows */
+/* the number rarely changes */
+create function NEW_C_T(Integer size, Integer slide) -> Integer as
+  count(w_create_window("lr/data/cdp_mid15.out", size, slide));
+
+create function NEW_C(Integer size, Integer slide) -> Integer as
+  count(w_create_window_c("lr/data/cdp_mid15.out", size, slide));
+
+/* the measurements of accident detection */
+/* the execution time keeps increasing */
+create function new_w_acc() -> Integer as
+  count(w_window_acc("lr/data/cdp_mid15.out"));
+
+NEW_C_T(120, 1);
+/* 0.597 s */
+
+NEW_C_T(350, 1);
+/* 0.613 s */
+
+lisp;
+
+(rptq 10 (osql "NEW_C_T(120, 1);"))
+; 23.828 s
+
+(rptq 10 (osql "NEW_C_T(350, 1);"))
+; 23.857 s
+
+:osql
+
+NEW_C(120, 1);
+/* 0.712 s */
+
+NEW_C(350, 1);
+/* 0.737 s */
+
+lisp;
+
+(rptq 10 (osql "NEW_C(120, 1);"))
+; 26.511 s
+
+(rptq 10 (osql "NEW_C(350, 1);"))
+; 25.791 s
+
+:osql
+
+new_w_acc();
+
+lisp;
+
+(rptq 10 (osql "new_w_acc();"))
+; forever!!! 2462.33 s
+
+:osql
+
+quit;
+
+create function test_windowagg_t() -> Integer
+  as count(windowagg_t(input("lr/data/cdp_mid15.out"), 1));
+
+test_windowagg_t();
+
+create function test_windowagg_c(Integer size, Integer slide) -> Integer
+  as count(windowagg_c(windowagg_t(input("lr/data/cdp_mid15.out"), 1), size, slide));
+
+test_windowagg_c(120, 1);
+
+create function test_inwindow() -> Integer
+  as select count(inwindow(cast(inwindow(ww) as window)))
+	from window ww
+	where ww = windowagg_c(windowagg_t(input("lr/data/cdp_mid15.out"), 1), 120, 1);
+
+count(test_inwindow());

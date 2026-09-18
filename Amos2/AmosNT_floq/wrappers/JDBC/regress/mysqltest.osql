@@ -1,0 +1,69 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Erik Zeitler, UDBL
+ * $RCSfile: mysqltest.osql,v $
+ * $Revision: 1.15 $ $Date: 2013/01/05 17:49:38 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Test of MySQL jdbc
+ *
+ ****************************************************************************
+ * $Log: mysqltest.osql,v $
+ * Revision 1.15  2013/01/05 17:49:38  torer
+ * Added mapped SQL test
+ *
+ * Revision 1.14  2012/10/21 15:13:34  torer
+ * Added comment on normal MySQL port
+ *
+ * Revision 1.13  2012/05/23 08:32:39  torer
+ * Silent loading of SQL scripts
+ *
+ * Revision 1.12  2012/04/16 07:59:55  thatr500
+ * added numerical translator into regression test.
+ * It can be enabled by setting two env mexi, and numwrapper ON
+ *
+ * Revision 1.11  2010/05/31 18:09:00  fred2431
+ * Start local MySQL server before running test
+ *
+ * Revision 1.10  2008/08/07 19:38:15  torer
+ * Making regression scripts DBMS independent
+ *
+ * Revision 1.9  2008/08/07 17:37:09  torer
+ * MySQL wrapper passes all regression tests
+ *
+ * Revision 1.8  2008/08/07 17:22:10  torer
+ * One more regression test works under MySQL
+ *
+ * Revision 1.7  2008/07/31 20:30:05  torer
+ * Added SQL script to load regression database
+ *
+ *
+ ****************************************************************************/
+
+set :a = jdbc("ibds", "com.mysql.jdbc.Driver");
+set :b = jdbc("ibds2", "com.mysql.jdbc.Driver");
+
+set :dburl = "jdbc:mysql://localhost:"+getenv("PORTDB")+"/";
+/* PORTDB for MySQL is usually 3306:
+set :dburl = "jdbc:mysql://localhost:3306/";
+*/
+
+connect(:a, :dburl + "regress", "regress", "regress");
+connect(:b, :dburl + "regress", "regress", "regress");
+
+count(read_sql(:a, "mysqldrop.sql"));
+count(read_sql(:a, "regress.sql"));
+
+load_lisp("sqlmap.lsp"); /* Pure SQL mapping */
+< 'regress1.osql';
+< 'testConstructor.osql';
+< 'regress2.osql';
+< 'stress.osql';
+
+disconnect(:a); 
+disconnect(:b);
+
+< 'num.osql';
+
+quit;

@@ -1,0 +1,198 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Tore Risch, Silvia Stefanova, UDBL
+ * $RCSfile: paroptional.osql,v $
+ * $Revision: 1.1 $ $Date: 2012/04/27 18:44:19 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Testing parallel optional
+ *
+ ****************************************************************************
+ * $Log: paroptional.osql,v $
+ * Revision 1.1  2012/04/27 18:44:19  torer
+ * More tests for parallel optional()
+ *
+ ****************************************************************************/
+
+/*****************************************************************************/
+/***                     Official tests                                    ***/
+/*****************************************************************************/
+
+create function u(object s, object p, object u)->Boolean;
+add u("<a>", "<foaf:name>", "Alice")=true;
+add u("<a>", "<foaf:homepage>",   "<alice>")=true;
+add u("<b>", "<foaf:name>",       "Bob")= true;
+add u("<b>", "<foaf:mbox>",       "<mailto:bob>")=true;
+
+/*
+SELECT ?name ?mbox ?hpage
+WHERE  { ?x foaf:name  ?name .
+         OPTIONAL { ?x foaf:mbox ?mbox } .
+         OPTIONAL { ?x foaf:homepage ?hpage }
+       }
+*/
+lisp;
+
+(checkequal "Official optional"
+	    ((osql "
+select name, mbox, hpage
+from object name, object mbox, object hpage, object x
+where u(x,'<foaf:name>',name) and
+      optional(u(x, '<foaf:mbox>', mbox)) and
+      optional(u(x, '<foaf:homepage>', hpage));")
+	     '(("Bob" "<mailto:bob>" NIL) ("Alice" NIL "<alice>")))
+	    )
+:osql
+
+/* Result:
+Amos:
+("Bob","<mailto:bob>",NIL)
+("Alice",NIL,"<alice>")
+*/
+
+/*****************************************************************************/
+/***                       Our tests                                       ***/
+/*****************************************************************************/
+
+create function t(Object s, Object p, Object o) -> Boolean;
+add t("<p:a>",   "<p:x>",   "<p:x1>" )=true;
+add t("<p:a>",   "<p:x>",   "<p:x2>" )=true;
+add t("<p:a>",   "<p:x>",   "<p:x3>" )=true;
+add t("<p:x1>",  "<p:y>",   "<p:x1y>")=true;
+add t("<p:x2>",  "<p:y2>",  "<p:x2y>")=true;
+add t("<p:x2y>", "<p:z2>",  "z"      )=true;
+add t("<p:x2>",  "<p:y>",   "<p:x2y>")=true;
+
+/************************* Query 1 **************************** 
+SELECT ?x ?y ?z
+WHERE { OPTIONAL { ?x p:y ?y } .
+        OPTIONAL { ?x p:y2 ?y .
+                   ?y p:z2 ?z }   } ;
+*/
+lisp;
+(checkequal "Query 1"
+	    ((osql "
+select x, y, z from Object x, Object y, Object z
+where optional(t(x, '<p:y>', y)) and
+      optional(t(x, '<p:y2>', y) and
+               t(y, '<p:z2>', z));")
+	     '(("<p:x1>" "<p:x1y>" NIL) ("<p:x2>" "<p:x2y>" "z"))))
+:osql
+
+/* Results:
+Amos:
+("<p:x1>","<p:x1y>",NIL)
+("<p:x2>","<p:x2y>","z")
+
+Virtuoso:
+(#[URI "http://example.org/x1"],#[URI "http://example.org/x1y"],#[UB])
+(#[URI "http://example.org/x2"],#[URI "http://example.org/x2y"],(#[USTR "z"])
+
+SSDM:
+(#[URI "http://example.org/x1"],#[URI "http://example.org/x1y"],#[UB])
+(#[URI "http://example.org/x2"],#[URI "http://example.org/x2y"],#[UB]) Wrong!
+*/
+
+/************************* Query 2 **************************** 
+SELECT ?x ?y ?z
+WHERE { OPTIONAL { ?x p:yy ?y } .
+        OPTIONAL { ?x p:y2 ?y .
+                   ?y p:z2 ?z }       } ;
+*/
+lisp;
+(checkequal "Query 2"
+	    ((osql "
+select x, y, z from Object x, Object y, Object z
+where optional(t(x, '<p:yy>', y)) and
+      optional(t(x, '<p:y2>', y) and
+               t(y, '<p:z2>', z));")
+	     '(("<p:x2>" "<p:x2y>" "z"))))
+:osql
+
+/* Results:
+Amos:
+("<p:x2>","<p:x2y>","z")
+
+Virtuoso:
+(#[UB],#[UB],#[UB]) Wrong
+
+SSDM:
+(#[UB],#[UB],#[UB]) Wrong
+*/
+
+/************************* Query 3 **************************** 
+SELECT ?x ?y ?z
+WHERE {  OPTIONAL { ?x p:y2 ?y .
+                    ?y p:z2 ?z }
+         OPTIONAL { ?x p:yy ?y } .      };
+*/
+lisp;
+(checkequal "Query 3"
+	    ((osql "
+select x, y, z from Object x, Object y, Object z
+where optional(t(x, '<p:y2>', y) and
+               t(y, '<p:z2>', z)) and
+      optional(t(x, '<p:yy>', y));")
+	     '(("<p:x2>" "<p:x2y>" "z"))))
+:osql
+
+/* Results:
+Amos:
+("<p:x2>","<p:x2y>","z")
+
+Virtuoso:
+(#[URI "http://example.org/x2"],#[URI "http://example.org/x2y"], (#[USTR "z"] )
+
+SSDM:
+(#[UB],#[UB],#[UB]) Wrong 
+*/
+
+/************************* Query 4 **************************** 
+SELECT ?x ?y ?z
+WHERE { ?x p:y ?z .
+        OPTIONAL { ?x p:yy ?y } .
+        OPTIONAL { ?x p:y2 ?y .
+                   ?y p:z2 ?z }  } ;
+*/
+lisp;
+(checkequal "Query 4"
+	    ((osql "
+select x, y, z from Object x, Object y, Object z
+where t(x,'<p:y>',z) and
+      optional(t(x, '<p:yy>', y)) and
+      optional(t(x, '<p:y2>', y) and
+               t(y, '<p:z2>', z));")
+	     '(("<p:x1>" NIL "<p:x1y>") ("<p:x2>" NIL "<p:x2y>"))))
+:osql
+
+/* Results:
+Amos:
+("<p:x1>",NIL,"<p:x1y>")
+("<p:x2>",NIL,"<p:x2y>")
+
+Virtuoso:
+(#[URI "http://example.org/x1"],#[UB],#[URI "http://example.org/x1y"])
+(#[URI "http://example.org/x2"],#[UB],#[URI "http://example.org/x2y"])
+
+SSDM:
+(#[URI "http://example.org/x1"],#[UB],#[URI "http://example.org/x1y"])
+(#[URI "http://example.org/x2"],#[UB],#[URI "http://example.org/x2y"])
+*/
+
+/************************* Query 5 **************************** 
+lisp;
+(checkequal "Query 5"
+	    ((osql "
+select x, y, z from Object x, Object y, Object z
+where optional(t(x, '<p:y2>', y) and
+               t(y, '<p:z3>', z));")
+	     nil))
+:osql
+
+/* Results:
+Amos:
+<empty>
+*/
+
+rollback;

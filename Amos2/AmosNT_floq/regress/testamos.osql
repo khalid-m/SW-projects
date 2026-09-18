@@ -1,0 +1,1074 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 1993-2006 Tore Risch, EDSLAB, UDBL
+ * $RCSfile: testamos.osql,v $
+ * $Revision: 1.113 $ $Date: 2013/02/17 14:42:50 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Testing basic AmosQL functionality
+ ****************************************************************************
+ * $Log: testamos.osql,v $
+ * Revision 1.113  2013/02/17 14:42:50  torer
+ * New functiion identity(Object x)->Object
+ * Removed problem with queries coercing numbers to integers
+ *
+ * Revision 1.112  2013/01/30 16:53:32  minzh812
+ * remove flag _BigIntegrator-enabled_.
+ *
+ * Revision 1.111  2012/08/15 18:23:14  torer
+ * New function
+ * (CREATE-TRANSIENT-FOREIGN-FUNCTION ARGTYPES RESTYPES DEF &OPTIONAL COST)
+ * to create transient foreign function which is garbage collected when
+ * no longer referenced
+ *
+ * Revision 1.110  2012/08/14 19:05:02  torer
+ * Test bug
+ *
+ * Revision 1.109  2012/08/14 18:56:25  torer
+ * Testing variable aliasing at view expansion
+ *
+ * Revision 1.108  2012/05/15 19:28:29  torer
+ * result -> return
+ *
+ * Revision 1.107  2012/05/15 13:44:09  torer
+ * BigIntegrator integrated
+ *
+ * Revision 1.106  2012/04/22 19:23:09  torer
+ * nil tolerant mapfunction + better regression testing of nil
+ *
+ * Revision 1.105  2011/12/14 20:07:07  torer
+ * Removed unnessecary coercions
+ *
+ * Revision 1.104  2011/04/01 16:57:07  torer
+ * Testing (type-of-expression '(cast ...))
+ *
+ * Revision 1.103  2011/01/27 11:26:16  torer
+ * Changed from <...> to SQL's (...) notation for tuples (much nicer)
+ *
+ * Revision 1.102  2010/09/08 18:08:30  torer
+ * Removed apply test
+ *
+ * Revision 1.101  2010/06/18 16:01:02  torer
+ * testing cast(nil as Boolean)
+ *
+ * Revision 1.100  2009/12/14 21:09:23  torer
+ * Occurs check
+ *
+ * Revision 1.99  2009/11/16 21:54:56  torer
+ * Strict use of in over bag (not =)
+ *
+ * Revision 1.98  2009/09/06 19:00:28  torer
+ * Tougher test for unused variables
+ *
+ * Revision 1.97  2009/09/04 18:55:11  torer
+ * Tougher declaration checking
+ *
+ * Revision 1.96  2009/04/29 20:51:29  torer
+ * Boolean values in foreign functions treated as other values
+ *
+ * Revision 1.95  2009/04/01 09:55:22  torer
+ * Remove type RESOURCE
+ *
+ * Revision 1.94  2008/12/06 12:41:51  torer
+ * First argument in concat overloading of '+' must be string, otherwise confusing
+ *
+ * Revision 1.93  2008/12/05 19:22:11  torer
+ * Error in string equation solving
+ *
+ * Revision 1.92  2008/12/05 18:34:13  torer
+ * plus(object,object)->Charstring implements concat
+ *
+ * Revision 1.91  2008/11/17 20:29:00  torer
+ * Testing general functional expressions
+ *
+ * Revision 1.90  2008/11/05 16:16:20  torer
+ * select after 'as' optional
+ *
+ * Revision 1.89  2008/09/27 10:58:50  torer
+ * Functional constants #'iota' <=> theresolvent('iota')
+ *
+ * Revision 1.88  2008/08/15 11:48:12  torer
+ * Testing transactional interface variables
+ *
+ * Revision 1.87  2008/03/04 18:46:38  torer
+ * Testing bag semantics for OR
+ *
+ * Revision 1.86  2007/11/04 17:06:18  torer
+ * Memory corruption in function PROCCALL
+ *
+ * Revision 1.85  2007/10/30 12:39:25  torer
+ * Testing apply
+ *
+ * Revision 1.84  2007/10/11 12:23:32  torer
+ * Predicate functions could not be used in select clauses
+ *
+ * Revision 1.83  2007/10/10 06:50:43  torer
+ * Removed test for - on strings
+ *
+ * Revision 1.82  2007/10/09 19:01:33  torer
+ * String - not commutative
+ *
+ * Revision 1.81  2007/10/09 18:19:15  torer
+ * Invertible string concatenation
+ *
+ * Revision 1.80  2007/10/08 09:49:12  torer
+ * Testing invertability of OID_NR
+ *
+ * Revision 1.79  2007/09/15 20:49:26  torer
+ * Testing casting under aggregation
+ *
+ * Revision 1.78  2007/05/29 17:44:48  torer
+ * remove f(x)=<y,z> ... now works
+ *
+ * Revision 1.77  2007/03/11 17:11:04  torer
+ * Clear error message when doing illegal update
+ *
+ * Revision 1.76  2007/02/18 10:22:38  torer
+ * SQRT(x) now returns only the positive root rather than both roots
+ *
+ * Revision 1.75  2007/01/07 00:26:43  torer
+ * Use of inferred vector types instead of casting
+ *
+ * Revision 1.74  2006/12/26 16:55:43  torer
+ * Coercion introduced
+ *
+ * Revision 1.73  2006/12/14 16:43:56  torer
+ * 1. Basic functions on type VECTOR into file lsp/vector.lsp
+ * 2. Comparisons on vectors element by element
+ *
+ * Revision 1.72  2006/09/08 17:47:57  torer
+ * sort functions cleaned up, generalized, and documented
+ *
+ * Revision 1.70  2006/07/28 11:09:56  torer
+ * Added regression test of optimizer
+ *
+ * Revision 1.69  2006/04/29 17:32:33  torer
+ * More general nested expressions in procedures
+ *
+ * Revision 1.68  2006/04/29 10:11:12  torer
+ * Check for duplicated or conflicting declarations in FROM clause
+ *
+ * Revision 1.67  2006/04/16 14:01:42  torer
+ * No integer arithmetics, as in SQL, i.e. 1/2 -> 0.5, 4/2 -> 2
+ *
+ * Revision 1.66  2006/04/15 15:18:08  torer
+ * Using Makefile rather than command procedure to generate parsers when needed
+ *
+ * Revision 1.65  2006/04/14 10:02:43  torer
+ * Strict function result tuple declarations using <...>
+ *
+ * Revision 1.64  2006/04/07 12:58:19  torer
+ * Bug fixed in multidirectional derived functions
+ *
+ ****************************************************************************/
+
+create function Nametype (Type o)-> Charstring n
+		 as select n where Name(o)=n;
+create function TypeOfName (Charstring n)-> Type 
+		 as select o from Type o where
+	 object(o) and n = Nametype(o);
+create function AgeOfPerson (Charstring p)-> Integer a as stored;
+create function MgrOfPerson (Charstring p)->Charstring m as stored;
+create function ageofmgr (Charstring p)-> Integer a
+		 as ageofperson(mgrofperson(p));
+create function AgeMgrOfPerson (Charstring p)->(Integer a,Charstring m)
+		 as select a,m 
+		 where a = AgeOfMgr(p) and m = MgrOfPerson(p);
+create function MgrAgeOfPerson(charstring p) -> (charstring mgr,integer age)
+		 as select mgr,age where (age,mgr) = agemgrofperson(p);
+create function MgrAgeOfPerson2 (charstring p)->(charstring mgr,integer age)
+		 as select mgr,age where mgr = mgrofperson(p)
+                     and age = ageofperson(p);
+create function sameage ()-> Charstring p
+		 as select p from Integer m,Integer a
+		 where a = m and m = ageofmgr(p)and a = ageofperson(p);
+create function sameage2 ()-> Charstring p
+		 as select p 
+                 where ageofmgr(p)=ageofperson(p);
+create function testr2(Charstring p)->Boolean b
+		 as AgeMgrOfPerson(p)=AgeMgrOfPerson(p);
+create function testr3(charstring p)->Boolean b
+		 as select from integer a,charstring m
+		 where  (a,m) = AgeMgrOfPerson(p) and
+			(m,a) = MgrAgeOfPerson(p);
+create function testr4 (Charstring p)-> Boolean b
+		 as MgrAgeOfPerson(p)=MgrAgeOfPerson2(p);
+create function eq (number x,number y)->boolean as x=y;
+create function tuple1 (integer i,integer j)->boolean
+		  as (i,j) = (j,i);
+create function tuple2 (integer i,integer j)-> integer k
+		 as select k where (i,j) = (j,k);
+create function foo (Charstring c) -> Integer i as stored;
+create function foo (Integer i)-> Integer j as stored;
+create function foo (Real r) -> Integer i as stored;
+create function streng() -> (charstring,charstring);
+set streng()=('HEJ','hej');
+declare Type :tmp;
+set :tmp = typeofname("TYPE");
+lisp;
+(debugging t)
+(checkequal
+ "basic"
+ ((caar(osql "#[OID 0];")) _object_)
+ ;; All system object names are stored in CAPITALIZED case
+ ((osql      "typenamed('object');") (list(list _object_)))
+ ((osql "nametype(:tmp);") '(("TYPE")))
+ ((osql "set ageofperson('Tore')=31;") nil)
+ ((osql "ageofperson('Tore');") '((31)))
+ ((osql "set ageofperson('Tore')=32;") nil)
+ ((osql "set ageofperson('Kalle')=31;") nil)
+ ((osql "ageofperson('Tore');") '((32)))
+ ((osql "set mgrofperson('Tore')='Ulla';") nil)
+ ((osql "set mgrofperson('Kalle')='Ulla';") nil)
+ ((osql "set mgrofperson('Ulla')='Vilhelm';") nil)
+ ((osql "set ageofperson('Vilhelm')=40;") nil)
+ ((osql "set ageofperson('Ulla')=32;") nil)
+ ((osql "select ma from Integer ma
+	        where ma = ageofperson(mgrofperson('Tore'));") 	'((32)))
+ ((osql "select p from Charstring p
+		where ageofperson(p)=
+		      ageofperson(mgrofperson(p));") '(("Tore")))
+ ((osql "select ageofperson('Tore');") '((32)))
+ ((osql "select ageofperson(p) from Charstring p
+		where p = mgrofperson('Tore');") '((32)))
+ ((osql "select ageofperson(p) from Charstring p 
+		where ageofperson(p) = ageofperson(mgrofperson(p));") '((32)))
+ ((osql "select ageofperson(mgrofperson('Tore'));") '((32)))
+ ((osql "ageofmgr('Kalle');") '((32)))
+ ((osql "MgrAgeOfPerson('Tore');") '(("Ulla" 32)))
+ ((osql "select MgrAgeOfPerson('Tore');") '(("Ulla" 32)))
+ ((osql "MgrAgeOfPerson2('Kalle');") '(("Ulla" 31)))
+ ((sorttuples(osql "select p,m from Charstring p,Charstring m
+			   where (32,m) = AgeMgrOfPerson(p);"))
+  '(("Kalle" "Ulla")("Tore" "Ulla")))
+ ((osql "sameage();") '(("Tore")))
+ ((osql "sameage2();") '(("Tore")))
+ ((osql "testr2('Tore');") '((TRUE)))
+ ((osql "testr2('Kalle');") '((TRUE)))
+ ((osql "testr2('Filip');") nil)
+ ((osql "testr3('Tore');") '((TRUE)))
+ ((osql "testr3('Filip');") nil)
+ ((osql "testr4('Tore');") '((TRUE)))
+ ((osql "testr4('Kalle');") nil)
+ ((osql "testr4('Filip');") nil)
+ ((osql "eq(1,1);") '((true)))
+ ((osql "eq(1,2);") nil)
+ ((osql "tuple1(1,2);") nil)
+ ((osql "tuple1(1,1);") '((true)))
+ ((osql "tuple2(1,2);") nil)
+ ((osql "tuple2(1,1);") '((1)))
+ ((osql "select true where streng() = (upper('hej'),'hej');") '((true)))
+ ((osql "remove streng()=(y,z) 
+         from Charstring y, Charstring z;") nil)
+ ((osql "set foo(1)=1;") nil)
+ ((osql "set foo('1')=2;") nil)
+ ((osql "set foo(1.1)=3;") nil)
+ ((osql "foo(1);") '((1)))
+ ((osql "foo('1');") '((2)))
+ ((osql "foo(1.1);") '((3)))
+ ((extent 'foo 'integer) '((1 1)))
+ ((extent 'foo 'real) '((1.1 3)))
+ ((sorttuples(extent 'sameage)) '(("Tore")))
+ ((sorttuples(extent 'testr2)) '(("Kalle") ("Tore") ("Ulla")))
+ )
+
+(checkequal "Casting"
+	    ((osql "cast('a' as integer);") '(("a")))
+            ((osql "cast(nil as boolean);") nil)
+	    ((osql "name(typeof(cast(nil as integer)));") '(("INTEGER")))
+	    ((osql "name(typesof(cast(nil as integer)));") 
+	     '(("INTEGER") ("NUMBER") ("LITERAL") ("OBJECT")))
+            ((osql "cast({1} as vector of integer);") '((#(1))))
+	    ((errstring (osql "cast({1,2,3} as vector of person);")) 
+	     "No object found named PERSON of type TYPE")
+            ((osql "sum(cast(iota(1,100) as number));") '((5050)))
+            ((oid-name (type-of-expression '(cast 1.1 (integer)))) 'integer)
+)
+
+:osql
+create type Person;
+create type Student under Person;
+create function Name (Person p)-> Charstring n as stored;
+create Person instances :p;
+create Student instances :s;
+set Name(:p)="Tore";
+set Name(:s)="Ulla";
+create function PersonNamed(Charstring nm)-> Person p
+		 as select p from Person p where Name(p)=nm;
+lisp;
+
+(defun ocomp (x y)(string< (oid-name x)(oid-name y)))
+
+(defun gettypel (l)
+  (mapcar (f/l (tp)(gettypenamed tp)) l))
+
+(checkequal 
+ "type hierarchy"
+ ((sort(oid-types amos_p)'ocomp)
+  (gettypel '(OBJECT PERSON USEROBJECT)))
+ ((sort(oid-types amos_s)'ocomp)
+  (gettypel
+   '(OBJECT PERSON STUDENT USEROBJECT)))
+ ((osql "Name(:p);") '(("Tore")))
+ ((osql "Name(:s);") '(("Ulla")))
+ ((caar(osql "PersonNamed('Tore');")) amos_p)
+ ((caar(osql "PersonNamed('Ulla');")) amos_s)
+ ((externalize (sort (osql "typesof(:s);")
+		     '(lambda (x y)(ocomp (car x)(car y)))))
+  '((OBJECT) (PERSON)(STUDENT)(USEROBJECT)))
+ ((null 
+   (osql "select f from function f where typeof(f)=typenamed('RELATION');"))
+  nil)
+ ((osql "select name(o) from type o 
+         where oid_nr(o) = oid_nr(typenamed('function'));") 
+  '(("FUNCTION")))
+ )
+
+(checkequal "arithmetics"
+	    ((osql "eq(1,2);") nil)
+	    ((osql "eq(1,1);") '((true)))
+	    ((osql "1+2;") '((3)))
+	    ((osql "1+2= 3;") '((true)))
+	    ((osql "1+2= 4;") nil)
+	    ((osql "1-2;") '((-1)))
+	    ((osql "select 2+3-(1+4);") '((0)))
+	    ((osql "select 3-1+5-2;") '((5)))
+					; foreign C functions
+            ((osql "typeof(:p)=typenamed('PERSON');") '((true)))
+            ((osql "identity(1+3.5)+identity(3);") '((7.5)))
+	    )
+
+(checkequal "Comparisons"
+	    ((osql "1=1.0;") '((true)))
+	    ((osql "1!=1.0;") nil)
+	    ((osql "{1}={1.0};") '((true)))
+	    ((osql "{1}!={1.0};") nil)
+	    ((osql "{12000}<{12001};") '((true)))
+	    ((osql "{12000}>{12001};") nil)
+	    ) 
+
+:osql
+create function ctof (Number c)->Number f
+		 as c * 9 / 5 + 32;
+lisp;
+
+(checkequal "constraints"  
+	    ((osql "select i from Integer i where 4 = 1+i;") '((3)))
+	    ((osql "select x,y from integer x,integer y
+			 where x + y = 3 and
+                               3 - y = 1;") '((1 2)))
+	    ((osql "ctof(26);") '((78.8)))
+	    ((osql "select c from Number c where 77 = ctof(c);") '((25)))
+	    ((osql "select c from Number c where 78 = ctof(c);")
+	     '((25.555555555555557)))
+	    )
+:osql
+create function managers()->Charstring m
+		 as select m from Charstring m,Charstring p
+		 where m = mgrofperson(p);
+create function undermanagers()->Charstring p
+		 as select p from Charstring p,Charstring m
+		 where m= mgrofperson(p);
+create function ageofmanagers()->Integer a
+		 as ageofperson(managers());
+create function ageofundermanagers()->Integer a
+		 as ageofperson(undermanagers());
+lisp;
+
+(checkequal "exists"
+	    ((sorttuples(osql "undermanagers();"))
+	     '(("Kalle") ("Tore") ("Ulla")))
+	    ((sorttuples(osql "managers();")) '(("Ulla") ("Ulla") ("Vilhelm")))
+	    ((sorttuples(osql "ageofmanagers();")) '((32) (32) (40)))
+	    ((sorttuples(osql "ageofundermanagers();")) '((31)(32)(32)))
+	    )
+:osql
+create function ortest (Charstring n)->integer a
+		 as select a from integer a
+		 where 	a=ageofperson(n) or
+			a=ageofperson("Tore");
+create function ortest2 (Charstring n)->integer a
+		 as select a from integer a
+		 where 	a=ageofmgr(n) or
+			a=ageofmgr("Tore");
+create function ortest3 (Charstring n)->Integer a
+		 as select a from Integer a
+		 where a=ortest(n) and a= ortest2(n);
+create function ortest4 (Charstring n)->Integer a
+		 as select a from Integer a
+		 where a=ortest2(n) and a=ortest(n);
+create function invortest4 (Integer a)->charstring n
+		 as select n from charstring n where a=ortest4(n);
+lisp;
+(checkequal "disjunction"
+	    ((osql "ortest('Pii');") '((32)))
+	    ((osql "ortest('Ulla');") '((32) (32)))
+	    ((osql "ortest2('Ulla');") '((40)(32)))
+	    ((osql "ortest3('Ulla');") '((32)(32)))
+	    ((osql "ortest4('Ulla');") '((32)(32)))
+	    ((sorttuples(osql "invortest4(32);"))
+	     '(("Kalle") ("Tore") ("Tore") ("Tore") ("Ulla")))
+	    )
+:osql
+create function youngerthanmgr ()-> (Integer a,charstring p)
+		 as select a,p from Integer a,Charstring p
+		 where 	a=ageofperson(p) and
+			a < ageofmgr(p);
+lisp;
+(checkequal "inequality"
+	    ((sorttuples(osql "youngerthanmgr();"))
+	     '((31 "Kalle") (32 "Ulla")))
+	    )
+
+:osql
+create function allpersons ()->Charstring n
+		 as select n from Charstring n,Person p
+		 where n=name(p);
+create function allstudents ()->Charstring n
+		 as select n from Charstring n,Student p
+		 where n=name(p);
+lisp;
+(checkequal "typemapping"
+	    ((sorttuples(osql "allpersons();")) '(("Tore") ("Ulla")))
+	    ((osql "allstudents();") '(("Ulla")))
+	    ((null (osql "select p from Person p;")) nil) 
+	    )
+:osql
+
+create function p (integer x,integer y,integer z) -> boolean
+		 as x=3 and z= x * y;
+
+create function eqvars(Number x)->(Number,Number)
+  as select y,y from Number y where y in iota(1,x);
+
+lisp;
+
+(checkequal "Ravi's example"		; LDL cannot handle ???
+	    ((osql "select x,y,z from integer x,integer y,integer z
+			 where y = 2 * x and p(x,y,z);")
+	     '((3 6 18)))
+	    ((osql "select x,y,z from integer x,integer y,integer z
+			 where p(x,y,z) and y = 2 * x;")
+	     '((3 6 18))))
+
+(checkequal "equality simplifications"
+	    ((osql "select x,y from integer x,integer y
+			 where x = 1 and x = y;") '((1 1)))
+	    ((osql "select x,y from integer x,integer y
+			 where x = y and y = 1;") '((1 1)))
+	    ((osql "select x,y from integer x,integer y
+			 where x = 1 and y = 2 and x = y;") nil)
+	    ((osql "select x,y from integer x,integer y
+			 where x = y and x = 1 and y = 2;") nil)
+	    ((osql "select x,y from integer x,integer y
+			 where x = 1 and y = 1 and x = y;") '((1 1)))
+	    ((osql "select x,y from integer x,integer y
+			 where y = 2 and (x = 1 or x = 2) and x > 0;")
+	     '((1 2) (2 2)))
+	    ((osql "select x,y from integer x,integer y
+			 where y = 2 and (x = 1 or x = 3) and x > y;") 
+	     '((3 2)))
+	    ((osql "select where 1=2;") nil)
+	    ((osql "select where 1=1;")'((true)))
+	    )
+
+(checkequal "Equivalent actual parameters"
+	    ((osql "select n from number n where eqvars(2)=(n,2);")
+	     '((2)))
+	    )
+
+(foreign-lispfn truee nil nil (foreign-result))
+
+(foreign-lispfn evenp ((number x))((boolean))
+		(if (evenp x) (foreign-result 'true)(foreign-result 'false)))
+
+(foreign-lispfn sqrt1 ((number x))((number r))
+		(if (>= x 0.0)
+		    (let ((r (sqrt x)))
+		      (foreign-result r)
+		      (foreign-result (- 0 r)))))
+
+(foreign-lispfn sqrt2 ((number x))((real r1)(real r2))
+		(if (>= x 0.)
+		    (let ((r (sqrt x)))
+		      (foreign-result r (- 0 r)))))
+
+(foreign-lispfn one ()((integer))(foreign-result 1))
+
+(checkequal "Foreign Lisp functions"
+	    ((osql "truee();") '((true)))
+            ((osql "evenp(1);") nil)
+            ((osql "evenp(2);") '((true)))
+	    ((osql "sqrt1(4);") '((2.0) (-2.0)))
+	    ((osql "sqrt1(-1);") nil)
+	    ((osql "sqrt2(4);") '((2.0 -2.0)))
+	    ((osql "sqrt2(-1);") nil)
+	    ((osql "one();") '((1)))
+            ((osql "one()=1;") '((true)))
+	    )
+
+:osql
+
+create type foobar;
+
+lisp;
+(foreign-lispfn title ((foobar f))((charstring name))
+		(foreign-result "xxx"))
+:osql
+create foobar instances :aa;
+create function fie()->charstring name
+		 as select name
+		 from charstring name,foobar f
+		 where
+		 name=title(f);
+lisp;
+
+(checkequal "overspecified ff"
+	    ((osql "fie();") '(("xxx"))))
+
+:osql
+create type employee;
+create function salary (employee)->integer as stored;
+create employee instances :e1;
+set salary(:e1)=100000;
+/*delete salary(:e1);  !! */
+
+
+delete function nametype;
+create function nametype(type t)->charstring nm as
+		 select nm where name(t)=nm;
+lisp;
+
+(checkequal "Type checking of name functions and types"
+	    ((osql "select c from charstring c,type t
+			 where c = nametype(t) and c = 'TYPE.NAMETYPE';")
+	     nil)
+	    ((osql "select c from charstring c,function f
+			 where name(f)=c and c = 'TYPE';")
+	     nil)
+	    )
+:osql
+
+create function hobbies_bag()-> Bag of (Charstring,Charstring) as stored;
+create function hobbies(charstring p)-> bag of charstring h as 
+  select h where (p,h) in hobbies_bag();
+
+create function _person(integer ssn)->(charstring name, integer zip) as stored;
+
+add hobbies("Tore")= "Painting";
+add hobbies("Tore")= "Golfing";
+set hobbies("Tore")= "Canoeing";
+add hobbies("Tore")= "Exploring";
+add hobbies("Tore")= "Exploring"; 
+remove hobbies("Tore")= "Canoeing";
+create function ind(integer)->integer;
+set ind(1)=2;
+set ind(ind(1))=1+ind(1);;
+set ind(ind(ind(1)))=1+ind(ind(1));
+lisp;
+
+(checkequal "set/add/remove with bag semantics" 
+	    ((osql "hobbies('Tore')	;") '(("Exploring")("Exploring"))) 
+	    ;; BAG semantics!
+	    ((osql "remove hobbies('Tore')='Exploring';") nil)
+	    ((osql "hobbies('Tore')	;") '(("Exploring"))) ; BAG semantics!
+	    ((osql "ind(3);") '((4)))
+	    ((errstring (osql "set plus(1,2)=3;"))"Function not updatable")
+	    ((errstring 
+	      (osql "add theresolvent('foo')=functionnamed('plus');"))
+	     "Function not updatable")
+	    ((osql "remove ind(i)=j from integer i, integer j where j>2;") nil)
+	    ((osql "select ind(i) from integer i;") '((2)))
+	    ((osql "remove _person(ssn)= (name, zip)
+from integer ssn, charstring name, integer zip
+where ssn=1234567 and name='markus J';") nil)
+	    )
+:osql
+
+rollback;
+
+create function f(integer nonkey)->integer;
+create function g(integer,integer)->integer;
+set f(1)=1;
+add f(1)=2;
+set g(1,1)=11;
+set g(1,2)=12; /* 1st arg has non-key index */
+lisp;
+
+(checkequal "Undo delete function"
+	    ((null(extent 'f)) nil)
+	    ((undo-effects (osql "delete function f;")) nil)
+	    ((null (extent 'f)) nil))
+
+(checkequal "Clearing functions without logging"
+	    ((null(extent 'f)) nil)
+	    ((null (osql "clear_function('f');")) nil)
+	    ((extent 'f) nil))
+:osql
+rollback; 
+
+create type person;
+create function name(person)->charstring;
+create person (name)instances :tore("Tore");
+delete type person;
+/*  need better savepoints first
+rollback 4;
+lisp;
+(checkequal "Rollback of functions"
+	    ((osql "name(:tore);") '(("Tore"))))
+
+(checkequal "including last object in type container"
+	    ((osql "select p from person p;")
+	     (list(list amos_tore))))
+:osql
+*/
+rollback;
+create type person;
+create type student under person;
+create function income(student s)->integer i as stored;
+create function income(person p)->integer i as stored;
+delete type person;
+create function foo(integer i)->boolean as stored;
+create function foo (real r)->boolean as stored;
+delete function foo;
+lisp;
+(checkequal "Referential integrity of types and functions"
+	    ((gettypenamed 'person t) nil)
+	    ((gettypenamed 'student t) nil)
+	    ((getfunctionnamed 'person.income->integer t) nil)
+	    ((getfunctionnamed 'income t) nil)
+	    ((getfunctionnamed 'student.income->integer t) nil)
+	    ((getfunctionnamed 'integer.foo->boolean t) nil)
+	    ((getfunctionnamed 'real.foo->boolean t) nil)
+	    ((sorttuples (osql "name(subtypes(typenamed('OBJECT')));"))
+             '(("COLLECTION") ("DATASOURCE") ("FUNCTION") ("LITERAL") 
+               ("OPAQUE_PROXY") ("TYPE") ("USEROBJECT")))
+            ((osql "sort(name(allsubtypes(typenamed('TYPE'))));")
+             '((#("DERIVEDTYPE" "IUT" "MAPPEDTYPE" "PROXYTYPE" "STOREDTYPE"))))
+	    )
+
+:osql
+rollback;
+create type student properties (age integer);
+create type teacher properties (age integer);
+create type ta under student, teacher;
+create type tb;
+create ta instances :ta;
+lisp;
+
+(checkequal "Ambigouos resolvents"
+	    ((errstring (osql "create ta(age) instances :tb(12);"))
+	     "Ambiguous resolvents")
+	    ((null(errstring (osql "name(:ta);"))) nil))
+
+(checkequal "Dynamic type change"
+	    ((osql "remove type ta from :ta;") nil)
+	    ((sorttuples(osql "name(typesof(:ta));")) 
+	     '(("OBJECT") ("STUDENT") ("TEACHER") ("USEROBJECT")))
+	    ((osql "add type ta to :ta;") nil)
+	    ((sorttuples(osql "name(typesof(:ta));"))
+	     '(("OBJECT") ("STUDENT") ("TA") ("TEACHER") ("USEROBJECT")))
+	    ((errstring (osql  "add type tb to :ta;")) 
+	     "Trying to add a non-subtype to object")
+	    )
+
+
+:osql
+rollback;
+create function foo(integer i key)->integer j key as stored;
+set foo(1)=1;
+lisp;
+
+(checkequal "Undo of upper cardinality test"
+	    ((undo-effects (osql "add foo(1)=1;"))
+	     nil)
+	    ((extent 'foo) '((1 1)))
+;	    ((null(with-error-trapping (subtransaction 
+;	    (osql "set foo(2)=1;"))))
+;	     nil)
+	    ((extent 'foo) '((1 1)))
+;	    ((null(with-error-trapping (subtransaction 
+;            (osql "add foo(1)=2;))))
+;	     nil)
+	    ((extent 'foo) '((1 1))))
+
+:osql
+create function constant ()->integer i as stored;
+set constant()=1;
+add constant()=2;
+create function f1()->integer as 1;
+lisp;
+(checkequal "Zero arity"
+  ((osql "constant();") '((1)(2)))
+  ((osql "f1();")'((1))))	
+:osql
+/* Testing boolean variables */
+create function eq(object x, object y) -> boolean
+    as x = y;
+lisp;
+
+(checkequal "Boolean variables"
+	    ((osql "select b from boolean b where b = eq(1,2);") nil)
+	    ((osql 
+	      "select b from boolean b where b = eq(1,1) and b = eq(2,2);")
+	     '((TRUE)))
+	    ((osql "identity(eq(1,2));") nil)
+	    ((osql "identity(eq(1,1));") '((true)))
+	    )
+
+:osql
+create function bool1(boolean b,integer i) -> boolean c
+   as b and i=1;
+create function flag1()-> boolean as stored;
+create function flag2(integer x)-> boolean 
+  as flag1() and x > 1;
+create function flag3() -> boolean 
+  as flag1() and flag2(2);
+create function flag4() -> boolean b as select b where b=flag3();
+set flag1()=true;
+create function f1(Integer i)->Boolean as i<=5;
+create function f2(number x)->Boolean as f1(integer(x));
+lisp;
+
+(checkequal "Boolean functions"
+	    ((osql "1=1;") '((true)))
+	    ((osql "2=1;") nil)
+	    ((osql "select 1=1;") '((true)))
+	    ;;the following three queries test compile time evaluation
+	    ((osql "select 1<1;") nil)
+	    ((osql "select 1<1 and 3>2;") nil)
+	    ((osql "select 3>2 and 4>2;") '((true)))
+	    ((osql "select 1=2;") nil)
+	    ((osql "bool1(true,1);") '((true)))
+	    ((osql "bool1(true,0);")nil)
+	    ((osql "bool1(false,1);")nil)
+	    ((osql "flag1();") '((true)))
+	    ((osql "flag2(1);") nil)
+	    ((osql "flag2(3);") '((true)))
+	    ((osql "flag3();") '((true)))
+	    ((osql "flag4();") '((true)))
+	    ((osql "notany(flag2(3));") nil)
+	    ((osql "notany(flag2(1));") '((true)))
+	    ((osql "notany(flag3());") nil)
+	    ((osql "flag4();") '((true)))
+	    ((osql "begin return true; end;") '((true)))
+	    ((osql "f2(5.49);") '((true)))
+	    ((osql "f2(5.51);") nil)
+	    )
+:osql
+rollback;
+/* Misc. utility functions */
+lisp;
+
+(checkequal 
+ "Utility functions"
+ ((osql 
+   "kindoffunction(functionnamed('CHARSTRING.CHARSTRING.OBJECT.COSTHINT->FUNCTION'));")
+  '(("derived")))
+ ((osql
+   "sort(eval('name(resolvents(functionnamed(\"concat\")));'));")
+  '((#("CHARSTRING.CHARSTRING.CONCAT->CHARSTRING" 
+       "INTEGER.INTEGER.CONCAT->INTEGER" "VECTOR.VECTOR.CONCAT->VECTOR"))))
+ ((osql "sort(name(usedwhere(functionnamed('concat'))));")
+  '((#("CHARSTRING.CHARSTRING.CONCAT->CHARSTRING" 
+       "INTEGER.INTEGER.CONCAT->INTEGER" "VECTOR.VECTOR.CONCAT->VECTOR"))))
+ ((osql
+   "name(useswhich(functionnamed('ALLFUNCTIONS->FUNCTION')));")
+  nil)
+ ((osql "name(typenamed('VECTOR'));")
+  '(("VECTOR")))
+ ((null(osql "select argrestypes(f) from function f where
+ kindoffunction(f) != 'overloaded';")) nil)
+ ((osql "name(resolventtype(functionnamed('PLUS')));")nil)
+ ((osql 
+   "name(resolventtype(functionnamed('NUMBER.NUMBER.PLUS->NUMBER')));")
+  '(("NUMBER")))
+ )
+:osql
+rollback;
+
+/* Testing advanced boolean function calls */
+
+create function foo(number)->number;
+create function fie(number)->number;
+create function eq(object x,object y) -> boolean as x=y;
+create function myand(boolean x, boolean y) -> boolean 
+  as x and y;
+create function myor(boolean x, boolean y) -> boolean 
+  as x or y;
+set foo(1)=1;
+set foo(2)=2;
+set fie(1)=1;
+set fie(2)=2;
+set :ett=1;
+set :tva=2;
+lisp;
+(checkequal "Boolean comparisons"
+	    ((osql "select foo(1)=1;") '((true)))
+	    ((osql "select foo(1)=2;") nil)
+	    ((osql "select foo(1)=fie(1);") '((true)))
+	    ((osql "foo(1)=fie(1);") '((true)))
+	    ((osql "select foo(1)=1,fie(2)=2;") '((true true)))
+	    ((osql "select foo(1)=1,fie(2)=3;") nil)
+	    ((osql "select foo(x)=fie(x) from integer x;")
+	     '((true)(true)))
+	    ((osql "select foo(x+1)= fie(x)+1 from integer x;") '((true)))
+	    ((osql "select foo(1)=1 and fie(1)=1;") '((true)))
+	    ((osql "select foo(1)=1 and fie(1)=2;") nil)
+	    ((osql "select myand(eq(foo(1),1),eq(fie(1),1));") '((true)))
+	    ((osql "select myand(eq(foo(1),1),eq(fie(1),2));") nil)
+	    ((osql "select eq(eq(foo(1),1),eq(fie(2),2));") '((true)))
+	    ((osql "select eq(eq(foo(1),1),eq(fie(2),1));") nil)
+	    ((osql "select 1= :ett;") '((true)))
+	    ((osql "select 1= :tva;") nil)
+	    ((osql "select 1= :ett and 1= :tva;") nil)
+	    ((osql "select 1= :ett and 2= :tva;") '((true)))
+	    ((osql "select 1=1 or 1=2;") '((true)))
+	    ((osql "select 1=1 or 1=2;") '((true)))
+	    ((osql ":ett + 1;") '((2)))
+	    ((osql "select foo(1)=1 or foo(1)=2;") '((true)))
+	    ((osql "select foo(1)=2 or fie(2)=1;") nil)
+;	((osql "myor(eq(1,1),eq(1,2));") '((true)))
+;	((osql "select myor(myand(eq(foo(1),1),eq(fie(2),3)),eq(fie(2),2));")
+;	 '((true)))
+	    ((osql "myand(true,true);") '((true)))
+	    ((osql "myand(true,false);") nil)
+	    ((osql "myor(true,false);") '((true)))
+	    ((osql "myor(false,false);") nil)
+	    ((osql "true or false;") '((true)))
+	    ((osql "select x from integer x where true or x=1;") '((1)))
+	    ((osql "select true;") '((true)))
+	    ((osql "select true where 1=1;") '((true)))
+	    ((osql "select false where 1=1;") nil)
+	    ((osql "select from integer x where x = 1;") '((true)))
+	    ((osql "select from integer x where x = 1 or x=2;") '((true)(true)))
+	    )
+
+(checkequal 
+ "Complex numbers"
+ ((osql "3*((1+complex(1,4))/(complex(0,1)+1)*2);")
+  '((#[C 18.0 6.0])))
+ ((osql "select re(complex(1.0,2.0));") '((1.0)))
+ ((osql "im(complex(1.9,2.9));") '((2.9)))
+ ((osql "select x from real x where complex(x,1)=complex(2,1);") '((2)))
+ )
+
+:osql
+
+rollback;
+lisp;
+
+(checkequal "Environment variable scoping"
+	    ((errstring(osql "set a=2;"))
+	     "Local variables disallowed in top loop")
+	    ((errstring(osql "begin set :a=2; end;"))
+	     "Interface variables disallowed in functions")
+	    )
+:osql
+
+
+/* Testing Lisp - AMOSQL  interface */
+create type person;
+create function name(person)-> charstring;
+create person (name) instances :tore("Tore");
+lisp;
+
+(defun persname1(amos_o) 
+  (let (amos_nm) 
+    (osql "select name(:o) into :nm;") 
+    amos_nm))
+    (defun persname2 (amos_o) 
+          (let (amos_nm) 
+               (osql "select name(:o) into :nm;") 
+               amos_nm)) 
+    (defun persname3 (p) 
+        (osql-let ((person :o) (charstring :nm)) 
+	  (setq amos_o p) ; notice how to declare function parameters!
+          (osql "select name(:o) into :nm;") 
+          amos_nm)) 
+    (defun persname4 (p) 
+        (osql-let ((person :o) (charstring :nm)) 
+	  (setq amos_o p) ; notice how to declare function parameters!
+          (osql "select nm into :nm from charstring nm where
+                                    nm = name(:o);") 
+          amos_nm)) 
+
+  (defun atomindef (a x)(not(null(in a x))))
+  (if (> (set-authority nil) 4)
+  (resetvar *within-lisp* nil
+  (checkequal "Calling AMOSQL from Lisp"
+        ((null (proid #[OID 1] (maketextstream))) nil)
+	((null(osql-declare person :o)) nil)
+  	((persname1 amos_tore) "Tore")
+  	((persname1 amos_tore) "Tore") ; has to call to macroexpand more
+        ((persname1 amos_tore) "Tore") ; has to call to macroexpand more
+	((atomindef 'name (getd 'persname1)) nil) ; early bound
+	((osql-undeclare :o) t)
+	((persname2 amos_tore) "Tore")
+	((persname2 amos_tore) "Tore")
+        ((persname2 amos_tore) "Tore")
+	((atomindef 'name (getd 'persname2)) t) ; late bound
+	((persname3 amos_tore) "Tore")
+	((persname3 amos_tore) "Tore")
+        ((persname3 amos_tore) "Tore")
+	((atomindef 'name (getd 'persname3))nil) ; early bound
+	((persname4 amos_tore) "Tore")
+        ((persname4 amos_tore) "Tore")
+        ((persname4 amos_tore) "Tore")
+        ((caar(osql "name(:tore);")) "Tore")
+	((atomindef 'map-select (getd 'persname4)) t) ; dynamic optimization!
+	((rollback) nil)
+	((null *vardeclarations*) t) ;
+; *vardeclarations* should be transactional
+	))
+     )
+:osql
+rollback;
+
+/* Check string functions */
+lisp;
+
+(checkequal
+ "String functions"
+ ((osql "select name(f) from function f where like(name(f), '*OAD_LISP*');")
+  '(("CHARSTRING.LOAD_LISP->CHARSTRING") ("LOAD_LISP")))
+ ((osql "select name(f) from function f where like_i(name(f), '*oad_Lisp*');")
+  '(("CHARSTRING.LOAD_LISP->CHARSTRING") ("LOAD_LISP")))
+ ((osql "upper('aBc');") '(("ABC")))
+ ((osql "lower('aBc');") '(("abc")))
+ ((osql "itoa(123);") '(("123")))
+ ((osql "atoi('123');") '((123)))
+ ((osql "'ab' + 'cd';") '(("abcd")))
+ ((osql "'ab' + 1;") '(("ab1")))
+ ((osql "select y from charstring x, object y
+where x + y='abd' and x + 'cd' = 'abcd';")
+  '(("d")))
+ ((osql "'a'+1+2;") '(("a12")))
+ ((osql "select x from object x where '1'+x+2='1ab2';") '(("ab")))
+ ((osql "'a'+{1,2,3};") '(("a{1,2,3}")))
+ )
+:osql
+create type absolutetone properties(tie boolean);
+
+create type AbsoluteDuration properties (start integer, length integer);
+create function createabsoluteduration(integer start, integer length)->
+   absoluteduration d
+as begin
+     create absoluteduration (start,length) instances d(start,length);
+     return d;
+   end;
+
+create function createTone
+(charstring lyrics, boolean tie, AbsoluteDuration duration) ->
+AbsoluteTone a as
+begin
+ create AbsoluteTone instances a;
+ set tie(a) = tie;
+ return a;
+end;
+
+set :c = createTone("Shit",false,createAbsoluteDuration(3,4));
+lisp;
+(checkequal "Evabugs"
+ ((osql "tie(:c);") nil)
+ )
+:osql
+rollback;
+
+/*  Test of multiple '*' in ObjectLog */
+
+create function f1(charstring) -> integer;
+create function f2(charstring) -> integer;
+
+add f1('a') = 1;
+add f2('b') = 1;
+
+create function f() -> integer as
+select i
+from integer i, charstring c1, charstring c2
+where i = f1(c1) and
+      i = f2(c2);
+
+lisp;
+
+(checkequal "many wildcards in ObjectLog"
+   ((osql "f();") '((1))))
+:osql
+
+/* Occurs check */
+
+create function tbl(Integer x)->Integer y as stored;
+
+add tbl(1)=2;
+add tbl(2)=3;
+add tbl(4)=4;
+
+create function oc()->Integer x 
+  as select x where tbl(x)=x;
+
+lisp;
+
+(checkequal "Occurs check"
+	    ((osql "oc();") '((4)))
+	    )
+
+:osql
+
+/* User defined cost models */
+
+create function ctest(integer)-> integer as
+  multidirectional
+  ("bf" foreign "ctestbf")
+  ("ff" foreign "ctestff" cost {0.3,0.3});
+lisp;
+
+(defun dflt (x)(if (eq x '*) 0 x))
+(defun ctestbf (fno x r)(osql-result x 1))
+(defun ctestff (fno x r)(osql-result (dflt x) 2))
+
+(checkequal "Cost functions"
+	    ((osql "
+select ctest(x) 
+   from integer x
+   where x=1;") '((1)))
+	    ((osql "
+select ctest(x) 
+   from integer x;") '((2)))
+	    )
+
+:osql
+
+lisp;
+(checkequal 
+ "Declaration errors"
+ ((errstring (osql "select i from Integer i, Integer i;"))
+  "Duplicate declaration in query: (INTEGER I) and (INTEGER I)")
+ ((errstring (osql "create function foo(Integer i, Integer i)->Boolean;"))
+  "Duplicate declaration in FOO: (INTEGER I) and (INTEGER I)")
+ ((errstring (osql "create function foo(Integer i)->Integer j
+as select j from Real j where j=i;"))
+  "Conflicting declarations in FOO: (INTEGER J) and (REAL J)")
+ ((errstring (osql "select 1 from Number n;"))
+  "Declared variable not bound anywhere")
+ ((errstring (osql "select 1 from Type t;"))
+  "Declared variable not bound anywhere")
+ ((errstring (osql "select n from Number n;"))
+  "Declared variable not bound anywhere")
+ ((errstring (osql "select o from Object o;"))
+  "Declared variable not bound anywhere")
+ )
+:osql
+rollback;
+
+set :aa=1;
+commit;
+
+lisp;
+
+(checkequal "Transactional interface variables"
+	    ((boundp 'amos_tmp) nil)
+	    ((boundp 'amos_aa) nil)
+	    )
+
+:osql

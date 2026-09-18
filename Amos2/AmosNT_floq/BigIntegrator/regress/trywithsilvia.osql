@@ -1,0 +1,77 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: multisql.osql,v $
+ * $Revision: 1.7 $ $Date: 2013/09/10 08:00:12 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: LOcal multi-SQL scenario
+ ****************************************************************************
+ ****************************************************************************/
+call setupfloq.cmd
+
+set :a= call_function('s1','jdbc', {"A","com.microsoft.jdbc.sqlserver.SQLServerDriver"}, 10)[0];
+
+set :b= call_function('s2','jdbc', {"B","com.microsoft.jdbc.sqlserver.SQLServerDriver"}, 10)[0];
+
+call_function('s1','connect', {:a,"jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB", "udbl", "udbl"}, 10);
+
+call_function('s2','connect', {:b,"jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB", "udbl", "udbl"}, 10);
+
+call_function('s1','sql', {:a,"select count(*) from measuresA where mv>359", {}}, 100);
+
+call_function('s2','sql', {:b,"select count(*) from measuresA where mv>359", {}}, 100);
+
+/* metadb */
+set :c = jdbc("c", "com.mysql.jdbc.Driver");
+
+set :dburl = "jdbc:mysql://localhost:3306/";
+
+connect(:c, :dburl + "metadb", "regress", "regress");
+
+import_table(:c, 'SENSORINSTALLATION');
+
+import_table(:c, 'LOCATION');
+
+import_table(:c, 'MACHINEINSTALLATION');
+
+import_table(:c, 'MACHINE');
+
+import_table(:c, 'SENSOR');
+
+
+create function uri(Charstring peer)->Charstring logdburi key as stored;
+
+set uri("s1")="jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB";
+
+set uri("s2")="jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB";
+
+create function peer_par(Charstring peer, Opaque_proxy bc)->Charstring logdburi key as stored;
+
+set peer_par("s1", :a)="jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB";
+
+set peer_par("s2", :b)="jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB";
+
+create function q1(Charstring peer, Opaque_proxy bc)->(Integer m) as
+select m
+where  {m} = call_function(peer,'sql', {bc,"select m from measuresA where mv>359", {}},10);
+
+count(q1('s1', :a));
+
+create function loc(Charstring peer,Opaque_proxy bc)->Charstring location
+as select location from Location@C l, Charstring logdburi
+where name(l)=location  and uri(l)=logdburi and
+      peer_par(peer,bc)=logdburi;
+
+create function q2(Charstring place, Opaque_proxy bc)->(Number m) as
+select distinct v[0]
+from Vector v, Charstring peer, SensorInstallation@C s 
+where 
+v = in(call_function(peer,'sql', {bc,"select m,mv from measuresA where mv>359", {}},10)) and 
+loc(peer,bc)=place and
+v[1]>ev(s); 
+
+q2("Campinas",:b);
+
+kill_the_federation();

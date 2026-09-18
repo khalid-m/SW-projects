@@ -1,0 +1,7 @@
+set :db1 = jdbc("db1","com.mysql.jdbc.Driver");
+connect(:db1,"jdbc:mysql://localhost:3306/regress","regress","regress");
+
+count(read_sql(:db1,"createdb.sql"));
+
+disconnect(:db1);
+quit;

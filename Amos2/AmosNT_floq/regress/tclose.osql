@@ -1,0 +1,181 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 1993 Tore Risch, UDBL
+ * $RCSfile: tclose.osql,v $
+ * $Revision: 1.12 $ $Date: 2013/11/19 21:56:27 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Tests transitive clousure functions
+ *
+ ****************************************************************************
+ * $Log: tclose.osql,v $
+ * Revision 1.12  2013/11/19 21:56:27  torer
+ * Testing multi-argument iterator
+ *
+ * Revision 1.11  2013/11/19 07:59:44  torer
+ * Changed argument order in iterate()
+ *
+ * Revision 1.10  2013/11/18 20:15:17  torer
+ * iterate(Function nxt, Object arg, Number max) -> Object
+ *
+ * Revision 1.9  2011/01/27 11:26:16  torer
+ * Changed from <...> to SQL's (...) notation for tuples (much nicer)
+ *
+ * Revision 1.8  2009/11/12 18:02:23  torer
+ * Changed ttclose -> traverse
+ *
+ * Revision 1.7  2009/11/07 13:17:01  torer
+ * cleanup
+ *
+ * Revision 1.6  2009/11/06 19:23:37  torer
+ * Testing inverse paremeterized tclose and same generation queries
+ *
+ * Revision 1.5  2009/11/06 18:35:27  torer
+ * Generalized transition functions in tclose
+ *
+ * Revision 1.4  2009/10/29 21:53:59  torer
+ * Testing traverse
+ *
+ * Revision 1.3  2008/11/25 19:24:48  torer
+ * TCLOSE not overloaded on strings since we now have functional constants
+ *
+ ****************************************************************************/
+
+create function father (Charstring c)->Charstring f as stored;
+create function mother (Charstring c)->Charstring m as stored;
+create function orphan (Charstring p)->Boolean as stored;
+create function french (Charstring p)->Boolean as stored;
+
+set father("jane")="bill";
+set father("liz")="ed";
+set father("ed")="henry";
+set father("mary")="henry";
+set father("max")="henry";
+set father("ann")="john";
+set father("bill")="kent";
+set father("sally")="kent";
+
+
+set mother("bill")="ann";
+set mother("sally")="ann";
+set mother("liz")="jane";
+set mother("mary")="linda";
+set mother("max")="linda";
+set mother("ann")="nicole";
+set mother("ed")="sally";
+
+set orphan("henry")=TRUE;
+set orphan("john")=TRUE;
+set orphan("kent")=TRUE;
+set orphan("linda")=TRUE;
+set orphan("nicole")=TRUE;
+
+set french("henry")=TRUE;
+set french("john")=TRUE;
+set french("kent")=TRUE;
+set french("nicole")=TRUE;
+
+create function parents(Charstring child)->Bag of Charstring
+  as select p 
+     from Charstring p
+     where p = father(child) or 
+           p = mother(child);
+
+create function ancestors(Charstring dsc)->Bag of Charstring
+  as select anc
+     from Charstring anc
+     where anc in tclose(#'parents',dsc) and
+           anc != dsc;
+
+create function tancestors(Charstring dsc)->Bag of Charstring
+  as select anc
+     from Charstring anc
+     where anc in traverse(#"parents",dsc) and
+           anc != dsc;
+
+create function descendants(Charstring anc)-> Bag of Charstring
+  as select dsc
+     from Charstring dsc
+     where anc in tclose(#"parents",dsc) and
+           anc != dsc;
+
+create function tdescendants(Charstring anc)->Bag of Charstring
+  as select dsc
+     from Charstring dsc
+     where anc in traverse(#"parents",dsc) and
+           anc != dsc;
+
+create function parentsd(Charstring nm, Integer d)->Bag of (Charstring,Integer)
+  as select parents(nm), 1+d;
+
+create function ancestorsd(Charstring nm)->Bag of (Charstring,Integer)
+  as tclose(#'parentsd',nm,0);
+
+create function offspringsd(Charstring nm)->Bag of (Charstring,Integer)
+  as select o, d
+     from Charstring o, Integer d
+     where (nm,0) in tclose(#'parentsd',o,-d) and
+           o != nm;
+
+create function generation_depth(Charstring x)-> Integer
+  as maxagg((select d 
+             from Integer d, Charstring r
+             where (r,d) in tclose(#"parentsd",x,0)));
+
+create function grandchildren(Charstring x, Integer lev)->Bag of Charstring
+  as select c
+     from Charstring c
+     where (c, lev) in offspringsd(x);
+
+lisp;
+
+(checkequal 
+ "Transitive closure"
+ ((osql "ancestors('bill');")
+  '(("kent") ("ann") ("john") ("nicole")))
+ ((osql "tancestors('bill');")
+  '(("kent") ("ann") ("john") ("nicole")))
+ ((osql "ancestorsd('bill');")
+  '(("bill" 0) ("kent" 1) ("ann" 1) ("john" 2) ("nicole" 2)))
+ ((osql "offspringsd('ann');")
+  '(("bill" 1) ("jane" 2) ("liz" 3) ("sally" 1) ("ed" 2)))
+ ((osql "generation_depth('bill');")
+  '((2)))
+ ((osql "grandchildren('ann',2);")
+  '(("jane") ("ed")))
+ ((osql "descendants('kent');")
+  '(("bill") ("jane") ("liz") ("sally") ("ed")))
+ ((osql "tdescendants('kent');")
+  '(("bill") ("jane") ("liz") ("sally") ("ed") ("liz")))
+ ((osql "select x from Charstring x where 'kent' in ancestors(x);")
+  '(("bill") ("jane") ("liz") ("sally") ("ed")))
+ )
+:osql
+
+create function mynxt(Number x) -> Number
+  as select x + 1 where x < 4;
+
+create function mynxt1(Number x) -> Bag of Number
+  as select x + 1 where x < 4;
+
+create function mynxt2(Number x, Number y) -> (Number, Number)
+  as select x - 1, y + 1 where x > 0;
+
+lisp;
+
+(checkequal "iterate"
+	    ((osql "iterate(#'mynxt',6,0)+1;") '((5)))
+	    ((osql "iterate(#'mynxt',3,0)+1;") '((4)))
+            ((errstring (osql "iterate(#'mynxt',6,0,1);"))
+             "Wrong number of arguments in iterate()")
+	    ((errstring (osql "iterate(#'mynxt1',3,0)+1;"))
+             "Not a closed function")
+            ((osql "iterate(#'mynxt2',5,3,3);") '((0 6)))
+            ((errstring (osql "iterate(#'mynxt2',5,3);"))
+             "Wrong number of arguments in iterate()")
+	    )
+
+:osql
+
+rollback;

@@ -1,0 +1,133 @@
+
+set :testQ4 = "data/testQ4.csv";
+
+lisp;
+
+(checkequal "q4"
+  ((osql "count(in(q4(streamof(ballhitter_bag(inputstreamna(:testQ4))))));")
+   '((835)))
+)
+
+:osql
+
+/* '
+
+count(in(q2q4(inputstreamna("data/full-game"))));
+
+*/
+
+create function Q4_filtered_b(stream of numarray s) -> bag of numarray
+  as begin
+     declare number ts;
+     set ts = 0;
+     for each numarray n where n in s
+       if ts != n[0] then begin
+         set ts = n[0];
+         print(n);
+         return n;
+     end;
+  end;
+
+create function Q4_filtered(stream of numarray s) -> stream of numarray
+  as streamof(Q4_filtered_b(Q4(s)));
+
+/* testing*/
+
+create function test_shot_b() -> bag of numarray
+  as begin
+     declare number ts;
+     set ts = 0;
+     for each numarray n
+         where n in Q4(inputstreamna("data/full-game.bin")) begin
+       if n[0] != ts then begin
+         set ts = n[0];
+         print(n);
+         return n;
+       end;
+     end;
+  end;
+
+create function test_shot() -> stream of numarray
+  as streamof(test_shot_b());
+
+/*
+create function get_shot_data() -> bag of vector
+  as select {itoa(v[0]) + ";" + player(v[1])}
+       from vector of number v
+      where v in test_shot_b();
+*/
+
+create function get_shot_data() -> bag of vector
+  as for each numarray n where n in test_shot_b()
+     return {itoa(n[0]) + ";" + player(n[1])};
+
+create function write_shot() -> charstring
+  as write_ntuples(get_shot_data(), "C:/Amos/AmosNT/DEBS2013/q4.csv");
+
+/* simple read */
+
+create function simple_read(charstring str) -> bag of numarray
+  as for each numarray n
+     where n in eventstreamna("data/split-game/" + str) begin
+       return n;
+       sleep(0.01);
+     end;
+
+/*
+
+simple_read("game.23");
+
+create function test_shot_b() -> bag of vector
+  as begin
+     declare number ts;
+     set ts = 0;
+     for each vector of number v
+         where v in Q4(inputstreamna("data/split-game/game.4")) begin
+       if v[0] != ts then begin
+         set ts = v[0];
+         print(v);
+         return v;
+       end;
+     end;
+  end;
+
+
+/* display */
+
+create function convertx(number x) -> number
+  as 655 * x / 52.477;
+
+create function converty(number y) -> number
+  as 868 * (33.941 - y) / 67.88;
+
+create function convertz(number z) -> number
+  as 10 * z + 2;
+
+create function storex() -> number;
+create function storey() -> number;
+create function storez() -> number;
+
+create function ballpos_b() -> bag of (number, number, number, number)
+  as begin
+     drop(#'storex');
+     drop(#'storey');
+     drop(#'storez');
+     for each numarray v where v in eventstreamna("data/full-game") and
+        ts(v) >= 170 begin
+       if isBall(v) and ballIn(v) then begin
+         add storex() = x(v);
+         add storey() = y(v);
+         add storez() = z(v);
+         if count(storex()) >= 50 then begin
+           return (ts(v), avg(storex()), avg(storey()), avg(storez()));
+           drop(#'storex');
+           drop(#'storey');
+           drop(#'storez');
+           sleep(0.01);
+         end;
+       end;
+     end;
+  end;
+
+create function ballpos() -> stream of (number, number, number, number)
+  as streamof(ballpos_b());

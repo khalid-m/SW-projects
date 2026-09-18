@@ -1,0 +1,7 @@
+lisp;
+(defun startwsmedpeers_r(fno r)
+  (dotimes (i r)
+       (system  (concat "peer_r.vbs " i))))
+
+:osql
+ create function startwsmedpeers_r(integer i)-> boolean as foreign "startwsmedpeers_r";

@@ -1,0 +1,67 @@
+# (c) 2005 Erik Zeitler, UDBL
+# 
+# If no IP communication is desired:
+# (i) set env variable nocomm to 1.
+# (ii) define NOCOMM to C preprocessor (CFLAGS -DNOCOMM=1)
+# 
+
+
+# Export env var for Lisp
+#export nocomm=1
+
+AMOSHOME=../..
+SRC= aggops.c amosfns.c winagg.c cinterf.c init.c event_manager.c text_fns.c \
+   text_match.c comm.c math_fns.c compl_fns.c top.c \
+   commands.c getopt.c os_fns.c SQLParse.c lexyy.c parser_tab.c sql_parser_tab.c sql_lexyy.c uri.c \
+   lispfns.c filefns.c
+
+BINS=eval.o extfns.o print.o read.o storage.o \
+   misc.o olog.o rel.o hist.o linh.o htbl.o \
+   oid.o files.o systemfns.o typecheck.o \
+   fncall.o index.o btree.o libyywrap.o unix_socket.o a_time.o
+OBJDIR=./$(HOSTTYPE)
+
+CFLAGS =  -I$(AMOSHOME)/C -I$(AMOSHOME)/system/include -I$(AMOSHOME)/system/C \
+          -O2 -DUNIX=1 -DLINUX=1 -Wall
+# Add -DNOCOMM=1 to CFLAGS to tell preprocessor not to include comm in init.c
+
+BINDIR=$(AMOSHOME)/bin/BlueGene
+BGLDIR=/bgl/home/zeitler/amos
+CC = mpicc
+OBJS = $(SRC:%.c=$(OBJDIR)/%.o)
+
+# Some libs (nss_dns, resolv, nss_files) need to be 
+# manually included because of broken BG/L linker (unaware of its own libs!)
+# EZ/2005-09-20
+LIBS = -lm -lcrypt -lnss_files -lnss_dns -lresolv -lc /bgl/BlueLight/DRV202_2005-050606-SLES8/ppc/blrts-gnu/powerpc-bgl-blrts-gnu/lib/libnss_dns.a /bgl/BlueLight/DRV202_2005-050606-SLES8/ppc/blrts-gnu/powerpc-bgl-blrts-gnu/lib/libresolv.a /bgl/BlueLight/DRV202_2005-050606-SLES8/ppc/blrts-gnu/powerpc-bgl-blrts-gnu/lib/libnss_files.a
+
+all: $(BINDIR)/libamos.a 
+
+../C/sql_parser_tab.c: ../C/sql_parser.y
+	cd ../C && bison -d -osql_parser_tab.c -p SQL sql_parser.y
+	cd ../C && flex -osql_lexyy.c  -PSQL -i sql_lexer.l
+
+../C/parser_tab.c: ../C/lexyy.c
+
+../C/lexyy.c: ../C/parser.y ../C/scanner.l
+	cd ../C && bison -d -oparser_tab.c parser.y
+	cd ../C && flex -olexyy.c scanner.l
+
+$(BINDIR)/libamos.a: ../C/parser_tab.c ../C/sql_parser_tab.c $(HOSTTYPE)/*.o ../C/*.c
+	cd ../C && $(CC) $(CFLAGS) -c $(SRC)
+	cp ../C/*.o $(OBJDIR)
+	cd $(OBJDIR) && ar rc ../$(BINDIR)/libamos.a *.o
+
+#$(BINDIR)/amos2: $(BINDIR)/libamos.a $(AMOSHOME)/C/main.o 
+#	$(CC) -O2 -o $(BINDIR)/amos2 $(AMOSHOME)/C/main.c $(BINDIR)/libamos.a $(LIBS)
+
+#$(BINDIR)/amos2.dmp: $(BINDIR)/amos2 
+#	$(BINDIR)/amos2 -i../../lsp -o "save '$(BINDIR)/amos2.dmp';quit;"
+#	cp $(BINDIR)/amos2.dmp $(BGLDIR)
+#	echo "Image copied from $(BINDIR) to $(BGLDIR)"
+
+clean:
+	rm -f $(BINDIR)/amos2 $(BINDIR)/amos2.dmp $(BINDIR)/libamos.a
+
+libamos: $(BINDIR)/libamos.a
+

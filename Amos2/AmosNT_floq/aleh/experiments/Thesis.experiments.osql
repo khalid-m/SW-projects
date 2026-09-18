@@ -1,0 +1,1931 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2008 Ruslan Fomkin, UDBL
+ * $RCSfile: Thesis.experiments.osql,v $
+ * $Revision: 1.118 $ $Date: 2008/11/04 07:20:03 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Scripts of experiments for the Thesis.
+ ****************************************************************************
+ * $Log: Thesis.experiments.osql,v $
+ * Revision 1.118  2008/11/04 07:20:03  ruslan
+ * fast stat best opt greedy order for signal 2005
+ *
+ * Revision 1.117  2008/11/03 14:53:09  ruslan
+ * bug in comments is fixed
+ *
+ * Revision 1.116  2008/11/03 14:46:32  ruslan
+ * 2-phase on signal 2005 greedy
+ *
+ * Revision 1.115  2008/10/25 08:17:44  ruslan
+ * best opt, greedy order for signal 2005
+ *
+ * Revision 1.114  2008/10/24 15:04:03  ruslan
+ * random
+ *
+ * Revision 1.113  2008/10/24 14:54:10  ruslan
+ * random
+ *
+ * Revision 1.112  2008/10/24 14:48:06  ruslan
+ * bug
+ *
+ * Revision 1.111  2008/10/24 14:42:26  ruslan
+ * random
+ *
+ * Revision 1.110  2008/10/24 14:36:06  ruslan
+ * random
+ *
+ * Revision 1.109  2008/10/24 13:19:12  ruslan
+ * fast stat for signal 2005
+ *
+ * Revision 1.108  2008/10/24 12:32:58  ruslan
+ * random stat for full signal 2005
+ *
+ * Revision 1.107  2008/10/24 11:54:58  ruslan
+ * random for signal 2005
+ *
+ * Revision 1.106  2008/10/24 10:32:09  ruslan
+ * random and stat for bkg 2003
+ *
+ * Revision 1.105  2008/10/24 09:20:19  ruslan
+ * random PG for bkg 2003
+ *
+ * Revision 1.104  2008/10/24 07:49:06  ruslan
+ * trans random for signal 2005
+ *
+ * Revision 1.103  2008/09/22 08:28:26  ruslan
+ * a bug in a function name
+ *
+ * Revision 1.102  2008/09/22 08:20:26  ruslan
+ * experiments on vector rewrites
+ *
+ * Revision 1.101  2008/09/22 07:45:55  ruslan
+ * comment corrected
+ *
+ * Revision 1.100  2008/09/06 14:10:29  ruslan
+ * bug fixing in singal experiment
+ *
+ * Revision 1.99  2008/09/06 14:05:53  ruslan
+ * bug fixing in singal experiment
+ *
+ * Revision 1.98  2008/09/06 14:00:27  ruslan
+ * sobject transpose experiment for signal
+ *
+ * Revision 1.97  2008/09/06 13:36:13  ruslan
+ * sobject transpose experiment for bkg 2005
+ *
+ * Revision 1.96  2008/09/06 11:29:11  ruslan
+ * with new file layout
+ *
+ * Revision 1.95  2008/07/16 14:20:17  ruslan
+ * signal 2005, FullStatStatCM
+ *
+ * Revision 1.94  2008/07/16 13:33:24  ruslan
+ * signal 2003, FullStatStatCM
+ *
+ * Revision 1.93  2008/07/16 12:25:17  ruslan
+ * bkg 2005, FullStatStatCM
+ *
+ * Revision 1.92  2008/07/16 12:22:10  ruslan
+ * bkg 2005, DynAdvStatCM
+ *
+ * Revision 1.91  2008/07/16 12:16:38  ruslan
+ * bkg 2005, DynStatCM
+ *
+ * Revision 1.90  2008/07/14 10:33:26  ruslan
+ * bkg 2005. TransAndCache
+ *
+ * Revision 1.89  2008/07/14 08:13:16  ruslan
+ * signal 2003, back to 5 iterations
+ *
+ * Revision 1.88  2008/07/14 07:53:47  ruslan
+ * iterations for signal 2003 to get acceptable standard deviation
+ *
+ * Revision 1.87  2008/07/13 14:51:05  ruslan
+ * number of iterations is increased to 10 for signal 2003
+ *
+ * Revision 1.86  2008/07/13 11:56:37  ruslan
+ * bkg 2005, Trans
+ *
+ * Revision 1.85  2008/07/13 09:32:36  ruslan
+ * bkg 2003, FullGroupCMnoUDFcm
+ *
+ * Revision 1.84  2008/07/13 08:34:07  ruslan
+ * bkg 2005, StatStatCM
+ *
+ * Revision 1.83  2008/07/13 08:25:35  ruslan
+ * bkg 2003, FullStatCMnoUDFcm
+ *
+ * Revision 1.82  2008/07/13 08:19:45  ruslan
+ * bkg 2005, DynGroupCM
+ *
+ * Revision 1.81  2008/07/13 08:13:38  ruslan
+ * signal 2005, FullGroupCMnoUDFcm
+ *
+ * Revision 1.80  2008/07/13 07:48:41  ruslan
+ * signal 2005, FullStatCMnoUDFcm
+ *
+ * Revision 1.79  2008/07/12 13:12:37  ruslan
+ * signal 2005, DynAdvGroupCM
+ *
+ * Revision 1.78  2008/07/12 13:06:48  ruslan
+ * signal 2003, FullGroupCMnoUDFCM
+ *
+ * Revision 1.77  2008/07/12 12:43:16  ruslan
+ * signal 2003, FullStatCMnoUDFCM
+ *
+ * Revision 1.76  2008/07/12 11:55:53  ruslan
+ * signal 2005, DynAdvGroupCM
+ *
+ * Revision 1.75  2008/07/12 11:18:49  ruslan
+ * singal 2003, DynStatCM
+ *
+ * Revision 1.74  2008/07/12 09:57:16  ruslan
+ * signal 2003, StatStatCM. bug is fixed in signal 2005 StatStatCM
+ *
+ * Revision 1.73  2008/07/12 09:50:58  ruslan
+ * signal 2005, DynStatCM
+ *
+ * Revision 1.72  2008/07/11 13:59:44  ruslan
+ * bug is fixed in DynQP statCM. signal 2005, dynQP, statCM, no stat
+ *
+ * Revision 1.71  2008/07/11 13:47:06  ruslan
+ * bug in opt name is fixed
+ *
+ * Revision 1.70  2008/07/11 10:54:42  ruslan
+ * bkgs 2003, statstatcm
+ *
+ * Revision 1.69  2008/07/11 10:41:15  ruslan
+ * signal 2003 2005 cache pg
+ *
+ * Revision 1.68  2008/07/11 10:05:07  ruslan
+ * bugs in trans signal are fixed
+ *
+ * Revision 1.67  2008/07/11 10:00:07  ruslan
+ * signal 2005, trans, PG
+ *
+ * Revision 1.66  2008/07/11 09:23:12  ruslan
+ * signal 2005, dynQP, PG
+ *
+ * Revision 1.65  2008/07/11 08:35:27  ruslan
+ * signal 2005, Full, StatCM
+ *
+ * Revision 1.64  2008/07/11 08:31:58  ruslan
+ * signal 2003, Trans, PG
+ *
+ * Revision 1.63  2008/07/11 08:00:55  ruslan
+ * bkgs 2003, dynQP, advPG
+ *
+ * Revision 1.62  2008/07/10 13:26:39  ruslan
+ * Adv PQ, full, signal 2005
+ *
+ * Revision 1.61  2008/07/10 13:14:43  ruslan
+ * bug corrected
+ *
+ * Revision 1.60  2008/07/10 09:48:20  ruslan
+ * signal 2005, dynQP, PG
+ *
+ * Revision 1.59  2008/07/10 09:44:45  ruslan
+ * bkgs 2005, full, advPG
+ *
+ * Revision 1.58  2008/07/09 15:27:32  ruslan
+ * trans and cache, pg, bkgs 2003
+ *
+ * Revision 1.57  2008/07/09 15:17:00  ruslan
+ * full, PG, signal 2005
+ *
+ * Revision 1.56  2008/07/09 15:07:45  ruslan
+ * full, stat, signal 2003
+ *
+ * Revision 1.55  2008/07/09 14:48:31  ruslan
+ * full, pg, bkgs 2005
+ *
+ * Revision 1.54  2008/07/09 14:15:42  ruslan
+ * trans pg, bkg 2003
+ *
+ * Revision 1.53  2008/07/08 14:52:12  ruslan
+ * bug is fixed
+ *
+ * Revision 1.52  2008/07/08 14:40:37  ruslan
+ * aPG fullQP signal 2003
+ *
+ * Revision 1.51  2008/07/08 14:21:12  ruslan
+ * PG full QP, signal 2003
+ *
+ * Revision 1.50  2008/07/08 12:26:49  ruslan
+ * fullQP bkg 2005
+ *
+ * Revision 1.49  2008/07/08 11:47:13  ruslan
+ * pg and dynQP
+ *
+ * Revision 1.48  2008/06/22 14:41:20  ruslan
+ * profiling experiments with first stat collect and greedy
+ *
+ * Revision 1.47  2008/06/03 13:54:09  ruslan
+ * bug in sent message
+ *
+ * Revision 1.46  2008/06/03 12:50:08  ruslan
+ * bugs are fixed
+ *
+ * Revision 1.45  2008/06/03 09:05:16  ruslan
+ * experiments on profiled grouping
+ *
+ * Revision 1.44  2008/06/02 17:21:30  ruslan
+ * more experiments are planed
+ *
+ * Revision 1.43  2008/06/02 16:44:46  ruslan
+ * bug in function name
+ *
+ * Revision 1.42  2008/06/02 16:42:06  ruslan
+ * full qp with no stat and greedy
+ *
+ * Revision 1.41  2008/06/02 13:14:31  ruslan
+ * *** empty log message ***
+ *
+ * Revision 1.40  2008/06/02 13:12:02  ruslan
+ * updates during crash
+ *
+ * Revision 1.38  2008/05/30 15:48:34  ruslan
+ * tuning profiling
+ *
+ * Revision 1.37  2008/05/28 16:05:00  ruslan
+ * more strategies
+ *
+ * Revision 1.36  2008/05/27 07:02:37  ruslan
+ * more greedy experiments
+ *
+ * Revision 1.35  2008/05/26 16:03:17  ruslan
+ * a bug is fixed
+ *
+ * Revision 1.34  2008/05/26 10:05:12  ruslan
+ * more experiments
+ *
+ * Revision 1.33  2008/05/26 09:07:46  ruslan
+ * more experiments on full QP
+ *
+ * Revision 1.32  2008/05/26 08:45:25  ruslan
+ * full QP fast stat best opt
+ *
+ * Revision 1.31  2008/05/26 07:05:40  ruslan
+ * MAN done with closed multidirectional
+ *
+ * Revision 1.30  2008/05/25 08:05:01  ruslan
+ * Dynamic QP with fast stat and best opt
+ *
+ * Revision 1.29  2008/05/20 08:22:44  ruslan
+ * next experiment is under development
+ *
+ * Revision 1.28  2008/05/16 14:46:39  ruslan
+ * tuning experiments are moved in separate file
+ *
+ * Revision 1.27  2008/05/10 13:56:02  ruslan
+ * renaming bkg with bkg2 according the Thesis
+ *
+ * Revision 1.26  2008/05/05 11:42:51  ruslan
+ * name of result file for init 2 is fixed
+ *
+ * Revision 1.25  2008/05/05 11:28:02  ruslan
+ * init opt with measuring impact of grouping opt. reopt is done by fast randomopt
+ *
+ * Revision 1.24  2008/05/05 09:05:17  ruslan
+ * more careful experiment on initial optimization
+ *
+ * Revision 1.23  2008/05/04 12:22:35  ruslan
+ * bug fixing
+ *
+ * Revision 1.22  2008/05/04 12:12:47  ruslan
+ * experiment on initial optimization
+ *
+ * Revision 1.21  2008/05/01 12:54:42  ruslan
+ * experiments with correct meausering time to reoptimize
+ *
+ * Revision 1.20  2008/04/26 13:59:23  ruslan
+ * factorial of II and SH for nested subqueries for best plan
+ *
+ * Revision 1.19  2008/04/26 09:37:26  ruslan
+ * more precise result on II and SH factorial experiment for top of the analysis subquery.
+ *
+ * Revision 1.18  2008/04/24 11:13:10  ruslan
+ * More interesting levels in II and SH on top v.2
+ *
+ * Revision 1.17  2008/04/24 10:01:42  ruslan
+ * measuring overhead of profile-controller for cuts 2005 over bkgs
+ *
+ * Revision 1.16  2008/04/22 14:25:23  ruslan
+ * measuring overhead of profile-controller
+ *
+ * Revision 1.15  2008/04/21 15:00:17  ruslan
+ * one more experiment for tuning II and SH on top level
+ *
+ * Revision 1.14  2008/04/21 10:28:10  ruslan
+ * Tuning optimization methods for top level of analysis subquery and nested subqueries
+ *
+ * Revision 1.13  2008/04/19 09:32:11  ruslan
+ * II and SH tuning compare with ranksort
+ *
+ * Revision 1.12  2008/04/15 10:10:14  ruslan
+ * sh=0 and ii=0 is prevented to be tested.
+ *
+ * Revision 1.11  2008/04/14 15:03:59  ruslan
+ * tuning II and SH for randomopt
+ *
+ * Revision 1.10  2008/04/07 14:25:06  ruslan
+ * the generalization. see tuning performance for all files
+ *
+ * Revision 1.9  2008/04/05 11:25:06  ruslan
+ * missing message seding
+ *
+ * Revision 1.8  2008/04/03 14:22:43  ruslan
+ * duplicated code removed
+ *
+ * Revision 1.7  2008/03/25 14:50:21  ruslan
+ * reorganization: split experiments, which run without safisticated query optimization, and experiments on advanced system. experiment to tune zAplah and delta are added
+ *
+ * Revision 1.6  2008/03/24 11:29:36  ruslan
+ * tuning zalpha and delta
+ *
+ * Revision 1.5  2008/03/24 09:15:22  ruslan
+ * signal naive experiments
+ *
+ * Revision 1.4  2008/03/19 09:38:14  ruslan
+ * basic bkg script for 2005
+ *
+ * Revision 1.3  2008/03/17 10:28:53  ruslan
+ * experiment for measuring UDFs performance
+ *
+ * Revision 1.2  2008/03/09 11:31:23  ruslan
+ * new line at EOF. comment
+ *
+ * Revision 1.1  2008/02/23 11:22:23  ruslan
+ * basic approach, i.e. most naive. experiment over it for bkgs 2003
+ *
+ ****************************************************************************/
+<'stream.osql';
+load_lisp("udfs_exectime.lsp");
+
+/**********************************************************************
+ ***** Dynamic query processing, i.e. advanced cost model with
+ ***** dynamic reoptimization.
+ *********************************************************************/
+
+/* Scaling over bkgs with 2003 query. Best optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	run with run.root.sh and load master.current.aucm.hagrid.osql 
+	from osql */
+create function aucmFaststatBestoptBkg2003() -> boolean as
+begin
+	openwritefile("aucm.fastStat.bestOpt.bkgs.2003.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runReoptExperiment("integer.bkg2sixcuts->event",i,5,"FastStat",
+				"DynBestOpt","Naive");
+	closewritefile();
+	sendmessage("Full CM with fast stat and best opt bkgs 2003");
+end;
+
+/* Scaling over bkgs with 2005 query. Best optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	DynStatCM
+	run with run.root.sh and load master.current.aucm.hagrid.2005.osql 
+	from osql */
+create function aucmFaststatBestoptBkg2005() -> boolean as
+begin
+	openwritefile("aucm.fastStat.bestOpt.bkgs.2005.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runReoptExperiment("integer.bkg2fourcuts->event",i,5,
+			"FastStat","DynBestOpt","Naive");
+	closewritefile();
+	sendmessage("Full CM with fast stat and best opt bkgs 2005");
+end;
+
+/* Scaling over signal with 2003 query. Best optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	run with run.root.sh and load master.current.aucm.hagrid.osql 
+	from osql */
+create function aucmFaststatBestoptSignal2003() -> boolean as
+begin
+	openwritefile("aucm.fastStat.bestOpt.signal.2003.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runReoptExperiment("integer.signalsixcuts->event",(i-1),5,
+				"FastStat","DynBestOpt","Naive");
+	closewritefile();
+	sendmessage("Full CM with fast stat and best opt signal 2003");
+end;
+
+/* Scaling over signal with 2005 query. Best optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	run with run.root.sh and load master.current.aucm.hagrid.2005.osql 
+	from osql */
+create function aucmFaststatBestoptSignal2005() -> boolean as
+begin
+	openwritefile("aucm.fastStat.bestOpt.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runReoptExperiment("integer.signalfourcuts->event",(i-1),5,
+				"FastStat","DynBestOpt","Naive");
+	closewritefile();
+	sendmessage("Full CM with fast stat and best opt signal 2005");
+end;
+
+/* Scaling over bkgs with 2003 query. Best optimization with
+	cost model for aggregates and UDFs and no stat collected.
+	StatStatCM
+	run with run.root.sh and load master.current.aucm.hagrid.osql 
+	from osql */
+create function aucmNostatBestoptBkg2003() -> boolean as
+begin
+	openwritefile("aucm.noStat.bestOpt.bkgs.2003.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runReoptExperiment("integer.bkg2sixcuts->event",i,5,"NoStat",
+				"DynBestOpt","Naive");
+	closewritefile();
+	sendmessage("Full CM with no stat and best opt bkgs 2003");
+end;
+
+/* Scaling over bkgs with 2005 query. Best optimization with
+	cost model for aggregates and UDFs and no stat collected.
+	run with run.root.sh and load master.current.aucm.hagrid.2005.osql 
+	from osql */
+create function aucmNostatBestoptBkg2005() -> boolean as
+begin
+	openwritefile("aucm.noStat.bestOpt.bkgs.2005.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runReoptExperiment("integer.bkg2fourcuts->event",i,5,"NoStat",
+				"DynBestOpt","Naive");
+	closewritefile();
+	sendmessage("Full CM with no stat and best opt bkgs 2005");
+end;
+
+/* Scaling over signal with 2003 query. Best optimization with
+	cost model for aggregates and UDFs and no stat collected.
+	run with run.root.sh and load master.current.aucm.hagrid.osql 
+	from osql */
+create function aucmNostatBestoptSignal2003() -> boolean as
+begin
+	openwritefile("aucm.noStat.bestOpt.signal.2003.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runReoptExperiment("integer.signalsixcuts->event",(i-1),5,
+			"NoStat","DynBestOpt","Naive");
+	closewritefile();
+	sendmessage("Full CM with no stat and best opt signal 2003");
+end;
+
+/* Scaling over signal with 2005 query. Best optimization with
+	cost model for aggregates and UDFs and no stat collected.
+	run with run.root.sh and load master.current.aucm.hagrid.2005.osql 
+	from osql */
+create function aucmNostatBestoptSignal2005() -> boolean as
+begin
+	openwritefile("aucm.noStat.bestOpt.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runReoptExperiment("integer.signalfourcuts->event",(i-1),5,
+				"NoStat","DynBestOpt","Naive");
+	closewritefile();
+	sendmessage("Full CM with no stat and best opt signal 2005");
+end;
+
+/* Scaling over bkgs with 2003 query. Greedy optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	run with run.root.sh and load master.current.aucm.hagrid.osql 
+	from osql */
+create function aucmFaststatGreedyoptBkg2003() -> boolean as
+begin
+	openwritefile("aucm.fastStat.greedyOpt.bkgs.2003.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runReoptExperiment("integer.bkg2sixcuts->event",i,5,"FastStat",
+				"GreedyOpt","Naive");
+	closewritefile();
+	sendmessage("Full CM with fast stat and greedy opt bkgs 2003");
+end;
+
+/*********************************************************************
+ ******* Dynamic query processing and eager materialization of 
+ ******* transformation queries (without rewritings).
+ ********************************************************************/
+
+/* Scaling over bkgs with 2003 query. Best optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	Eager materialization implemented.
+	run with run.root.sh and load master.current.aucm.eager.hagrid.osql 
+	from osql */
+create function aucmEagerFaststatBestoptBkg2003() -> boolean as
+begin
+	openwritefile("aucm.eager.fastStat.bestOpt.bkgs.2003.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runReoptExperiment("integer.bkg2sixcuts->event",i,5,"FastStat",
+				"DynBestOpt","Mat");
+	closewritefile();
+	sendmessage("Full CM and eager mat. with fast stat and best opt bkgs 2003");
+end;
+
+/* Scaling over bkgs with 2003 query. Greedy optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	Eager materialization implemented.
+	run with run.root.sh and load master.current.aucm.eager.hagrid.osql 
+	from osql */
+create function aucmEagerFaststatGreedyoptBkg2003() -> boolean as
+begin
+	openwritefile("aucm.eager.fastStat.greedyOpt.bkgs.2003.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runReoptExperiment("integer.bkg2sixcuts->event",i,5,"FastStat",
+				"GreedyOpt","Mat");
+	closewritefile();
+	sendmessage("Full CM and eager mat. with fast stat and greedy opt bkgs 2003");
+end;
+
+/**********************************************************************
+ ****** Dynamic query processing with eager materialization and specialized
+ ****** transformation rewriting.
+ *********************************************************************/
+
+/* Scaling over bkgs with 2003 query. Greedy optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	Eager materialization implemented together with the specialized
+	rewriting.
+	run with run.root.sh and load master.current.aucm.rewrite.hagrid.osql 
+	from osql */
+create function aucmRewriteFaststatGreedyoptBkg2003() -> boolean as
+begin
+	openwritefile("aucm.rewrite.fastStat.greedyOpt.bkgs.2003.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runReoptExperiment("integer.bkg2sixcuts->event",i,5,"FastStat",
+				"GreedyOpt","Mat");
+	closewritefile();
+	sendmessage("Full CM and eager mat. with spec. rewrite with fast stat and greedy opt bkgs 2003");
+end;
+
+/* Scaling over bkgs with 2003 query. Best optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	Eager materialization implemented together with the specialized
+	rewriting.
+	run with run.root.sh and load master.current.aucm.rewrite.hagrid.osql 
+	from osql */
+create function aucmRewriteFaststatBestoptBkg2003() -> boolean as
+begin
+	openwritefile("aucm.rewrite.fastStat.bestOpt.bkgs.2003.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runReoptExperiment("integer.bkg2sixcuts->event",i,5,"FastStat",
+				"DynBestOpt","Mat");
+	closewritefile();
+	sendmessage("Full CM and eager mat. with spec. rewrite with fast stat and best opt bkgs 2003");
+end;
+
+/**********************************************************************
+ ****** Dynamic query processing with eager materialization, specialized
+ ****** transformation rewriting, vector rewrites and caching Ok Jets.
+ *********************************************************************/
+
+/* Scaling over bkgs with 2003 query. Greedy optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	Eager materialization implemented together with the specialized
+	rewriting and caching of ok jets.
+	run with run.root.sh and load master.current.aucm.cache.hagrid.osql 
+	from osql */
+create function aucmCacheFaststatGreedyoptBkg2003() -> boolean as
+begin
+	openwritefile("aucm.cache.fastStat.greedyOpt.bkgs.2003.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runReoptExperiment("integer.bkg2sixcuts->event",i,5,"FastStat",
+				"GreedyOpt","Mat");
+	closewritefile();
+	sendmessage("Full CM and eager mat. with spec. rewrite and caching with fast stat and greedy opt bkgs 2003");
+end;
+
+/* Scaling over bkgs with 2003 query. Best optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	Eager materialization implemented together with the specialized
+	rewriting and caching of ok jets.
+	run with run.root.sh and load master.current.aucm.cache.hagrid.osql 
+	from osql */
+create function aucmCacheFaststatBestoptBkg2003() -> boolean as
+begin
+	openwritefile("aucm.cache.fastStat.bestOpt.bkgs.2003.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runReoptExperiment("integer.bkg2sixcuts->event",i,5,"FastStat",
+				"DynBestOpt","Mat");
+	closewritefile();
+	sendmessage("Full CM and eager mat. with spec. rewrite and caching with fast stat and best opt bkgs 2003");
+end;
+
+
+/***************************************************************************
+ ******** Full query processing.
+ **************************************************************************/
+
+/* Scaling over bkgs with 2003 query. Full query processing with 
+	fast stat collecting, greedy opt and without profiled grouping.
+	run with run.current.sh */
+create function fullFaststatGreedyoptBkg2003() -> boolean as
+begin
+	openwritefile("full.fastStat.greedyOpt.bkgs.2003.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runReoptExperiment("integer.bkg2sixcuts->event",i,5,"FastStat",
+				"GreedyOpt","Mat");
+	closewritefile();
+	sendmessage("Full QP with fast stat and greedy opt bkgs 2003");
+end;
+
+/* Scaling over bkgs with 2003 query. Full query processing with 
+	fast stat collecting, best opt for DynQP and without profiled grouping.
+	run with run.current.sh */
+create function fullFaststatBestoptBkg2003() -> boolean as
+begin
+	openwritefile("full.fastStat.bestOpt.bkgs.2003.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runReoptExperiment("integer.bkg2sixcuts->event",i,5,"FastStat",
+				"DynBestOpt","Mat");
+	closewritefile();
+	sendmessage("Full QP with fast stat and dyn best opt bkgs 2003");
+end;
+
+/* Scaling over bkgs with 2005 query. Full query processing with 
+	fast stat collecting, best opt for DynQP and without profiled grouping.
+	run with run.current.2005.sh */
+create function fullFaststatBestoptBkg2005() -> boolean as
+begin
+	openwritefile("full.fastStat.bestOpt.bkgs.2005.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runReoptExperiment("integer.bkg2fourcuts->event",i,5,
+			"FastStat","DynBestOpt","Mat");
+	closewritefile();
+	sendmessage("Full QP with fast stat and dyn best opt bkgs 2005");
+end;
+
+/* Scaling over signal with 2003 query. Full query processing with 
+	fast stat collecting, best opt for DynQP and without profiled grouping.
+	run with run.current.sh */
+create function fullFaststatBestoptSignal2003() -> boolean as
+begin
+	openwritefile("full.fastStat.bestOpt.signal.2003.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runReoptExperiment("integer.signalsixcuts->event",(i-1),5,
+			"FastStat","DynBestOpt","Mat");
+	closewritefile();
+	sendmessage("Full QP with fast stat and dyn best opt signal 2003");
+end;
+
+/* Scaling over signal with 2005 query. Full query processing with 
+	fast stat collecting, best opt for DynQP and without profiled grouping.
+	run with run.current.2005.sh */
+create function fullFaststatBestoptSignal2005() -> boolean as
+begin
+	openwritefile("full.fastStat.bestOpt.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runReoptExperiment("integer.signalfourcuts->event",(i-1),5,
+			"FastStat","DynBestOpt","Mat");
+	closewritefile();
+	sendmessage("Full QP with fast stat and dyn best opt signal 2005");
+end;
+
+/* Scaling over bkgs with 2003 query. Full query processing with 
+	no stat collected, greedy opt for DynQP and without profiled grouping.
+	run with run.current.sh */
+create function fullNostatGreedyoptBkg2003() -> boolean as
+begin
+	openwritefile("full.noStat.greedyOpt.bkgs.2003.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runReoptExperiment("integer.bkg2sixcuts->event",i,5,"NoStat",
+				"GreedyOpt","Mat");
+	closewritefile();
+	sendmessage("Full QP with no stat and greedy opt bkgs 2003");
+end;
+
+/* Scaling over bkgs with 2003 query. Full query processing with 
+	no stat collected, best opt for DynQP and without profiled grouping.
+	run with run.current.sh */
+create function fullNostatBestoptBkg2003() -> boolean as
+begin
+	openwritefile("full.noStat.bestOpt.bkgs.2003.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runReoptExperiment("integer.bkg2sixcuts->event",i,5,"NoStat",
+				"DynBestOpt","Mat");
+	closewritefile();
+	sendmessage("Full QP with no stat and best opt bkgs 2003");
+end;
+
+/* Scaling over bkgs with 2005 query. Full query processing with 
+	no stat collected, best opt for DynQP and without profiled grouping.
+	FullStatStatCM
+	run with run.current.2005.sh */
+create function fullNostatBestoptBkg2005() -> boolean as
+begin
+	openwritefile("full.noStat.bestOpt.bkgs.2005.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runReoptExperiment("integer.bkg2fourcuts->event",i,5,"NoStat",
+				"DynBestOpt","Mat");
+	closewritefile();
+	sendmessage("Full QP with no stat and best opt bkgs 2005");
+end;
+
+/* Scaling over signal with 2003 query. Full query processing with 
+	no stat collected, best opt for DynQP and without profiled grouping.
+	FullStatStatCM
+	run with run.current.sh */
+create function fullNostatBestoptSignal2003() -> boolean as
+begin
+	openwritefile("full.noStat.bestOpt.signal.2003.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runReoptExperiment("integer.signalsixcuts->event",(i-1),5,
+				"NoStat","DynBestOpt","Mat");
+	closewritefile();
+	sendmessage("Full QP with no stat and best opt signal 2003");
+end;
+
+/* Scaling over signal with 2005 query. Full query processing with 
+	no stat collected, best opt for DynQP and without profiled grouping.
+	FullStatStatCM
+	run with run.current.2005.sh */
+create function fullNostatBestoptSignal2005() -> boolean as
+begin
+	openwritefile("full.noStat.bestOpt.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runReoptExperiment("integer.signalfourcuts->event",(i-1),5,
+				"NoStat","DynBestOpt","Mat");
+	closewritefile();
+	sendmessage("Full QP with no stat and best opt signal 2005");
+end;
+
+/* Scaling over bkg with 2003 query. FullStatCMnoUDFcm
+	run with run.root.sh and load master.current.noudf.hagrid.osql 
+	from osql */
+create function fullNoudfFaststatBestoptBkg2003() -> boolean as
+begin
+	openwritefile("full.noUDF.fastStat.bestOpt.bkg.2003.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runReoptExperiment("integer.bkg2sixcuts->event",i,5,
+			"FastStat","DynBestOpt","Mat");
+	closewritefile();
+	sendmessage("Full QP no UDF CM with fast stat and dyn best opt bkg 2003");
+end;
+
+/* Scaling over signal with 2003 query. FullStatCMnoUDFcm
+	run with run.root.sh and load master.current.noudf.hagrid.osql 
+	from osql */
+create function fullNoudfFaststatBestoptSignal2003() -> boolean as
+begin
+	openwritefile("full.noUDF.fastStat.bestOpt.signal.2003.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runReoptExperiment("integer.signalsixcuts->event",(i-1),5,
+			"FastStat","DynBestOpt","Mat");
+	closewritefile();
+	sendmessage("Full QP no UDF CM with fast stat and dyn best opt signal 2003");
+end;
+
+/* Scaling over signal with 2005 query. FullStatCMnoUDFcm
+	run with run.root.sh and load master.current.noudf.hagrid.2005.osql 
+	from osql */
+create function fullNoudfFaststatBestoptSignal2005() -> boolean as
+begin
+	openwritefile("full.noUDF.fastStat.bestOpt.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runReoptExperiment("integer.signalfourcuts->event",(i-1),5,
+			"FastStat","DynBestOpt","Mat");
+	closewritefile();
+	sendmessage("Full QP no UDF CM with fast stat and dyn best opt signal 2005");
+end;
+
+/********************************************************************
+ ******* Profiled grouping 
+ *******************************************************************/
+
+/*************** Dynamic QP ***************************************/
+/* Scaling over bkgs with 2003 query. Greedy optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	run with run.root.sh and load master.current.aucm.hagrid.osql 
+	from osql */
+create function profiled4DynNostatGreedyoptGreedygroupBkg2003() -> boolean as
+begin
+	openwritefile("profiled.4.dyn.noStat.greedyOpt.greedyGroup.bkgs.2003.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runProfileExperiment("integer.bkg2sixcuts->event",i,5,"NoStat",
+				"GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, dynQP with no stat and greedy opt bkgs 2003");
+end;
+
+/* Scaling over bkgs with 2003 query. DynGroupCM
+	run with run.root.sh and load master.current.aucm.hagrid.2005.osql 
+	from osql */
+create function profiled4DynNostatGreedyoptGreedygroupBkg2005() -> boolean as
+begin
+	openwritefile("profiled.4.dyn.noStat.greedyOpt.greedyGroup.bkgs.2005.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runProfileExperiment("integer.bkg2fourcuts->event",i,5,
+				"NoStat","GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, dynQP with no stat and greedy opt bkgs 2005");
+end;
+
+/* Scaling over signal with 2003 query. Greedy optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	run with run.root.sh and load master.current.aucm.hagrid.osql 
+	from osql */
+create function profiled4DynNostatGreedyoptGreedygroupSignal2003() -> boolean as
+begin
+	openwritefile("profiled.4.dyn.noStat.greedyOpt.greedyGroup.signal.2003.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalsixcuts->event",(i-1),5,
+			"NoStat","GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, dynQP with no stat and greedy opt signal 2003");
+end;
+
+/* Scaling over signal with 2005 query. Greedy optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	run with run.root.sh and load master.current.aucm.hagrid.osql 
+	from osql */
+create function profiled4DynNostatGreedyoptGreedygroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.dyn.noStat.greedyOpt.greedyGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+			"NoStat","GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, dynQP with no stat and greedy opt signal 2005");
+end;
+
+/* Scaling over bkgs with 2003 query. Greedy optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	run with run.root.sh and load master.current.aucm.hagrid.osql 
+	from osql */
+create function profiled4DynFirststatGreedyoptGreedygroupBkg2003() -> boolean as
+begin
+	openwritefile("profiled.4.dyn.firstStat.greedyOpt.greedyGroup.bkgs.2003.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runProfileExperiment("integer.bkg2sixcuts->event",i,5,
+				"FirstNaiveStat","GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, dynQP with first stat and greedy opt bkgs 2003");
+end;
+
+/* Scaling over bkgs with 2005 query. Greedy optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	DynAdvGroupCM
+	run with run.root.sh and load master.current.aucm.hagrid.2005.osql 
+	from osql */
+create function profiled4DynFirststatGreedyoptGreedygroupBkg2005() -> boolean as
+begin
+	openwritefile("profiled.4.dyn.firstStat.greedyOpt.greedyGroup.bkgs.2005.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runProfileExperiment("integer.bkg2fourcuts->event",i,5,
+				"FirstNaiveStat",
+				"GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, dynQP with first stat and greedy opt bkgs 2005");
+end;
+
+/* Scaling over signal with 2003 query. Greedy optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	run with run.root.sh and load master.current.aucm.hagrid.osql 
+	from osql */
+create function profiled4DynFirststatGreedyoptGreedygroupSignal2003() -> boolean as
+begin
+	openwritefile("profiled.4.dyn.firstStat.greedyOpt.greedyGroup.signal.2003.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalsixcuts->event",(i-1),5,
+				"FirstNaiveStat",
+				"GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, dynQP with first stat and greedy opt signal 2003");
+end;
+
+/* Scaling over signal with 2005 query. Greedy optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	run with run.root.sh and load master.current.aucm.hagrid.osql 
+	from osql */
+create function profiled4DynFirststatGreedyoptGreedygroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.dyn.firstStat.greedyOpt.greedyGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+				"FirstNaiveStat",
+				"GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, dynQP with first stat and greedy opt signal 2005");
+end;
+
+/*** Randomized ***/
+
+/* Scaling over signal with 2005 query. Randomized optimization with
+	cost model for aggregates and UDFs and no stat collecting.
+	run with run.root.sh and load master.current.aucm.hagrid.osql 
+	from osql */
+create function profiled4DynNostatBestoptRandomgroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.dyn.noStat.bestOpt.randomGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+			"NoStat","BestOpt","RandomOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, dynQP with no stat and random opt signal 2005");
+end;
+
+/* Scaling over signal with 2005 query. Randomized optimization and
+	greedy group order with
+	cost model for aggregates and UDFs and no stat collecting.
+	run with run.root.sh and load master.current.aucm.hagrid.osql 
+	from osql */
+create function profiled4DynNostatBestoptGreedygroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.dyn.noStat.bestOpt.greedyGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+			"NoStat","BestOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, dynQP with no stat and random opt greedy order signal 2005");
+end;
+
+/* Scaling over signal with 2005 query. Randomized optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	run with run.root.sh and load master.current.aucm.hagrid.osql 
+	from osql */
+create function profiled4DynFaststatBestoptRandomgroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.dyn.fastStat.bestOpt.randomGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+			"FirstNaiveStat","BestOpt","RandomOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, dynQP with fast stat and random opt signal 2005");
+end;
+
+/* Scaling over signal with 2005 query. Randomized optimization and
+	greedy group order with
+	cost model for aggregates and UDFs and fast stat collecting.
+	run with run.root.sh and load master.current.aucm.hagrid.osql 
+	from osql */
+create function profiled4DynFaststatBestoptGreedygroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.dyn.fastStat.bestOpt.greedyGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+			"FirstNaiveStat","BestOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, dynQP with fast stat and random opt greedy order signal 2005");
+end;
+
+
+/*************** TransRewrite ***************************************/
+/* Scaling over bkgs with 2003 query. Greedy optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	run with run.root.sh and load 
+		master.current.aucm.transpose.hagrid.osql 
+	from osql */
+create function profiled4TransposeNostatGreedyoptGreedygroupBkg2003() -> boolean as
+begin
+	openwritefile("profiled.4.transpose.noStat.greedyOpt.greedyGroup.bkgs.2003.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runProfileExperiment("integer.bkg2sixcuts->event",i,5,"NoStat",
+				"GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, Transpose with no stat and greedy opt bkgs 2003");
+end;
+
+/* Scaling over bkgs with 2005 query. Greedy optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	run with run.root.sh and load 
+		master.current.aucm.transpose.hagrid.osql 
+	from osql */
+create function profiled4TransposeNostatGreedyoptGreedygroupBkg2005() -> boolean as
+begin
+	openwritefile("profiled.4.transpose.noStat.greedyOpt.greedyGroup.bkgs.2005.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runProfileExperiment("integer.bkg2fourcuts->event",i,5,
+				"NoStat","GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, Transpose with no stat and greedy opt bkgs 2005");
+end;
+
+/* Scaling over sisgnal with 2003 query. Greedy optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	run with run.root.sh and load 
+		master.current.aucm.transpose.hagrid.osql 
+	from osql */
+create function profiled4TransposeNostatGreedyoptGreedygroupSignal2003() -> boolean as
+begin
+	openwritefile("profiled.4.transpose.noStat.greedyOpt.greedyGroup.signal.2003.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalsixcuts->event",(i-1),5,
+				"FirstNaiveStat",
+				"GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, Transpose with no stat and greedy opt signal 2003");
+end;
+
+/* Scaling over signal with 2005 query. Greedy optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	run with run.root.sh and load 
+		master.current.aucm.transpose.hagrid.osql 
+	from osql */
+create function profiled4TransposeFirststatGreedyoptGreedygroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.transpose.firstStat.greedyOpt.greedyGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+				"FirstNaiveStat",
+				"GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, Transpose with first stat and greedy opt signal 2005");
+end;
+
+/*** Randomized ***/
+
+/* Scaling over signal with 2005 query. Randomized optimization with
+	cost model for aggregates and UDFs and no stat collecting.
+	run with run.root.sh and load 
+		master.current.aucm.transpose.hagrid.osql 
+	from osql */
+create function profiled4TransposeNostatBestoptRandomgroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.transpose.noStat.bestOpt.randomGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+				"NoStat",
+				"BestOpt","RandomOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, Transpose with no stat and random opt signal 2005");
+end;
+
+/*************** Trans ***************************************/
+/* Scaling over bkgs with 2003 query. Greedy optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	run with run.root.sh and load master.current.aucm.rewrite.hagrid.osql 
+	from osql */
+create function profiled4TransNostatGreedyoptGreedygroupBkg2003() -> boolean as
+begin
+	openwritefile("profiled.4.trans.noStat.greedyOpt.greedyGroup.bkgs.2003.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runProfileExperiment("integer.bkg2sixcuts->event",i,5,"NoStat",
+				"GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, Trans with no stat and greedy opt bkgs 2003");
+end;
+
+/* Scaling over bkgs with 2005 query. Greedy optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	run with run.root.sh and load master.current.aucm.rewrite.hagrid.2005.osql 
+	from osql */
+create function profiled4TransNostatGreedyoptGreedygroupBkg2005() -> boolean as
+begin
+	openwritefile("profiled.4.trans.noStat.greedyOpt.greedyGroup.bkgs.2005.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runProfileExperiment("integer.bkg2fourcuts->event",i,5,"NoStat",
+				"GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, Trans with no stat and greedy opt bkgs 2005");
+end;
+
+/* Scaling over signal with 2003 query. Greedy optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	run with run.root.sh and load master.current.aucm.rewrite.hagrid.osql 
+	from osql */
+create function profiled4TransNostatGreedyoptGreedygroupSignal2003() -> boolean as
+begin
+	openwritefile("profiled.4.trans.noStat.greedyOpt.greedyGroup.signal.2003.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalsixcuts->event",(i-1),5,"NoStat",
+				"GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, Trans with no stat and greedy opt signal 2003");
+end;
+
+/* Scaling over signal with 2005 query. Greedy optimization with
+	cost model for aggregates and UDFs and no stat collecting.
+	run with run.root.sh and load master.current.aucm.rewrite.hagrid.osql 
+	from osql */
+create function profiled4TransNostatGreedyoptGreedygroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.trans.noStat.greedyOpt.greedyGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,"NoStat",
+				"GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, Trans with no stat and greedy opt signal 2005");
+end;
+
+/* Scaling over signal with 2005 query. Greedy optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	run with run.root.sh and load master.current.aucm.rewrite.hagrid.osql 
+	from osql */
+create function profiled4TransFaststatGreedyoptGreedygroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.trans.fastStat.greedyOpt.greedyGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+				"FirstMatStat",
+				"GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, Trans with fast stat and greedy opt signal 2005");
+end;
+
+/*** Randomized ***/
+
+/* Scaling over bkgs with 2003 query. Randomized optimization with
+	cost model for aggregates and UDFs and no stat collecting.
+	run with run.root.sh and load master.current.aucm.rewrite.hagrid.osql 
+	from osql */
+create function profiled4TransNostatBestoptRandomgroupBkg2003() -> boolean as
+begin
+	openwritefile("profiled.4.trans.noStat.bestOpt.randomGroup.bkgs.2003.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runProfileExperiment("integer.bkg2sixcuts->event",i,5,"NoStat",
+				"BestOpt","RandomOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, Trans with no stat and random opt bkgs 2003");
+end;
+
+/* Scaling over bkgs with 2005 query. Randomized optimization with
+	cost model for aggregates and UDFs and no stat collecting.
+	run with run.root.sh and load master.current.aucm.rewrite.hagrid.osql 
+	from osql */
+create function profiled4TransNostatBestyoptRandomgroupBkg2005() -> boolean as
+begin
+	openwritefile("profiled.4.trans.noStat.bestOpt.randomGroup.bkgs.2005.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runProfileExperiment("integer.bkg2fourcuts->event",i,5,
+				"NoStat",
+				"BestOpt","RandomOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, Trans with no stat and random opt bkgs 2005");
+end;
+
+/* Scaling over signal with 2003 query. Random optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	run with run.root.sh and load master.current.aucm.rewrite.hagrid.osql 
+	from osql */
+create function profiled4TransNostatBestoptRandomgroupSignal2003() -> boolean as
+begin
+	openwritefile("profiled.4.trans.noStat.bestOpt.randomGroup.signal.2003.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalsixcuts->event",(i-1),5,
+				"NoStat",
+				"BestOpt","RandomOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, Trans with no stat and random opt signal 2003");
+end;
+
+/* Scaling over signal with 2005 query. Randomized optimization on group order
+	with
+	cost model for aggregates and UDFs and fast stat collecting.
+	run with run.root.sh and load master.current.aucm.rewrite.hagrid.osql 
+	from osql */
+create function profiled4TransNostatGreedyoptRandomgroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.trans.noStat.greedyOpt.randomGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,"NoStat",
+				"GreedyOpt","RandomOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, Trans with no stat and greedy opt, random group signal 2005");
+end;
+
+/* Scaling over signal with 2005 query. Randomized optimization with
+	cost model for aggregates and UDFs and no stat collecting.
+	run with run.root.sh and load master.current.aucm.rewrite.hagrid.osql 
+	from osql */
+create function profiled4TransNostatBestoptRandomgroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.trans.noStat.bestOpt.randomGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+				"NoStat",
+				"BestOpt","RandomOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, Trans with no stat and random opt signal 2005");
+end;
+
+/* Scaling over signal with 2005 query. Randomized optimization 
+	and greedy group order with
+	cost model for aggregates and UDFs and no stat collecting.
+	run with run.root.sh and load master.current.aucm.rewrite.hagrid.osql 
+	from osql */
+create function profiled4TransNostatBestoptGreedygroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.trans.noStat.bestOpt.greedyGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+				"NoStat",
+				"BestOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, Trans with no stat and random opt greedy order signal 2005");
+end;
+
+/* Scaling over signal with 2005 query. Greedy optimization with
+	cost model for aggregates and UDFs and fast stat collecting.
+	run with run.root.sh and load master.current.aucm.rewrite.hagrid.osql 
+	from osql */
+create function profiled4TransFaststatBestoptRandomgroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.trans.fastStat.bestOpt.randomGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+				"FirstMatStat",
+				"BestOpt","RandomOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, Trans with fast stat and greedy opt signal 2005");
+end;
+
+/* Scaling over signal with 2005 query. Randomized optimization 
+	and greedy group order with
+	cost model for aggregates and UDFs and fast stat collecting.
+	run with run.root.sh and load master.current.aucm.rewrite.hagrid.osql 
+	from osql */
+create function profiled4TransFaststatBestoptGreedygroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.trans.fastStat.bestOpt.greedyGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+				"FirstMatStat",
+				"BestOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, Trans with fast stat and random opt greedy order signal 2005");
+end;
+
+/*************** Trans and Vector ***************************************/
+/* Scaling over bkgs with 2003 query. Profiled grouping Greedy optimization 
+	with
+	cost model for aggregates and UDFs and fast stat collecting.
+	Eager materialization implemented together with the specialized
+	rewriting and vector rewrite.
+	run with run.root.sh and load master.current.aucm.vector.hagrid.osql 
+	from osql */
+create function profiled4TransandVectorNostatGreedyoptGreedygroupBkg2003() -> boolean as
+begin
+	openwritefile("profiled.4.vector.noStat.greedyOpt.greedyGroup.bkgs.2003.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runProfileExperiment("integer.bkg2sixcuts->event",i,5,"NoStat",
+				"GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, vector with no stat and greedy opt bkgs 2003");
+end;
+
+/* Scaling over bkgs with 2005 query. TransAndVector
+	run with run.root.sh and load 
+	master.current.aucm.vector.hagrid.osql from osql */
+create function profiled4TransandvectorNostatGreedyoptGreedygroupBkg2005() -> boolean as
+begin
+	openwritefile("profiled.4.vector.noStat.greedyOpt.greedyGroup.bkgs.2005.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runProfileExperiment("integer.bkg2fourcuts->event",i,5,
+				"NoStat","GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, vector with no stat and greedy opt bkgs 2005");
+end;
+
+/* Scaling over signal with 2003 query. Profiled grouping Greedy optimization 
+	with
+	cost model for aggregates and UDFs and fast stat collecting.
+	Eager materialization implemented together with the specialized
+	rewriting and vector rewrites.
+	run with run.root.sh and load master.current.aucm.vector.hagrid.osql 
+	from osql */
+create function profiled4TransandvectorNostatGreedyoptGreedygroupSignal2003() -> boolean as
+begin
+	openwritefile("profiled.4.vector.noStat.greedyOpt.greedyGroup.signal.2003.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalsixcuts->event",(i-1),5,
+				"NoStat",
+				"GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, vector with no stat and greedy opt signal 2003");
+end;
+
+/* Scaling over signal with 2005 query. Profiled grouping Greedy optimization 
+	with
+	cost model for aggregates and UDFs and no stat collecting.
+	Eager materialization implemented together with the specialized
+	rewriting and vector rewrites.
+	run with run.root.sh and load 
+	master.current.aucm.vector.hagrid.osql from osql */
+create function profiled4TransandvectorNostatGreedyoptGreedygroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.vector.noStat.greedyOpt.greedyGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+				"NoStat",
+				"GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, vector with no stat and greedy opt signal 2005");
+end;
+
+/* Scaling over signal with 2005 query. Profiled grouping Greedy optimization 
+	with
+	cost model for aggregates and UDFs and fast stat collecting.
+	Eager materialization implemented together with the specialized
+	rewriting and vector rewrites.
+	run with run.root.sh and load 
+	master.current.aucm.vector.hagrid.osql from osql */
+create function profiled4TransandvectorFaststatGreedyoptGreedygroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.vector.fastStat.greedyOpt.greedyGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+				"FirstMatStat",
+				"GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, vector with fast stat and greedy opt signal 2005");
+end;
+
+/*** Randomized ***/
+
+/* Scaling over bkgs with 2003 query. Profiled grouping Randomized optimization 
+	with
+	cost model for aggregates and UDFs and no stat collecting.
+	Eager materialization implemented together with the specialized
+	rewriting and vector rewrite.
+	run with run.root.sh and load master.current.aucm.vector.hagrid.osql 
+	from osql */
+create function profiled4TransandVectorNostatBestoptRandomgroupBkg2003() -> boolean as
+begin
+	openwritefile("profiled.4.vector.noStat.bestOpt.randomGroup.bkgs.2003.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runProfileExperiment("integer.bkg2sixcuts->event",i,5,"NoStat",
+				"BestOpt","RandomOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, vector with no stat and random opt bkgs 2003");
+end;
+
+/* Scaling over bkgs with 2005 query. TransAndVector with randomized opt
+	run with run.root.sh and load 
+	master.current.aucm.vector.hagrid.osql from osql */
+create function profiled4TransandvectorNostatBestoptRandomgroupBkg2005() -> boolean as
+begin
+	openwritefile("profiled.4.vector.noStat.bestOpt.randomGroup.bkgs.2005.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runProfileExperiment("integer.bkg2fourcuts->event",i,5,
+				"NoStat","BestOpt","RandomOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, vector with no stat and random opt bkgs 2005");
+end;
+
+/* Scaling over signal with 2003 query. Profiled grouping Randomized optimization 
+	with
+	cost model for aggregates and UDFs and no stat collecting.
+	Eager materialization implemented together with the specialized
+	rewriting and vector rewrites.
+	run with run.root.sh and load master.current.aucm.vector.hagrid.osql 
+	from osql */
+create function profiled4TransandvectorNostatBestoptRandomgroupSignal2003() -> boolean as
+begin
+	openwritefile("profiled.4.vector.noStat.bestOpt.randomGroup.signal.2003.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalsixcuts->event",(i-1),5,
+				"NoStat",
+				"BestOpt","RandomOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, vector with no stat and random opt signal 2003");
+end;
+
+/* Scaling over signal with 2005 query. Profiled grouping Randomized optimization 
+	with
+	cost model for aggregates and UDFs and no stat collecting.
+	Eager materialization implemented together with the specialized
+	rewriting and vector rewrites.
+	run with run.root.sh and load 
+	master.current.aucm.vector.hagrid.osql from osql */
+create function profiled4TransandvectorNostatBestoptRandomgroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.vector.noStat.bestOpt.randomGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+				"NoStat",
+				"BestOpt","RandomOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, vector with no stat and random opt signal 2005");
+end;
+
+/* Scaling over signal with 2005 query. Profiled grouping 
+	Randomized optimization and greedy group order
+	with
+	cost model for aggregates and UDFs and no stat collecting.
+	Eager materialization implemented together with the specialized
+	rewriting and vector rewrites.
+	run with run.root.sh and load 
+	master.current.aucm.vector.hagrid.osql from osql */
+create function profiled4TransandvectorNostatBestoptGreedygroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.vector.noStat.bestOpt.greedyGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+				"NoStat",
+				"BestOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, vector with no stat and random opt greedy order signal 2005");
+end;
+
+/* Scaling over signal with 2005 query. Profiled grouping Randomized optimization 
+	with
+	cost model for aggregates and UDFs and fast stat collecting.
+	Eager materialization implemented together with the specialized
+	rewriting and vector rewrites.
+	run with run.root.sh and load 
+	master.current.aucm.vector.hagrid.osql from osql */
+create function profiled4TransandvectorFaststatBestoptRandomgroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.vector.fastStat.bestOpt.randomGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+				"FirstMatStat",
+				"BestOpt","RandomOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, vector with no stat and random opt signal 2005");
+end;
+
+/* Scaling over signal with 2005 query. Profiled grouping 
+	Randomized optimization and greedy group order
+	with
+	cost model for aggregates and UDFs and fast stat collecting.
+	Eager materialization implemented together with the specialized
+	rewriting and vector rewrites.
+	run with run.root.sh and load 
+	master.current.aucm.vector.hagrid.osql from osql */
+create function profiled4TransandvectorFaststatBestoptGreedygroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.vector.fastStat.bestOpt.greedyGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+				"FirstMatStat",
+				"BestOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, vector with fast stat and random opt greedy order signal 2005");
+end;
+
+/*************** Trans and Cache ***************************************/
+/* Scaling over bkgs with 2003 query. Profiled grouping Greedy optimization 
+	with
+	cost model for aggregates and UDFs and fast stat collecting.
+	Eager materialization implemented together with the specialized
+	rewriting, vector rewrite and caching of ok jets.
+	run with run.root.sh and load master.current.aucm.cache.hagrid.osql 
+	from osql */
+create function profiled4TransandcacheNostatGreedyoptGreedygroupBkg2003() -> boolean as
+begin
+	openwritefile("profiled.4.cache.noStat.greedyOpt.greedyGroup.bkgs.2003.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runProfileExperiment("integer.bkg2sixcuts->event",i,5,"NoStat",
+				"GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, cache with no stat and greedy opt bkgs 2003");
+end;
+
+/* Scaling over bkgs with 2005 query. TransAndCache
+	run with run.root.sh and load master.current.aucm.cache.hagrid.2005.osql 
+	from osql */
+create function profiled4TransandcacheNostatGreedyoptGreedygroupBkg2005() -> boolean as
+begin
+	openwritefile("profiled.4.cache.noStat.greedyOpt.greedyGroup.bkgs.2005.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runProfileExperiment("integer.bkgfourcuts->event",i,5,"NoStat",
+				"GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, cache with no stat and greedy opt bkgs 2005");
+end;
+
+/* Scaling over signal with 2003 query. Profiled grouping Greedy optimization 
+	with
+	cost model for aggregates and UDFs and fast stat collecting.
+	Eager materialization implemented together with the specialized
+	rewriting and caching of ok jets.
+	run with run.root.sh and load master.current.aucm.cache.hagrid.osql 
+	from osql */
+create function profiled4TransandcacheNostatGreedyoptGreedygroupSignal2003() -> boolean as
+begin
+	openwritefile("profiled.4.cache.noStat.greedyOpt.greedyGroup.signal.2003.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalsixcuts->event",(i-1),5,
+				"NoStat",
+				"GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, cache with no stat and greedy opt signal 2003");
+end;
+
+/* Scaling over signal with 2005 query. Profiled grouping Greedy optimization 
+	with
+	cost model for aggregates and UDFs and no stat collecting.
+	Eager materialization implemented together with the specialized
+	rewriting and caching of ok jets.
+	run with run.root.sh and load master.current.aucm.cache.hagrid.osql 
+	from osql */
+create function profiled4TransandcacheNostatGreedyoptGreedygroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.cache.noStat.greedyOpt.greedyGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+				"NoStat",
+				"GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, cache with no stat and greedy opt signal 2005");
+end;
+
+/* Scaling over signal with 2005 query. Profiled grouping Greedy optimization 
+	with
+	cost model for aggregates and UDFs and fast stat collecting.
+	Eager materialization implemented together with the specialized
+	rewriting and caching of ok jets.
+	run with run.root.sh and load master.current.aucm.cache.hagrid.osql 
+	from osql */
+create function profiled4TransandcacheFaststatGreedyoptGreedygroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.cache.fastStat.greedyOpt.greedyGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+				"FirstMatStat",
+				"GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, cache with fast stat and greedy opt signal 2005");
+end;
+
+/*** Randomized ***/
+
+/* Scaling over bkgs with 2003 query. Profiled grouping Randomized optimization 
+	with
+	cost model for aggregates and UDFs and no stat collecting.
+	Eager materialization implemented together with the specialized
+	rewriting, vector rewrite and caching of ok jets.
+	run with run.root.sh and load master.current.aucm.cache.hagrid.osql 
+	from osql */
+create function profiled4TransandcacheNostatBestoptRandomgroupBkg2003() -> boolean as
+begin
+	openwritefile("profiled.4.cache.noStat.bestOpt.randomGroup.bkgs.2003.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runProfileExperiment("integer.bkg2sixcuts->event",i,5,"NoStat",
+				"BestOpt","RandomOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, cache with no stat and random opt bkgs 2003");
+end;
+
+/* Scaling over bkgs with 2005 query. TransAndCache with randomized opt
+	run with run.root.sh and load master.current.aucm.cache.hagrid.osql 
+	from osql */
+create function profiled4TransandcacheNostatBestoptRandomgroupBkg2005() -> boolean as
+begin
+	openwritefile("profiled.4.cache.noStat.bestOpt.randomGroup.bkgs.2005.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runProfileExperiment("integer.bkg2fourcuts->event",i,5,"NoStat",
+				"BestOpt","RandomOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, cache with no stat and random opt bkgs 2005");
+end;
+
+/* Scaling over signal with 2003 query. Profiled grouping Randomized optimization 
+	with
+	cost model for aggregates and UDFs and fast stat collecting.
+	Eager materialization implemented together with the specialized
+	rewriting and caching of ok jets.
+	run with run.root.sh and load master.current.aucm.cache.hagrid.osql 
+	from osql */
+create function profiled4TransandcacheNostatBestoptRandomgroupSignal2003() -> boolean as
+begin
+	openwritefile("profiled.4.cache.noStat.bestOpt.randomGroup.signal.2003.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalsixcuts->event",(i-1),5,
+				"NoStat",
+				"BestOpt","RandomOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, cache with no stat and random opt signal 2003");
+end;
+
+/* Scaling over signal with 2005 query. Profiled grouping Randomized optimization 
+	with
+	cost model for aggregates and UDFs and no stat collecting.
+	Eager materialization implemented together with the specialized
+	rewriting and caching of ok jets.
+	run with run.root.sh and load master.current.aucm.cache.hagrid.osql 
+	from osql */
+create function profiled4TransandcacheNostatBestoptRandomgroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.cache.noStat.bestOpt.randomGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+				"NoStat",
+				"BestOpt","RandomOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, cache with no stat and random opt signal 2005");
+end;
+
+/* Scaling over signal with 2005 query. Profiled grouping 
+	Randomized optimization and greedy group order
+	with
+	cost model for aggregates and UDFs and no stat collecting.
+	Eager materialization implemented together with the specialized
+	rewriting and caching of ok jets.
+	run with run.root.sh and load master.current.aucm.cache.hagrid.osql 
+	from osql */
+create function profiled4TransandcacheNostatBestoptGreedygroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.cache.noStat.bestOpt.greedyGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+				"NoStat",
+				"BestOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, cache with no stat and random opt greedy order signal 2005");
+end;
+
+/* Scaling over signal with 2005 query. Profiled grouping Randomized optimization 
+	with
+	cost model for aggregates and UDFs and fast stat collecting.
+	Eager materialization implemented together with the specialized
+	rewriting and caching of ok jets.
+	run with run.root.sh and load master.current.aucm.cache.hagrid.osql 
+	from osql */
+create function profiled4TransandcacheFaststatBestoptRandomgroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.cache.fastStat.bestOpt.randomGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+				"FirstMatStat",
+				"BestOpt","RandomOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, cache with fast stat and random opt signal 2005");
+end;
+
+/* Scaling over signal with 2005 query. Profiled grouping 
+	Randomized optimization and greedy group order
+	with
+	cost model for aggregates and UDFs and fast stat collecting.
+	Eager materialization implemented together with the specialized
+	rewriting and caching of ok jets.
+	run with run.root.sh and load master.current.aucm.cache.hagrid.osql 
+	from osql */
+create function profiled4TransandcacheFaststatBestoptGreedygroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.cache.fastStat.bestOpt.greedyGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+				"FirstMatStat",
+				"BestOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled 4, cache with fast stat and random opt greedy order signal 2005");
+end;
+
+/*************** Full QP **************************************/
+/* Scaling over bkgs with 2003 query. Full query processing with 
+	profiled grouping, no stat collected, greedy opt for in group
+	and greedy for ordering groups.
+	run with run.current.sh */
+create function profiled4FullNostatGreedyoptGreedygroupBkg2003() -> boolean as
+begin
+	openwritefile("profiled.4.full.noStat.greedyOpt.greedyGroup.bkgs.2003.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runProfileExperiment("integer.bkg2sixcuts->event",i,5,"NoStat",
+				"GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled, Full QP with no stat and greedy opt bkgs 2003");
+end;
+
+/* Scaling over bkgs with 2005 query. Full query processing with 
+	profiled grouping, no stat collected, greedy opt for in group
+	and greedy for ordering groups.
+	run with run.current.2005.sh */
+create function profiled4FullNostatGreedyoptGreedygroupBkg2005() -> boolean as
+begin
+	openwritefile("profiled.4.full.noStat.greedyOpt.greedyGroup.bkgs.2005.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runProfileExperiment("integer.bkg2fourcuts->event",i,5,
+				"NoStat","GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled, Full QP with no stat and greedy opt bkgs 2005");
+end;
+
+/* Scaling over signal with 2003 query. Full query processing with 
+	profiled grouping, no stat collected, greedy opt for in group
+	and greedy for ordering groups.
+	run with run.current.sh */
+create function profiled4FullNostatGreedyoptGreedygroupSignal2003() -> boolean as
+begin
+	openwritefile("profiled.4.full.noStat.greedyOpt.greedyGroup.signal.2003.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalsixcuts->event",(i-1),5,
+			"NoStat","GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled, Full QP with no stat and greedy opt signal 2003");
+end;
+
+/* Scaling over signal with 2005 query. Full query processing with 
+	profiled grouping, no stat collected, greedy opt for in group
+	and greedy for ordering groups.
+	run with run.current.2005.sh */
+create function profiled4FullNostatGreedyoptGreedygroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.full.noStat.greedyOpt.greedyGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+			"NoStat","GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled, Full QP with no stat and greedy opt signal 2005");
+end;
+
+/* Scaling over bkgs with 2003 query. Full query processing with 
+	profiled grouping, fast stat collected first, greedy opt for in group
+	and greedy for ordering groups.
+	run with run.current.sh */
+create function profiled4FullFirststatGreedyoptGreedygroupBkg2003() -> boolean as
+begin
+	openwritefile("profiled.4.full.firstStat.greedyOpt.greedyGroup.bkgs.2003.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runProfileExperiment("integer.bkg2sixcuts->event",i,5,
+				"FirstMatStat",
+				"GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled, Full QP with first stat and greedy opt bkgs 2003");
+end;
+
+/* Scaling over bkgs with 2005 query. Full query processing with 
+	profiled grouping, fast stat collected first, greedy opt for in group
+	and greedy for ordering groups.
+	run with run.current.2005.sh */
+create function profiled4FullFirststatGreedyoptGreedygroupBkg2005() -> boolean as
+begin
+	openwritefile("profiled.4.full.firstStat.greedyOpt.greedyGroup.bkgs.2005.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runProfileExperiment("integer.bkg2fourcuts->event",i,5,
+				"FirstMatStat",
+				"GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled, Full QP with first stat and greedy opt bkgs 2005");
+end;
+
+/* Scaling over signal with 2003 query. Full query processing with 
+	profiled grouping, fast stat collected first, greedy opt for in group
+	and greedy for ordering groups.
+	run with run.current.sh */
+create function profiled4FullFirststatGreedyoptGreedygroupSignal2003() -> boolean as
+begin
+	openwritefile("profiled.4.full.firstStat.greedyOpt.greedyGroup.signal.2003.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalsixcuts->event",(i-1),5,
+				"FirstMatStat",
+				"GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled, Full QP with first stat and greedy opt signal 2003");
+end;
+
+/* Scaling over signal with 2005 query. Full query processing with 
+	profiled grouping, fast stat collected first, greedy opt for in group
+	and greedy for ordering groups.
+	run with run.current.2005.sh */
+create function profiled4FullFirststatGreedyoptGreedygroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.full.firstStat.greedyOpt.greedyGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+				"FirstMatStat",
+				"GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled, Full QP with first stat and greedy opt signal 2005");
+end;
+
+/* Scaling over bkg with 2003 query. FullGroupCMnoUDFCM
+	run with run.root.sh and load master.current.noudf.hagrid.osql 
+	from osql */
+create function profiled4FullNoudfNostatGreedyoptGreedygroupBkg2003() -> boolean as
+begin
+	openwritefile("profiled.4.full.noUDF.noStat.greedyOpt.greedyGroup.bkg.2003.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runProfileExperiment("integer.bkg2sixcuts->event",i,5,
+			"NoStat","GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled, Full QP no UDF CM with no stat and greedy opt bkg 2003");
+end;
+
+/* Scaling over signal with 2003 query. FullGroupCMnoUDFCM
+	run with run.root.sh and load master.current.noudf.hagrid.osql 
+	from osql */
+create function profiled4FullNoudfNostatGreedyoptGreedygroupSignal2003() -> boolean as
+begin
+	openwritefile("profiled.4.full.noUDF.noStat.greedyOpt.greedyGroup.signal.2003.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalsixcuts->event",(i-1),5,
+			"NoStat","GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled, Full QP no UDF CM with no stat and greedy opt signal 2003");
+end;
+
+/* Scaling over signal with 2005 query. FullGroupCMnoUDFCM
+	run with run.root.sh and load master.current.noudf.hagrid.2005.osql 
+	from osql */
+create function profiled4FullNoudfNostatGreedyoptGreedygroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.full.noUDF.noStat.greedyOpt.greedyGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+			"NoStat","GreedyOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled, Full QP no UDF CM with no stat and greedy opt signal 2005");
+end;
+
+/*** Randomized ***/
+/* Scaling over bkgs with 2003 query. Full query processing with 
+	profiled grouping, no stat collected, random opt for in group
+	and random for ordering groups.
+	run with run.current.sh */
+create function profiled4FullNostatBestoptRandomgroupBkg2003() -> boolean as
+begin
+	openwritefile("profiled.4.full.noStat.bestOpt.randomGroup.bkgs.2003.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runProfileExperiment("integer.bkg2sixcuts->event",i,5,"NoStat",
+				"BestOpt","RandomOrder",4);
+	closewritefile();
+	sendmessage("Profiled, Full QP with no stat and random opt bkgs 2003");
+end;
+
+/* Scaling over bkgs with 2005 query. Full query processing with 
+	profiled grouping, no stat collected, randomized opt for in group
+	and greedy for ordering groups.
+	run with run.current.sh */
+create function profiled4FullNostatBestoptRandomgroupBkg2005() -> boolean as
+begin
+	openwritefile("profiled.4.full.noStat.bestOpt.randomGroup.bkgs.2005.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runProfileExperiment("integer.bkg2fourcuts->event",i,5,
+				"NoStat","BestOpt","RandomOrder",4);
+	closewritefile();
+	sendmessage("Profiled, Full QP with no stat and random opt bkgs 2005");
+end;
+
+/* Scaling over signal with 2003 query. Full query processing with 
+	profiled grouping, no stat collected, randomized opt for in group
+	and greedy for ordering groups.
+	run with run.current.sh */
+create function profiled4FullNostatBestoptRandomgroupSignal2003() -> boolean as
+begin
+	openwritefile("profiled.4.full.noStat.bestOpt.randomGroup.signal.2003.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalsixcuts->event",(i-1),5,
+			"NoStat","BestOpt","RandomOrder",4);
+	closewritefile();
+	sendmessage("Profiled, Full QP with no stat and random opt signal 2003");
+end;
+
+/* Scaling over signal with 2005 query. Full query processing with 
+	profiled grouping, no stat collected, random opt for in group
+	and random for ordering groups.
+	run with run.current.sh */
+create function profiled4FullNostatBestoptRandomgroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.full.noStat.bestOpt.randomGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+			"NoStat","BestOpt","RandomOrder",4);
+	closewritefile();
+	sendmessage("Profiled, Full QP with no stat and random opt signal 2005");
+end;
+
+/* Scaling over signal with 2005 query. Full query processing with 
+	profiled grouping, no stat collected, random opt for in group
+	and greedy for ordering groups.
+	run with run.current.sh */
+create function profiled4FullNostatBestoptGreedygroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.full.noStat.bestOpt.greedyGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+			"NoStat","BestOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled, Full QP with no stat and random opt greedy order signal 2005");
+end;
+
+/* Scaling over bkgs with 2003 query. Full query processing with 
+	profiled grouping, no stat collected, random opt for in group
+	and random for ordering groups.
+	run with run.current.sh */
+create function profiled4FullFirststatBestoptRandomgroupBkg2003() -> boolean as
+begin
+	openwritefile("profiled.4.full.firstStat.bestOpt.randomGroup.bkgs.2003.txt");
+	for each integer i where i in {1,9,17,25,33,41}
+		runProfileExperiment("integer.bkg2sixcuts->event",i,5,
+				"FirstMatStat",
+				"BestOpt","RandomOrder",4);
+	closewritefile();
+	sendmessage("Profiled, Full QP with first stat and random opt bkgs 2003");
+end;
+
+/* Scaling over signal with 2005 query. Full query processing with 
+	profiled grouping, fast stat collected, random opt for in group
+	and random for ordering groups.
+	run with run.current.sh */
+create function profiled4FullFaststatBestoptRandomgroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.full.fastStat.bestOpt.randomGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+			"FirstMatStat","BestOpt","RandomOrder",4);
+	closewritefile();
+	sendmessage("Profiled, Full QP with fast stat and random opt signal 2005");
+end;
+
+/* Scaling over signal with 2005 query. Full query processing with 
+	profiled grouping, fast stat collected, random opt for in group
+	and greedy for ordering groups.
+	run with run.current.sh */
+create function profiled4FullFaststatBestoptGreedygroupSignal2005() -> boolean as
+begin
+	openwritefile("profiled.4.full.fastStat.bestOpt.greedyGroup.signal.2005.txt");
+	for each integer i where i in {1437,2874,4311,5748,7185,8622}
+		runProfileExperiment("integer.signalfourcuts->event",(i-1),5,
+			"FirstMatStat","BestOpt","GreedyOrder",4);
+	closewritefile();
+	sendmessage("Profiled, Full QP with fast stat and random opt greedy order signal 2005");
+end;
+

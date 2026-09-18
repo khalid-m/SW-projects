@@ -1,0 +1,57 @@
+/*-*-sql-*-*******************************************************************/
+
+/* All CSS experiments for EDBT 2008 */
+
+/* Serial */
+
+select 
+cssqual(select css(cast(v[1] as vector of vector), cast(v[0][1] as timeval), 4, 0.8, 600) from vector of vector v 
+where v = twinagg(streamof(readfile(concat(taxidatapath(),file))), 60.0,60.0,0,0))
+from charstring file
+where file = "b16.osql";
+
+
+/* RR */
+
+select real(now()),merge(b) from vector of sp b, sp c, integer n, charstring file
+where   b = spv(vectorof(select streamof({this_amosid(),cssqual(select css(cast(v[1] as vector of vector), cast(v[0][1] as timeval), 4, 0.8, 600) from vector of vector v where v = twinagg(stract(c), 60.0,60.0,0,0))}) from integer i where i=iota(1,n)))
+and   c = sp(streamof(winagg(readfile(concat(taxidatapath(),file)),n,n)),n,'tcp','rr')
+and n in {16,8,4,2} and file in {"b16.osql","b8.osql","b4.osql","b2.osql","b1.osql"};
+
+/* OCT */
+
+select real(now()),merge(b) from vector of sp b, sp c, integer n, charstring file
+where   b = spv(vectorof(select streamof({this_amosid(),cssqual(select css(cast(v[1] as vector of vector), cast(v[0][1] as timeval), 4, 0.8, 600) from vector of vector v where v = twinagg(stract(c), 60.0,60.0,0,0))}) from integer i where i=iota(1,n)))
+and   c = sp(streamof(readfile(concat(taxidatapath(),file))),n,'tcp','octnodefilter')
+and n in {16,8,4,2} and file in {"b16.osql","b8.osql","b4.osql","b2.osql","b1.osql"};
+
+/* KD */
+
+select real(now()),merge(b) from vector of sp b, sp c, integer n, charstring file
+where   b = spv(vectorof(select streamof({this_amosid(),cssqual(select css(cast(v[1] as vector of vector), cast(v[0][1] as timeval), 4, 0.8, 600) from vector of vector v where v = twinagg(stract(c), 60.0,60.0,0,0))}) from integer i where i=iota(1,n)))
+and   c = sp(streamof(readfile(concat(taxidatapath(),file))),n,'tcp','kdnodefilter')
+and n in {16,8,4,2} and file in {"b16.osql","b8.osql","b4.osql","b2.osql","b1.osql"};
+
+/* aOCT */
+
+select real(now()),merge(b) from vector of sp b, sp c, integer n, charstring file
+where   b = spv(vectorof(select streamof({this_amosid(),cssqual(select css(cast(v[1] as vector of vector), cast(v[0][1] as timeval), 4, 0.8, 600) from vector of vector v where v = twinagg(stract(c), 60.0,60.0,0,0))}) from integer i where i=iota(1,n)))
+and   c = sp(streamof(rfo(concat(taxidatapath(),file), 600.0)),n,'tcp','octnodefilter')
+and n in {16,8,4,2} and file in {"b16.osql","b8.osql","b4.osql","b2.osql","b1.osql"};
+
+select real(now()),merge(b) from vector of sp b, sp c, integer n, charstring file
+where   b = spv(vectorof(select streamof({this_amosid(),cssqual(select css(cast(v[1] as vector of vector), cast(v[0][1] as timeval), 4, 0.8, 600) from vector of vector v where v = twinagg(stract(c), 60.0,60.0,0,0))}) from integer i where i=iota(1,n)))
+and   c = sp(streamof(rfo2(concat(taxidatapath(),file), 600.0, 60.0, 10)),n,'tcp','octnodefilter')
+and n in {16,8,4,2} and file in {"b16.osql","b8.osql","b4.osql","b2.osql","b1.osql"};
+
+/* aKD */
+
+select real(now()),merge(b) from vector of sp b, sp c, integer n, charstring file
+where   b = spv(vectorof(select streamof({this_amosid(),cssqual(select css(cast(v[1] as vector of vector), cast(v[0][1] as timeval), 4, 0.8, 600) from vector of vector v where v = twinagg(stract(c), 60.0,60.0,0,0))}) from integer i where i=iota(1,n)))
+and   c = sp(streamof(rfkd(concat(taxidatapath(),file), 600.0)),n,'tcp','kdnodefilter')
+and n in {16,8,4,2} and file in {"b16.osql","b8.osql","b4.osql","b2.osql","b1.osql"};
+
+select real(now()),merge(b) from vector of sp b, sp c, integer n, charstring file
+where   b = spv(vectorof(select streamof({this_amosid(),cssqual(select css(cast(v[1] as vector of vector), cast(v[0][1] as timeval), 4, 0.8, 600) from vector of vector v where v = twinagg(stract(c), 60.0,60.0,0,0))}) from integer i where i=iota(1,n)))
+and   c = sp(streamof(rfkd2(concat(taxidatapath(),file), 600.0, 60.0, 10)),n,'tcp','kdnodefilter')
+and n in {16,8,4,2} and file in {"b16.osql","b8.osql","b4.osql","b2.osql","b1.osql"};

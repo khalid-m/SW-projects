@@ -1,0 +1,289 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2002 Martin Hansson, UDBL
+ * $RCSfile: regress1.osql,v $
+ * $Revision: 1.18 $ $Date: 2013/05/02 18:03:31 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Basic test of SQL wrapper
+ *
+ ****************************************************************************
+ * $Log: regress1.osql,v $
+ * Revision 1.18  2013/05/02 18:03:31  torer
+ * Changed predicate order
+ *
+ * Revision 1.17  2013/05/01 15:58:00  minzh812
+ * *** empty log message ***
+ *
+ * Revision 1.16  2013/05/01 15:31:09  minzh812
+ * add new test cases.
+ *
+ * Revision 1.15  2013/03/26 14:41:18  torer
+ * Added multi-database theta join test
+ *
+ * Revision 1.14  2013/01/13 14:47:44  minzh812
+ * added test case for same variable input for SQL parameterized query.
+ *
+ * Revision 1.13  2012/05/23 08:33:34  torer
+ * Restored the test for cartesian product pushing.
+ *
+ * Revision 1.12  2012/05/22 17:46:00  torer
+ * Testing optional() over SQL views
+ *
+ * Revision 1.11  2012/05/21 13:34:25  torer
+ * revert
+ *
+ * Revision 1.9  2012/03/30 11:34:20  thatr500
+ * disabled 'piecewise crippling of translator test'
+ *
+ * Revision 1.8  2011/01/29 11:04:41  torer
+ * Base system uses (...) tuple notation, 'return' statement, and systematic indentation
+ *
+ * Revision 1.7  2010/04/20 16:02:46  fred2431
+ * Table names are case sensitive table name under Linux
+ * Table names are case sensitive under Linux.
+ *
+ * Revision 1.6  2009/07/24 14:25:55  zeitler
+ * Sorted tuples in JDBC test
+ *
+ * Revision 1.5  2009/05/07 15:13:32  torer
+ * Testing disjunctive SQL generation
+ *
+ * Revision 1.4  2009/04/15 16:58:24  torer
+ * Testing importing table with composite key
+ *
+ * Revision 1.3  2008/11/23 14:47:48  torer
+ * Variable not declared
+ *
+ * Revision 1.2  2008/08/07 17:37:09  torer
+ * MySQL wrapper passes all regression tests
+ *
+ * Revision 1.1  2006/02/12 20:01:08  torer
+ ****************************************************************************/
+
+lisp;
+
+(defun extract-sql-strings (&optional fn)
+  (let (name optpred)
+    (cond ((eq fn nil)  (setq name  '*select*))
+	  (t            (setq name fn)))
+    (setq optpred (selectbody-optpred (getselectbody (getfunctionnamed name))))
+    (if (conjunctionp optpred)
+	(mapfilter #'sqlcallp (rest optpred) #'extract-sql-string)
+      (if (sqlcallp optpred)
+	  (list (extract-sql-string optpred))))))
+
+(defun extract-sql-string (pred)
+  (sqlquery-sqlstring (getobject (fourth pred) 'sqlquery)))
+
+(defun sqlcallp (pred)
+  (equal (firstn 2 pred) '(call apply-pred-+)))
+
+(checkequal "the JDBC wrapper primitives"
+	    ((osql "select col from Charstring col, Charstring constraint
+                    where (col,constraint) = primary_keys(:a, 'EMPLOYEE');") 
+	     '(("emp_no")))
+	    ((osql "select upper(col)
+                    from Charstring tp, Charstring col
+                    where (tp, col) = columns(:a, 'EMPLOYEE');")
+             '(("EMP_NO") ("FIRST_NAME") ("LAST_NAME") ("PHONE_EXT") 
+               ("HIRE_DATE") ("DEPT_NO") ("JOB_CODE") ("JOB_GRADE") 
+               ("JOB_COUNTRY") ("SALARY")))
+	    )
+
+(Checkequal "Importing Table Employee (Twice)"
+	    ((osql "import_table(:a, 'EMPLOYEE');")
+	     `(( ,(gettypenamed 'employee_ibds))))
+	    ((osql "import_table(:b, 'EMPLOYEE');")
+	     `(( ,(gettypenamed 'employee_ibds2))))
+	    ((osql "import_table(:a, 'DEPARTMENT');")
+	     `(( ,(gettypenamed 'department_ibds))))
+	    ((osql "import_table(:a, 'COUNTRY');")
+	     `(( ,(gettypenamed 'country_ibds))))
+	    )
+
+(checkequal "creation of mapped objects from imported tables"
+	    ((osql "count(select e from employee_ibds e);") '((42)))
+	    ((osql "count(select d from department_ibds d);") '((21))))
+
+(checkequal "simple queries"
+	    ((osql "select first_name(e)            
+                    from employee_ibds e 
+                    where salary(e) > 15000 and salary(e) < 30000
+                    and like(first_name(e),'A*');")
+	     '(("Ann")))
+	    ((osql "select first_name(e)            
+                    from employee_ibds e 
+                    where salary(e) > 15000 and salary(e) < 30000;")
+	     '(("Ann") ("Kelly")))
+	    )
+
+(checkequal "Composite relation key"
+	    ((osql "count(select country(c1),country(c2) 
+                          from country_ibds c1, country_ibds c2 
+                          where currency(c1)='dollar' and 
+                                currency(c2)='dollar' and country(c1)='usa');")
+	     '((4)))
+	    )
+
+(checkequal "Disjunctive SQL wrapper queries"
+	    ((osql "select last_name(e) from employee_ibds e
+where first_name(e)='Janet' or first_name(e)='Pete';")
+	     '(("Baldwin") ("Fisher")))
+	    ((let (*use-dnf*);; Disjunctive SQL generation
+	       (sorttuples (osql "select last_name(e) from employee_ibds e
+where first_name(e)='Janet' or first_name(e)='Pete';")))
+	     '(("Baldwin") ("Fisher")))
+	    ((let (*use-dnf* *ENABLE-PARTEVAL*);; or is pushed into sql string
+	       (sql "select last_name from employee_ibds
+where first_name='Janet' or salary<30000;"))
+	     '(("Bennet") ("Baldwin") ("Brown")))
+	    )
+
+
+:osql
+create function test1(Real s)->Integer no
+  as select emp_no(e) from employee_ibds e where salary(e)=s;
+
+create function test2(Real s)->Integer no
+  as select emp_no(e) from employee_ibds e where salary(e)= s + 0.0;
+
+create function head(department_ibds d)-> department_ibds d1
+  as select d1 where dept_no(d1)=head_dept(d);
+
+select d into :d1 from department_ibds d where dept_no(d)="125";
+
+lisp;
+
+(checkequal "Rewite to SQL with computed bound variable"
+            ((extract-sql-strings (getfunctionnamed 'real.test1->integer))
+             '("select EMP_NO from EMPLOYEE where SALARY = ?"))
+	    ((extract-sql-strings (getfunctionnamed 'real.test2->integer))
+	     '("select EMP_NO,SALARY from EMPLOYEE where SALARY = ? + 0.0")))
+
+(checkequal
+ "join queries over different datasources (join condition tested in amos)"
+ ((sorttuples (osql "select first_name(e), first_name(e2) 
+                    from employee_ibds e, employee_ibds e2
+                    where first_name(e) = first_name(e2) and 
+                                          emp_no(e) != emp_no(e2);"))
+  '(("Leslie" "Leslie") 
+    ("Leslie" "Leslie")
+    ("Roger" "Roger") 
+    ("Roger" "Roger"))))
+
+(checkequal 
+ "join queries over one datasource (join condition tested @ source)"
+ ((osql "sort(select first_name(e), first_name(e2) 
+                    from employee_ibds e, employee_ibds e2
+                    where first_name(e) = first_name(e2) and
+                                          emp_no(e) != emp_no(e2));")
+  '((#(#("Leslie" "Leslie") 
+       #("Leslie" "Leslie") 
+       #("Roger" "Roger") 
+       #("Roger" "Roger")))))
+ )
+
+(osql "create function manager(employee_ibds employee)-> employee_ibds 
+       as select manager
+       from   employee_ibds manager, department_ibds d
+       where  dept_no(employee) = dept_no(d) and
+	        emp_no(manager) = mngr_no(d);")
+
+(checkequal "execution of advanced queries (1)"
+	    ((osql "select first_name(manager(e)) 
+                    from employee_ibds e
+                    where salary(manager(e))>salary(e);")
+	     '(("Oliver H.") ("Walter") ("Chris") ("Roger") ("Katherine") 
+               ("Kevin") ("Phil") ("Robert") ("Takashi") ("Chris") 
+               ("Katherine") ("Mary S.") ("Katherine") ("Randy") ("Phil")))
+	    )
+
+(checkequal "execution of advanced queries (2)"
+	    ((osql "select first_name(manager(e)) 
+          from employee_ibds e
+          where salary(e)>salary(manager(e));")
+	     '(("K. J.") ("Katherine") ("Roger") ("Janet")))
+	    )
+
+(checkequal 
+ "translator"
+ ((extract-sql-strings) 
+  '("select E_1.EMP_NO,E_1.FIRST_NAME,E_1.SALARY,D_.DEPT_NO,E_2.SALARY from EMPLOYEE E_2,EMPLOYEE E_1,DEPARTMENT D_ where E_2.SALARY > E_1.SALARY AND MNGR_NO = E_1.EMP_NO AND E_2.DEPT_NO = D_.DEPT_NO"))
+ )
+
+(checkequal "transitive closure (recursive cursors)"
+	    ((osql "department(:d1);") '(("Field Office: Italy")))
+	    ((osql "sort(department(cast(tclose(functionnamed('HEAD'),:d1) 
+                               as department_ibds)));")
+	     '((#("Corporate Headquarters" "European Headquarters" 
+		  "Field Office: Italy" "Sales and Marketing"))))
+	    )
+
+(checkequal "execution of truth-value queries"
+	    ((osql "select first_name(e)
+          from employee_ibds e
+          where first_name(e)='Janet';")
+	     '(("Janet"))))
+
+(checkequal 
+ "Multi-database theta join"
+ ((osql "count(select first_name(e), first_name(e2)
+          from employee_ibds e, employee_ibds e2
+          where first_name(e)>first_name(e2) and
+                last_name(e) < last_name(e2));") 
+  '((411)))
+ ((osql "count(select first_name(e), first_name(e2)
+          from employee_ibds e, employee_ibds2 e2
+          where first_name(e)>first_name(e2) and
+                last_name(e) < last_name(e2));") 
+  '((411)))
+ )
+
+:osql
+
+select e into :roberto from employee_ibds e where first_name(e)='Roberto';
+select e into :michael from employee_ibds e where first_name(e)='Michael';
+select first_name(:roberto), first_name(:michael);
+lisp;
+
+
+(checkequal "that cross-products don't get pushed"
+	    ((extract-sql-strings)
+	     '("select FIRST_NAME from EMPLOYEE where EMP_NO = ?" 
+	       "select FIRST_NAME from EMPLOYEE where EMP_NO = ?"))
+	    ((length (extract-sql-strings)) 2))
+
+:osql	    
+
+create function SDEF() -> Bag of (Charstring, Charstring)
+  as select country(cr), currency(cr) from COUNTRY_IBDS cr;
+
+lisp;
+
+(checkequal "optional() over sql views"
+	    ((osql "
+select x from Charstring x, Charstring y 
+where (x,'dollar') in SDEF() and 
+      optional((y,x) in SDEF());")
+	     '(("usa") ("australia") ("hong kong") ("fiji")))
+	    )
+
+:osql
+
+create function dept_no_test(Integer)->Charstring as stored;
+
+add dept_no_test(115)="115";
+
+lisp;
+
+(checkequal "same variable input for SQL parameterized query"
+	    ((osql "select first_name(e), location(d)            
+                   from employee_ibds e, department_ibds d 
+                   where salary(e) > 1000000 and 
+		         dept_no(e)=dept_no(d) and 
+			 dept_no(e)=dept_no_test(115);")
+		'(("Yuki" "Tokyo") ("Takashi" "Tokyo"))))
+
+:osql

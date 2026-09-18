@@ -1,0 +1,20 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Erik Zeitler, UDBL
+ * $RCSfile: lrconfig-win.osql,v $
+ * $Revision: 1.5 $ $Date: 2008/09/30 21:27:40 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Config file for SCSQ-LR
+ *
+ ****************************************************************************/
+
+/* Set the dumpfile to be loaded by the SP */
+
+create function lrdumpfiledir() -> Charstring;
+set lrdumpfiledir() = getenv("AMOS_HOME") + 'scsq/lr/';
+set dumpfile() = 'lr.dmp';
+
+create function lrdatadir() -> charstring;
+set lrdatadir() = '/data/lr';

@@ -1,0 +1,16 @@
+
+lisp;
+(load "defs.lsp")
+:osql
+
+create function sink(bag) -> boolean as foreign 'sink-';
+
+create function vi(charstring) -> vi as foreign 'vi-+';
+create function viopen(vi) -> boolean as foreign 'viopen-';
+create function viclose(vi) -> boolean as foreign 'viclose-';
+create function virun(vi) -> boolean as foreign 'virun-';
+
+create function visualize(vector of vi, stream) -> bag of boolean
+	as foreign "visualize-labview--";
+
+create function extract(vector of stream) -> bag of vector as foreign 'extract-+';

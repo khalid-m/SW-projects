@@ -1,0 +1,162 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2013 Silvia Stefanova UDBL
+ * $RCSfile: generateCSV.amosql,v 
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Generate CSV files from a sorted by 
+		file, subject, attribute archive
+ ******************************************************************************/
+lisp;
+
+(defun typedL-toLiteral (tliteral) 
+  (cond 
+	((and (stringp tliteral) (string-pos tliteral "^^"))
+	 (encode-numeric (substring 0 (string-pos tliteral "^^") tliteral)))
+	((string-like tliteral "<http://*")
+	 (substring 0 (string-pos tliteral ">") tliteral))
+	(t (encode-numeric (substring 0 (- (length tliteral) 2) tliteral)))))
+
+(defun to-Literal(fno tliteral)
+  (osql-result tliteral (typedL-toLiteral tliteral)))
+
+(defun princread (str)
+  (princ (read str) *mystream* )
+  (terpri *mystream* ) )
+
+(defun princ-read (fno str)
+  (osql-result str (princread str)))
+
+:osql
+
+create function print_read(Charstring str)-> Literal r
+as foreign 'princ-read';
+
+create function toLiteral(Literal l)-> Charstring r
+as foreign 'to-Literal';
+
+
+create function readTuples2(Charstring filename1)
+->(Charstring,Charstring,Integer,Charstring )
+as
+	select v[0],v[1],v[2],v[3] from  Vector v 
+		where v in read_ntuples(filename1);
+
+create function sortQuery(JDBC ds)->Bag of Vector
+as sql(ds,"SELECT a.Fil,t.s,a.Pos,t.o 
+		FROM archive.archive.MyTriple t, 
+		archive.archive.Attributes a 
+		WHERE t.p=a.Attribute ORDER BY a.Fil,t.s,a.Pos;");  
+
+
+create function sortedArchive(JDBC ds)
+->(Charstring,Charstring,Integer,Charstring )
+as
+  select x1,x2,x3,toLiteral(x4) from 
+  Charstring x1,Charstring x2,Integer x3,Charstring x4
+  where {x1,x2,x3,x4} in sortQuery(ds);  
+
+
+create function vectorBag(Vector v) -> Bag of Object
+  as select v[i] 
+     from Integer i;
+
+create function vectorRef(Vector v) -> Bag of Object
+  as select vref(v,i)
+     from Integer i;
+
+create function print_vectorEls_inCSV(Vector vec)->Charstring
+as
+	select csvrdfstring(vec,"|");	     
+         
+create function print_vectorEls_inCSV_o(Vector vec)->Charstring
+as
+	if (vectorRef(vec)) then	  
+	     print(concatagg(inject(vectorRef(vec),"|")));	
+
+create function findP(integer num)->Charstring
+/*Finds the predicate (tabURI) for a link table from the sorting number*/
+as select tabURI from Charstring tabURI, Charstring pkURI where 
+	Alltableattributes(num,tabURI,tabURI,pkURI)=true;
+
+create function domain_tabURI(Charstring link_tabURI)->Charstring
+/*Finds the domain table URI from the link table URI*/
+as
+	select v from Charstring s,Charstring p, Charstring v,Charstring t
+	where schema(s,p,v,t)=true and p="<http://www.w3.org/2000/01/rdf-schema#domain>"
+	and s=link_tabURI;
+
+create function range_tabURI(Charstring link_tabURI)->Charstring
+/*Finds the range table URI from the link table URI*/
+as
+	select v from Charstring s,Charstring p, Charstring v,Charstring t
+	where schema(s,p,v,t)=true and p="<http://www.w3.org/2000/01/rdf-schema#range>"
+	and s=link_tabURI;
+
+
+create function makeCSV(JDBC ds, Charstring baseURI)->Boolean
+as
+begin
+	declare Charstring os,Charstring ofile, Vector CSVrow, Charstring tname, Charstring p,Integer ii,Integer kk;
+	set os="";set ofile="";set p="";
+	set CSVrow={};
+	for each Charstring file, Charstring s, Integer pos,Charstring val where sortedArchive(ds)=(file,s,pos,val)
+	begin 
+	  if(file != ofile ) then 
+		begin
+		  /*print_vectorEls_inCSV(CSVrow);*/
+	          print(csvrdfstring(CSVrow,"|"));
+		  set CSVrow={};
+		  if (file_exists(file)) then
+			closewritefile();
+		  set ofile=file;
+		  openwritefile(file);		  		  
+		end;
+	  if (pos < 0) then /*if link table*/		
+	      begin
+		 /* print_vectorEls_inCSV(CSVrow);*/
+		 print(csvrdfstring(CSVrow,"|"));
+		  set CSVrow={};		
+		  set p=findP(pos);
+		  set CSVrow=new_vector(count(ret_columnURIs_withCT0(p,baseURI))+count(ret_columnURIs_withCT1(p,baseURI)),'');
+		    for each Literal lit where lit in(row_ident(s,domain_tabURI(p)))
+                       begin
+			 set ii=0;
+			 set_vref(CSVrow,ii,lit);
+			 set ii=ii+1;
+			end;	
+		    for each Literal lit where lit in(row_ident(val,range_tabURI(p)))
+                       begin
+			 set kk=ii;
+			 set_vref(CSVrow,kk,lit);
+			 set kk=kk+1;
+			end;
+		end
+	  else
+	     begin
+		  if (s != os ) then
+	 	   begin
+		    /*print_vectorEls_inCSV(CSVrow);*/
+		 print(csvrdfstring(CSVrow,"|"));	   	        
+		    set CSVrow={};		 
+		    set tname=substring(file,0,char_length(file)-5);
+		    set CSVrow=new_vector(numberAttributes(tname),'');
+		   end;
+	     set os=s;
+	     if (ret_FK_fromURI(val,baseURI)) then /*If val is foreign key */
+		 set_vref(CSVrow,pos,ret_FK_fromURI(val,baseURI))
+	     else		
+	     	set_vref(CSVrow,pos,toLiteral(val));			   	   
+ 	    end;
+        end;
+       /*print_vectorEls_inCSV(CSVrow);*/
+	 print(csvrdfstring(CSVrow,"|"));
+       set CSVrow={};
+       closewritefile();
+end;
+			
+
+
+
+

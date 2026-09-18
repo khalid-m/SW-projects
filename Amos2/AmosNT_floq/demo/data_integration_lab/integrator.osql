@@ -1,0 +1,115 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2003 Timour Katchaounov, UDBL
+ * $RCSfile: integrator.osql,v $
+ * $Revision: 1.1 $ $Date: 2003/02/28 09:50:39 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: This is the client mediator (the 'integrator') of the two
+ * department databases.
+ ****************************************************************************/
+
+
+latebinding('OR');
+normalization(TRUE);
+
+register('integrator', 'localhost');
+
+/* Import types and functions from the two AMOS2 data sources */
+import_type('isyemp', 'isydb');
+import_type('idaemp_ds', 'idadb');
+import_func("CHARSTRING.ID_TO_SSN->INTEGER", "isydb");
+
+/* create the integration types DT, IUT */
+create derived type isyemp1 
+  subtype of isyemp@isydb ie
+  where wplace(ie) = 1;
+
+/* conversion functions between different representations in
+   the two data sources.
+BUG:
+If this function is defined here - this exposes a bug,
+so we import it from ISYDB
+
+create function id_to_ssn(charstring id) -> integer ssn
+as select atoi(id);
+*/
+
+/*
+Define a derived type named "both_dept_person" representing 
+the persons working in both departments at the same time.
+*/
+create derived type both_dept_person
+subtype of idaemp_ds@idadb idae, isyemp1 isye
+where
+ id_to_ssn(id(isye)) = ssn(idae);
+
+/*
+Make an integration type "Allemp" denoting all the employees in 
+both departments along with their name, ssn, and salary.
+*/
+
+create derived type Allemp
+  key integer ssn
+  supertype of
+    idaemp_ds@idadb idae = ssn(idae),
+    isyemp1 isye = id_to_ssn(id(isye))
+  functions
+    (real_name charstring, real_ssn integer, real_salary integer)
+    case idae:
+       real_name   = name(idae);
+       real_ssn    = ssn(idae);
+       real_salary = salary(idae);
+    case isye:
+       real_name   = name(isye);
+       real_ssn    = id_to_ssn(id(isye));
+       real_salary = pay(isye);
+    case idae, isye:
+       real_name   = name(idae);
+       real_ssn    = ssn(idae);
+       real_salary = salary(idae) + pay(isye);
+  end functions
+  properties (room charstring);
+
+
+/* QUERIES */
+/*
+Retrieve the names and SSNs of all persons that work in both IDA and ISY
+
+select name(idae), ssn(idae) 
+  from idaemp_ds@idadb idae, isyemp1 isye
+  where id_to_ssn(id(isye)) = ssn(idae);
+*/
+
+/*
+select name(idae), salary(idae)
+from idaemp_ds@idadb idae, integer s
+where s=ssn(idae) and
+      notany(select name(isye) from isyemp1 isye where id_to_ssn(id(isye))=s);
+
+select name(isye), pay(isye)
+from isyemp1 isye, integer s
+where s = id_to_ssn(id(isye)) and
+      notany(select name(idae) from idaemp_ds@idadb idae where s = ssn(idae));
+*/
+
+/*
+Retrieve the names of all the employees of the new department 
+such that each name is listed only once.
+
+BUG:
+No object found named BAG-CHARSTRING.IN->CHARSTRING of type FUNCTION
+
+select distinct name
+from charstring name
+where name = in(select name(idae) from idaemp_ds@idadb idae)
+      or
+      name = in(select name(isye) from isyemp1 isye);
+*/
+
+/*
+Retrieve the names and the salaries of all the employees of the new department
+
+select real_name(ae), real_salary(ae), real_ssn(ae) from Allemp ae;
+*/

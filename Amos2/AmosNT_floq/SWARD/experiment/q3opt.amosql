@@ -1,0 +1,130 @@
+ /*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Johan Petrini, UDBL
+ * 
+ * Description: We measure optimization time for strategies END-P and DVS-P. 
+ *
+ * ID: Q3opt
+ *
+ * Parameters:
+ * The database used is the TPCH-H Company database as defined in tpch.sql. 
+ * Size of database is 3 rows. We increase the number of mapped properties from 
+ * class Customer in the UPV with 2-8. 
+ * Number of mapped properties from class Orders is fixed to 3.
+ * Since we discard the CustID property from Customer this means that we retrieve 
+ * 1-7 cols from Customer
+ * The script tpchdb.cmd was used to generate the database.
+ *
+ * As DBMS we use InterBase.
+ *
+ * MSSQL Server is stopped.
+ *****************************************************************************/
+/* Experiment steps 
+ */  
+set :f = compileQuery(:dcalc);
+count(select call_function(:f,{}));
+
+
+/* Experiment pre-settings 
+ */
+set :scenario = "END";			     /* Scenario */
+set :pe = true;				     /* Partial evaluation */
+
+
+/* Define DS for Company relational database with 1 table.
+ */
+defineDS("COMPANYDS",
+         "jdbc:interbase://localhost/" + getenv('SWARD_ROOT') + "/bin/TPCH.gdb",
+         "interbase.interclient.Driver",
+         "",
+         "",
+         "SYSDBA",
+         "masterkey");
+
+/* Define UPV 'sq' associated with data source 'SQDS'. 
+ */
+defineUPV("COMPANYDS","Comp","http://upv/com/comp/");
+
+/* Connect to predefined data source assigned to UPV 'eGov'. 
+ */
+DSConnect("Comp");	
+
+/* End of experiment pre-settings 
+ */
+
+/* Speed up UPV generation 
+ */
+lisp;
+(defglobal get-columnscache)
+(memo 'get-columnscache 'get-columns (list 'ds 'table))
+:osql
+
+/* Populate SWARD system tables 
+ */
+
+/* Define mapped properties and mapped classes. 
+ * Retrieve increasingly more properties from class Customer by commenting out
+ * entries in the pMap table
+ */
+assignPropID("ORDERS","O_ORDERKEY","Comp","http://upv.com/schemas/company#OrderID");
+assignPropID("ORDERS","O_CUSTKEY","Comp","http://upv.com/schemas/company#OrderCustomer");
+assignPropID("ORDERS","O_CLERK","Comp","http://upv.com/schemas/company#Clerk");
+assignPropID("CUSTOMER","C_CUSTKEY","Comp","http://upv.com/schemas/company#CustID");
+assignPropID("CUSTOMER","C_NAME","Comp","http://upv.com/schemas/company#Name");
+assignPropID("CUSTOMER","C_ADDRESS","Comp","http://upv.com/schemas/company#Address");
+assignPropID("CUSTOMER","C_NATIONKEY","Comp","http://upv.com/schemas/company#NationID");
+assignPropID("CUSTOMER","C_PHONE","Comp","http://upv.com/schemas/company#Phone");
+assignPropID("CUSTOMER","C_ACCTBAL","Comp","http://upv.com/schemas/company#Balance");
+assignPropID("CUSTOMER","C_MKTSEGMENT","Comp","http://upv.com/schemas/company#Market");
+assignPropID("CUSTOMER","C_COMMENT","Comp","http://upv.com/schemas/company#Comment");
+
+assignClassID("CUSTOMER","Comp","http://upv.com/schemas/company#Customer");
+assignClassID("ORDERS","Comp","http://upv.com/schemas/company#Orders");
+
+/* End of populating SWARD system tables 
+ */
+
+/* Autogenerate UPV
+ */
+dispatch(:scenario,"Comp");
+
+/* Define exemple hybrid query Q3
+ */
+set :Q3 = 
+"SELECT ?cust,?custprop,?val
+FROM <http://upv/com/comp/>	
+WHERE (?order,<http://upv.com/schemas/company#OrderID>,1),
+      (?order,<http://upv.com/schemas/company#OrderCustomer>,?cid),
+      (?cust,<http://upv.com/schemas/company#CustID>,?cid),
+      (?custprop,<http://www.w3.org/2000/01/rdf-schema#domain>,<http://upv.com/schemas/company#Customer>),      
+      (?cust,?custprop,?val)
+AND ?custprop != <http://upv.com/schemas/company#CustID>";
+
+/* Parse Q3
+ */
+set :dcalc = parse_rdql(:Q3);
+
+/* Experiment post-settings 
+ */
+enable_parteval(:pe);
+
+/* End of experiment post-settings 
+ */
+
+/* Cost based optimization in SQLServer. Beräknas som tid för första SQL stmt och sedan 8ms för resterande stmts  
+ */
+
+/* Measure compilation (optimization) and execution time in MSSQL Server
+ */
+SET STATISTICS TIME ON
+
+select O_CUSTKEY, C_NAME 
+from ORDERS O_,CUSTOMER C_ 
+where O_ORDERKEY = 1 and C_CUSTKEY = O_CUSTKEY
+
+...
+
+select O_CUSTKEY, C_ADDRESS 
+from ORDERS O_,CUSTOMER C_ 
+where O_ORDERKEY = 1 and C_CUSTKEY = O_CUSTKEY

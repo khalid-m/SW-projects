@@ -1,0 +1,19 @@
+* The AMOS II Blas wrapper
+  Including the vector/matrix data structures (defined in
+  agsl_vector.h/agsl_matrix.h)
+
+*** Some related source-code for reference?
+
+*** Useful macros
+
+    From within a context (returns lerror(..) if not a
+    matrix/vector
+    - INTO_GSL_MATRIX (oidtype agsl_matrix, gsl_matrix, env)
+    - INTO_GSL_VECTOR (oidtype agsl_vector, gsl_matrix, env)
+
+    GET_GSL_MATRIX (agsl_matrix)
+    GET_GSL_VECTOR (agsl_vector)
+ 
+
+  
+

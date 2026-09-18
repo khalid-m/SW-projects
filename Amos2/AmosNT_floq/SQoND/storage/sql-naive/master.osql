@@ -1,0 +1,46 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Andrej Andrejev, UDBL
+ * $RCSfile: master.osql,v $
+ * $Revision: 1.1 $ $Date: 2012/02/14 15:09:50 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Naive SQL backend implementation
+ *
+ ****************************************************************************
+ * $Log: master.osql,v $
+ * Revision 1.1  2012/02/14 15:09:50  andan342
+ * Added naive SQL-based implementation of RDF store
+ *
+ * Revision 1.1  2006/02/12 20:01:08  torer
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+
+load_lisp('sql-naive.lsp');
+
+set :rdfstore = jdbc("rdfstore","com.mysql.jdbc.Driver");
+
+connect(:rdfstore, "jdbc:mysql://localhost:3306/rdfstore", "root", "");
+
+import_table(:rdfstore,"triples",true);
+
+/* Triple store interface function */
+create function SDEF() -> Bag of (Literal s, Literal p, Literal o)
+  as select storeToRDF(s(tr),1), storeToRDF(p(tr),1), StoreToRDF(o(tr),otype(tr)) 
+       from TRIPLES_RDFSTORE tr;
+
+/* Set the next generated blank node number relative to number of triples currently in the store */
+Update_last_blank(cast(sql(:rdfstore,'SELECT COUNT(*) FROM Triples')[0] as Integer) * 3);
+
+/* Blank node lookup */
+create function URI_in_SDEF(JDBC conn, Charstring x) -> Boolean
+  as some(sql(conn,"SELECT * FROM Triples WHERE s = '" + x +
+	           "' OR p =' " + x + "' OR (o = '" + x + "' AND otype = 1)"));
+
+
+
+
+
+

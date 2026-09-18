@@ -1,0 +1,77 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2006 Ruslan Fomkin, UDBL
+ * $RCSfile: cutstest.osql,v $
+ * $Revision: 1.7 $ $Date: 2008/08/18 10:14:00 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Regression test for ALEH project. Tests that cut queries
+ * are compiled and executable on small sample.
+ ****************************************************************************
+ * $Log: cutstest.osql,v $
+ * Revision 1.7  2008/08/18 10:14:00  ruslan
+ * names are corrected according the schema in the thesis
+ *
+ * Revision 1.6  2006/08/17 07:03:01  ruslan
+ * parameters schema and aleh operations are added to loading script of regression test
+ *
+ * Revision 1.5  2006/03/21 11:02:31  ruslan
+ * Updated instruction for compiling and running ALEH. Added scripts for compiling ALEH and for testing projects depending on ROOT library
+ *
+ ****************************************************************************/
+
+cd("../osql");
+<"schema.osql";
+<"parameters.schema.osql";
+load_lisp("../lsp/operations.lsp");
+<"cuts.osql";
+cd("../regress");
+<"test_data.osql";
+
+create function allcutstest()->number as
+  select eventid(e) 
+  from event e, parameters g 
+  where e=threeleptoncut(e,g) and 
+        e=leptoncuts(e,g) and 
+        e=misseecuts(e,g) and 
+        e=zvetocut(e,g) and 
+        e=topcut(e,g) and 
+        e=jetvetocut(e,g); 
+
+lisp;
+(checkequal "Simple cuts"
+	    ((osql "count(select eventid(e) from event e, parameters g
+where e=threeleptoncut(e,g));")
+	     '((6)))
+	    ((osql "count(select eventid(e) from event e, parameters g 
+where e=leptoncuts(e,g));")
+	     '((14)))
+	    ((osql "count(select eventid(e) from event e, parameters g
+where e=zvetocut(e,g));")
+	     '((94)))
+	    ((osql "count(select eventid(e) from event e, parameters g 
+where e=misseecuts(e,g));")
+	     '((52))))
+
+(checkequal "An expensive cut: top cut"
+	    ((osql "count(select eventid(e) from event e, parameters g 
+where e=topcut(e,g));")
+	     '((60))))
+
+(checkequal "An expensive cut: jet veto cut"
+	    ((osql "count(select eventid(e) from event e, parameters g 
+where e=jetvetocut(e,g) and eventid(e)>24450 and eventid(e)<24470);
+")
+	     '((3))))
+
+(checkequal "All cuts"
+	    ((osql "select eventid(e) from event e, parameters g 
+where e=allcuts(e,g);")
+	     '((24455)))
+	    ((osql "select eventid(e) from event e, parameters g 
+where e=optallcuts(e,g);")
+	     '((24455)))
+	    ((osql "allcutstest();")
+	     '((24455))))
+:osql

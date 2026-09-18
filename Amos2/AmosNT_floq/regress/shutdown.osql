@@ -1,0 +1,12 @@
+register('shutdown');
+lisp;
+(checkequal "Communication errors in FIE"
+   ((remote-eval '_server-communication-errors_ 'fie) 0))
+:osql
+lisp;
+(checkequal "Communication errors in nameserver FOO"
+   ((remote-eval '_server-communication-errors_ 'foo) 0))
+:osql
+
+kill_the_federation(); 
+

@@ -1,0 +1,35 @@
+/* This script demonstrates the callout interface from Amos II 
+   You must first compile the java source files according to
+   instructions in README 
+   
+
+Then test it with
+      jlen("abcd"); 
+           --> 4
+      jlen({1,0,0}); 
+           --> 3
+      jsqrt(2.0); 
+           --> 1.41421
+               -1.41421
+      jeval("jlen('abcd')+jlen({1,2});"); 
+           --> 6
+*/
+
+create function jlen(charstring)->integer as 
+   foreign "JAVA:LenTest/lenStr";
+
+create function jlen(vector)->integer as
+   foreign "JAVA:LenTest/lenVector";
+
+create function jsqrt(real)->real as
+   foreign "JAVA:Foreign/sqrtbf";
+
+create function jeval(charstring)->object as
+   foreign "JAVA:EvalTest/javaEval";
+
+
+
+
+
+
+

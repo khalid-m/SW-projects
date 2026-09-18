@@ -1,0 +1,11 @@
+/*****************************************************************************
+ * Description: Create odpviewer system
+ ****************************************************************************/
+
+/*Load SWARD system*/
+loadsystem("..","src/amosql/master.amosql");
+
+/*Generate RDF view over ODP database*/
+loadsystem(".","src/odpviewer.amosql");
+
+quit;

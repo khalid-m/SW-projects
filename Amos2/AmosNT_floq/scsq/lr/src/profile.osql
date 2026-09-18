@@ -1,0 +1,57 @@
+/*-*-sql-*-*******************************************************************/
+
+/* randrobin distributes multiarrays randomly
+   + uniform distribution is guaranteed. No regularities.
+   - spends a lot of time computing random numbers */
+
+create function profile_randr_split(integer rep) -> vector of number as
+select in(mergestreams(mapstreams(rr, #'stcount')))
+from vector of stream rr, stream src
+where rr = splitstream(src, 1, #'randr', #'f')
+and src = ostream(newsp(i_multihybrid(64, 5, rep, 16)), 0);
+
+/* unpackfsplit unpacks multiarrays and distributes tuples according to
+   rfn and bfn */
+
+create function profile_unpackfsplit(integer rep) -> vector of number as
+select in(mergestreams(mapstreams(fsplit, #'stcount')))
+from vector of stream of numarray fsplit, stream of numarray src
+where fsplit = unpackfsplit({src}, 1, #'xwayrfn', #'q2bfn', 15)
+and src = ostream(newsp(i_multihybrid_enumc(1, 0, rep, 16)), 0);
+
+/* --- ROUND ROBIN rr splitstream below --- */
+
+/* rr_split splits purely round robin.
+   + easier to explain (round robin is intuitively straightforward) */
+
+create function profile_rr_split(integer w, integer rep) -> vector of number as
+select in(mergestreams(mapstreams(rr, #'stcount')))
+from vector of stream rr, stream src
+where rr = splitstream_rr(src, w)
+and src = ostream(newsp(i_multihybrid(64, 5, rep, 16)), 0);
+
+/* PROBLEM: rr_split spends a lot of time in OBJECT.OBJECT.<->BOOLEAN,
+   which is called in #'rr'.
+   rr_iota below eliminates the need of such comparisons */
+
+create function rr_iota(vector v, integer fanout)-><integer j, object o> as
+select j, v[j]
+where j in iota(0, fanout-1);
+
+create function splitstream_rr_iota(Stream s, Integer fanout)
+-> Vector of Stream as
+vselect ostream(p, i)
+from Sp p, Integer i
+where p = newSP(streamof(winagg(in(s), fanout, fanout)), fanout, #'rr_iota')
+and i in iota(0, fanout - 1);
+
+create function profile_rr_iota_split(integer w, integer rep)
+-> vector of number as
+select in(mergestreams(mapstreams(rr, #'stcount')))
+from vector of stream rr, stream src
+where rr = splitstream_rr_iota(src, w)
+and src = ostream(newsp(i_multihybrid(64, 5, rep, 16)), 0);
+
+/* Result 1: #'rr_iota' consumes slightly less CPU than #'rr'.
+   Result 2 (more important): round robin cannot be used, especially not on
+   output data from clrmultiply, since that is periodic. */

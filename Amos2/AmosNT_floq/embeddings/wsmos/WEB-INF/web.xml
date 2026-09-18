@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<!DOCTYPE web-app PUBLIC 
+ "-//Sun Microsystems, Inc.//DTD Web Application 2.3//EN"
+ "http://java.sun.com/dtd/web-app_2_3.dtd">
+
+<web-app>
+<display-name>My Web Application</display-name>
+<description>
+A application for test.
+</description>
+
+<servlet>
+<servlet-name>HelloWorld</servlet-name>
+<display-name>HelloWorld</display-name>
+<description>A HelloWorld Servlet</description>
+<servlet-class>soapservlet.HelloWorld</servlet-class>
+</servlet>
+
+<servlet>
+<servlet-name>SoapTest</servlet-name>
+<display-name>SoapTest</display-name>
+<description>A SOAP Tester</description>
+<servlet-class>server.EchoServlet</servlet-class>
+</servlet>
+
+<servlet>
+<servlet-name>AmosII</servlet-name>
+<display-name>AmosII</display-name>
+<description>A Amos Servlet</description>
+<servlet-class>server.AmosServlet</servlet-class>
+<init-param>
+    <param-name>
+	DBname
+    </param-name>
+    <param-value>
+        WSMOS
+    </param-value>	
+    <description>
+	the Database name
+    </description>
+</init-param>
+
+</servlet>
+
+<servlet-mapping>
+<servlet-name>HelloWorld</servlet-name>
+<url-pattern>/server/HelloWorld</url-pattern>
+</servlet-mapping>
+
+<servlet-mapping>
+<servlet-name>SoapTest</servlet-name>
+<url-pattern>/server/EchoServlet</url-pattern>
+</servlet-mapping>
+
+<servlet-mapping>
+<servlet-name>AmosII</servlet-name>
+<url-pattern>/service/AmosServlet</url-pattern>
+</servlet-mapping>
+</web-app>

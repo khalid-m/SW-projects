@@ -1,0 +1,366 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2013 Sobhan and Thanh, UDBL
+ * $RCSfile: q2.osql,v $
+ * $Revision: 1.38 $ $Date: 2013/05/21 12:27:31 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Q2
+ *
+ ****************************************************************************
+ * $Log: q2.osql,v $
+ * Revision 1.38  2013/05/21 12:27:31  thatr500
+ * Rename output files accordingly to the paper 's figures
+ *
+ * Revision 1.37  2013/05/20 21:32:02  thatr500
+ * changed back to report frequency 10 s
+ *
+ * Revision 1.36  2013/05/20 19:32:54  larme597
+ * ballhitterSplit now works correctly for Q4.
+ *
+ * Revision 1.35  2013/05/20 13:33:41  thatr500
+ * - Report team possession every 1s if there is a change
+ *
+ * Revision 1.34  2013/05/17 15:57:42  thatr500
+ * Write Q2 results ( 5 streams) including LATENCY  into files
+ *
+ * Revision 1.33  2013/04/20 12:07:06  thatr500
+ * made dropping policies as a function
+ *
+ * Revision 1.32  2013/04/19 18:38:10  thatr500
+ * added version 4
+ *
+ * Revision 1.31  2013/04/19 12:21:19  thatr500
+ * renamed functions
+ *
+ * Revision 1.30  2013/04/17 12:53:54  torer
+ * *** empty log message ***
+ *
+ * Revision 1.29  2013/04/15 15:10:00  thatr500
+ * removed dead codes.
+ *
+ * Revision 1.28  2013/04/11 14:55:33  thatr500
+ * uncommented print playerpossession output stream
+ *
+ * Revision 1.27  2013/04/10 13:50:18  thatr500
+ * - Modified ballhitter_bag to emit as much as possible ballhitter events
+ *   to help improve Q4 accuracy
+ *
+ * - No more than 2 ball contacts in a second (heuristic !)
+ *
+ * Revision 1.26  2013/04/09 18:56:38  thatr500
+ * No windows overlapping with the game break
+ *
+ * Revision 1.25  2013/04/09 12:07:26  larme597
+ * ballhitter returns interrupts.
+ *
+ * Revision 1.24  2013/04/09 11:50:16  sobso953
+ * -
+ *
+ * Revision 1.23  2013/04/09 11:25:18  thatr500
+ * added q2q4 function
+ *
+ * Revision 1.22  2013/04/09 09:52:30  thatr500
+ * Added test_Q2.osql
+ *
+ * Revision 1.21  2013/04/09 09:18:30  larme597
+ * Moved isBallHitter() to schema.osql.
+ *
+ * Revision 1.20  2013/04/09 08:22:59  larme597
+ * With Q4.
+ *
+ * Revision 1.19  2013/04/08 18:00:05  thatr500
+ * Added some tests for Q2
+ * Added new design for splitting ballhitter stream so that Q4 can re-use
+ *
+ * Revision 1.18  2013/04/08 16:21:53  thatr500
+ * - Used Numarray for internal communication
+ * - Added report frequency to allow reporting before windows are formed
+ *
+ * Revision 1.17  2013/04/08 15:50:59  thatr500
+ * removed stored procedures.
+ *
+ * Revision 1.16  2013/04/08 10:20:18  chexu484
+ * running all fours queries at the same time by a function call
+ *
+ * Revision 1.15  2013/04/08 08:39:23  torer
+ * Provably incorrect code
+ *
+ * Revision 1.14  2013/04/05 15:45:03  thatr500
+ * fixed bugs !
+ *
+ * Revision 1.13  2013/04/04 15:13:08  thatr500
+ * added comments
+ *
+ * Revision 1.12  2013/04/03 14:18:18  thatr500
+ * - Renamed misc/twindowize to twindowize3
+ * - Added guards to not compute any result during the half break
+ *
+ * Revision 1.11  2013/04/02 16:01:11  thatr500
+ * Renamed misc/twindowize to twindowize1
+ *
+ * Revision 1.10  2013/03/27 17:55:49  thatr500
+ * moved Q2 to Numarray
+ *
+ * Revision 1.9  2013/03/26 17:36:09  chexu484
+ * Q3 completed!
+ * Note: if we are going to print the result stream on stout, we should keep
+ * the sp logging off otherwise the result stream is streamed to log file again
+ *
+ * Revision 1.8  2013/03/25 16:17:12  thatr500
+ * - added logic code to handle game interruption.
+ * - one-pass function for the whole game statistic ( do not form any window)
+ *
+ * Revision 1.7  2013/03/24 21:51:33  chexu484
+ * Q2 broadcast done, check main.osql
+ *
+ * Revision 1.6  2013/03/22 13:43:19  thatr500
+ * Q2 is almost complete !
+ * TBD : broadcast playerpossession to 4 different processes.
+ *
+ * Revision 1.5  2013/03/18 16:38:08  thatr500
+ * *** empty log message ***
+ *
+ * Revision 1.4  2013/03/08 08:29:49  sobso953
+ * A "working" q2-micro: ready for more accurate validation.
+ *
+ * Revision 1.3  2013/03/07 09:36:24  sobso953
+ * Added the extra filter to ignore acceleration peaks causes by things other than the players.
+ *
+ * Revision 1.2  2013/03/06 16:27:28  thatr500
+ * - Added Incremental ball possession calculation
+ * - Incorporated new schema
+ *
+ * Revision 1.1  2013/02/26 14:08:03  thatr500
+ * New file organization
+ *
+ ****************************************************************************/
+
+/*
+Q2-ballhitter: the player-ball-hit query.
+generates the stream of vector {pid, lts}, 
+ - pid is a player who hits the ball,
+ - lts is the latest time stamp of the hit event.
+
+Q2-ballhitter output stream looks like
+ (pid1, lts1)
+ (pid1, lts2)
+ (pid1, lts3)
+ (pid2, lts4)
+ (pid3, lts5)
+ (pid1, lts6)
+  ....
+ 
+Q2Playerpossession The player ball posession report
+ - Input is stream generated by Q2-ballhitter.
+ - Output (ts, pid, total time, hits)
+ - Give the above example, the output stream looks like
+
+Option 1
+  (lts3, pid1, lts3 - lts1, 3)
+  (lts5, pid2, lts5 - lts4, 1)
+  (lts6, pid3, lts6 - lts5, 1)
+  . . .
+Option 2
+  (lts3, pid1, lts3 - lts1, 3)
+  (lts4, pid2, lts4 - lts4, 1)
+  (lts5, pid3, lts5 - lts5, 1)
+   . . .
+
+We chose the first option 2013-03-21 which is corresponding to the DEBS GC FIgure 4
+Note that, option 2 is likely corresponding to the DEBS GC ' reference data
+
+*/
+
+create function tsgap()->Number as stored;
+set tsgap()= 1.0; /*1.2*/
+
+create function maxNumber()->Number as 100000000;
+create function minNumber()->Number as 0-maxNumber();
+create function dropping_playerevent (Numarray v, Number lrts, Number epsilon) -> Boolean as ts(v) > lrts + epsilon;
+
+create function ballhitter_bag(Stream of Numarray inputs)->Bag of Numarray
+as
+begin
+	declare Number sdist, /*shortest distance from the ball to a player*/
+		Number cpid, /*the closet player*/
+		Number bx, Number by, Number bz, /*Position of ball*/	
+		Number pdist, 
+		Number ballacc, /*ball acceleration*/
+		Number lrts, /*TS of the latest report */
+		Boolean gameOn; /*A switch to turn the game ON /OFF*/	
+
+	set sdist = maxNumber();
+	set lrts = 0.0;
+	set gameOn = FALSE;
+	set ballacc = minNumber();
+	for each Numarray v where v in inputs
+	begin
+		if (isBall(v)) then
+		begin	
+		/*Update ball position*/
+			set bx = x(v);
+			set by = y(v);
+			set bz = z(v);
+			set ballacc = aabs(v);
+			/*Let all ball events go through*/
+			return v;
+		end else if (isPlayer(v) and ballacc != minNumber())then
+		begin
+			/*Update the closet player to the ball*/
+			set pdist =  euclidSq({bx, by, bz}, {x(v), y(v), z(v)});
+			if (pdist < sdist) then 
+			begin 
+				set sdist = pdist; 
+				set cpid = playerSensor(sid(v)); 
+			end;
+
+		        if ( sdist < 1.0 		and /*ball in proximity*/
+			     ballacc >= hitacc()        and 
+                             dropping_playerevent(v, lrts, 0.2)) 
+			then
+			begin
+					/*Report : Who hits the ball*/
+					return darray({ts(v), cpid, 0}); 
+					set lrts = ts(v);
+					set sdist = maxNumber();			
+					set ballacc = minNumber();
+			end;
+		end
+                else if isInterrupt(v) then /*all interruptions event go through*/
+                      return v;
+	end;
+end;
+
+
+/*Produces a stream of ball hitter pid, ts*/
+create function ballhitter_process(Stream of Numarray inputs) -> Stream of Numarray
+  as streamof(ballhitter_bag(inputs));
+
+
+/*Q2 Player possession*/
+create function playerposs_bag(Stream of Numarray hitters) -> Bag of Numarray  as
+begin
+  declare  Number cpid, /*current latest ts*/ 
+	   Number start, /*First ts when a player contact the ball*/
+           Number hits, Number interts /*interval to count a hit*/;
+  /*Initialize*/	
+  set cpid = -1.0;
+  set start = 0;
+  set hits = 0;
+  openwritefile("output/q2playerpossession.csv"); 
+  for each Numarray v where v in hitters
+  begin
+	if isBallhitter(v) then
+	/*First time*/
+        if (cpid = -1.0) then 
+	begin 	
+		set cpid = v[1];
+		set start = v[0];
+		set interts = start;
+		set hits = 1;
+	end else if (cpid = v[1]) then begin
+		    if (interts + tsgap() < v[0]) then 	
+		    begin
+	    		    set interts = v[0];		    
+			    set hits = hits + 1;
+		    end;
+		end
+	else if (cpid != v[1]) then /*the ball is hit by another player*/
+	begin
+		/*emit the current*/
+		log_csv_stdout({v[0], cpid, v[0] - start, hits});
+		/*print({v[0], cpid, v[0] - start, hits});*/
+		return darray({v[0], cpid, v[0] - start, hits});
+		/*keep the new*/
+		set cpid = v[1];
+		set start = v[0];
+		set interts = start;
+		set hits = 1;
+	end
+        else if (isInterruptBreakStart(v) or isInterruptBreakEnd(v)) then
+	      return v;  	
+  end;
+  closewritefile();
+end;
+/*------------------------------------PLAYER POSSESSION STREAM---------------------------*/
+/*Player Ball possession */
+create function playerposs_out(Stream of Numarray inputs) -> Stream of Numarray
+  as streamof(playerposs_bag(ballhitter_process(inputs)));
+
+create function playerposs_report(Stream of Numarray hitters) -> Stream of Numarray
+  as streamof(playerposs_bag(hitters));
+
+/*------------------------------------TEAM POSSESSION STREAM---------------------------*/
+create function extractts(Numarray v)-> Number as v[0];
+create function teamoutputfile(Number )->Charstring as stored;
+add teamoutputfile(60)= "output/q2teampossession_1min.csv";
+add teamoutputfile(300)= "output/q2teampossession_5min.csv";
+add teamoutputfile(1200)= "output/q2teampossession_20min.csv";
+add teamoutputfile(69*60)= "output/q2teampossession_landmark.csv";
+
+
+create function teampossW(Window w)-> Bag of Numarray
+as 
+begin
+  declare Number teamA, Number teamB, Number tsTeamA, 
+	  Number tsteamB;
+
+  set teamA = 0;
+  set teamB = 0;
+  set tsTeamA = 0;
+  set tsTeamB = 0;
+
+  for each Numarray v where v in w 
+    if whichteam(floor(v[1]))=1 then 
+    begin
+		set teamA = teamA + v[2];
+		set tsTeamA = v[0];
+    end
+    else
+    begin
+		set teamB = teamB + v[2];
+		set tsTeamB = v[0];
+    end;
+  
+  if (teamA + teamB)!=0 then
+  begin  
+	  return darray({tsteamA, 1, teamA, teamA/(teamA + teamB)});  
+	  return darray({tsteamB, 2, teamB, teamB/(teamA + teamB)});
+  end;
+end;
+
+/*Parameterize Team Ball possession*/
+create function teamposs_bag(Stream of Numarray pps, /*player possession stream*/ 
+			     Number wlength, Number slide, Number reportfr)-> Bag of Numarray
+as for each Window w 
+   where w in twindowize(pps, #'extractts', wlength, slide, reportfr, #'isInterruptBreakStart', #'isInterruptBreakEnd')
+   return teampossW(w); /*Windows will start to from as the first element arrives*/
+
+
+create function teamposs_process(Stream of Numarray pps, 
+			     Number wlength, Number slide, Number reportfr)-> Stream of Boolean
+as streamof(writecsvfile(teamoutputfile(wlength), teamposs_bag(pps, wlength, slide, reportfr)));
+
+
+/*----------------------- OUTPUT STREAMS--------------------------------------*/
+create function playerpossesion(Stream of Numarray hitters)-> Stream of Numarray
+ as mergestreams(svali:mapstreams(splitstream(playerposs_report(hitters), 4, #'broadcastna'),
+	                                     {#'teamposs_process', #'teamposs_process', 
+					      #'teamposs_process', #'teamposs_process'},
+					    {{60, 10, 10}, {300, 10, 10}, {1200, 10, 10}, 
+					    {69*60, 10, 10}}));
+
+
+
+/*First level of split*/
+create function ballhitterSplit(Numarray v, Integer fanout) -> (Integer, Numarray)
+  as select i, v from Integer i
+     where (i = 0 and (isBallHitter(v) or isInterruptBreakStart(v) or isInterruptBreakEnd(v)))
+        or (i = 1 and (isBallHitter(v) or isBall(v) or isInterruptBegin(v)));
+
+create function q2q4(Stream of Numarray s) -> Stream
+  as mergestreams(svali:mapstreams(splitstream(ballhitter_process(s), 2, #'ballhittersplit'),
+                                      {#'playerpossesion', #'Q4'},
+				      {{}, {}}));

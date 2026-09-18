@@ -1,0 +1,179 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Tore Risch, UDBL
+ * $RCSfile: javadefs.osql,v $
+ * $Revision: 1.8 $ $Date: 2012/05/17 07:56:56 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Definitions used i Java tests
+ *
+ ****************************************************************************
+ * $Log: javadefs.osql,v $
+ * Revision 1.8  2012/05/17 07:56:56  torer
+ * Warnings removed
+ *
+ * Revision 1.7  2012/03/02 15:24:39  torer
+ * Added hello world function
+ *
+ * Revision 1.6  2010/09/11 03:07:40  torer
+ * Byte buffer interface for JDBC strings
+ *
+ * Revision 1.5  2010/09/09 14:31:19  torer
+ * Test and demo of addStringElem
+ *
+ * Revision 1.4  2009/01/06 14:54:40  torer
+ * Background computations possible in coroutine threads
+ *
+ * Revision 1.3  2008/12/31 11:26:11  torer
+ * More extensive testing if Java threads and coroutines
+ *
+ * Revision 1.2  2008/12/20 16:24:43  torer
+ * Testing recursive Java callout
+ *
+ * Revision 1.1  2008/12/14 17:02:32  torer
+ * Testing multi-threaded callout
+ *
+ ****************************************************************************/
+
+create function helloWorld()->Boolean
+  as foreign "JAVA:Foreign/helloWorld";
+
+create function mysqrt(real x)-> real y as
+   foreign "JAVA:Foreign/sqrtbf";
+
+create function jeval(character x)-> object r as
+   foreign "JAVA:EvalTest/javaEval";
+
+create function jerror(charstring)->object as
+      foreign "JAVA:EvalTest/jerror";
+
+create function jota(Integer i, Integer j)->Integer as
+  foreign "JAVA:Foreign/jotabf";
+
+create function cjota(Integer i)->Integer as count(jota(1,i));
+
+create function myabs(real x)->real y as 
+   multidirectional ("bf" foreign "JAVA:Foreign/absbf" cost {2,1})
+                    ("fb" foreign "JAVA:Foreign/absfb" cost {4,2});
+
+create function bigstring(integer sz)->Charstring as
+   foreign "JAVA:Foreign/bigstring";
+
+create function bigstring2(integer bufz, integer blz)->Charstring as
+   foreign "JAVA:Foreign/bigstring2";
+
+create function bigbytes(integer bufz, integer nr)->Charstring as
+   foreign "JAVA:Foreign/bigbytes";
+
+create function niota(Number n)->Number as iota(1,n);
+
+create function cniota(Number n)->Integer as count(iota(1,n));
+
+lisp;
+
+(foreign-lispfn coback ()((object))
+		(foreign-result (car (co-resume (coroutine 'coback1 nil)))))
+
+(foreign-lispfn coback2 ((integer i))((object));; will hang
+		(foreign-result (car (co-resume (coroutine 'coback1 nil)))))
+
+(defun coback1 ()(mapc (function co-yield) (javacall)))
+
+(defun javacall ()(dolist (row (osql "jeval('1.2;');"))
+                          (co-yield row)))
+
+(defun test-java-coroutines()
+  (let (co)
+    (formatl t "Creating coroutine..." t)
+    (setq co (coroutine 'javacall nil))
+    (formatl t "Resuming coroutine..." t)
+    (prog1 (co-resume co)
+      (formatl t "Back from co-resume" t))))
+
+(defun diota (l u)
+  (let ((i  l))
+    (while (<= i u)
+      (co-yield i)
+      (1++ i))))
+
+(defun all-terminated (col)(every (function co-terminated) col))
+
+(defun coargs (low up size)
+  "Form all intervals of given SIZE in interval (LOW UP)"
+  (let (res (l low))
+    (loop (cond ((< (- up l) size)
+		 (push (list l up) res)
+		 (return (reverse res)))
+		((< size 1)  (push (list l up) res)
+		 (return (reverse res)))
+		(t (push (list l (+ size -1 l)) res)
+		   (setq l (+ size l)))))))
+
+(defun ciota (l u)
+  (let ((col (mapcar 
+	      (f/l (ca)
+		   (coroutine 'diota (list (first ca)(second ca))))
+	      (coargs l u 5)))
+        )
+    (while col
+      (dolist (c col)
+	(if (co-terminated c) (setq col (remove c col))
+	  (co-yield (co-resume c)))))))
+
+(foreign-lispfn coerror((integer i))()
+   (co-resume (coroutine 'error (list "Testing error in coroutine" i))))
+
+(defvar _help_
+  (foreign-lispfn help()()
+		  (help)))
+
+(foreign-lispfn coh ()()
+		(co-resume (coroutine 'mapfunction (list _help_ 'co-yield))))
+
+(foreign-lispfn 
+ ciota ((number n))((number))
+ (let ((col (mapcar 
+	     (f/l (ca)
+		  (coroutine 'ciota (list (first ca)(second ca))))
+	     (coargs 1 n (/ n 5))))
+       res)
+   (while (not (all-terminated col))
+     (dolist (co col)
+       (and (not (co-terminated co))
+	    (numberp (setq res (co-resume co)))
+	    (foreign-result res))))
+   ))
+
+(osql "create function cciota(Integer n)->Integer as count(ciota(n));")
+
+(foreign-lispfn zip((bag b1)(bag b2))((object))
+		(let ((col(list (coroutine 'mapbag (list b1 'co-yield))
+				(coroutine 'mapbag (list b2 'co-yield))))
+                      res)
+		  (while (not (all-terminated col))
+		    (dolist (co col)
+		      (and (not (co-terminated co))
+			   (consp (setq res (co-resume co)))
+			   (foreign-result (car res)))))))
+
+
+(foreign-lispfn sliota ((number s1)(number from)(number to)) ((integer))
+		(let ((i from))
+		  (while (<= i to)
+                    (co-sleep s1)
+		    (foreign-result i)
+		    (1++ i))))
+
+;(nconc1 after-rollin-forms '(trace-cinterface t))
+;(trace mapbag coroutine co-yield co-resume co-terminated)
+
+:osql
+
+create function cziota(Integer i)->Integer
+  as count(zip(sliota(0.01,1001,i+1000),sliota(0.002,2001,i+2000)))/2;
+
+create function background(Integer w)-> Real
+	 as foreign "JAVA:Foreign/backgroundbf";
+
+create function zbg(Integer s)->Real as zip(background(s),background(s));

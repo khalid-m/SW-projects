@@ -1,0 +1,3 @@
+@echo off
+set PATH=%AMOS_HOME%\bin;%PATH%
+set CLASSPATH=%AMOS_HOME%\bin\javaamos.jar;%CLASSPATH%;classes;%AMOS_HOME%\wsmed\lib\xercesImpl.jar;%AMOS_HOME%\wsmed\lib\jdom.jar;%AMOS_HOME%\wsmed\lib\qname.jar;%AMOS_HOME%\wsmed\lib\wsdl4j.jar;%AMOS_HOME%\wsmed\lib\castor-1.0.2.jar;%AMOS_HOME%\wsmed\lib\saaj-api.jar;%AMOS_HOME%\wsmed\lib\jaxp-api.jar;%AMOS_HOME%\wsmed\lib\jax-qname.jar;%AMOS_HOME%\wsmed\lib\jaxm-api.jar;%AMOS_HOME%\bin\javaamos.jar;%AMOS_HOME%\jarlib\mysql-connector-java-5.1.6-bin.jar;%AMOS_HOME%\wsmed\WSBench\classes;

@@ -1,0 +1,15 @@
+/* create mysql schema for local database and populate it */
+
+set :a = jdbc("ibds", "com.mysql.jdbc.Driver");
+
+set :dburl = "jdbc:mysql://localhost:3306/";
+
+connect(:a, :dburl + "regress", "regress", "regress");
+
+
+read_sql(:a, "mysql_drop.sql");
+read_sql(:a, "mysql_pop.sql");
+
+disconnect(:a); 
+
+quit;

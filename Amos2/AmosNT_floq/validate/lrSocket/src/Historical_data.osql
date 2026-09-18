@@ -1,0 +1,47 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Mårten Svensson, UDBL
+ * $RCSfile: Historical_data.osql,v $
+ * $Revision: 1.2 $ $Date: 2011/08/15 12:41:59 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Historical data for Linear Road
+ ****************************************************************************
+ * $Log: Historical_data.osql,v $
+ * Revision 1.2  2011/08/15 12:41:59  chexu484
+ * *** empty log message ***
+ *
+ * Revision 1.1  2010/04/01 11:38:57  torer
+ * Original lr version
+ *
+ * Revision 1.2  2007/10/22 19:51:12  torer
+ * Simpler
+ *
+ * Revision 1.1  2007/10/19 11:30:02  torer
+ * New directory 'src' contains all Linear Road source code
+ * Master files cleaned up
+ *
+ ****************************************************************************/
+
+/* Functions for handling type 3 queries */
+
+create function history() -> <Integer v, Integer d, Integer x, Integer t> 
+  as stored;
+create_index("history","v","hash","multiple");
+
+create function add_history(Integer v, Integer d, Integer x, Integer t)
+                            -> Boolean 
+  as add history()=<v,d,x,t>; 
+ 	
+create function loadhistory(Vector of Integer x) -> Boolean
+  as select add_history(x[0],x[1],x[2],x[3]); 
+
+/* returns the toll given a specific vid,day and xway*/
+create function hist_toll(Integer vid, Integer day, Integer xway) -> Integer 
+  as select t 
+     from  Integer v, Integer d, Integer x, Integer t 
+     where history()=<v,d,x,t> 
+       and v=vid 
+       and d=day  
+       and x=xway;

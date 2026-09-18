@@ -1,0 +1,26 @@
+set portdb=3306
+
+
+(Checkequal "Importing Tables"
+	    ((osql "import_table(:a, 'EMPLOYEE');")
+	     `(( ,(gettypenamed 'employee_ibds))))
+	    ((osql "import_table(:b, 'DEPARTMENT');")
+	     `(( ,(gettypenamed 'department_ibds2))))
+	    ((osql "import_table(:a, 'DEPARTMENT');")
+	     `(( ,(gettypenamed 'department_ibds))))
+	    ((osql "import_table(:a, 'COUNTRY');")
+	     `(( ,(gettypenamed 'country_ibds))))
+	    )
+
+(osql "select first_name(e), location(d2) 
+                    from employee_ibds e, department_ibds2 d2
+                    where dept_no(e) = dept_no(d2) and 
+                          salary(e) > 30000 and 
+			  like(first_name(e),'A*');")
+
+
+(osql "select first_name(e), location(d2) 
+                    from employee_ibds e, department_ibds d2
+                    where dept_no(e) = dept_no(d2) and 
+                          salary(e) > 30000 and 
+			  like(first_name(e),'A*');")

@@ -1,0 +1,128 @@
+/*****************************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 1993 <author>, CAELAB
+ * $RCSfile: sample.osql,v $
+ * $Revision: 1.3 $ $Date: 2009/11/16 21:54:56 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ ****************************************************************************/
+
+create type Employee;
+create type Programmer under Employee;
+create type Manager under Employee;
+create function name(Employee) -> Charstring as stored;
+create function mailaddr(Employee) -> Charstring as stored;
+create function manager(Employee) -> Manager as stored;
+create function salary(Employee) -> Integer as stored;
+create function expertise(Programmer) -> bag of Charstring as stored;
+create function bonus(Manager) ->  Integer as stored;
+ 
+/* ******************** Instantiation ***************************** */
+
+create Manager
+    (name,mailaddr,salary,bonus,manager) instances
+  :Andy("Andy Baxter","baxter@phab",60000,5000,nil),	
+  :Betty ("Betty Cohen","cohen@phbc",60000,5000,nil),
+  :Charles ("Charles Davis ","davis@phcd",55000,4000,:betty);
+
+create Programmer
+    (name,mailaddr,expertise,salary,manager) instances
+  :Dean ("Dean Eppinger","eppinger@phde",bag("C","Lisp"),40000,:andy),	
+  :Liz ("Elizabeth Fu","fu@phef","Pascal",45000,:betty),
+  :Frank("Frank Gera","gera@phfg","C",50000,:andy),	
+  :Gustaf("Gustaf Humboltz", "humboltz@phgh","C",45000,:charles),	
+  :Henry("Henry Iggins","Iggins@phhi",bag("Lisp","C","Pascal"),45000,:charles),
+  :Ira ("Ira Jokes","jokes@phij",bag("C","HPRL"),45000,:andy),	
+  :Jim("Jim Kelly","kelly@phjk",bag("Lisp","C"),45000,:betty),
+  :Kate("Kate Lovelace","lovelace@phkl","Pascal",45000,:betty),	
+  :Linda("Linda Morgenstern","morgenstern@phlm","C",45000,:andy),
+  :May("May Nin","nin@phmn","C",45000,:Charles),	
+  :Nigel("Nigel Oxley", "oxley@phno","C",45000,:betty),
+  :Olga("Olga Peesov", "peesov@phop","C",45000,:andy),	
+  :Pascal("Pascal Quaker","quaker@phpq",
+           bag("C","Pascal","Lisp"),40000,:charles),
+  :Quale("Quale Rotts","rotts@phqr",bag("Pascal","Assembler"),45000,:andy),
+  :Raja("Raja Soni","soni@phrs","C",45000,:betty);
+
+create function manages(Manager m) -> bag of Programmer p
+    as select p where manager(p) = m;
+create type Dept;
+create function name (Dept) -> Charstring as stored;
+create function employees(Dept) -> bag of Employee as stored;
+create Dept instances :sw, :hw, :marketing;
+create function works_in(Employee e) -> bag of Dept d as
+       select d where e in employees(d);
+create function manager (Dept) -> Manager as stored;
+set name(:sw) = "Software";
+set name(:hw) = "Hardware";
+set name(:marketing) = "Marketing";
+set employees(:sw) = :Betty;
+add employees(:sw) = :Jim;
+add employees(:sw) = :Liz;
+set manager(:sw) = :Betty;
+lisp;
+(checkequal "Name of software department"
+	((osql "name(:sw);")'(("Software"))))
+(checkequal "The employees in the software department"
+	((sorttuples(osql "select name(e) from Employee e where e in employees(:sw);"))
+	  '(("Betty Cohen") ("Elizabeth Fu") ("Jim Kelly")))
+	((sorttuples(osql "name(employees(:sw));"))
+	  '(("Betty Cohen") ("Elizabeth Fu") ("Jim Kelly"))))
+(checkequal "Find the dept where Jim works"
+	((osql "name(works_in(:Jim));")
+	  '(("Software"))))
+(checkequal "Find the names of the employees working in the dept
+where Betty is the manager"
+	((sorttuples(osql "select name(e)
+	    from Employee e, Dept d
+	    where :Betty = manager(d) and
+	    e in employees(d);"))
+	  '(("Betty Cohen") ("Elizabeth Fu") ("Jim Kelly"))))
+:osql
+	/*----------------------------------------------------------------*/
+	/* shows function overloading */
+	/* remember Charles is a manager while Henry is a programmer */
+
+create function take_home_pay(Employee e) -> Integer i 
+    as select salary(e);
+lisp;
+(checkequal "Before overloading"
+	((osql "salary (:Henry);") '((45000)))
+	((osql "take_home_pay (:Henry);")'((45000)))
+	((osql "salary(:Charles);") '((55000)))
+	((osql "take_home_pay (:Charles);")'((55000)))
+	((osql "bonus(:Charles);")'((4000)))
+	)
+:osql
+create function take_home_pay(Manager m) -> Integer i as
+    select salary(m) + bonus(m);
+lisp;
+(checkequal "After overloading"
+	((osql "take_home_pay (:Charles);") '((59000)))
+	((osql "take_home_pay (:Henry);") '((45000)))
+	)
+:osql
+	/* shows type shift and function overloading */
+
+remove type Manager from :Charles;
+add type Programmer to :Charles;
+lisp;
+(checkequal "remove and add type, referential integrity"
+	((osql "take_home_pay(:Charles);") '((55000)))
+	((osql "select name(m) from Manager m, Dept d
+    where name (d) = 'Software' and manager (d) = m;")
+	   '(("Betty Cohen")))
+	((osql "select name(m) from Manager m, Employee e 
+    where name (e) = 'Jim Kelly' and manager (e) = m;")
+           '(("Betty Cohen")))
+	((null(osql "delete :Betty;")) nil)
+	((osql "select name(m) from Manager m, Dept d
+    where name (d) = 'Software' and manager (d) = m;") nil)
+	((osql "select name(m) from Manager m, Employee e 
+    where name (e) = 'Jim Kelly' and manager (e) = m;") nil)
+
+	)
+:osql
+rollback;

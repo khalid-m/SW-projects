@@ -1,0 +1,280 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: multisql.osql,v $
+ * $Revision: 1.7 $ $Date: 2013/09/10 08:00:12 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: script for FLOQ bind join experiment set up
+ ****************************************************************************
+ *
+ ****************************************************************************/
+start javaamos -n
+start javaamos -O peer.osql -s u
+start javaamos -O peer.osql -s v
+
+javaamos -b sard2.dmp -c me
+lisp;
+(setq _sql-namespace_ t)
+:osql
+
+<'experiments/floq/bjexp.osql';
+
+/* mapping sensor DBs uri to peer name */
+set mappinguri_peer("jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB")='u';
+set mappinguri_peer("jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB")='v';
+
+
+/* set uri of meta-database */ 
+set :dburl = "jdbc:mysql://localhost:3306/";
+
+/************************ this is different from cases **********************/
+/* set up connection to access large meta database (500 machine installations 
+   and 1000 sensors) at local mysql */
+set :metal = jdbc("metal", "com.mysql.jdbc.Driver");
+
+/* generate source predicates for large meta database */
+importmetatable(:metal, :dburl + "metadb_l", "regress", "regress", 
+                {'SENSORINSTALLATION', 'LOCATION', 'MACHINEINSTALLATION', 
+                 'MACHINE', 'SENSOR'});
+
+/***************** just for import_table2 ******************/
+/* to get :js for generate source predicate of measuresA */
+set :js = jdbcSet(2,"com.microsoft.jdbc.sqlserver.SQLServerDriver");
+
+/* to import the measuresA schema from one of the server regardless the 
+   logdb size since they have the same schema */
+set :logdb1url = "jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB";
+
+connect2(first(:js), :logdb1url, "udbl", "udbl");
+
+
+
+/* create triple view over the sensor database(s) */ 
+set :id="sensorid";
+set :url="jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="bm1GB";
+set :usern="udbl";
+set :passw="udbl";
+set :catal="bm1GB";
+set :schem="dbo";
+/*set :schem="bm1GB";*/
+
+
+
+
+set :upv="sensor";
+set :uriOfupv="http://user.it.uu.se/~udbl/sensor";
+
+defineDS(:id,
+         :url,
+         :driver,
+         :catal,
+         :schem,
+         :usern,
+         :passw);
+
+
+defineUPV(:id,:upv, :uriofupv);
+
+/*Define RDF view mappings*/
+set pMap("measuresA","m","sensor")=uri("http://user.it.uu.se/~udbl/sensor/measuresA_m");
+set pMap("measuresA","s","sensor")=uri("http://user.it.uu.se/~udbl/sensor/measuresA_s");
+set pMap("measuresA","bt","sensor")=uri("http://user.it.uu.se/~udbl/sensor/measuresA_bt");
+set pMap("measuresA","et","sensor")=uri("http://user.it.uu.se/~udbl/sensor/measuresA_et");
+set pMap("measuresA","mv","sensor")=uri("http://user.it.uu.se/~udbl/sensor/measuresA_mv");
+set pMap("measuresA","jdbcuri","sensor")=uri("http://user.it.uu.se/~udbl/sensor/measuresA_jdbcuri");
+set cMap("measuresA","sensor")=uri("http://user.it.uu.se/~udbl/sensor/measuresA"); 
+set ucMap("measuresA","sensor")="http://user.it.uu.se/~udbl/sensor/measuresA"; 
+set typemap("measuresA","m","sensor")="http://www.w3.org/2001/XMLSchema#int";
+set typemap("measuresA","s","sensor")="http://www.w3.org/2001/XMLSchema#int";
+set typemap("measuresA","bt","sensor")="http://www.w3.org/2001/XMLSchema#float";
+set typemap("measuresA","et","sensor")="http://www.w3.org/2001/XMLSchema#float";
+set typemap("measuresA","mv","sensor")="http://www.w3.org/2001/XMLSchema#float";
+set typeMap("measuresA","jdbcuri","sensor")="http://www.w3.org/2001/XMLSchema#string";
+
+DSConnect(:upv);
+
+defineP(:upv,:js);
+
+/* ViewRDB(:upv);*/
+
+lisp;
+(setq _rewrite_filter_ t)
+(setq *use-dnf* t)
+:osql
+
+create function q1()-> (literal,Literal,Literal)
+as
+select s,p,o from Literal s, Literal p, Literal o,
+Literal p1, Literal o1
+where (s,p,o) in psensor() and
+p= uri("http://user.it.uu.se/~udbl/sensor/measuresA_bt") and 
+o <= 1313681296 and 
+(s,p1,o1) in psensor() and
+p1= uri("http://user.it.uu.se/~udbl/sensor/measuresA_et") and 
+o1 <= 1313681296;
+
+
+/************************** peers setup for paralization ***************************/
+/* peer u */
+/* in peer u, call jdbc function */
+set :u= call_function('u','jdbc', {"A","com.microsoft.jdbc.sqlserver.SQLServerDriver"}, 10)[0];
+
+/* populating the mapping */
+call_function('u','pop_uri_jdbc',{"jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB",:u},10);
+
+
+/* peer v */
+/* in peer v, call jdbc function */
+set :v= call_function('v','jdbc', {"B","com.microsoft.jdbc.sqlserver.SQLServerDriver"}, 10)[0];
+
+/* populating the mapping */
+call_function('v','pop_uri_jdbc',{"jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB",:v},10);
+
+/* it is different from cases, connect different logdb sizes */
+/* set to connect to bm1GB */
+set :logDBuri1="jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB";
+
+set :logDBuri2="jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB";
+
+/* connect to bm1GB */
+connectlogdb({'u','v'}, {:u, :v}, {:logDBuri1, :logDBuri2}, {"udbl", "udbl"},
+             {"udbl", "udbl"});
+
+/*********************** start rewrite ******************************/
+lisp;
+
+(setq *enable-parallel* t)
+
+:osql
+
+/********************** Numerical queries **************************/
+/* with large meta DB and different size of logdb */
+create function newq4l()->(Integer, Number, Number) as
+select m(ma), bt(ma), et(ma)
+from SensorInstallation@metal si, Location@metal l, MeasuresA ma, 
+     MachineInstallation@metal mi, Machine@metal m
+where mv(ma)> ev(si) + th(si) and
+      lid(l)=locatedat(mi) and
+      mi(mi)=mi(si) and
+      m(mi)=m(m) and
+      s(ma)=si(si) and 
+      m(ma)=mi(si) and 
+      uri(l)=jdbcuri(ma);
+
+pc("newq4l");
+
+count(newq4l());
+
+
+
+
+/* identifies a potential failure by retrieving for machine models M_1, M_2, 
+   and M_3 those machineid where, during the time interval (bt, et), the 
+   measured value mv was above 75% of the allowed deviation @thA from the 
+   expected value ev */
+/* with small meta DB and different size of logdb */
+create function newq5s()->(Integer, Number, Number) as
+select m(ma), bt(ma), et(ma)
+from SensorInstallation@metal si, Location@metal l, MeasuresA ma, 
+     MachineInstallation@metal mi, Machine@metal m
+where mv(ma)> ev(si) + 0.75*th(si) and
+      mmname(m) in {'MoriSeiki 5205', 'MoriSeiki 5305', 'MoriSeiki 5405'} and
+      lid(l)=locatedat(mi) and
+      mi(mi)=mi(si) and
+      m(mi)=m(m) and
+      s(ma)=si(si) and 
+      m(ma)=mi(si) and 
+      uri(l)=jdbcuri(ma);
+
+pc("newq5s");
+
+count(newq5s());
+
+
+/* identifies abnormal behaviors of machines of a measurement class based on 
+   absolute deviations: when and for which machine identifiers did the 
+   pressure reading of class A deviate more than @thA from its expected value 
+   ev? */
+create function newq6s()->(Integer, Number, Number) as
+select m(ma), bt(ma), et(ma)
+from SensorInstallation@metal si, Location@metal l, MeasuresA ma, 
+     MachineInstallation@metal mi, Machine@metal m
+where abs(mv(ma) - ev(si)) > th(si) and
+      lid(l)=locatedat(mi) and
+      mi(mi)=mi(si) and
+      m(mi)=m(m) and
+      s(ma)=si(si) and 
+      m(ma)=mi(si) and 
+      uri(l)=jdbcuri(ma);
+
+pc("newq6s");
+
+count(newq6s());
+
+
+/* When and for which machines were the pressure reading of class A were 
+   deviating 75 % from its expected value */
+create function newq7s()->(Integer, Number, Number) as
+select m(ma), bt(ma), et(ma)
+from SensorInstallation@metal si, Location@metal l, MeasuresA ma, 
+     MachineInstallation@metal mi, Machine@metal m
+where abs(mv(ma) - ev(si)) > 0.75*ev(si) and
+      lid(l)=locatedat(mi) and
+      mi(mi)=mi(si) and
+      m(mi)=m(m) and
+      s(ma)=si(si) and 
+      m(ma)=mi(si) and 
+      uri(l)=jdbcuri(ma);
+
+pc("newq7s");
+
+count(newq7s());
+
+
+/* retrieves the machine identifiers m for which a sensor has measured values 
+   mv of measurement class A higher than the dynamically increasing expected 
+   values ev by a threshold value @thA after one minute */
+/* the ev can be slightly increase after cutting many pieces, therefore, 
+   we times a constant coefficient with time */
+/**** measured value > (expected value + coefficient*time) + threshold ***/
+create function newq8s()->(Integer, Number, Number) as
+select m(ma), bt(ma), et(ma)
+from SensorInstallation@metal si, Location@metal l, MeasuresA ma, 
+     MachineInstallation@metal mi, Machine@metal m
+where mv(ma)> (ev(si)+ 0.003*60) + th(si) and
+      lid(l)=locatedat(mi) and
+      mi(mi)=mi(si) and
+      m(mi)=m(m) and
+      s(ma)=si(si) and 
+      m(ma)=mi(si) and 
+      uri(l)=jdbcuri(ma);
+
+pc("newq8s");
+
+count(newq8s());
+
+
+/* time serial query */
+/* which machine identifiers did the pressure reading of class A deviate more 
+   than @thA from its expected value ev? in less than one minute */
+create function newq9s()->Integer as
+select m(ma)
+from SensorInstallation@metal si, Location@metal l, MeasuresA ma, 
+     MachineInstallation@metal mi, Machine@metal m
+where abs(mv(ma) - ev(si)) > th(si) and
+      et(ma) < bt(ma) + 60 and
+      lid(l)=locatedat(mi) and
+      mi(mi)=mi(si) and
+      m(mi)=m(m) and
+      s(ma)=si(si) and 
+      m(ma)=mi(si) and 
+      uri(l)=jdbcuri(ma);
+
+pc("newq9s");
+
+count(newq9s());
+

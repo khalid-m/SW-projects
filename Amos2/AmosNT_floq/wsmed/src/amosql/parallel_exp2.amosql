@@ -1,0 +1,323 @@
+/* setup */
+setup
+
+/*compile the system */
+compile
+
+/* create a dump file, wsmed.dmp,  with required commands */
+
+mkdmp
+
+/* start the wsmed system */
+
+wsmedco fd wsmed.dmp
+
+/* start the nameserver and register the client */
+
+wsmedns();
+
+
+
+
+/* importing metadata from WSDL */
+importwsdl("wsdl/TerraService2.wsdl");
+importwsdl("wsdl/PlaceLookup.wsdl");
+importwsdl("wsdl/ZipCodeLookup.wsdl");
+importwsdl("wsdl/uszip.wsdl");
+importwsdl("wsdl/Weather.wsdl");
+importwsdl("wsdl/WeatherForecast.wsdl");
+importwsdl("wsdl/LocalTime.wsdl");
+/* importing values for soapheaders */
+/*
+putsoaphvalue( 'wsdl/PlaceLookup.wsdl', 'GeoPlaces','GetAllStates',{'5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'});
+
+putsoaphvalue( 'wsdl/PlaceLookup.wsdl', 'GeoPlaces', 'GetPlacesWithin', {'5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'});
+putsoaphvalue( 'wsdl/ZipCodeLookup.wsdl', 'ZipCodes', 'GetPlacesInside', {'5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'});
+putsoaphvalue( 'wsdl/ZipCodeLookup.wsdl', 'ZipCodes', 'GetZipCodesWithin', {'5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'});
+*/
+putsoaphvalue( 'GetAllStates','5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q');
+putsoaphvalue( 'GetPlacesWithin', '5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q');
+putsoaphvalue( 'GetPlacesInside', '5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q');
+putsoaphvalue( 'GetZipCodesWithin','5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q');
+ 
+
+
+/* some helping function */
+lisp;
+(defun getzipcode (fno string r)
+  "Returns a list of substrings (zipcode) of string"
+  (let ((zc "") (j 0) tstr)
+    (if (string= string "") (osql-result string nil)
+      (progn 
+	(setq tstr (explode (mksymbol string)))
+	(dolist (i tstr)
+	  (if (integerp i) (progn (if (< j 5)(setq zc ( concat zc (mkstring i)))) (setq j (1+ j)))
+	    (if (not (string= zc "")) (progn (setq j 0)(osql-result string zc) (setq zc "")) ))
+      
+      
+	  )))
+    ))
+
+:osql
+create function #getzipcode(charstring string)->charstring as foreign "getzipcode"; 
+
+save "wsmed.dmp";
+
+
+/* start the query processes */
+
+startwsmedpeers(50,"test.dmp");
+
+
+/******** query definitions ***********************/
+
+/* Find all places' information that are 15km far away from a "City" start with "Atlanta" in all States  q3("Atlanta",100,"true",15.0,"City")*/
+
+create function q3(Charstring place, integer notuples, charstring imagepresence, real withindistance, charstring placetypetofind )->  <CHARSTRING placename1 , CHARSTRING State1 ,      CHARSTRING Country , REAL PlaceLon , REAL PlaceLat , INTEGER AvailableThemeMask , CHARSTRING PlaceTypeId> as
+ select placename1 , State1 , Country , PlaceLon , PlaceLat , AvailableThemeMask , PlaceTypeId
+ from CHARSTRING Name , CHARSTRING Type , CHARSTRING State , REAL LatDegrees , REAL LonDegrees , REAL LatRadians , REAL LonRadians , INTEGER Population,
+        CHARSTRING city , CHARSTRING State2 ,  real fromdistance
+ where GetAllStates()= < Name , Type , State , LatDegrees , LonDegrees , LatRadians , LonRadians> and 
+	GetPlacesWithin(place, State, withindistance, placetypetofind)=<city, State2 , fromdistance> and 
+      GetPlaceList(city+" ,"+State2, notuples, imagepresence)=<placename1 , State1 , Country , PlaceLon , PlaceLat , AvailableThemeMask , PlaceTypeId ,Population>;
+
+
+
+/*q3 - SQL query */
+
+sql("
+select gl.City ,  gl.PlaceTypeId
+from   GetAllStates gs, GetPlacesWithin gp, GetPlaceList gl
+where  gs.State=gp.state and gp.distance=15.0 and gp.placeTypeToFind='City' and gp.place='Atlanta' and gl.placeName=gp.ToPlace+' ,'+gp.ToState and gl.MaxItems=100 and gl.imagePresence='true'");
+
+
+
+
+/*Find the USAF Academy's zipcode, and state where is located.    q7("USAF Academy");*/
+
+create function q7(charstring place)-> <  CHARSTRING placein,  CHARSTRING state1, CHARSTRING zipcode> as
+					select placein,state1,zipcode
+					from   CHARSTRING Name , CHARSTRING Type , CHARSTRING State , REAL LatDegrees , REAL LonDegrees , REAL LatRadians ,                                               REAL LonRadians ,CHARSTRING zipstr, real  distance, charstring zipcode
+					where   GetAllStates()= < Name , Type , State , LatDegrees , LonDegrees , LatRadians , LonRadians>  and
+                                              GetInfoByState(State)=zipstr and getzipcode(zipstr)=zipcode and
+                                              getplacesinside(zipcode)=<placein, state1, distance> and placein=place;
+
+
+
+/*q7 - SQL query */
+
+
+sql("select gp.ToState , gp.Distance
+from   GetAllStates gs, GetInfoByState gi, getzipcode gz, GetPlacesInside gp
+where  gs.GetAllStatesResultGeoPlaceDetailsGeoPlaceDetailsState=gi.USState and gi.GetInfoByStateResponseGetInfoByStateResultGetInfoByStateResult=gz.zipstr and gz.zipcode=gp.zip and gp.GetPlacesInsideResultGeoPlaceDistanceGeoPlaceDistanceToPlace='USAFAcademy' ");
+
+
+/* Find all the places inside the US states starting with the alphabets in {'A','B','C'} and their forecast for a week */
+
+create function q9(charstring chk)-> <  CHARSTRING placeout,  CHARSTRING state1, CHARSTRING zipcode,CHARSTRING date,CHARSTRING description,CHARSTRING low,
+                                      CHARSTRING high> as
+					select placeout,state1,zipcode,date, description,low,high
+					from   CHARSTRING Name , CHARSTRING Type , CHARSTRING State , REAL LatDegrees , REAL LonDegrees , REAL LatRadians ,                                               REAL LonRadians ,CHARSTRING zipstr, real  distance, charstring zipcode, CHARSTRING success,
+                                              CHARSTRING responsetext, CHARSTRING state2,CHARSTRING city,CHARSTRING weatherstationcity,CHARSTRING date,
+                                              INTEGER weatherid,CHARSTRING description, CHARSTRING low,CHARSTRING high, CHARSTRING nightp,CHARSTRING dayp
+					where   GetAllStates()= < Name , Type , State , LatDegrees , LonDegrees , LatRadians , LonRadians>  and
+						 substring(State,0,0)< chk and 
+                                              GetInfoByState(State)=zipstr and getzipcode(zipstr)=zipcode and
+                                              GetPlacesInside(zipcode)=<placeout, state1, distance> and
+                                              GetCityForeCastByZip(zipcode)=<success, responsetext,state2,city,weatherstationcity,date,weatherid,
+                                                                            description,low,high,nightp,dayp>;
+
+
+create function q10(charstring chk)-> <  CHARSTRING placeout,  CHARSTRING state1, CHARSTRING zipcode,CHARSTRING time> as
+					select placeout,state1,zipcode,time
+					from   CHARSTRING Name , CHARSTRING Type , CHARSTRING State , REAL LatDegrees , REAL LonDegrees , REAL LatRadians ,                                               REAL LonRadians ,CHARSTRING zipstr, real  distance, charstring zipcode
+					where   GetAllStates()= < Name , Type , State , LatDegrees , LonDegrees , LatRadians , LonRadians>  and
+						 substring(State,0,0)< chk and 
+                                              GetInfoByState(State)=zipstr and getzipcode(zipstr)=zipcode and
+                                              GetPlacesInside(zipcode)=<placeout, state1, distance> and
+                                              LocalTimeByZipCode(zipcode)=time;
+
+
+
+
+
+
+
+
+/*************************************************/
+
+lisp;
+(remote-call 'nameserver 'callfunction (mksymbol 'clearwsc)(vector ) 1)
+:osql
+
+
+
+/************************************************/
+
+/* parallel queries */
+
+
+
+create function getstates()-> <  CHARSTRING name> as
+					select state
+					from  CHARSTRING Name , CHARSTRING Type , CHARSTRING State , REAL LatDegrees , REAL LonDegrees , REAL LatRadians , REAL LonRadians                                              ,CHARSTRING zipcode1,CHARSTRING zipstr
+					where GetAllStates()= < Name , Type , State , LatDegrees , LonDegrees , LatRadians , LonRadians>;
+
+
+create function morestates(integer i)-> < charstring Statename> as
+				begin
+				 for each integer t where t=iota(1,i)
+				  begin
+				   result in(getstates());
+				 end;
+				end;
+
+create function morestates1(integer i)-> < charstring Statename> as
+						select st from charstring st, integer i where i=iota(1,i) and st=getstates();
+				   
+			
+    
+
+create function zipcode(charstring state)-> <  CHARSTRING zipcode> as
+					select zipcode
+					from  CHARSTRING zipcode,CHARSTRING zipstr
+					where GetInfoByState(State)=zipstr and getzipcode(zipstr)=zipcode;
+
+create function states(charstring ch)-> <  CHARSTRING state> as
+					select state
+					from  CHARSTRING Name , CHARSTRING Type , CHARSTRING State , REAL LatDegrees , REAL LonDegrees , REAL LatRadians , REAL LonRadians ,CHARSTRING zipcode1,CHARSTRING zipstr
+					where GetAllStates()= < Name , Type , State , LatDegrees , LonDegrees , LatRadians , LonRadians> and
+                                              substring(state,0,0)< ch;
+
+	
+
+create function q1(Charstring city, integer notuples, charstring imagepresence )->  <CHARSTRING placename , CHARSTRING State1 ,      CHARSTRING Country , REAL PlaceLon , REAL PlaceLat , INTEGER AvailableThemeMask , CHARSTRING PlaceTypeId> as
+ select placename , State1 , Country , PlaceLon , PlaceLat , AvailableThemeMask , PlaceTypeId
+ from CHARSTRING Name , CHARSTRING Type , CHARSTRING State , REAL LatDegrees , REAL LonDegrees , REAL LatRadians , REAL LonRadians , INTEGER Population
+ where GetAllStates()= < Name , Type , State , LatDegrees , LonDegrees , LatRadians , LonRadians> and 
+      GetPlaceList(city+" ,"+Name, notuples, imagepresence)=<placename , State1 , Country , PlaceLon , PlaceLat , AvailableThemeMask , PlaceTypeId ,Population>;
+
+
+
+create function q2(Charstring place, real withindistance, charstring placetypetofind)->  <CHARSTRING placename , CHARSTRING State1 ,  real fromdistance> as
+ select placename , State1 , fromdistance
+ from CHARSTRING Name , CHARSTRING Type , CHARSTRING State , REAL LatDegrees , REAL LonDegrees , REAL LatRadians , REAL LonRadians , INTEGER Population
+ where GetAllStates()= < Name , Type , State , LatDegrees , LonDegrees , LatRadians , LonRadians> and 
+      GetPlacesWithin(place, State, withindistance, placetypetofind)=<placename , State1 , fromdistance>;
+
+
+
+
+create function q31(Charstring place, integer notuples, charstring imagepresence, real withindistance, charstring placetypetofind,integer num)->  <CHARSTRING placename1 , CHARSTRING State1 ,      CHARSTRING Country , REAL PlaceLon , REAL PlaceLat , INTEGER AvailableThemeMask , CHARSTRING PlaceTypeId> as
+ select placename1 , State1 , Country , PlaceLon , PlaceLat , AvailableThemeMask , PlaceTypeId
+ from  Charstring State, CHARSTRING city , CHARSTRING State2 ,  real fromdistance, charstring population
+ where morestates(num)= State and 
+	GetPlacesWithin(place, State, withindistance, placetypetofind)=<city, State2 , fromdistance> and 
+      GetPlaceList(city+" ,"+State2, notuples, imagepresence)=<placename1 , State1 , Country , PlaceLon , PlaceLat , AvailableThemeMask , PlaceTypeId ,Population>;
+
+
+
+/**********************Second test case *********************************/
+create function q5()-> <  CHARSTRING zipcode> as
+					select zipcode
+					from  CHARSTRING Name , CHARSTRING Type , CHARSTRING State , REAL LatDegrees , REAL LonDegrees , REAL LatRadians ,                                               REAL LonRadians ,CHARSTRING zipcode1,CHARSTRING zipstr
+					where GetAllStates()= < Name , Type , State , LatDegrees , LonDegrees , LatRadians , LonRadians> and
+                                              GetInfoByState(State)=zipstr and getzipcode(zipstr)=zipcode;
+create function q51(Charstring chk)-> <  CHARSTRING zipcode> as
+					select zipcode
+					from  CHARSTRING Name , CHARSTRING Type , CHARSTRING State , REAL LatDegrees , REAL LonDegrees , REAL LatRadians ,                                               REAL LonRadians ,CHARSTRING zipcode1,CHARSTRING zipstr
+					where states(chk)=  State and
+                                              GetInfoByState(State)=zipstr and getzipcode(zipstr)=zipcode;
+
+
+
+
+create function q6(Charstring state)-> <  CHARSTRING City,  CHARSTRING state1> as
+					select City,state1
+					from   real  distance, charstring zipcode
+					where zipcode(state)=zipcode and 
+                                              getplacesinside(zipcode)=<city, state1, distance>;
+
+
+
+
+create function q8(charstring place, charstring chk)-> <  CHARSTRING placeout,  CHARSTRING state1, CHARSTRING zipcode> as
+					select placein,state1,zipcode
+					from  CHARSTRING zipstr, real  distance, charstring zipcode, charstring state
+					where   states(chk)= state  and
+                                              GetInfoByState(State)=zipstr and getzipcode(zipstr)=zipcode and
+                                              getplacesinside(zipcode)=<placein, state1, distance> and placein=place;
+
+
+create function q9(charstring chk)-> <  CHARSTRING placein,  CHARSTRING state1, CHARSTRING zipcode,  real  distance > as
+					select placein,state1,zipcode,distance
+					from  CHARSTRING zipstr,charstring zipcode, charstring state
+					where   states(chk)= state  and
+                                              GetInfoByState(State)=zipstr and getzipcode(zipstr)=zipcode and
+                                              getplacesinside(zipcode)=<placein, state1, distance>;
+
+                                              
+/*************************Empty******************************************************************/
+
+
+create function qe5()-> <  CHARSTRING zipcode> as
+					select zipcode
+					from  CHARSTRING Name , CHARSTRING Type , CHARSTRING State , REAL LatDegrees , REAL LonDegrees , REAL LatRadians ,                                               REAL LonRadians ,CHARSTRING zipcode1,CHARSTRING zipstr, charstring str
+					where GetAllStates()= < Name , Type , State , LatDegrees , LonDegrees , LatRadians , LonRadians> and str=State+"1" and 
+                                              GetInfoByState(str)=zipstr and getzipcode(zipstr)=zipcode;
+
+                                      
+
+create function qe6(Charstring state)-> <  CHARSTRING City,  CHARSTRING state1> as
+					select City,state1
+					from   real  distance, charstring zipcode
+					where  zipcode(state)=zipcode and 
+                                              getplacesinside(zipcode+"1")=<city, state1, distance>;
+
+
+
+create function q72(charstring place)-> integer   as
+					select count(placein)
+					from   CHARSTRING Name , CHARSTRING Type , CHARSTRING State , REAL LatDegrees , REAL LonDegrees , REAL LatRadians ,                                               REAL LonRadians ,CHARSTRING zipstr, real  distance, charstring zipcode, CHARSTRING placeout,  CHARSTRING state1,charstring placein			
+                                         where   GetAllStates()= < Name , Type , State , LatDegrees , LonDegrees , LatRadians , LonRadians>  and
+                                              GetInfoByState(State)=zipstr and getzipcode(zipstr)=zipcode and
+                                              getplacesinside(zipcode)=<placein, state1, distance> and placein=place;
+
+
+
+select placename1
+from   CHARSTRING Name , CHARSTRING Type , CHARSTRING State , REAL LatDegrees , REAL LonDegrees , REAL LatRadians , REAL LonRadians , 
+	INTEGER Population, CHARSTRING city , CHARSTRING State2 ,  real fromdistance, CHARSTRING placename1 , CHARSTRING State1 ,  
+      CHARSTRING Country , REAL PlaceLon , REAL PlaceLat , INTEGER AvailableThemeMask , CHARSTRING PlaceTypeId
+where GetAllStates()= < Name , Type , State , LatDegrees , LonDegrees , LatRadians , LonRadians> and 
+      GetPlacesWithin('Atlanta', State, 15.0, "City")=<city, State2 , fromdistance> and 
+      GetPlaceList(city+" ,"+State2, 100, 'true')=<placename1 , State1 , Country , PlaceLon , PlaceLat , AvailableThemeMask , PlaceTypeId ,Population>;
+
+
+
+
+select GetEconomic_ForCityResponseGetEconomic_ForCityResponseGetEconomic_ForCityResult['Location']GetEconomic_ForCityResponse
+from sequence out , record GetEconomic_ForCityResponse, record GetEconomic_ForCityResponseGetEconomic_ForCityResponse, record GetEconomic_ForCityResponseGetEconomic_ForCityResponseGetEconomic_ForCityResult
+where out=cwo('wsdl/CensusData1.wsdl', 'CensusData', 'GetEconomic_ForCity', {"Atlanta", "GA"} )   and GetEconomic_ForCityResponse in out  and GetEconomic_ForCityResponseGetEconomic_ForCityResponse=GetEconomic_ForCityResponse['GetEconomic_ForCityResponse'] and GetEconomic_ForCityResponseGetEconomic_ForCityResponseGetEconomic_ForCityResult=GetEconomic_ForCityResponseGetEconomic_ForCityResponse['GetEconomic_ForCityResult'];
+
+
+create function GetAllStates_cc()-> Bag of < CHARSTRING Name , CHARSTRING Type , CHARSTRING State , REAL LatDegrees , REAL LonDegrees , REAL LatRadians , REAL LonRadians  > as select GetAllStates();
+
+create_mapped_type("GAS", {"Name","Type","State", "LatDegrees","LonDegrees","LatRadians","LonRadians"},{"Name","Type","State", "LatDegrees","LonDegrees","LatRadians","LonRadians"},"GetAllStates");
+
+
+create function GetPlaceDetails ( CHARSTRING place, CHARSTRING state )->< CHARSTRING GetPlaceDetailsResultGetPlaceDetailsResultName , CHARSTRING GetPlaceDetailsResultGetPlaceDetailsResultType , CHARSTRING GetPlaceDetailsResultGetPlaceDetailsResultState , REAL GetPlaceDetailsResultGetPlaceDetailsResultLatDegrees , REAL GetPlaceDetailsResultGetPlaceDetailsResultLonDegrees , REAL GetPlaceDetailsResultGetPlaceDetailsResultLatRadians , REAL GetPlaceDetailsResultGetPlaceDetailsResultLonRadians  > 
+
+create_mapped_type("GPD", {"place","state","Name", "Type" , "State1","Degrees" , "LonDegrees" , "LatRadians" , "LonRadians" },{"place","state","Name", "Type" , "State1","Degrees" , "LonDegrees" , "LatRadians" , "LonRadians" },"GetPlaceDetails");
+
+
+
+
+
+
+create function #GetPlacesWithin ( CHARSTRING place, CHARSTRING state, REAL distance, CHARSTRING placeTypeToFind )->< CHARSTRING GetPlacesWithinResultGetPlacesWithinResultGeoPlaceDistanceToPlace , CHARSTRING GetPlacesWithinResultGetPlacesWithinResultGeoPlaceDistanceToState , REAL GetPlacesWithinResultGetPlacesWithinResultGeoPlaceDistanceDistance  > 
+as select GetPlacesWithinResultGetPlacesWithinResultGeoPlaceDistance['ToPlace'], GetPlacesWithinResultGetPlacesWithinResultGeoPlaceDistance['ToState'], GetPlacesWithinResultGetPlacesWithinResultGeoPlaceDistance['Distance']
+from sequence out , record GetPlacesWithinResult, sequence GetPlacesWithinResultGetPlacesWithinResult1, record GetPlacesWithinResultGetPlacesWithinResult, record GetPlacesWithinResultGetPlacesWithinResultGeoPlaceDistance
+where out=cwo('wsdl/PlaceLookup.wsdl', 'GeoPlaces', 'GetPlacesWithin', {place, state, distance, placeTypeToFind} )   and GetPlacesWithinResult in out  and GetPlacesWithinResultGetPlacesWithinResult1 = GetPlacesWithinResult['GetPlacesWithinResult'] and GetPlacesWithinResultGetPlacesWithinResult in GetPlacesWithinResultGetPlacesWithinResult1  and GetPlacesWithinResultGetPlacesWithinResultGeoPlaceDistance=GetPlacesWithinResultGetPlacesWithinResult['GeoPlaceDistance'];
+
+sql("select *  from GetPlacesWithin GP where GP.place='Atlanta' and GP.state='GA' and GP.distance=15.0 and GP.placeTypeToFind='City'");

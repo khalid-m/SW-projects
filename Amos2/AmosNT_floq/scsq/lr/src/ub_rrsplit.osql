@@ -1,0 +1,50 @@
+/*-*-sql-*-*******************************************************************/
+
+/*
+select i, fo, tfo, j
+from integer fo, integer tfo, integer i, integer j, 
+vector of stream r1, vector of stream of iarray r0, stream src
+where r1 = rsplit_force_flexx(r0, fo, {'rem':'r1','hostnum':0})
+and r0 = rsplit_force_flex(src, fo, {'rem':'r0'})
+and src = ostream(newspflex(streamof(clrmultiply(in(
+lreadfastbins({getenv("HOME") + "/glob/c64-1k-m0.bin"})), 64, 1)), {'hostnum':0, 'rem':'src'}), 0)
+and i = count(select tpl from iarray tpl where tpl in mergestreams(r1))
+and j = dim(r1)
+and tfo = 64
+and fo = ceiling(sqrt(tfo));
+*/
+
+create function file_rrsplit(integer mszexp, integer t0fo, integer t1fo)
+ -> vector of vector of number as
+select in(zipstreams(mapflex(r1, #'stcount', {'rem':'extract'})))
+from stream src, vector of stream r0, vector of stream r1
+where r1 = rsplit_force_flexx(r0, t1fo, {'rem':'r1','hostnum':0})
+and r0 = rsplit_force_flex(src, t0fo, {'rem':'r0', 'hostnum':0})
+and src = ostream(newspflex(streamof(
+ readfile(getenv("HOME") + "/glob/c64-5M-m" + stringify(mszexp) + ".bin")
+), {'hostnum':0, 'rem':'src'}), 0);
+
+create function x_file_rrsplit(integer mszexp, integer t0fo, integer t1fo)
+-> vector as begin
+reset_ipr();
+set res() = file_rrsplit(mszexp, t0fo, t1fo);
+return {mszexp, t0fo*t1fo, exectime(res()), countsum(res()),
+psum(remcpu('src')), psum(remcpu('r0')), psum(remcpu('r1')), 
+psum(remcpu('extract'))};
+sleep(0.1);
+end;
+
+create function rr_res()->vector;
+
+create function ub_file_rrsplit(vector of integer mults, integer t0fo,
+integer t1fo) -> object as begin
+for each integer mult where mult in mults begin
+declare charstring outputfilename;
+set outputfilename = "rrsplit-" + "_m" + stringify(mult) + "_fo" + 
+stringify(t0fo) + "_" + stringify(t1fo);
+add rr_res() = x_file_rrsplit(mult, t0fo, t1fo);
+print(rr_res());
+writefile("dp-" + outputfilename, {dprofile()});
+end;
+write_ntuples(rr_res(), "rrsplit_" + timestamp());
+end;

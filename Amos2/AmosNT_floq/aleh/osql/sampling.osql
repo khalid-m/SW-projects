@@ -1,0 +1,280 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2007 Ruslan Fomkin, UDBL
+ * $RCSfile: sampling.osql,v $
+ * $Revision: 1.2 $ $Date: 2007/08/08 12:55:53 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Script for investigating sampling streamed data for statistics.
+ *
+ ****************************************************************************
+ * $Log: sampling.osql,v $
+ * Revision 1.2  2007/08/08 12:55:53  ruslan
+ * code for experiments
+ *
+ * Revision 1.1  2007/07/20 15:18:13  ruslan
+ * files for investigating statistics sampling
+ *
+ ****************************************************************************/
+
+create function myprint(integer nr, charstring electronname, integer ecalls,
+	integer eresults, real emean, real evariance, 
+	charstring muonname, integer mcalls, integer mresults, 
+	real mmean, real mvariance, charstring jetbname, integer jcalls,
+	integer jresults, real jmean, real jvariance) -> boolean as 
+							foreign 'myprint';
+/* variatian has to be removed 
+create function samplestat(charstring filename, integer n) -> boolean as
+begin
+	openwritefile(filename);
+	for each integer i where i=iota(0,(n-1))
+	begin
+		declare integer ecalls, integer eresults, real esq, real emean,
+			real evariance, integer mcalls, integer mresults, 
+			real msq, real mmean, real mvariance, integer jcalls, 
+			integer jresults, real jsq, real jmean, real jvariance;
+		getstructstat("bkg2Events_ruslan_000.root",i,1);
+		select c, r, s into ecalls, eresults, esq 
+		from integer c, integer r, real s
+		where <c,r,s> = struct_stat(typenamed("event"),4);
+		set emean = eresults/ecalls;
+		set evariance = esq/ecalls - emean*emean;
+		select c, r, s into mcalls, mresults, msq 
+		from integer c, integer r, real s
+		where <c,r,s> = struct_stat(typenamed("event"),5);
+		set mmean = mresults/mcalls;
+		set mvariance = msq/mcalls - mmean*mmean;
+		select c, r, s into jcalls, jresults, jsq 
+		from integer c, integer r, real s
+		where <c,r,s> = struct_stat(typenamed("event"),6);
+		set jmean = jresults/jcalls;
+		set jvariance = jsq/jcalls - jmean*jmean;
+		myprint(i,"electron",ecalls,eresults,emean,evariance,
+			"muon",mcalls,mresults,mmean,mvariance,
+			"jetb",jcalls,jresults,jmean,jvariance);
+	end;
+	closewritefile();
+end;
+*/
+
+lisp;
+(defun test (fno ext)
+  (let (extnew)
+;    (setq *struct-stat* nil)
+    (sleep 60)
+    (setq ext (timer2 (osql "expcuts();")))
+    (sleep 20)
+    (setq extnew (timer2 (osql "expcuts();")))
+    (setq ext (min ext extnew))
+    (sleep 20)
+    (setq extnew (timer2 (osql "expcuts();")))
+    (setq ext (min ext extnew))
+    (osql-result ext)))
+
+(defun testbkg (fno ext)
+  (let (extnew)
+;    (setq *struct-stat* nil)
+    (sleep 60)
+    (setq ext (timer2 (osql "idcutsbkg();")))
+    (sleep 20)
+    (setq extnew (timer2 (osql "idcutsbkg();")))
+    (setq ext (min ext extnew))
+    (sleep 20)
+    (setq extnew (timer2 (osql "idcutsbkg();")))
+    (setq ext (min ext extnew))
+    (osql-result ext)))
+
+(defun testsignal (fno ext)
+    (setq ext (timer2 (osql "idcutssignal();")))
+    (osql-result ext))
+:osql
+
+create function test() -> real extime as foreign 'test';
+create function testbkg() -> real extime as foreign 'testbkg';
+create function testsignal() -> real extime as foreign 'testsignal';
+
+create function myprint(integer nr, charstring gpname, real gpcst, 
+	real gpcard, real gpextime, charstring pname,
+	real pcst, real pcard, real pextime, charstring rname,
+	real rcst, real rcard, real rextime,
+	charstring electronname, integer ecalls,
+	integer eresults, real emean,
+	charstring muonname, integer mcalls, integer mresults, 
+	real mmean, charstring jetbname, integer jcalls,
+	integer jresults, real jmean) -> boolean as foreign 'myprint';
+
+create function plancost(charstring filename, integer n, integer d) -> boolean as
+begin
+	openwritefile(filename);
+	for each integer i where i=iota(0,(n-1))
+	begin
+		declare integer ecalls, integer eresults, real emean,
+			integer mcalls, integer mresults, 
+			real mmean, integer jcalls, 
+			integer jresults, real jmean,
+			real pgcst, real pgcard, real pgextime,
+			real gcst, real gcard, real gextime,
+			real rcst, real rcard, real rextime;
+		getstructstat("bkg2Events_ruslan_000.root",i*d,d);
+		structstat(false);
+		select c, r into ecalls, eresults
+			from integer c, integer r
+			where <c,r> = struct_stat(typenamed("event"),4);
+		set emean = eresults/ecalls;
+		select c, r into mcalls, mresults
+			from integer c, integer r
+			where <c,r> = struct_stat(typenamed("event"),5);
+		set mmean = mresults/mcalls;
+		select c, r into jcalls, jresults
+			from integer c, integer r
+			where <c,r> = struct_stat(typenamed("event"),6);
+		set jmean = jresults/jcalls;
+
+		optmethod("ranksort");
+		grouping(true);
+		reoptimize("expcuts->event");
+		grouping(false);
+		select c,s into pgcst, pgcard from real c, real s
+			where <c,s> = plan_cost("expcuts->event");
+		set pgextime = test();
+
+		reoptimize("expcuts->event");
+		select c,s into gcst, gcard from real c, real s
+			where <c,s> = plan_cost("expcuts->event");
+		set gextime = test();
+
+		optmethod("randomopt");
+		optlevel(100,1000);
+		reoptimize("expcuts->event");
+		grouping(false);
+		select c,s into rcst, rcard from real c, real s
+			where <c,s> = plan_cost("expcuts->event");
+		set rextime = test();
+
+		myprint(i, "profiled grouping", pgcst, pgcard, pgextime,
+			"greedy", gcst, gcard, gextime,
+			"randomopt", rcst, rcard, rextime,
+			"electron",ecalls,eresults,emean,
+			"muon",mcalls,mresults,mmean,
+			"jetb",jcalls,jresults,jmean);
+	end;
+	closewritefile();
+end;
+
+create function plancostbkg(charstring filename, integer n, integer d) -> boolean as
+begin
+	openwritefile(filename);
+	for each integer i where i=iota(0,(n-1))
+	begin
+		declare integer ecalls, integer eresults, real emean,
+			integer mcalls, integer mresults, 
+			real mmean, integer jcalls, 
+			integer jresults, real jmean,
+			real pgcst, real pgcard, real pgextime,
+			real gcst, real gcard, real gextime,
+			real rcst, real rcard, real rextime;
+		getstructstat("bkg2Events_ruslan_000.root",i*d,d);
+		structstat(false);
+		select c, r into ecalls, eresults
+			from integer c, integer r
+			where <c,r> = struct_stat(typenamed("event"),4);
+		set emean = eresults/ecalls;
+		select c, r into mcalls, mresults
+			from integer c, integer r
+			where <c,r> = struct_stat(typenamed("event"),5);
+		set mmean = mresults/mcalls;
+		select c, r into jcalls, jresults
+			from integer c, integer r
+			where <c,r> = struct_stat(typenamed("event"),6);
+		set jmean = jresults/jcalls;
+
+		optmethod("ranksort");
+		grouping(true);
+		reoptimize("idcutsbkg");
+		grouping(false);
+		select c,s into pgcst, pgcard from real c, real s
+			where <c,s> = plan_cost("idcutsbkg");
+		set pgextime = testbkg();
+
+		reoptimize("idcutsbkg");
+		select c,s into gcst, gcard from real c, real s
+			where <c,s> = plan_cost("idcutsbkg");
+		set gextime = testbkg();
+
+		optmethod("randomopt");
+		optlevel(100,1000);
+		reoptimize("idcutsbkg");
+		grouping(false);
+		select c,s into rcst, rcard from real c, real s
+			where <c,s> = plan_cost("idcutsbkg");
+		set rextime = testbkg();
+
+		myprint(i, "profiled grouping", pgcst, pgcard, pgextime,
+			"greedy", gcst, gcard, gextime,
+			"randomopt", rcst, rcard, rextime,
+			"electron",ecalls,eresults,emean,
+			"muon",mcalls,mresults,mmean,
+			"jetb",jcalls,jresults,jmean);
+	end;
+	closewritefile();
+end;
+
+create function plancostsignal(charstring filename, integer n, integer d) -> boolean as
+begin
+	openwritefile(filename);
+	for each integer i where i=iota(0,(n-1))
+	begin
+		declare integer ecalls, integer eresults, real emean,
+			integer mcalls, integer mresults, 
+			real mmean, integer jcalls, 
+			integer jresults, real jmean,
+			real pgcst, real pgcard, real pgextime,
+			real gcst, real gcard, real gextime,
+			real rcst, real rcard, real rextime;
+		getstructstat("D:/Project/ALEH/ANALYS/NTUPLES/signal50000Events_000.root",i*d,d);
+		structstat(false);
+		select c, r into ecalls, eresults
+			from integer c, integer r
+			where <c,r> = struct_stat(typenamed("event"),4);
+		set emean = eresults/ecalls;
+		select c, r into mcalls, mresults
+			from integer c, integer r
+			where <c,r> = struct_stat(typenamed("event"),5);
+		set mmean = mresults/mcalls;
+		select c, r into jcalls, jresults
+			from integer c, integer r
+			where <c,r> = struct_stat(typenamed("event"),6);
+		set jmean = jresults/jcalls;
+
+		optmethod("ranksort");
+		grouping(true);
+		reoptimize("idcutssignal");
+		grouping(false);
+		select c,s into pgcst, pgcard from real c, real s
+			where <c,s> = plan_cost("idcutssignal");
+		set pgextime = testsignal();
+
+		reoptimize("idcutssignal");
+		select c,s into gcst, gcard from real c, real s
+			where <c,s> = plan_cost("idcutssignal");
+		set gextime = testsignal();
+
+		optmethod("randomopt");
+		optlevel(100,1000);
+		reoptimize("idcutssignal");
+		grouping(false);
+		select c,s into rcst, rcard from real c, real s
+			where <c,s> = plan_cost("idcutssignal");
+		set rextime = testsignal();
+
+		myprint(i, "profiled grouping", pgcst, pgcard, pgextime,
+			"greedy", gcst, gcard, gextime,
+			"randomopt", rcst, rcard, rextime,
+			"electron",ecalls,eresults,emean,
+			"muon",mcalls,mresults,mmean,
+			"jetb",jcalls,jresults,jmean);
+	end;
+	closewritefile();
+end;

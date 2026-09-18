@@ -1,0 +1,6 @@
+<'schema.osql';
+load_lisp('../lsp/cost_model.populated.lsp');
+load_lisp('../lsp/grouping.lsp');
+parteval('theresolvent');
+save '../aleh_load.cost_model.dynamic.dmp';
+

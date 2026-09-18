@@ -1,0 +1,69 @@
+/*-*-sql-*-*******************************************************************/
+
+/* 
+dropfunction(#'DEF',1);
+add DEF() = turtle('data/sparql/11.4.5.ttl');
+*/
+
+set :q4_1_4d = '
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+SELECT ?name
+ WHERE { [] foaf:name  ?name ;
+            foaf:mbox  <mailto:alice@work.example> }
+';
+
+set :q4_1_4e = '
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+SELECT ?name
+ WHERE { [ foaf:name  ?name ]
+            foaf:mbox  <mailto:alice@work.example> }
+';
+
+/* not supported yet */
+set :q4_1_4f = '
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+SELECT ?name
+ WHERE { [ foaf:name  ?name ;
+            foaf:mbox  <mailto:alice@work.example> ] }
+';
+
+
+/* Collection Queries */
+
+set :CQ1 = '
+PREFIX  : <http://example.org/stuff/1.0/> 
+
+SELECT ?a
+WHERE { ?a :b ( "apple" "banana" ) }
+';
+
+set :CQ2 = '
+PREFIX  : <http://example.org/stuff/1.0/> 
+
+SELECT ?a ?r
+WHERE { ?a :b ( "apple" ?r _:s) }
+';
+
+set :CQ3 = ' # =Q2   
+PREFIX  : <http://example.org/stuff/1.0/> 
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?a ?r
+WHERE { ?a :b _:seq1 .
+        _:seq1 rdf:first "apple" .
+        _:seq1 rdf:rest _:seq2 .
+	_:seq2 rdf:first ?r .
+        _:seq2 rdf:rest _:seq3 .
+        _:seq3 rdf:first _:s .
+        _:seq3 rdf:rest rdf:nil }
+';
+
+set :CQ4 = '
+PREFIX  : <http://example.org/stuff/1.0/> 
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?a
+WHERE { ?a :b _:seq1 .
+        _:seq1 rdf:first "apple" .
+        _:seq1 rdf:rest _:r }
+';

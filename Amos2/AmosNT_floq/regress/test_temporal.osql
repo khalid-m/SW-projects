@@ -1,0 +1,86 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 1996 Martin Sköld, Magnus Werner, EDSLAB
+ * $RCSfile: test_temporal.osql,v $
+ * $Revision: 1.3 $ $Date: 2012/05/21 20:54:52 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Testing temporal functions
+ *
+ ****************************************************************************
+ * $Log: test_temporal.osql,v $
+ * Revision 1.3  2012/05/21 20:54:52  torer
+ * Testing conversion between time stamps and reals (seconds)
+ *
+ ****************************************************************************/
+
+create function foo()->timeval;
+create function fie()->date;
+create function fum()->time;
+create function ti1()->timeinterval;
+create function ti2()->timeinterval;
+create function ti3()->timeinterval;
+set foo() = |1995-10-13/18:11:43|;
+set fie() = |1995-10-13|;
+set fum() = |18:11:43|;
+set ti1() = |[|1996-02-01/15:29:10|,|1996-02-01/15:29:12|]|;
+set ti2() = |[|1996-02-01/14:29:12|,|1996-02-01/16:29:12|]|;
+set ti3() = |[|1996-02-01/15:29:12|,|1996-02-01/16:30:12|]|;
+foo();
+fie();
+fum();
+ti1();
+create function ftv(timeval)->integer;
+create function fti(timeinterval)->integer;
+create function fd(date)->integer;
+create function ft(time)->integer;
+set ftv()@|1995-10-13/18:11:43| = 17;
+set fti()@|[|1996-02-01/15:29:10|,|1996-02-01/15:29:12|]| = 17;
+set fd()@|1995-10-13| = 17;
+set ft()@|18:11:43| = 17;
+
+lisp;
+(checkequal "timevals, timeintervals, times, and dates"
+      ((osql "select fie()=date(foo());") '((TRUE)))
+      ((osql "select fum()=time(foo());") '((TRUE)))
+      ((osql "select foo()=date_time_to_timeval(fie(), fum());") '((TRUE)))
+      ((osql "select year(foo()) = year(fie());") '((TRUE)))
+      ((osql "select month(foo()) = month(fie());") '((TRUE)))
+      ((osql "select day(foo()) = day(fie());") '((TRUE)))
+      ((osql "select hour(foo()) = hour(fum());") '((TRUE)))
+      ((osql "select minute(foo()) = minute(fum());") '((TRUE)))
+      ((osql "select second(foo()) = second(fum());") '((TRUE)))
+      ((osql "select now()>|1970-01-01/01:00:01|;") '((TRUE)))
+      ((osql "select |1970-01-01/01:00:01|<now();") '((TRUE)))
+      ((osql "select now()>=|1970-01-01/01:00:01|;") '((TRUE)))
+      ((osql "select |1970-01-01/01:00:01|<=now();") '((TRUE)))
+      ((osql "select date()>|1970-01-02|;") '((TRUE)))
+      ((osql "select |1970-01-02|<date();") '((TRUE)))
+      ((osql "select date()>=|1970-01-02|;") '((TRUE)))
+      ((osql "select |1970-01-02|<=date();") '((TRUE)))
+      ((osql "select time()>|01:00:00|;") '((TRUE)))
+      ((osql "select |01:00:00|<time();") '((TRUE)))
+      ((osql "select time()>=|01:00:00|;") '((TRUE)))
+      ((osql "select |01:00:00|<=time();") '((TRUE)))
+      ((osql "select typesof(|[|1996-02-01/14:29:12|,|1996-02-01/16:29:12|]|) = typenamed('BOTH_CLOSED_TIMEINTERVAL');") '((TRUE)))
+      ((osql "select typesof(|[|1996-02-01/14:29:12|,|1996-02-01/16:29:12|)|) = typenamed('LEFT_CLOSED_TIMEINTERVAL');") '((TRUE)))
+      ((osql "select typesof(|(|1996-02-01/14:29:12|,|1996-02-01/16:29:12|]|) = typenamed('RIGHT_CLOSED_TIMEINTERVAL');") '((TRUE)))
+      ((osql "select typesof(|(|1996-02-01/14:29:12|,|1996-02-01/16:29:12|)|) = typenamed('BOTH_OPEN_TIMEINTERVAL');") '((TRUE)))
+      ((osql "select ti1() < |[|1996-03-01/15:29:10|,|1996-03-01/15:29:12|]|;") '((TRUE)))
+      ((osql "select |[|1996-03-01/15:29:10|,|1996-03-01/15:29:12|]| > ti1();") '((TRUE)))
+      ((osql "select meets(ti1(), ti3());") '((TRUE)))
+      ((osql "select contains(ti2(), ti1());") '((TRUE)))      
+      ((osql "select overlaps(ti2(), ti3());") '((TRUE)))
+      ((osql "select ftv()@|1995-10-13/18:11:43|;") '((17)))
+      ((osql "select fti()@|[|1996-02-01/15:29:10|,|1996-02-01/15:29:12|]|;") '((17)))
+      ((osql "select fd()@|1995-10-13|;") '((17)))
+      ((osql "select ft()@|18:11:43|;") '((17)))
+)
+
+(checkequal "Converting timeval to real"
+  ((osql "timeval(real(|1996-02-01/14:29:12|));") '((#[T 823181352 0])))
+)
+
+:osql
+rollback;

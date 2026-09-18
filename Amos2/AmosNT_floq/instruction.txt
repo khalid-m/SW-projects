@@ -1,0 +1,33 @@
+
+
+PREPRATION
+---------------------------------------------------------------------------
+1) Unzip debs.zip
+
+2) Download http://lafayette.tosm.ttu.edu/debs2013/grandchallenge/full-game.gz
+and extract it into 'debs\debs2013\data' folder
+
+Please check the file name is full-game
+
+---------------------------------------------------------------------------
+RUN
+---------------------------------------------------------------------------
+Goto debs\debs2013 folder
+
+To run query 1 alone
+$q1.cmd
+
+To run query 2 alone
+$q2.cmd
+
+To run query 3 alone
+$q3.cmd
+
+To run query 4 alone
+$q4.cmd
+
+To run all queries
+$all.cmd
+
+Queries 1, 2, 3 and 4 write the result streams into files under 'output' folder.'
+

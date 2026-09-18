@@ -1,0 +1,148 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Andrej Andrejev, UDBL
+ * $RCSfile: chelonia-store.osql,v $
+ * $Revision: 1.2 $ $Date: 2012/03/19 22:02:53 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Triple Store implemented with Chelonia
+ *
+ ****************************************************************************
+ * $Log: chelonia-store.osql,v $
+ * Revision 1.2  2012/03/19 22:02:53  andan342
+ * Fixed memory leaks, excessive calls, configurability
+ *
+ * Revision 1.1  2012/03/18 13:16:07  andan342
+ * Created WRAPPER mode separate from TRIPLE-STORE mode
+ * Added NMA proxies to handle 'too large' arrays
+ *
+ * Revision 1.4  2012/03/17 21:39:37  andan342
+ * - Added debug functionality, including _chelonia_dub_results_ switch
+ *
+ * Revision 1.3  2012/02/23 19:10:32  andan342
+ * Chelonia to SPAQRQL connectivity with updates (except arrays)
+ *
+ * Revision 1.2  2012/02/21 11:03:48  andan342
+ * Amos-to-Chelonia interface with updates (except inserting arrays)
+ *
+ * Revision 1.1  2012/02/18 00:25:21  andan342
+ * Chelonia-to-Amos connectivity: read-only
+ *
+ * Revision 1.1  2012/02/01 19:26:48  andan342
+ * Almost fully-functional Chelonia connectivity
+ *
+ * Revision 1.1  2006/02/12 20:01:08  torer
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+
+< 'chelonia-to-amos.osql';
+
+/* DEFAULT GRAPH & DB */
+
+set :def_graph = 'def';
+
+create function default_db() -> Charstring;
+
+set default_db() = "/Test/huang_1";
+
+/* CACHING */
+
+create function subjects(Charstring graph) -> Bag of (Charstring s, Integer id) as stored;
+
+create function predicates(Charstring graph, Integer sid) -> Bag of Charstring p as stored;
+
+create function refreshSubjects(Charstring graph, Boolean doQuery) -> Boolean as 
+  begin
+    remove subjects(graph) = (s,id) from Charstring s, Integer id;
+    if doQuery then
+      add subjects(graph) = (s,id) from Charstring s, Integer id
+        where (s,id) in getTasks(default_db(),graph);
+  end;
+
+create function subject2id(Charstring graph, Charstring s) -> Integer id as
+  select id 
+   where (s,id) in subjects(graph);
+
+create function refreshPredicates(Charstring graph, Integer sid, Boolean doQuery) -> Boolean as
+  begin
+    remove predicates(graph,sid) = p from Charstring p;
+    if doQuery then 
+      add predicates(graph,sid) = getVars(default_db(),sid);
+  end;
+
+create function refreshGraph(Charstring graph, Boolean doQuery) -> Boolean as
+  begin
+    if notany(graph in getAllExperiments(default_db()))
+      then addExperiment(default_db(),graph);
+    refreshSubjects(graph,doQuery);
+    for each Charstring s, Integer id where (s,id) in subjects(graph)
+      refreshPredicates(graph,id,doQuery);
+  end;
+
+refreshGraph(:def_graph,true); /* Update subject and predicate caches */
+
+/* ACCESSING */
+
+create function CT(Charstring graph) -> Bag of (Literal, Literal, Literal) as
+  select URI(s), URI(p), getValue(default_db(), sid, p)
+    from Charstring s, Charstring p, Integer sid
+   where (s, sid) in subjects(graph)
+     and p in predicates(graph, sid);
+  
+/* UPDATING */
+
+create function store_triple(Charstring graph, Vector of Literal triple) -> Boolean as
+  begin
+    declare Charstring s, Charstring p,         
+            Bag of Integer sids; /* at most 1 value */
+    set s = URI_id(triple[0]); 
+    set p = URI_id(triple[1]);
+    set sids = (select id from Integer id where (s, id) in subjects(graph));
+    if notany(sids) then
+    begin
+      addTask(default_db(), graph, s);
+      set sids = materialize(getTaskId(default_db(), graph, s));
+      for each Integer sid where sid in sids 
+        add subjects(graph) = (s,sid); /* update cache */
+    end;
+    for each Integer sid where sid in sids /* at most 1 sid */
+    begin
+      addValue(default_db(), sid, p, triple[2]);
+      if notany(p in predicates(graph, sid)) then
+        add predicates(graph, sid) = p; /* update cache */
+    end;
+  end;
+
+create function load_triples(Charstring graph, Charstring filename) -> Boolean
+  as store_triple(graph,{turtle(filename)});
+
+create function clear_triples(Charstring graph) -> Boolean as
+  begin
+    declare Charstring taskIdsCurly, Charstring taskIds;
+    set taskIdsCurly = stringify(vectorof(select id from Integer id, Charstring s where (s,id) in subjects(graph)));
+    set taskIds = substring(taskIdsCurly,1,char_length(taskIdsCurly)-2);
+    sendUpdate(default_db(), "DELETE FROM iTriples WHERE taskId IN (" + taskIds + ");");
+    sendUpdate(default_db(), "DELETE FROM fTriples WHERE taskId IN (" + taskIds + ");");
+    sendUpdate(default_db(), "DELETE FROM sTriples WHERE taskId IN (" + taskIds + ");");
+    sendUpdate(default_db(), "SELECT delete_data(blobId) FROM aTriples WHERE taskId IN (" + taskIds + ");");
+    sendUpdate(default_db(), "DELETE FROM tasks WHERE taskId IN (" + taskIds + ");");
+    refreshGraph(graph, false);    
+  end;
+
+create function URI_in_Chelonia(Charstring graph, Charstring uri) -> Boolean
+  as some(select uri from Charstring s, Charstring o, Integer sid
+           where (s,sid) in subjects(graph)
+                  and (s = uri 
+                    or uri in predicates(graph, sid)
+                    or (o, sid) in Chelonia_parse_string_ints(queryToURL(default_db(),
+                                     "SELECT value, taskId FROM sTriples WHERE value LIKE '<" + uri + ">';"))));
+              
+
+
+
+
+
+
+

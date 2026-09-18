@@ -1,0 +1,578 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: multisql.osql,v $
+ * $Revision: 1.7 $ $Date: 2013/09/10 08:00:12 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: script for debugging how to output variables from metadb call
+ * e.g. how to output metaDB data, how to post process the filter that require
+ * data from metaDB
+ * just for testing my query rewrite, no needed to used in experiment
+ ****************************************************************************
+ *
+ ****************************************************************************/
+
+
+start javaamos -n
+start javaamos -O peer.osql -s u
+start javaamos -O peer.osql -s v
+
+javaamos -c me
+
+/* maps logdburi to jdbc object and used in query in sequence */
+create function logdburi_js(Object)->JDBC as stored; 
+
+
+/* create n jdbc connection objects and used in query in sequence */
+create function jdbcSet(Number n, Charstring driver)
+                       -> Bag of Jdbc
+  as jdbc("C"+iota(1,n), driver);
+
+/********************* used in query in sequence ******************/
+/* connect to jdbc datasource and map the uri to jdbc datasource */
+create function connect2(Jdbc ds1, Charstring uri, 
+                           Charstring user_name, Charstring password)->Jdbc ds2
+  as begin 
+          connect(ds1, uri, user_name, password);
+          set logdburi_js(uri)=ds1;
+     end;
+
+
+/* connect each jdbc object with a data source with different db name */
+/* and used in query in sequence */
+create function openJdbcSet(Bag of Jdbc js,
+                            Charstring dburl, Bag of Charstring dbs,
+                            Charstring user, Charstring pw)
+                          -> Bag of Jdbc
+  as for each Jdbc j, Charstring db 
+     where j in js and db in dbs 
+     begin
+         return connect(j, dburl+db, user, pw);
+     end;
+
+
+/* disconnect given database connections */
+/* and used in query in sequence */
+create function closeJdbcSet(Bag of Jdbc js) -> Bag of Jdbc
+  as for each Jdbc j where j in js 
+     begin disconnect(j);
+           return j;
+     end;
+
+/* utility functions */
+create function transformvec(vector inputvarsvec)->(object, vector) as foreign 'transinvec-++';
+
+create function formargfrombag(bag)->vector as foreign 'formargfrombag-+';
+
+create function vectorBag(Vector v) -> Bag of Charstring
+  as select v[i] 
+     from Integer i;
+
+/******************* used in multicastreceive3 *********************/
+/* mapping database uri to peer name only used in multicastreceive3 */
+/* It is used for mapping to get peer name. It is the same for different size 
+   of logdb since i stored only 1Gb uri in metadb */
+create function mappinguri_peer(Charstring uri)->Charstring as stored;
+
+set mappinguri_peer("jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB")='u';
+
+set mappinguri_peer("jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB")='v';
+
+/* and used in query in parallel */
+/* mapping logdb uri to peer name and forming peer vector and query argument 
+   vector for multicastreceive */
+/* original definition */
+/*
+create function multicastreceive3(Vector uris, Charstring fn, Charstring query, 
+                                         Vector args, Vector of number inputvarposvec)->Bag of Object
+  as begin
+     declare vector peervec, vector argvec, Charstring pe, Charstring logdburi;
+     set peervec={};
+     set argvec={};
+     for each integer i where i in iota(0, dim(uris)-1)
+       begin
+       set logdburi=uris[i];
+       set pe=mappinguri_peer(logdburi);
+        if pe then
+          begin
+          set peervec=concat(peervec, {pe}); 
+          set argvec=concat(argvec, {{logdburi, query, args[i], inputvarposvec}});
+          end;
+       end;
+     if dim(peervec) >= 1 then
+     return multicastreceive(peervec, fn, argvec);
+     end;
+*/
+
+
+/* new definition with inputvarpovec as extra argument*/
+create function multicastreceive3(Vector uris, Charstring fn, Charstring query, 
+                                         Vector args, Vector of number inputvarposvec)->Bag of Object
+  as begin
+     declare vector peervec, vector argvec, Charstring pe, Charstring logdburi;
+     set peervec={};
+     set argvec={};
+     for each integer i where i in iota(0, dim(uris)-1)
+       begin
+       set logdburi=uris[i];
+       set pe=mappinguri_peer(logdburi);
+        if pe then
+          begin
+          set peervec=concat(peervec, {pe}); 
+          set argvec=concat(argvec, {{logdburi, query, args[i], inputvarposvec}});
+          end;
+       end;
+     if dim(peervec) >= 1 then
+     return multicastreceive(peervec, fn, argvec);
+     end;
+
+/* multi_sql_union is the same as sql */
+/* for query logdb in sequence, takes logdbid, query, and parameters */ 
+create function multi_sql_union(Object logdburi, Charstring query, 
+                                Vector params) -> Vector
+  as select sql(logdburi_js(logdburi), query, params);
+
+
+/* set url of meta-database */ 
+set :dburl = "jdbc:mysql://localhost:3306/";
+
+
+/* set up connection to access toy meta database at local mysql */
+set :a = jdbc("a", "com.mysql.jdbc.Driver");
+
+connect(:a, :dburl + "metadb", "regress", "regress");
+
+
+/* procedure to import tables from metaDB */
+create function importmetatable(jdbc js, charstring dburi, 
+                                charstring username, charstring password,
+                                vector of charstring tables)->boolean
+as begin declare integer i, integer numoftable; 
+         set i =0;
+	 set numoftable=dim(tables);
+        connect(js, dburi, username, password);
+        while i < numoftable
+        do 
+        import_table(js, tables[i]);
+        set i = i+1;
+        end while;
+   end;
+
+
+/* generate source predicates for small meta database */
+importmetatable(:a, :dburl + "metadb", "regress", "regress", 
+                {'SENSORINSTALLATION', 'LOCATION', 'MACHINEINSTALLATION', 
+                 'MACHINE', 'SENSOR'});
+
+
+
+
+/***************** just for import_table2 ******************/
+
+/* to get :js for generate source predicate of measuresA */
+/* used in query in sequence */
+set :js = jdbcSet(2,"com.microsoft.jdbc.sqlserver.SQLServerDriver");
+
+/* to import the measuresA schema from one of the server regardless the 
+   logdb size since they have the same schema */
+set :logdb1url = "jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB";
+
+connect2(first(:js), :logdb1url, "udbl", "udbl");
+
+< 'patch.osql';
+
+/* import source predicate Measurement from one logdb */
+/* import_sourceset_table(:js, 'MEASURESA'); */
+import_table2(first(:js),'MEASURESA',:js);
+
+
+/************************** peers setup for paralization ***************************/
+/* peer u */
+/* in peer u, call jdbc function */
+set :u= call_function('u','jdbc', {"A","com.microsoft.jdbc.sqlserver.SQLServerDriver"}, 10)[0];
+
+/* populating the mapping from logdburi of metaDB to jdbc object at peer, used
+   in sql_myv2 at peer to get the jdbc object at peer */
+call_function('u','pop_uri_jdbc',{"jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB",:u},10);
+
+
+/* peer v */
+/* in peer v, call jdbc function */
+set :v= call_function('v','jdbc', {"B","com.microsoft.jdbc.sqlserver.SQLServerDriver"}, 10)[0];
+
+/* populating the mapping from logdburi of metaDB to jdbc object at peer, used
+   in sql_myv2 at peer to get the jdbc object at peer */
+call_function('v','pop_uri_jdbc',{"jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB",:v},10);
+
+/* procedure to connect to different size of logdb */
+create function connectlogdb(Vector of charstring peervec, vector js, 
+                             vector logDBuri, 
+                             vector username, vector password)->boolean
+as begin declare integer i, integer numoflogDB;
+         set i=0;
+         set numoflogDB=dim(logDBuri);
+         while i < numoflogDB
+         do
+         call_function(peervec[i], 'connect', {js[i], logDBuri[i], username[i],
+                       password[i]}, 10);
+         set i = i+1;
+         end while;
+   end;
+
+
+/* it is different from cases, connect different logdb sizes */
+/* set to connect to bm1GB */
+set :logDBuri1="jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB";
+
+set :logDBuri2="jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB";
+
+/* connect to bm1GB */
+connectlogdb({'u','v'}, {:u, :v}, {:logDBuri1, :logDBuri2}, {"udbl", "udbl"},
+             {"udbl", "udbl"});
+
+
+/*********************** start rewrite ******************************/
+lisp;
+
+(setq *enable-parallel* t)
+
+:osql
+
+
+
+create function mysql(Jdbc ds, Charstring query, Vector arguments)
+                  ->Bag of Vector
+  as foreign 'JAVA:jdbc_interface.JDBCInterface/executeParametrizedQuery';
+
+trace("multicastreceive");
+
+trace("in");
+
+
+lisp;
+
+(defun myin-+ (fno v res) (mapbag v (f/l (row) (osql-result v row))))
+
+:osql
+
+create function myin(Bag of Vector v) -> Vector as foreign 'myin-+';
+
+create function sql1(Jdbc c, Charstring q) -> Bag of Vector as sql(c,q);
+
+
+/* test case low level function */
+/* It can run, but wrong result: returns 190 rows. */
+/* bvec in bmetavec  causes problem */
+create function lowfun11(jdbc js)->(number, number, number, object, object) as
+select boj[0], boj[1], boj[2], bvec[1], bvec[2]
+from bag of vector bmetavec, vector formarg, vector peervec, vector argvec, 
+     vector boj, vector bvec
+where bmetavec = mysql(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID", {})                                         						                and 
+      bvec in bmetavec                                           and  /* can i combine this line and next line or make a new function to do it*/
+      formarg = formargfrombag(select groupby((select metavec[1], {metavec[4], metavec[5], metavec[3], metavec[2]} from vector metavec where metavec in bmetavec), #'vectorof'))                                              				and
+      peervec=formarg[0]                                        and
+      argvec=formarg[1]                                         and
+      boj in multicastreceive3(peervec, "sql_myv2", "select bt,et,mv from measuresA where (mv-?)>? and m=? and s=?", argvec); 
+
+pc("lowfun11");
+
+count(lowfun11(:a));
+
+
+
+
+/* kind of can work, but can not post-process num pred */
+/* test case low level function */
+create function lowfun11v2(jdbc js)->(object, object, object) as
+select boj[0][3], boj[1][0], boj[1][0]
+from bag of vector bmetavec, vector formarg, vector peervec, vector argvec, 
+     vector of vector boj
+where bmetavec = mysql(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID", {})                         and 
+      formarg = formargfrombag(select groupby((select metavec[1], {metavec[0], metavec[1], metavec[2], metavec[3],  metavec[4], metavec[5], metavec[6] } from vector metavec where metavec in bmetavec), #'vectorof'))                                              				and
+      peervec=formarg[0]                                        and
+      argvec=formarg[1]                                         and
+      boj in multicastreceive3(peervec, "sql_myv2", "select bt,et,mv from measuresA where (mv-?)>? and m=? and s=?", argvec); 
+
+pc("lowfun11v2");
+
+count(lowfun11v2(:a));
+
+
+
+/* kind of can work, but can not post-process num pred */
+/* test case low level function */
+create function lowfun11v4(jdbc js)->(object, object, object) as
+select boj[3], boj[7], boj[8]
+from bag of vector bmetavec, vector formarg, vector peervec, vector argvec, 
+     vector of vector boj
+where bmetavec = mysql(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID", {})                         and 
+      formarg = formargfrombag(select groupby((select metavec[1], {metavec[0], metavec[1], metavec[2], metavec[3],  metavec[4], metavec[5], metavec[6] } from vector metavec where metavec in bmetavec), #'vectorof'))                                              				and
+      peervec=formarg[0]                                        and
+      argvec=formarg[1]                                         and
+      boj in multicastreceive3(peervec, "sql_myv2", "select bt,et,mv from measuresA where (mv-?)>? and m=? and s=?", argvec, {4,5,3,2}); 
+
+pc("lowfun11v4");
+
+count(lowfun11v4(:a));
+
+
+/* this is what original the wrapping function does or without the bag of */
+create function sql3(Jdbc c, Charstring q) ->bag of (object, object, object, object, object, object, object) as 
+select v[0], v[1], v[2], v[3], v[4], v[5], v[6]
+from vector v
+where v = sql(c,q);
+
+pc("sql3");
+
+create function sql2(Jdbc c, Charstring q) ->bag of (object, object, object, object, object, object, object) as 
+select v[0], v[1], v[2], v[3], v[4], v[5], v[6]
+from vector v
+where v in sql(c,q);
+
+pc("sql2");
+
+
+/* in jdbc wrapper, jdbc call variables maps to object log output variables */
+/* _V15+ _V4+ _V1+ in objectlog variables are feed by _V42, _V43, _V44 */
+create function foo(bag b)->(object, object, object, object, object, object, object, bag) as
+begin 
+     declare integer lid, charstring uri, integer si, integer mi, number ev, number th, integer m, vector peervec, vector argvec;
+     for each vector v where v in b
+
+
+return lid
+
+/* i can't makebag around the metaDB call seems i need to post process numerical pred, then how can i make bag result from metaDB to logDB */
+/* want: like make transient like original sql */	
+create function lowfun11v3(jdbc js)->(number, number, number, object, object) as
+select boj[0], boj[1], boj[2], bmetavec[1], bmetavec[2]
+from vector bmetavec, vector formarg, vector peervec, vector argvec, 
+     vector boj
+where bmetavec = sql(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID",{})                                and 
+      formarg = formargfrombag(select groupby(bag(bmetavec[1], {bmetavec[4], bmetavec[5], bmetavec[3], bmetavec[2]}), #'vectorof'))            and
+      peervec=formarg[0]                                        and
+      argvec=formarg[1]                                         and
+      boj in multicastreceive3(peervec, "sql_myv2", "select bt,et,mv from measuresA where (mv-?)>? and m=? and s=?", argvec); 
+
+pc("lowfun11v3");
+
+count(lowfun11v3(:a));
+
+
+
+/* doesn't work, returns 0 rows with {lid, uri, si, mi, ev, th, m} */
+create function lowfun13(jdbc js)->(number, number, number, object, object) as
+select boj[0], boj[1], boj[2], lid, mi
+from  vector formarg, vector peervec, vector argvec, 
+     vector boj, number lid, charstring uri, number si, number mi, number ev, number th, number m
+where {lid, uri, si, mi, ev, th, m} in sql(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID")                                                        							and 
+      formarg = formargfrombag(select groupby((select uri, {ev, th, mi, si} ), #'vectorof'))                                              				and
+      peervec=formarg[0]                                        and
+      argvec=formarg[1]                                         and
+      boj in multicastreceive3(peervec, "sql_myv2", "select bt,et,mv from measuresA where (mv-?)>? and m=? and s=?", argvec); 
+
+pc("lowfun13");
+
+count(lowfun13(:a));
+
+
+
+
+
+
+/* problem: #[OID 48 "BAG.IN->OBJECT"] is not called */
+create function lowfun14(jdbc js)->(number, number, number, object, object) as
+select boj[0], boj[1], boj[2], bmetavec[1], bmetavec[2]
+from vector bmetavec, vector formarg, vector peervec, vector argvec, 
+     vector boj
+where bmetavec in sql(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID")                                                        							                                        							and 
+      formarg = formargfrombag(select groupby((select bmetavec[1], {bmetavec[4], bmetavec[5], bmetavec[3], bmetavec[2]} ), #'vectorof'))                                              				and
+      peervec=formarg[0]                                      																			and
+      argvec=formarg[1]                                         																		and
+      boj in multicastreceive3(peervec, "sql_myv2", "select bt,et,mv from measuresA where (mv-?)>? and m=? and s=?", argvec); 
+
+pc("lowfun14");
+
+count(lowfun14(:a));
+
+
+
+/* problem: select bmetavec[1], {bmetavec[4], bmetavec[5], bmetavec[3], bmetavec[2] can't make bag result */
+create function lowfun14v1(jdbc js)->(number, number, number, object, object) as
+select boj[0], boj[1], boj[2], bmetavec[1], bmetavec[2]
+from vector bmetavec, vector formarg, vector peervec, vector argvec, 
+     vector boj
+where bmetavec in sql1(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID")                                                        							                                        							and 
+      formarg = formargfrombag(select groupby((select bmetavec[1], {bmetavec[4], bmetavec[5], bmetavec[3], bmetavec[2]} ), #'vectorof'))                                              				and
+      peervec=formarg[0]                                      																			and
+      argvec=formarg[1]                                         																		and
+      boj in multicastreceive3(peervec, "sql_myv2", "select bt,et,mv from measuresA where (mv-?)>? and m=? and s=?", argvec); 
+
+pc("lowfun14v1");
+
+count(lowfun14v1(:a));
+
+
+/* something from Tore, return 190 rows, doesn't work */
+groupby((select k, v from charstring k, vector v where v in sql1(:a, "select URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID") and k=v[0]),#'vectorof');
+
+/* something from Tore, return 190 rows, doesn't work */
+create function lowfun14v5(jdbc js)->(number, number, number, object, object) as
+select boj[0], boj[1], boj[2], bmetavec[1], bmetavec[2]
+from vector bmetavec, vector formarg, vector peervec, vector argvec, 
+     vector boj
+where bmetavec in sql1(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID")                                                        							                                        							and 
+      formarg = formargfrombag(select groupby((select v[1], {v[4], v[5], v[3], v[2]} from vector v where v in sql1(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID")), #'vectorof'))                                              				and
+      peervec=formarg[0]                                      																			and
+      argvec=formarg[1]                                         																		and
+      boj in multicastreceive3(peervec, "sql_myv2", "select bt,et,mv from measuresA where (mv-?)>? and m=? and s=?", argvec); 
+
+pc("lowfun14v5");
+
+count(lowfun14v5(:a));
+
+/* just try with materialize, doesn't help */
+create function lowfun14v6(jdbc js)->(number, number, number, object, object) as
+select boj[0], boj[1], boj[2], bmetavec[1], bmetavec[2]
+from bag of vector b, vector bmetavec, vector formarg, vector peervec, vector argvec, 
+     vector boj
+where b=materialize(sql1(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID")) and
+      bmetavec in b                                                       							                                        							and 
+      formarg = formargfrombag(select groupby((select v[1], {v[4], v[5], v[3], v[2]} from vector v where v in b), #'vectorof'))                                              				and
+      peervec=formarg[0]                                      																			and
+      argvec=formarg[1]                                         																		and
+      boj in multicastreceive3(peervec, "sql_myv2", "select bt,et,mv from measuresA where (mv-?)>? and m=? and s=?", argvec); 
+
+pc("lowfun14v6");
+
+count(lowfun14v6(:a));
+
+/* the idea doesn't work */
+create function lowfun14v7(jdbc js)->(number, number, number, object, object) as
+select boj[0], boj[1], boj[2], bmetavec[1], bmetavec[2]
+from bag of vector b, vector bmetavec, vector formarg, vector peervec, vector argvec, 
+     vector boj
+where b=sql1(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID") and
+         /* bmetavec in b */                                                     /* and */
+/* can i out put meta var at here ??? */							                                        							 
+      formarg = formargfrombag(groupby((select v[1], {v[4], v[5], v[3], v[2]} from vector v where v in b and v=bmetavec), #'vectorof'))                                              				and
+      peervec=formarg[0]                                      																			and
+      argvec=formarg[1]                                         																		and
+      boj in multicastreceive3(peervec, "sql_myv2", "select bt,et,mv from measuresA where (mv-?)>? and m=? and s=?", argvec); 
+
+pc("lowfun14v7");
+
+count(lowfun14v7(:a));
+
+
+/* returns 19 rows, but still not right, multicastreceive receive first u, and then v */
+create function lowfun14v8(jdbc js)->(number, number, number, object, object) as
+select boj[0], boj[1], boj[2], bmetavec[1], bmetavec[2]
+from bag of vector b, vector bmetavec, vector formarg, vector peervec, vector argvec, 
+     vector boj
+where b=sql1(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID") and
+       bmetavec in b and 
+/* can i out put meta var at here ??? */							                                        							 
+      formarg = formargfrombag(groupby((select v[1], {v[4], v[5], v[3], v[2]} from vector v where v in b and v=bmetavec), #'vectorof'))                                              				and
+      peervec=formarg[0]                                      																			and
+      argvec=formarg[1]                                         																		and
+      boj in multicastreceive3(peervec, "sql_myv2", "select bt,et,mv from measuresA where (mv-?)>? and m=? and s=?", argvec); 
+
+pc("lowfun14v8");
+
+count(lowfun14v8(:a));
+
+
+
+/* unbound variable: (_V_ME_19 BMETAVEC B JS)  */
+create function lowfun14v9(jdbc js)->(number, number, number, object, object) as
+select boj[0], boj[1], boj[2], bmetavec[1], bmetavec[2]
+from bag of vector b, vector bmetavec, vector formarg, vector peervec, vector argvec, 
+     vector boj
+where b=sql1(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID") and
+       /* bmetavec in b and */ 
+/* can i out put meta var at here ??? */							                                        							 
+      formarg = formargfrombag(groupby((select v[1], {v[4], v[5], v[3], v[2]} from vector v where v in b and bmetavec in b), #'vectorof'))                                              				and
+      peervec=formarg[0]                                      																			and
+      argvec=formarg[1]                                         																		and
+      boj in multicastreceive3(peervec, "sql_myv2", "select bt,et,mv from measuresA where (mv-?)>? and m=? and s=?", argvec); 
+
+pc("lowfun14v9");
+
+count(lowfun14v9(:a));
+
+
+
+create function lowfun14v10(jdbc js)->(number, number, number, object, object) as
+select boj[0], boj[1], boj[2], bmetavec[1], bmetavec[2]
+from bag of vector b,  vector formarg, vector peervec, vector argvec, 
+     vector boj, vector bmetavec
+where b=sql1(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID") and
+      bmetavec in b and  
+/* can i out put meta var at here ??? */							                                        							 
+      formarg = formargfrombag(groupby((select v[1], {v[4], v[5], v[3], v[2]} from vector v where v in b), #'vectorof'))                                              				and
+      peervec=formarg[0]                                      																			and
+      argvec=formarg[1]                                         																		and
+      boj in multicastreceive3(peervec, "sql_myv2", "select bt,et,mv from measuresA where (mv-?)>? and m=? and s=?", argvec); 
+
+pc("lowfun14v10");
+
+count(lowfun14v10(:a));
+
+
+/* this one applied myin */
+create function lowfun14v2(jdbc js)->(number, number, number, object, object) as
+select boj[0], boj[1], boj[2], bmetavec[1], bmetavec[2]
+from vector bmetavec, vector formarg, vector peervec, vector argvec, 
+     vector boj
+where bmetavec= myin(sql(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID"))                                                        							                                        							and 
+      formarg = formargfrombag(select groupby((select bmetavec[1], {bmetavec[4], bmetavec[5], bmetavec[3], bmetavec[2]} ), #'vectorof'))                                              				and
+      peervec=formarg[0]                                      																			and
+      argvec=formarg[1]                                         																		and
+      boj in multicastreceive3(peervec, "sql_myv2", "select bt,et,mv from measuresA where (mv-?)>? and m=? and s=?", argvec); 
+
+pc("lowfun14v2");
+
+count(lowfun14v2(:a));
+
+
+/* this one returns correct number of results, but can't output metaDB result */
+create function lowfun12(jdbc js)->(number, number, number) as
+select boj[0], boj[1], boj[2]
+from bag of vector bmetavec, vector formarg, vector peervec, vector argvec, 
+     vector boj
+where bmetavec = mysql(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID", {})                                                        and 
+      formarg = formargfrombag(select groupby((select metavec[1], {metavec[4], metavec[5], metavec[3], metavec[2]} from vector metavec where metavec in bmetavec), #'vectorof'))                                              and
+      peervec=formarg[0]                                        and
+      argvec=formarg[1]                                         and
+      boj in multicastreceive3(peervec, "sql_myv2", "select bt,et,mv from measuresA where (mv-?)>? and m=? and s=?", argvec); 
+
+pc("lowfun12");
+
+count(lowfun12(:a));
+
+
+
+/********************** Numerical queries **************************/
+/* retrieves the machine identifiers m for which a sensor has measured values 
+   mv of measurement class A higher than the expected values ev by a threshold
+   value @thA during the time from bt to time et */
+/* with small meta DB and different size of logdb */
+create function newq4()->(Integer, Number, Number) as
+select m(ma), bt(ma), et(ma)
+from SensorInstallation@a si, Location@a l, MeasuresA ma, 
+     MachineInstallation@a mi, Machine@a m
+where mv(ma)> ev(si) + th(si) and
+      lid(l)=locatedat(mi) and
+      mi(mi)=mi(si) and
+      m(mi)=m(m) and
+      s(ma)=si(si) and 
+      m(ma)=mi(si) and 
+      uri(l)=jdbcuri(ma);
+
+pc("newq4");
+
+count(newq4());
+

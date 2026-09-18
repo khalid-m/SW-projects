@@ -1,0 +1,1 @@
+amos2 historylr.dmp -O "src/mkdmp.osql"

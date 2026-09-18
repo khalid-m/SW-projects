@@ -1,0 +1,77 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Cheng Xu, UDBL
+ * $RCSfile: HagglundsMetaData.osql,v $
+ *
+ * Description: Metadata for the hagglunds data
+ *
+ ****************************************************************************
+ * $Log: HagglundsMetaData.osql,v $
+ * Revision 1.2  2013/11/18 20:49:05  torer
+ * Java sgream client test failed! It is now removed!
+ *
+ * Revision 1.1  2012/12/18 17:35:00  chexu484
+ * hagglunds validation
+ *
+ *
+ ****************************************************************************/
+
+create logdirectory (name,folder,timeout,startseq)
+       instances ('dir',pwd()+'/../Hagglunds/data/COOLER/',10,0);
+set variables(dirnamed("dir")) =
+  {"DOUT01","DOUT02","REG103","REG109","REG311",
+  "REG401","REG402","REG403","REG404","REG405",
+  "REG406","REG407","REG408","REG409","REG410","W1_019", "DIN01"};
+
+/* define sampled E01PB30 hagglunds stream */
+create HagglundsStream (hlundid, logdirname)
+       instances ('hs', 'dir');
+
+set th(theHagglundsStream("hs")) = 0.06;
+
+create logdirectory (name,folder,timeout,startseq)
+       instances ('dir1',pwd()+'/data/E01PB30-3190/',10,0);
+set variables(dirnamed("dir1")) =
+  {"DATALOSS","EMOTOR2","EMOTOR3","DOUT01","DOUT02",
+  "REG103","REG109","REG311","REG401","REG402",
+  "REG403","REG404","REG405","REG406","REG407",
+  "REG408","REG409","REG410","W1_019"};
+
+/* define sampled E01PB30 hagglunds stream */
+create HagglundsStream (hlundid, logdirname)
+       instances ('hs1', 'dir1');
+
+create logdirectory (name,folder,timeout,startseq)
+       instances ('dir2',pwd()+'/data/E01PS10-2991/',10,0);
+set variables(dirnamed("dir2")) =
+  {"DOUT01","DOUT02","REG103","REG109","REG311",
+  "REG401","REG402","REG403","REG404","REG405",
+  "REG406","REG407","REG408","REG409","REG410","W1_019"};
+
+/* define sampled E01PS10 hagglunds stream */
+create HagglundsStream (hlundid, logdirname)
+       instances ('hs2', 'dir2');
+
+create logdirectory (name,folder,timeout,startseq)
+       instances ('dir3',pwd()+'/data/LogDir1/E01PB30-3190/',10,0);
+set variables(dirnamed("dir3")) =
+  {"DATALOSS","EMOTOR2","EMOTOR3","DOUT01","DOUT02",
+  "REG103","REG109","REG311","REG401","REG402",
+  "REG403","REG404","REG405","REG406","REG407",
+  "REG408","REG409","REG410","W1_019"};
+
+/* define the full E01PB30 hagglunds stream */
+create HagglundsStream (hlundid, logdirname)
+       instances ('hs3', 'dir3');
+
+create logdirectory (name,folder,timeout,startseq)
+       instances ('dir4',pwd()+'/data/LogDir1/E01PS10-2991/',10,0);
+set variables(dirnamed("dir4")) =
+  {"DOUT01","DOUT02","REG103","REG109","REG311",
+  "REG401","REG402","REG403","REG404","REG405",
+  "REG406","REG407","REG408","REG409","REG410","W1_019"};
+
+/* define the full E01PS10 hagglunds stream */
+create HagglundsStream (hlundid, logdirname)
+       instances ('hs4', 'dir4');

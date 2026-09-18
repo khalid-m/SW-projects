@@ -1,0 +1,159 @@
+/* test the creation of 1 second tumbling windows */
+/*create function user_filter(Vector v) -> Boolean as
+  select v[3] = 0; */
+
+/* window oriented function "in" */
+create function inwindow(Window w) -> Bag of Object as
+	foreign 'inwindowbf';
+
+create function #lrstream(Charstring filename) 
+       -> <Integer kind, Integer time, Integer car_id, Integer speed, 
+           Integer exp_way, Integer lane, Integer dir, 
+           Integer segment, Integer x_pos>
+  as select v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8]
+     from Vector v
+     where v in readfile(filename);
+
+create function lrstream(Charstring filename) 
+    -> Stream of Object
+  as streamof(#lrstream(filename));
+
+create function input(Charstring filename) -> Bag of Vector as
+  select v from Vector of Integer v where v[0] = 0 and v in readfile(filename);
+
+create function w_create_window_t(Charstring filename, Integer pos) -> Bag of Window as
+  windowagg_t(input(filename), pos);
+
+create function NEW_INCRE_T(Integer pos) -> Integer as
+  count(w_create_window_t("lr/data/cdp_mid15.out", pos));
+
+NEW_INCRE_T(1);
+
+/*************************** testing and debugging **********************************************
+count(select v from vector v where v in input("../data/cdp_mid15.out"));
+
+select get_incre(w) from Window w
+	where w in w_create_window_t("../data/cdp_mid15.out", 1);
+
+count(select get_timec(w) from Window w
+	where w in w_create_window_t("../data/cdp_mid15.out", 1));
+
+select inwindow(w) from Window w
+	where w in w_create_window_t("../data/cdp_mid15.out", 1);
+************************************************************************************************/
+
+/* test the creation of sliding windows over 1 second windows */
+create function w_create_window(Charstring filename, Integer size, Integer slide) -> Bag of Window as
+  windowagg_c(windowagg_t(input(filename), 1), size, slide);
+
+create function NEW_INCRE_C_T(Integer size, Integer slide) -> Integer as
+  count(w_create_window("lr/data/cdp_mid15.out", size, slide));
+
+NEW_INCRE_C_T(120, 1);
+
+/****************************************** debugging *********************************************
+select v, i from Vector v, Integer i
+where <v, i> in (select get_incre(w) from Window w
+	where w in w_create_window("../data/cdp_mid15.out", 120, 1))
+	and i > 3;
+***************************************************************************************************/
+create function spread(Bag bv)
+		-> <Integer kind, Integer time, Integer car_id, Integer speed, 
+          	 Integer exp_way, Integer lane, Integer dir, 
+           	 Integer segment, Integer x_pos>
+  as select v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8]
+     from Vector v
+     where v in bv;
+
+create function scfrom(Charstring filename, Integer size, Integer slide)
+			-> <Integer kind, Integer time, Integer car_id, Integer speed, 
+          	 	    Integer exp_way, Integer lane, Integer dir, 
+           		    Integer segment, Integer x_pos>
+  as select spread(inwindow(cast(inwindow(ww) as window)))
+     from window ww
+     where ww in w_create_window(filename, size, slide);
+
+/* http://user.it.uu.se/~torer/kurser/dbt/DSMSIntro.pdf
+   Time granularity is seconds! Subseconds become real numbers.
+
+   CQL: SELECT car_id FROM CarLocStr [RANGE 30 SECONDS];
+   OSQL: ???
+
+CarLocStr: stream file
+[Range 30 SECONDS]: define the window
+in general if it's a tumbling window: size = slide
+
+count(select car_id
+from Integer kind, Integer time, Integer car_id, Integer speed, Integer exp_way,
+     Integer lane, Integer dir, Integer segment, Integer x_pos
+where <kind, time, car_id, speed, exp_way, lane, dir, segment, x_pos>
+	in scfrom("lr/data/cdp_mid15.out", 30, 30));
+
+   CQL: SELECT exp_way, dir, seg, AVG(speed) as avgspeed,
+	FROM CarSegStr [RANGE 5 MINUTES]
+	GROUP BY exp_way, dir, seg;
+   OSQL: ???
+
+groupby((select {exp_way, dir, segment}, speed
+	from Integer kind, Integer time, Integer car_id, Integer speed, Integer exp_way,
+     	     Integer lane, Integer dir, Integer segment, Integer x_pos
+	where <kind, time, car_id, speed, exp_way, lane, dir, segment, x_pos>
+	in scfrom("lr/data/cdp_mid15.out", 300, 300)), #'average');
+
+
+   CQL: SELECT DISTINCT car_id FROM CarLocStr [RANGE 30 SECONDS];
+   OSQL: ???
+
+select distinct car_id from Integer kind, Integer time, Integer car_id, Integer speed, Integer exp_way,
+	     	   Integer lane, Integer dir, Integer segment, Integer x_pos
+	      where <kind, time, car_id, speed, exp_way, lane, dir, segment, x_pos>
+			in scfrom("lr/data/cdp_mid15.out", 30, 30);
+
+*/
+
+
+/* here comes the accident detection */
+create function acc_detection_helper(Window w) -> Bag of Vector as
+  select {xway, lane, dir, seg, pos, sec}
+	from Integer xway, Integer lane, Integer dir, Integer seg, Integer pos, Integer sec, Integer vidcounts
+	where <{xway, lane, dir, seg, pos}, vidcounts> in
+		groupby((select {v[1]/*xway*/, v[2]/*lane*/, v[3]/*dir*/, v[4]/*seg*/, v[5]/*pos*/}, v[0]/*vid*/
+			 from Vector of Integer v
+			 where v in (select v from Vector of Integer v, Integer counts
+			 		where <v, counts> = get_incre(w) and counts > 3)),
+	  		#'count')
+	and vidcounts > 1
+	and sec = get_timec(w);
+
+create function w_window_acc(Charstring filename) -> Bag of Vector as
+  select acc_detection_helper(w)
+	from Window w
+	where w in w_create_window(filename, 120, 1);
+
+count(w_window_acc("lr/data/cdp_mid15.out"));
+
+count(w_window_acc("../../Cheng/2010\ Spring/04-26/data/cdp_mid15.out"));
+
+count(w_create_window("../../Cheng/2010\ Spring/04-26/data/cdp_mid15.out", 120, 1));
+
+/*********************************** debugging ****************************************************************
+select acc_detection_helper(w) from Window w
+	where w in w_create_window("../data/cdp_mid15.out", 120, 1)
+	and get_timec(w) = 301;
+
+select v from vector of integer v where v in (select inwindow(cast(inwindow(w) as Window)) from Window w
+	where w in w_create_window("../data/cdp_mid15.out", 120, 1)
+	and get_timec(w) = 388) and v[3] = 0;
+
+select get_incre(w) from Window w
+	where w in w_create_window("../data/cdp_mid15.out", 120, 1)
+	and get_timec(w) = 300;
+
+select get_winfo(w) from Window w
+	where w in w_create_window("../data/cdp_mid15.out", 120, 1)
+	and get_timec(w) = 300;
+
+count(select get_incre(w) from Window w
+	where w in w_create_window_t("../data/cdp_mid15.out", 1)
+	and get_timec(w) in iota(10425,10544));
+****************************************************************************************************************/

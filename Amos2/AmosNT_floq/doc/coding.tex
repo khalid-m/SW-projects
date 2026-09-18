@@ -1,0 +1,590 @@
+\documentstyle[a4]{article}
+\setlength{\parindent}{0in}
+\parskip 6pt
+%\renewcommand{\baselinestretch}{1.5}
+\textwidth 6.5in
+\oddsidemargin -0.16in
+%\oddsidemargin -0.20in
+\title{Amos II programmer's conventions}
+\author{Jonas S Karlsson, Tore Risch, Magnus Werner, etc.}
+\date{\today}
+\def\margsum#1{ \marginpar{$\P$\footnotesize#1}}
+\def\marnote#1{ \marginpar{$\Leftarrow$\scriptsize#1}}
+\def\LDL{\mbox{$\cal LDL$}}
+\def\blackslug{\vrule height4pt width5pt depth2pt}
+
+
+\begin{document}
+\maketitle
+\begin{abstract}
+Amos II (Active Mediators Object System) is a Main-Memory Object Functional
+Database System. 
+
+
+This document describes how to extend the Amos II system kernel with
+more primitives and functionality on the C/Lisp level along with
+coding conventions for this. For high level APIs to C, Lisp see
+documents {\em external.pdf} and {\em javaamos.pdf}. The built-in ALisp
+system and the internal storage manager is documented in {\em
+alisp.pdf}.
+
+\end{abstract}
+\newpage
+\tableofcontents
+\newpage
+\section{Introduction}
+
+\section{Getting started}
+First section describes how to install the system with source
+code after it has been installed into the repository.
+
+\subsection{Installation}
+\label{install}
+Your PC need a number of software installations in order for you to be
+able to install the development version of the system and be
+productive. See {\em
+http://user.it.uu.se/$\sim$udbl/setupinstructions.txt}.
+
+The system resides on the UDBL account on IT:s file system. You need
+to be member of the UDBL group on IT's Unix system in order to check
+out the sources. Furthermore, for convenience you should have the same
+login names both under Unix and on the PC you are using.
+
+The system sources are stored in a CVS-REPOSITORY and in order to do
+software development for the Amos II system one has to check out an
+own version from the REPOSITORY. See {\em
+http://user.it.uu.se/$\sim$udbl/software/cvs-instructions.html}.
+
+Decide where your amos root directory should reside, go to this
+directory and checkout AMOS with the Unix/Windows commands:
+\begin{verbatim}
+   cvs co AmosNT
+\end{verbatim}
+
+After checking out, directory {\tt AmosNT} will contain all source
+code necessary to build your own system.
+
+\subsection{Compilation}
+\label{compilation}
+
+To compile and test the system. Execute in folder {\tt AmosNT/bin} the
+command procedure:
+\begin{verbatim}
+   install
+\end{verbatim}
+which will compile the system. If not, some environment variable is
+wrong or you have not installed all necessary software on your PC. See
+{\em http://user.it.uu.se/$\sim$udbl/software/cvs-instructions.html}.
+
+A successful full installation also includes a full regression test. Run it by
+typing in folder {\tt AmosNT/regress}:
+\begin{verbatim}
+   testmaster
+\end{verbatim}
+If the regression fails you probably have not installed all software
+required.  See {\em
+http://user.it.uu.se/$\sim$udbl/software/cvs-instructions.html}.
+
+\subsection{Checking In}
+
+For detailed informations about how to check in code changes to CVS see
+{\em http://user.it.uu.se/$\sim$udbl/software/cvs-instructions.html}.
+
+
+\section{Running Amos II from XEmacs}
+
+The most convenient way to develop Alisp and AmosQL code is to run
+Amos II from within XEmacs. Certain features of Amos II and extensions
+of Emacs facilitate this.
+
+To get the Emacs extensions you should copy the file {\tt lsp/init.el}
+to the .xemacs directory where XEmacs keeps its init files. This is
+usualy in {\tt C:/.xemacs} or {\tt C:/Documents and
+Settings/<username>/.xemacs}.
+
+When XEmacs is started give the command
+\begin{verbatim}
+   M-x-shell
+\end{verbatim}
+This will start a new Windows (or Unix) shell inside XEmacs. You can there give the usual Windows (Unix) commands. Run there Amos II by typing:
+\begin{verbatim}
+   amos2
+\end{verbatim}
+If you are developing ALisp code, enter ALisp with the command
+\begin{verbatim}
+   lisp;
+\end{verbatim}
+
+\subsubsection*{Lisp function APROPOS}
+
+\begin{verbatim}
+   (apropos symbol)
+\end{verbatim}
+{\tt apropos} searches through the entire system to find out what
+ALisp functions, STRUCTs, etc. contain the string SYMBOL and prints
+the location of their definition along with the documentation string.
+
+If you, e.g., are changing the system for overloading AmosQL functions
+you might be interested in what other functions there are to deal with
+{\em resolvents} by calling:
+\begin{verbatim}
+lisp 1> (apropos 'resolvent)
+GET-RESOLVENTS C:/AmosNT/lsp/typecheck.lsp 148
+     ""
+SET-RESOLVENTS C:/AmosNT/lsp/typecheck.lsp 174
+     ""
+GET-MOST-SPECIFIC-RESOLVENT C:/AmosNT/lsp/bindpatex.lsp 221
+     ""
+RESOLVENTS-WITH-ARITY C:/AmosNT/lsp/typecheck.lsp 520
+     ""
+GET-RESOLVENT-ARGTYPES C:/AmosNT/lsp/typecheck.lsp 635
+     ""
+COMPARERESOLVENTS C:/AmosNT/lsp/typecheck.lsp 267
+     ""
+GET-RESOLVENT-RESTYPES C:/AmosNT/lsp/typecheck.lsp 638
+     ""
+GEN-DIR-LIST-OF-RESOLVENTS C:/AmosNT/lsp/bindpatex.lsp 35
+     ""
+MATCH-ARGS-TO-RESOLVENTS C:/AmosNT/lsp/bindpatex.lsp 114
+     ""
+REMOVE-GENERAL-RESOLVENTS C:/AmosNT/lsp/typecheck.lsp 430
+     "Remove the resolvents in LOR that are more general than other resolvents
+n LOR"
+MAKE-RESOLVENTNAME-DCL C:/AmosNT/lsp/typecheck.lsp 206
+     "Generate resolvent name, given generic name NAME,
+argument declarations ARGDCL, and result declarations RESDCL"
+MORE-SPECIFIC-RESOLVENT? C:/AmosNT/lsp/typecheck.lsp 440
+     "Is A a more specific resolvent than B?"
+AMBIGOUS-RESOLVENTS? C:/AmosNT/lsp/typecheck.lsp 150
+     ""
+ADDRESOLVENT C:/AmosNT/lsp/typecheck.lsp 153
+     ""
+GETRESOLVENT C:/AmosNT/lsp/typecheck.lsp 177
+     "Get the resolvent of the generic function FNO, given the list of
+exact matching argument types ATL.
+ERRORFLG != nil => generate error if resolvent not found"
+RESOLVENTS C:/AmosNT/lsp/typecheck.lsp 146
+     ""
+SORT-RESOLVENT-LIST C:/AmosNT/lsp/bindpatex.lsp 381
+     ""
+GETUNIQUERESOLVENT C:/AmosNT/lsp/fncall.lsp 515
+     ""
+SET-RESOLVENT-TYPES C:/AmosNT/lsp/typecheck.lsp 167
+     ""
+FUNCTION.RESOLVENTS->FUNCTION-+ C:/AmosNT/lsp/amosfns.lsp 558
+     ""
+GENERATE-RESOLVENT-LIST C:/AmosNT/lsp/bindpatex.lsp 341
+     "Generates a list of all resolvents of genfn that is in the dynamic
+type set of the type fargt"
+MAKE-RESOLVENTNAME C:/AmosNT/lsp/typecheck.lsp 189
+     "Generate name of resolvent, given generic function NAME,
+argument types ARGTYPES, and result types RESTYPES"
+BAGCOERCERESOLVENT C:/AmosNT/lsp/collections.lsp 469
+     ""
+\end{verbatim}
+If you want to look at some of the definitions of these function,
+place the XEmacs cursor over the file name (e.g. over {\tt
+C:/AmosNT/lsp/collections.lsp}) and press {\tt F1}. This will open the
+definition of ALisp function {\tt BAGCOERCERESOLVENT} in another
+XEmacs buffer.
+
+\subsubsection*{Lisp function FP}
+
+\begin{verbatim}
+   (fp function)
+\end{verbatim}
+{\tt fp} prints the file position where ALisp {\tt function} is
+defined. For example:
+\begin{verbatim}
+lisp 1> (fp 'bagcoerceresolvent)
+BAGCOERCERESOLVENT C:/AmosNT/lsp/collections.lsp 469
+\end{verbatim}
+Place the cursor over the file name and press {\tt F1} if you want to
+see its definition.
+
+\subsubsection*{Lisp function CALLING}
+
+\begin{verbatim}
+   (calling function)
+\end{verbatim}
+{\tt calling} prints the file positions of the Lisp functions calling
+FUNCTION. For example:
+\begin{verbatim}
+lisp 1> (calling 'optimize-pred)
+BPAT-OPTIMIZE-FUNCTION C:/AmosNT/lsp/bindpatex.lsp 166
+COMPILE_PHASE2 C:/AmosNT/lsp/comppred.lsp 17
+REOPTIMIZE C:/AmosNT/lsp/amosfns.lsp 661
+CREATEFOREIGNFUNCTION C:/AmosNT/lsp/function.lsp 455
+\end{verbatim}
+
+
+\subsubsection*{Lisp function GREP}
+
+\begin{verbatim}
+   (grep string)
+\end{verbatim}
+{\tt grep} searches the sources of all files loaded into the current
+Amos II image looking for the {\tt string} and displays the
+corresponding file positions. For example:
+\begin{verbatim}
+lisp 1> (grep "grep")
+C:/AmosNT/lsp/ref_lisp.lsp:370     ;;; What lines in what files have given string? Borland grep.
+C:/AmosNT/lsp/ref_lisp.lsp  372      grep ((charstring pat)) ((charstring))
+C:/AmosNT/lsp/ref_lisp.lsp  374        (if (eq (system (concat "grep -r -n -o -e \"" pat "\" " f))
+C:/AmosNT/lsp/ref_lisp.lsp  378     ;;; What files have given string? Save lines in INTOFILE. Borland grep.
+C:/AmosNT/lsp/ref_lisp.lsp  380      grep ((charstring pat)(charstring intofile)) ((charstring))
+C:/AmosNT/lsp/ref_lisp.lsp  383          (if (eq (system (concat "grep -r -n -o -e \"" pat "\" " f 
+C:/AmosNT/lsp/ref_lisp.lsp  401     (defun grep (string)
+C:/AmosNT/lsp/ref_lisp.lsp  403       (mapfunctionres 'grep (list (mkstring string)) nil 'null)     
+\end{verbatim}
+
+Some useful XEmacs commands for dealing with Lisp:
+\begin{itemize}
+\item
+{\tt CTRL-META-q} Place the cursor over the first '{\tt (}' of a Lisp
+form and press {\tt CTRL-META-q} to pretty print it. It is strongly
+encouraged to let Emacs prettyprint Lisp functions. You will discover
+parathesis errors.
+\item
+{\tt META-p} and {\tt META-n} in the shell window picks upp the
+previously or next ALisp form or other command typed into the shell.
+\item
+{\tt META-->} and {\tt META-<-} in a Lisp source buffer (arrows) moves
+the cursor one form forward or backwards.
+\end{itemize}
+
+\section{Coding convections}
+\label{coding}
+
+In ALisp there is no real packages, but grouping of files has been
+done in most cases and should be done by new developers.
+
+First when adding new functions the already existing files
+should be studied. If there seems to be a package for that
+kind of operations/data then the function should be put there.
+The Alisp function
+\begin{verbatim}
+   (apropos SYMBOL)
+\end{verbatim}
+Finds all Alisp functions similar to SYMBOL along with their
+documentation, as documented above.
+
+\subsection{Files}
+\label{files}
+
+Naming convention for lisp module files is to suffix them with {\tt
+.lsp}.
+
+\subsection{Headers}
+\label{headers}
+
+Each file has a header. In {\em
+http://user.it.uu.se/$\sim$udbl/amos/cvs-heads.html} there are headers
+for most kinds of files.
+
+This is the header for Lisp files:
+
+\begin{verbatim}
+;;; ===========================================================================
+;;; AMOS2
+;;; 
+;;; Author: (c) <year> <name>, UDBL
+;;; $RCSfile: coding.tex,v $
+;;; $Revision: 1.9 $ $Date: 2004/05/17 18:37:32 $
+;;; $State: Exp $ $Locker:  $
+;;;
+;;; Description: <description>
+;;;              
+;;; ===========================================================================
+\end{verbatim}
+
+This is the C header:
+
+\begin{verbatim}
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <name>, UDBL
+ * $RCSfile: coding.tex,v $
+ * $Revision: 1.9 $ $Date: 2004/05/17 18:37:32 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: <description>
+ *
+ ****************************************************************************/
+\end{verbatim}
+
+Change the {\tt <name>} to yourself and fill in the {\tt
+Description:} field to reflect the modules usage.
+
+\subsection{Naming functions}
+\label{naming}
+
+When defining ALisp callable functions in C the following naming
+conventions are used:
+\begin{itemize}
+\item The C function name is always lower-case and suffixed with 'fn'.
+For example, the Lisp function {\tt LIST} is implemented by the C
+function {\tt listfn}.
+\item 
+Hyphens in Lisp function names become underscores in the corresponding
+C function names. For example, the Lisp function {\tt ARG-TYPES} is
+implemented by the C function {\tt arg\_typesfn}.
+\end{itemize}
+
+\subsection{Init- and Registering function}
+\label{registering}
+
+In order to simplify the init and register process for foreign C
+functions in Amos II, one is encouraged to write a {\tt void
+register\_X\_functions()} function for each C package. This function
+should be responsible registering external functions using {\tt
+extfunctionX} (For examples, look in: {\tt system/C/text\_fns.c}.
+
+For deatils on how to extend the system with new kernel ALisp
+functions implemented in C, storage management, etc., see document
+{\em doc/alisp.pdf}.
+
+\subsection{Documentation}
+\label{documentation}
+
+Functions should be documented, supported "online" documentation 
+is available only in for functions/variables available in ALisp.
+
+Using the ALisp function {\tt doc} one can get information on
+functions:
+
+\begin{verbatim}
+lisp 1> (doc 'createfunction)
+"Create new OSQL function
+resv, quant and pred = NIL => stored function
+resv = FOREIGN => foreign function, resv = implementation name for table FF
+otherwise derived function with select expression defined by resv, quant,
+and pred"
+\end{verbatim}
+
+Functions that can be accessed from within ALisp, can and should
+be documented. If you write the documentation in a special way,
+as described below, it is automatically extracted. It can then
+be viewed with the {\tt doc} function.
+
+ALisp functions can be written to contain a {\em Documentation-string}:
+
+\begin{verbatim}
+(defun fac (n)
+  "Returns the factorial of N."
+  (if (> n 0)
+      (* n (fac (1- n)))
+      1))
+\end{verbatim}
+
+\section{Extending the system}
+This section describes the common way of extending the system kernel
+with new features in C. There is a choice of implementing the
+extensions in existing files or add new files that implements the new
+features.
+
+{\bf NOTICE:} The description here is about extending the {\em kernel}
+of Amos II. If you are writing applications calling Amos II or being
+called from Amos II there is a much higher level API from C and Lisp
+documented in file {\em external.pdf}. The corresponding API for Java
+is documented in {\em javaapi.pdf}.
+
+\subsection{New files or use existing files}
+If the kernel feature added is an extension of an existing feature it is
+advised to use the file(s) with that feature. Example: If new AMOSQL
+functions implemented in ALisp are added it is quite natural to add
+the implementation to the file {\tt amosfns.lsp} since that file does
+nothing but implements AMOSQL-functions.
+
+If, however, the new feature is something completely new to the system the
+reasonable thing to do is to implement it in a new file or set of files.
+\subsection{Adding a new Lisp file}
+Add a new file containing source code written in ALisp is very
+easy. Write the file and give it a mnemoic name and extension {\tt
+.lsp}. The location of the file should be amongst all other Lisp files
+i.e. {\tt ../AmosNT/lsp}.  The file must then be read by the system at
+creation of the system. This is achieved by adding a load of the file
+in {\tt init.lsp}.
+
+\subsection{Adding a new C file}
+Adding a new file containing source code written in C is a bit more
+hassle than adding a new file in Lisp.
+
+Following has to be done
+\begin{itemize}
+\item 1: Implement the features in a file with extension {\tt .c} 
+\item 2: Create a file with extension {\tt .h} containing interface declarations from the new file.
+\item 3: In file {\tt amos.h} include the new {\tt .h} file.
+\item 4: In the project makefile {\tt system/Borland/amos.bpr} add the new {\tt .c} file using Borland C++ builder.
+\item 5: Always use the predefined headers.
+\end{itemize}
+
+In step 2 above it is necessary to do as follows in order to catch any
+circular dependencies. Assume the new file is {\tt aChack.c}. In {\tt
+aChack.h} the following must be done:
+\begin{verbatim}
+#ifndef _aChack_h_
+#define _aChack_h_
+ <Declarations>
+#endif
+\end{verbatim}
+
+In step 4 above it is of importance to add the new {\tt .c} file in a 
+fitting group. 
+
+{\bf NOTICE:} The length of a filename must {\bf not} exceed 17 characters.
+This is due to the source file version package that does not function
+correctly if this restriction is violated. Still true???
+
+\subsection{Regression test}
+When the new features are working properly and the regression test runs well
+the regression test can be extended to test the new features. This is done
+by writing a new testfile with extension {\tt .osql} located in 
+{\tt ../AmosNT/regress}. The new regress file must then be called from 
+{\tt test.osql}. This is done by adding a line in {\tt test.osql} as:
+\begin{verbatim}
+< 'mynewtest.osql';
+\end{verbatim}
+
+\newpage
+\section{Lisp programmer's Checklist}
+\subsection{Symbols}
+The datatype {\em symbol} is documented in Sec.~3.1 in {\em Alisp
+User's Guide}. Read introduction carefully!
+
+{\bf NOTICE} that system hash table bound to variable {\tt
+**SYMBOLHASHTABLE**} maps {\em print names} to symbols in order to
+make them unique. {\bf NEVER} change {\tt **SYMBOLHASHTABLE**}!
+
+{\bf NOTICE} that symbol print names in CommonLisp are always
+upper-cased when a symbol is created. For example:
+\begin{verbatim}
+   (MKSYMBOL "aBc") -> symbol ABC
+\end{verbatim}
+{\bf NOTICE} that the obsolete function {\tt MKATOM} is the same as
+{\tt MKSYMBOL} but is NOT standard CommonLisp.
+
+Symbols are often used in the system for upper-casing strings and for
+generating unique identifiers for strings. For example,
+\begin{verbatim}
+   (EQ \"a\" \"a\") -> NIL                    (strings are not unique)
+   (EQ (MKSYMBOL \"a\")(MKSYMBOL \"a\")) -> T (symbols are unique)
+   (EQ (MKSYMBOL \"a\")(MKSYMBOL \"A\")) -> T (symbols are upper-case)
+\end{verbatim}
+
+{\bf NOTICE} that the cost of creating a symbol is {\em much} higher
+that creating a string. In particular it should be avoided to generate
+an unlimited number of symbols by calling {\tt MKSYMBOL} on arbitrary
+strings.
+
+{\bf NOTICE} that symbols are {\em not} garbage collected
+and creating many of them causes storage leaks.
+
+Variables in ObjectLog are represented using symbols.  The function
+\begin{verbatim}
+   (GENVAR)
+\end{verbatim}
+is used whenever the system needs to generate a new variable. It
+generates variables {\tt \_V1, \_V2, etc}. In order to avoid
+generating variables with higher and higher generation numbers (and
+thus unlimited number of symbols) the counter for the variable
+generation numbers is reset whenever a new function is compiled by the
+macro:
+\begin{verbatim}
+  (RESETGENVAR FORM)
+\end{verbatim}
+{\tt RESETGENVAR} resets the variable generation number counter to 0,
+evaluates the form, and then restes the counter to its original value
+again.
+\section{C Programmer's Checklist}
+\label{checklist}
+
+This section describes common programming errors, and warnings when
+adding C code to the kernel. More details can be found in {\em
+alisp.pdf}.
+\begin{itemize}
+\item Avoid using {\tt C's assignment operator} for Amos II data structures
+(unless you know what you are doing). Always use {\tt dcloid} and {\tt
+a\_setf} instead!
+
+\item The {\tt unwind\_protect\_catch} code {\bf must} be executed;
+never return directly out of the main code block.  If {\tt
+unwind\_protect\_end} is not executed after an exception, then the exception
+is not continued.  Always execute {\tt unwind\_protect\_end}, unless you
+really know what you are doing.
+
+\item Streams must be closed before saving image!
+
+\item The system may stop functioning if {\tt breaks} are put
+on a system function that is part of the {\tt break package} itself!
+
+\item The use of handles allows the storage manager to move the
+objects, making dereferenced handles dangling pointers.  Thus dereferenced
+pointers may become incorrect once a system feature that cause data to
+move is called. Object allocation is the only system
+operation that may cause this.  Thus, if a system function is called that
+is suspected to do object allocation (most do), the 
+dereferencing MUST be redone.  It is always safe to dereference through
+{\tt dr} and to always use {\tt dcloid(x)} and use {\tt a\_setf} for
+assignments.
+
+\item Never try to reset C arguments with {\tt a\_setf}; it will
+clobber the garbage collector.
+
+\item Don't forget to free the result of a Lisp function call
+(with {\tt a\_free}) in case it generates garbage.
+
+\item call\_lisp automatically garbage
+collects its arguments upon return; thus temporary objects among the
+arguments are automatically freed. For example:
+
+\begin{verbatim}
+    call_lisp(mksymbol("prin1"),env,1,mkstring("hello world"));
+\end{verbatim}
+will allocate a new Lisp string, then print it, and then deallocate it
+on the exit from {\tt call\_lisp}.
+
+However, the automatic deallocation of temporary storage is NOT performed
+with direct C function calls. For example, with a direct C call
+to the C implementation of Lisp's {\tt PRINT}, {\tt printfn},
+the above printing should become:
+\begin{verbatim}
+    dcloid(a1);
+    ......
+    a_setf(a1,mkstring("hello world"));
+    printfn(env,a1);
+    a_free(a1);
+\end{verbatim}
+\end{itemize}
+
+\subsection{Parsing with Bison/Flex}
+The Bison/Flex parser generator is frequently used when parsing
+various languages. Bison/Flex can be run under Windows. Download the
+.exe files from {\tt http://user.it.uu.se/$\sim$udbl/software/bison} and
+make sure that the PATH variable include their sources. The file {\tt bison.simple} must be placed in {\tt c:\\tools\\share\\bison.simple}. 
+
+\section{Making an Amos II Release}
+\label{release}
+
+First, check out the latest version of Amos II from CVS (don't forget
+to check in everything You want to be part of the new release first)
+and move to the directory containing the newly checked out copy of the
+AMOS system.  Standing in the {\tt AmosNT/bin} directory, type {\tt
+install all}. The system should now compile. Make sure that it passes
+the regression test. 
+
+The command procedure {\tt mkrelease.bat} in {\tt AmosNT} root
+directory makes a new release for export.
+
+More here...
+
+\section{Bugs}
+
+If you should find any bugs in a released Amos II, then send a mail to
+{\tt Tore.Risch@it.uu.se} describing the bug. If possible include 
+an example detailed enough to recreate the bug. If Amos II dumps core
+you could run {\tt Borland C++} and look at the stack to see in what
+function the fault occured. 
+
+\end{document}

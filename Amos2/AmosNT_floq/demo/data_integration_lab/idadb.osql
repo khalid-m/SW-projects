@@ -1,0 +1,28 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2003 Timour Katchaounov, UDBL
+ * $RCSfile: idadb.osql,v $
+ * $Revision: 1.1 $ $Date: 2003/02/28 09:50:38 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: The definition of the translator for the IDADB Access
+ *              database.
+ ****************************************************************************/
+
+latebinding('OR');
+normalization(TRUE);
+
+/* create a new datasource object with logical name 'DS'*/
+set :a = odbc_ds('ds');
+
+/* connect it to a ODBC data source with DSN 'IDADS'*/
+connect(:a, 'IDADS');
+
+/* Notice that all names of schema objects must be in CAPITAL case
+   as in most RDBMS */
+
+import_table('DS', 'IDAEMP');
+
+register('idadb');
+listen();

@@ -1,0 +1,67 @@
+/*-*-sql-*-*******************************************************************/
+create function enorm(numarray)->real
+	as foreign 'enormbf';
+
+create function oddeven(numarray, integer pos, integer stride)->numarray
+	as foreign 'numoddevenbbbf';
+
+create function odd(numarray x)->numarray
+	as select oddeven(x, 1, 2);
+
+create function even(numarray x)->numarray
+	as select oddeven(x, 0, 2);
+
+create function times(number, numarray)->numarray
+	as foreign 'NASMULBBF';
+
+create function nadd(vector of numarray)->numarray
+	as foreign 'NAVPLUSBF';
+
+create function namax(numarray)->numarray
+	as foreign 'NAMAXBF';
+
+create function plus(numarray x, numarray y)->numarray
+	as select nadd({x,y});
+
+create function minus(numarray x, numarray y)->numarray
+	as select nadd({x,(-1)*y});
+
+create function abs(numarray)->numarray
+	as foreign 'numarray_abs-+';
+
+create function re(numarray)->numarray
+	as foreign 'numarray_re-+';
+
+create function im(numarray)->numarray
+	as foreign 'numarray_im-+';
+
+/* Interleave function: il(na, offset, multiple); */
+create function il(numarray, integer, integer)->numarray
+	as foreign 'numarray_il-+';
+
+create function iastream2v(stream s)->vector
+as select na2vec(v)
+from iarray v
+where v in s;
+
+create function vstream2ia(stream s)->iarray
+as select iarray(v)
+from vector of integer v
+where v in s;
+
+create function vstream2iastream(stream s)->stream of numarray
+as streamof(vstream2ia(s));
+
+create function iastream2vstream(stream s)->stream of vector
+as streamof(iastream2v(s));
+
+create function na2multi(bag of numarray, integer size)->numarray
+as foreign 'multinabbf';
+
+create function multi2na(numarray, integer size)->numarray
+as foreign 'splitnabbf';
+
+create function bnana(integer n)->bag of numarray as
+select iarray({0, i, 0, 100})
+from integer i
+where i in iota(1, n);

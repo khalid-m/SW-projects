@@ -1,0 +1,46 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2013, Andrej Andrejev, UDBL
+ * $RCSfile: propad_node_nocache.osql,v $
+ * $Revision: 1.1 $ $Date: 2013/07/04 10:54:23 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Example implementation of parallel PROPAD frequent itemset mining: processing node code
+ *
+ ****************************************************************************
+ * $Log: propad_node_nocache.osql,v $
+ * Revision 1.1  2013/07/04 10:54:23  andan342
+ * Added simple purely declarative parallel version of PROPAD frequent itemset mining algorithm
+ * (without caching intermediate projections)
+ *
+ ****************************************************************************/
+
+create function transactions() -> Bag of Vector of Integer as stored;
+
+create function load_transaction(Vector of Integer tr) -> Boolean
+  as add transactions() = tr;
+
+/* Check if set of elements of X is a subset of set of elements of Y */
+create function is_subset(Vector of Integer x, Vector of Integer y) -> Boolean
+  as select notany(select i from Integer i where i in x and notany(i in y)); 
+
+/* Project the set of transactions to the given prefix */
+create function project(Vector of Integer prefix) -> Bag of Vector of Integer
+  as select tr from Vector of Integer tr
+      where tr in transactions()
+        and is_subset(prefix, tr);
+
+/* Return vectors of {item, supp} */
+create function items_supp(Vector of Integer prefix) -> Vector of Integer
+  as select {item, supp} from Integer item, Integer supp
+      where (item, supp) in groupby((select i, tr from Integer i, Vector of Integer tr
+                                      where (i > prefix[0] or dim(prefix) = 0)
+                                        and i in tr and tr = project(prefix)), #'count');
+
+
+
+
+
+
+

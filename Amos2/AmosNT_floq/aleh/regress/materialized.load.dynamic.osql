@@ -1,0 +1,68 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2006 Ruslan Fomkin, UDBL
+ * $RCSfile: materialized.load.dynamic.osql,v $
+ * $Revision: 1.2 $ $Date: 2006/12/10 11:12:45 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Regression test for ALEH project for materialized ontology 
+ * loading entire file complete static cost model from the paper. 
+ * Tests that some cut queries over entire file t.root located in ROOT wrapper
+ * home directory.
+ ****************************************************************************
+ * $Log: materialized.load.dynamic.osql,v $
+ * Revision 1.2  2006/12/10 11:12:45  ruslan
+ * dynamic group cost model and its regression test are updated to work under new changes of the AMOS
+ *
+ * Revision 1.1  2006/10/02 09:17:52  ruslan
+ * compiling and regression test of dynamic group cost model are added. regression scripts for all three cases from the paper are improved.
+ *
+ * Revision 1.1  2006/10/02 08:19:59  ruslan
+ * compilation scripts and regression test for the static cost model for aggregates and numerical operations as in the paper
+ *
+ ****************************************************************************/
+
+lisp;
+(checkequal "Loading t.root file"
+	    ((osql "load_root_file(\"../wrappers/ROOTWrap/t.root\");")
+	     '((25000))))
+:osql
+
+cd("osql");
+<"cuts.grouped.const.osql";
+
+clr_aggstat();
+aggstat(true);
+for each event ev where id(ev)>=0 and id(ev)<50
+begin
+	group(theresolvent("TLCcount"),ev);
+	group(theresolvent("TLCsome"),ev);
+	group(theresolvent("ZVC"),ev);
+	group(theresolvent("TC"),ev);
+	group(theresolvent("JVC"),ev);
+	group(theresolvent("LCnotany"),ev);
+	group(theresolvent("LCsome"),ev);
+	group(theresolvent("MEC"),ev);
+end;
+aggstat(false);
+
+lisp;
+(checkequal "collected statistics"
+	    ((osql "count(select print_aggstat());")
+	     '((9))))
+:osql
+
+optmethod('randomopt');
+optlevel(100,10);
+
+lisp;
+(checkequal "3 lepton cut"
+	    ((osql "count(select e from event e
+where threeleptoncut(e));")
+	     '((475))))
+
+(checkequal "Opt all cuts"
+	    ((osql "sort(select id(optallcuts()));")
+	     '((#(19015 24455)))))
+:osql

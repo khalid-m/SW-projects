@@ -1,0 +1,52 @@
+
+create function javatest(integer start, integer finish, integer sleeptime)
+                 -> Object r as foreign  "JAVA:javaTest/startThread";
+
+
+
+lisp;
+(defun co-busy-osql(fno r)
+   (print "in busy loop")
+   (if (co-inside) (co-yield '*busy*)
+    (amos-error "Calling BUSY outside coroutine"))
+  )
+(defun co-busy ()
+  (co-yield '*busy*))
+
+(defun co-sleep (n)
+  (let ((stop (+ (clock) n)))
+    (while (< (clock) stop) 
+      (if (co-inside)(co-busy)(sleep 0.01)))))
+
+(foreign-lispfn zip((bag b1)(bag b2))((object))
+		(let ((co1 (coroutine 'mapbag (list b1 'co-yield)))
+		      (co2 (coroutine 'mapbag (list b2 'co-yield))))
+		  (while (not (and (co-terminated co1)(co-terminated co2)))
+		    (if (not (co-terminated co1))
+			(let ((r (co-resume co1)))
+			  (if (consp r) (foreign-result (car r)))))
+		    (if (not (co-terminated co2))
+			(let ((r (co-resume co2)))
+			  (if (consp r) (foreign-result (car r))))))))
+(defmacro time-spent (form)
+  "Time to evaluate FORM"
+  `(let ((cl (clock)))
+     , form
+     (- (clock) cl)))
+
+(foreign-lispfn sliota ((number sl)(integer from)(integer to))((integer))
+		(let ((r from))
+		  (while (<= r to)
+		    (foreign-result r)
+		    (co-sleep sl)
+		    (1++ r))))
+
+
+
+(checkequal "Non-blocking sleep in parallel"
+  ((< (time-spent (osql "zip(sliota(0.1,3,8),sliota(0.1,9,14));")) 0.7) t))
+
+(checkequal "Java Testing" ((osql "count(javatest(1,100,100));") '((100))))
+
+:osql
+	  

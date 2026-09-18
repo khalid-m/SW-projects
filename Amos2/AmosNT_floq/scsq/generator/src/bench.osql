@@ -1,0 +1,205 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 Erik Zeitler, UDBL
+ * $RCSfile: bench.osql,v $
+ * $Revision: 1.5 $ $Date: 2012/05/11 14:14:01 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Benchmarking ezgen
+ *
+ ****************************************************************************
+ * $Log: bench.osql,v $
+ * Revision 1.5  2012/05/11 14:14:01  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.4  2012/05/04 22:03:00  zeitler
+ * Fixed transfer percentage
+ *
+ * Revision 1.3  2012/04/27 15:35:57  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.2  2010/02/12 18:10:24  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.1  2010/02/11 17:36:37  zeitler
+ * u-benchmark
+ *
+ *
+ ****************************************************************************/
+
+lisp;
+(debugging nil)
+:osql
+
+show_sp();
+
+hide_sp();
+
+
+initgen();
+lisp; (stop-profile)(start-profile) :osql
+count(all(2, 10, bigxslayer_param(2, 10000)));
+lisp; (profile) :osql
+
+initgen();
+lisp; (stop-profile)(start-profile) :osql
+count(all(2, 10, bigxslayer_param(2, 100000)));
+lisp; (profile) :osql
+
+initgen();
+lisp; (stop-profile)(start-profile) :osql
+count(all(2, 10, bigxslayer_param(2, 200000)));
+lisp; (profile) :osql
+
+initgen();
+lisp; (stop-profile)(start-profile) :osql
+count(all(4, 1000, bigxslayer_param(4, 200000)));
+lisp; (profile) :osql
+
+initgen();
+lisp; (stop-profile)(start-profile) :osql
+count(all(8, 1000, bigxslayer_param(8, 200000)));
+lisp; (profile) :osql
+
+
+initgen();
+lisp; (stop-profile)(start-profile) :osql
+writefile("abin", iarray(all(8, 1000, bigxslayer_param(8, 200000))));
+lisp; (profile) :osql
+
+/* full: tar 1 h */
+
+initgen();
+lisp; (stop-profile)(start-profile) :osql
+writefile("full8b", iarray(all_limit(8, 1000, 1000, bigxslayer(8))));
+lisp; (profile) :osql
+
+initgen();
+lisp; (stop-profile)(start-profile) :osql
+writefiles("D:/ezgen/output/res38/cdp", 10000000, 
+iarray(all_limit(38, 1000, 1000, bigxslayer(38))));
+lisp; (profile) :osql
+
+initgen();
+select writefile("c:/temp/" + stringify(i) + "/cdp", 
+all_limit(i, 60, res, 5, bigxslayer(i)))
+from integer i, integer res where i = 2 and res = 100;
+
+initgen();
+select writefile("c:/temp/3/cdp", all_limit(i, 120, res, bigxslayer(i)))
+from integer i, integer res where i = 3 and res = 1000;
+
+initgen();
+select writefile("c:/temp/4/cdp", all_limit(i, 120, res, bigxslayer(i)))
+from integer i, integer res where i = 4 and res = 1000;
+
+initgen();
+select writefile("c:/temp/5/cdp", all_limit(i, 120, res, bigxslayer(i)))
+from integer i, integer res where i = 5 and res = 1000;
+
+
+
+
+initgen();
+sp_ts(0);
+lisp; (stop-profile)(start-profile) :osql
+writefiles("D:/ezgen/output/res47/cdp", 10000000, 
+iarray(all_limit(47, 1000, 1000, bigxslayer(47))));
+lisp; (profile) :osql
+
+initgen();
+sp_ts(0);
+lisp; (stop-profile)(start-profile) :osql
+writefiles("D:/ezgen/output/r64/cdp", 10000000, 
+iarray(all_limit(64, 1000, 1000, bigxslayer(64))));
+lisp; (profile) :osql
+
+initgen();
+sp_ts(0);
+lisp; (stop-profile)(start-profile) :osql
+writefiles("D:/ezgen/output/r64/cdptxt", 10000000, 
+all_limit(64, 1000, 1000, bigxslayer_param(64, 100)));
+lisp; (profile) :osql
+
+set :b = sort(select distinct v[4] from vector v where v in readfile("D:/ezgen/output/r64/cdptxt0"));
+:b;
+dim(:b);
+
+initgen();
+sp_ts(0);
+lisp; (stop-profile)(start-profile) :osql
+writefiles("D:/ezgen/output/r64/cdpn", 10000000,
+iarray(all_limit(64, 1000, 1000, bigxslayer_param(64, 100))));
+lisp; (profile) :osql
+
+select v[4]
+from iarray v
+where v in bsection(readfile("D:/ezgen/output/r64/cdpn0"),1,1000);
+
+initgen();
+sp_ts(0);
+lisp; (stop-profile)(start-profile) :osql
+
+iarray(all_limit(32, 1000, 1000, bigxslayer_param(32, 100)));
+
+lisp; (profile) :osql
+
+initgen();
+sp_ts(0);
+lisp; (stop-profile)(start-profile) :osql
+writefiles("D:/ezgen/output/r32/cdpn", 10000000,
+iarray(all_limit(32, 1000, 1000, bigxslayer_param(32, 100))));
+lisp; (profile) :osql
+
+set :a = sort(select distinct v[4] from iarray v where v in readfile("D:/ezgen/output/r32/cdpn0"));
+
+bsection(readfile("D:/ezgen/output/r32/cdpn0"),1,100);
+
+initgen();
+sp_ts(0);
+lisp; (stop-profile)(start-profile) :osql
+writefile("D:/ezgen/output/r32/cdpn",
+iarray(all_limit(32, 1000, 1000, bigxslayer_param(32, 100))));
+lisp; (profile) :osql
+
+set :a = sort(select distinct v[4] from iarray v where v in readfile("D:/ezgen/output/r32/cdpn0"));
+
+:a;
+dim(:a);
+
+
+/* */
+
+initgen();
+sp_ts(0);
+lisp; (stop-profile)(start-profile) :osql
+writefile("D:/ezgen/output//cdpn", 10000000,
+iarray(all_limit(32, 1000, 1000, bigxslayer_param(32, 100))));
+lisp; (profile) :osql
+
+
+/* full gamling: tar 28 h (uppskattat efter 3 h körning) */
+
+initgen();
+lisp; (stop-profile)(start-profile) :osql
+writefile("full8gammal", iarray(all(8, 1000, bigxslayer(8))));
+lisp; (profile) :osql
+
+nvidsout();
+
+count(stands_onramp());
+
+nvidalias();
+
+
+initgen();
+lisp; (stop-profile)(start-profile) :osql
+count(all_limit(8, 1000, 1000, bigxslayer_param(8, 200000)));
+lisp; (profile) :osql
+
+
+initgen();
+lisp; (stop-profile)(start-profile) :osql
+count(all(2, 10, bigxslayer_param(2, 400000)));
+lisp; (profile) :osql

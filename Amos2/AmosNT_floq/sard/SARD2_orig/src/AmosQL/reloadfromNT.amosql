@@ -1,0 +1,294 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2009 Silvia Stefanova UDBL
+ * $RCSfile: reloadfromNT.amosql,v $
+ * $Revision: 1.1 $ $Date: 2013/08/09 14:18:18 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Reload into a RDB from N-Triples 
+ ******************************************************************************/
+
+
+create function dataDB_NTprint()-><Charstring,Charstring, Literal>
+as
+	select (ch1+i),ch2,lit from Charstring ch1, Charstring i, Charstring ch2, Literal lit where dataDB_RDFprint()=<ch1,i, ch2, lit>;
+
+create function dataDB_NTprint()-><Charstring,Charstring, Literal>
+as
+	select (ch1 +  add_vectels(vec) ),ch2,lit from  Charstring ch1, Vector vec, Charstring ch2, Literal lit where dataDB()=<ch1,vec, ch2, lit>;
+
+
+
+create function get_tableName_fromNT(Charstring tableURI)->Charstring
+/*Retrieves the table name from its URI*/
+as
+  	select v 
+	from charstring s, charstring p,charstring v
+	where schemadb()=<s,p,v> and s=tableURI and like_i(p, "*tname");
+
+
+create function get_tableURIs_fromNT()->Charstring
+/*Retrieves all the URIs corresponding to tables*/ 
+as
+	select s
+	from charstring s, charstring p,charstring v
+	where schemadb()=<s,p,v> and like_i(p, "*tname");	
+
+create function get_tableName_fromRowID(Charstring rowID)->Charstring
+/*Retrieves the table name from the URI of a row record rowID by comparing rowID with all the URIscorresponding to tables*/
+as
+     for each Charstring ch where ch=get_tableURIs_fromNT()
+        if (like (rowID,ch+'*')) then
+		result get_tableName_fromNT(ch);
+
+
+create function get_tableURI_fromRowID(Charstring rowID)->Charstring
+/*Retrieves the table URI from the URI of a row record rowID by comparing rowID with all the URIscorresponding to tables*/
+as
+     for each Charstring ch where ch=get_tableURIs_fromNT()
+        if (like (rowID,ch+'*')) then
+		result substring(rowID,0,char_length(ch)-1);  
+
+create function get_numerID(Charstring rowID)->Charstring
+as 
+     for each Charstring ch where ch=get_tableURIs_fromNT()
+        if (like (rowID,ch+'*')) then
+		result substring(rowID,char_length(ch),char_length(rowID));  
+
+
+create function get_primaryK_fromNT(Charstring tabURI)->Charstring
+as
+	select v3 
+	from Charstring loc, Charstring s1, Charstring p1, Charstring v1,Charstring s2, Charstring p2, Charstring v2, Charstring s3, Charstring p3, Charstring v3
+	where loc=tabURI+"_localK" and schemaDB()=<s1,p1,v1> and s1=loc and like_i(p1,"*key_table") and v1=tabURI
+	and schemaDB()=<s2,p2,v2> and s2=loc and like_i(p2,"*is_primary") and like_i(v2,"true")
+   	and schemaDB()=<s3,p3,v3> and s3=loc and like_i(p3,"*key_columns") ;
+
+
+create function get_columnName_fromNT(Charstring columnURI) -> <Charstring colname>
+as 
+	select v
+	from charstring s, charstring p,charstring v
+	where schemaDB()=<s,p,v> and s=columnURI and like_i(p, "*cname");
+
+
+create function get_columnName_fromTable(Charstring tableURI)-><Charstring cname, Charstring colURI>
+/*Retrieves the column names of the table from its URI*/
+as
+  	select get_columnName_fromNT(s),s 
+	from charstring s, charstring p,charstring v
+	where schemadb()=<s,p,v> and v=tableURI and like_i(p, "*tableof");
+
+create function get_columnType_fromNT(Charstring columnURI) -> Charstring coltype
+as 
+	select v
+	from charstring s, charstring p,charstring v
+	where schemaDB()=<s,p,v> and s=columnURI and like_i(p, "*datatype");
+
+
+create function get_columnSize_fromNT(Charstring columnURI) -> Charstring coltype
+as 
+	select v
+	from charstring s, charstring p,charstring v
+	where schemaDB()=<s,p,v> and s=columnURI and like_i(p, "*size");
+
+
+create function get_tabcolNames_fromTable()-><Charstring tabname,Charstring colname,Charstring coltype,Charstring colsize> 
+/*Retrieves the tables names with their column names, types and sizes*/
+as
+  	for each original Charstring tabURI, Charstring col, Charstring colURI where tabURI=get_tableURIs_fromNT() and get_columnName_fromTable(tabURI)= <col,colURI>
+	  result <get_tableName_fromNT(tabURI),col,get_columntype_fromNT(colURI),get_columnSize_fromNT(colURI)>;
+
+
+
+
+
+create function list_colNames(Charstring tableURI)->Charstring
+as
+  begin
+	declare Charstring collist, Charstring emptylist,Charstring res1, Charstring res2;
+/*	set collist="";*/
+	set emptylist="";
+	for each Charstring col,Charstring colURI where get_columnName_fromTable(tableuRI)=<col,colURI> 	
+	   begin
+	/*	set collist=collist+","+col;*/
+		set emptylist=emptylist+","+"''";
+    	   end;
+	/*set res1 = substring(collist, 1,char_length(collist));*/
+	set res2= substring(emptylist, 1,char_length(emptylist));
+	result res2;
+  end;
+
+create function list_colNames1(Charstring tableURI)->Charstring
+as
+  begin
+	declare Charstring collist, Charstring collist;
+	set collist="";
+	for each Charstring col, Charstring colURI where get_columnName_fromTable(tableuRI)=<col,colURI> 	
+	 	set collist=collist+","+col;
+	result substring(collist, 1,char_length(collist));
+  end;
+
+create function insert_intoTab_fromNT(jdbc j)-> Charstring
+/*Constructs INSERT statements and inserts rows in a RDB from N-Triples in row-order*/
+as
+  begin
+    declare Charstring stat1, Charstring stat2, Charstring tname, Charstring row;
+    set row="";
+  	for each original Charstring subject, Charstring property, Charstring value where dataDB_NTprint()=<subject, property, value> 
+           begin
+		if (subject!=row) then
+		  begin
+			if (row!="") then
+			  sql(j,"INSERT INTO " + tname+ "(" + substring(stat1,0,char_length(stat1)-2)  + ") VALUES (" + substring(stat2,0,char_length(stat2)-2) + ");");
+		    set stat1="";
+		    set stat2="";	
+		    set row=subject;
+		    set tname=get_tableName_fromRowID(subject);
+                  end;
+		    if (notany(like("'"+value+"'","*null*"))) then
+		     begin
+			set stat1=get_columnName_fromNT(property)+","+stat1;	
+                  	set stat2="'" + value+"',"+stat2;
+                     end;
+	   end;
+		sql(j,"INSERT INTO " + tname+ "(" + substring(stat1,0,char_length(stat1)-2)  + ") VALUES (" + substring(stat2,0,char_length(stat2)-2) + ");");
+    end;
+
+
+create function insert_intoTab_fromNTP()-> Charstring
+/*Constructs INSERT statements and inserts rows in a RDB from N-Triples in row-order*/
+as
+  begin
+    declare Charstring stat1, Charstring stat2, Charstring tname, Charstring row;
+    set row="";
+  	for each original Charstring subject, Charstring property, Charstring value where dataDB_NTprint()=<subject, property, value> 
+           begin
+		if (subject!=row) then
+		  begin
+			if (row!="") then
+			  result "INSERT INTO " + tname+ "(" + substring(stat1,0,char_length(stat1)-2)  + ") VALUES (" + substring(stat2,0,char_length(stat2)-2) + ");";
+		    set stat1="";
+		    set stat2="";	
+		    set row=subject;
+		    set tname=get_tableName_fromRowID(subject);
+                  end;
+		    if (notany(like("'"+value+"'","*null*"))) then
+		     begin
+			set stat1=get_columnName_fromNT(property)+","+stat1;	
+                  	set stat2="'" + value+"',"+stat2;
+                     end;
+	   end;
+		result "INSERT INTO " + tname+ "(" + substring(stat1,0,char_length(stat1)-2)  + ") VALUES (" + substring(stat2,0,char_length(stat2)-2) + ");";
+    end;
+
+
+create function columnProcedures(Charstring tname, Charstring keycol,Charstring colname, Charstring collist,Charstring emptyvals,Charstring coltype)-> Charstring
+/*Creates a stored procedure in MS SQL server*/
+as
+ result "create procedure intoCol_"+tname+"_"+colname+" 
+		@numID int, 
+		@val "+ coltype+"
+		AS
+		  begin
+			DECLARE @num int;
+			SET @num=(SELECT "+keycol+ " FROM "+tname +" WHERE "+ keycol+"=@numID);
+			if @num is null 
+	  		BEGIN
+				INSERT INTO "+ tname+"("+keycol+","+collist+") VALUES(@numID,"+emptyvals+");
+				UPDATE "+tname + " SET "+ colname+"=@val WHERE "+keycol+"=@numID;
+		      	END
+		else
+			UPDATE "+tname+" SET "+ colname+" =@val WHERE "+keycol+"=@numID;
+		end;";
+
+
+
+create function createProcedures(jdbc j)-> Boolean
+as
+  begin
+	declare Charstring collist1, Charstring collist2, Charstring colname, Charstring cURI, Charstring coltype, Charstring colsize, Charstring colt, Charstring key_col;
+	for each Charstring tabURI where tabURI=get_tableURIs_fromNT()
+          begin
+	   set collist1=""; set collist2="";
+	   set key_col= get_primaryK_fromNT(tabURI);
+	   for each Charstring col, Charstring colURI where get_columnName_fromTable(tabURI)= <col,colURI> 
+		begin
+		  if (notany(like(col,key_col))) then
+		    begin
+		  	set collist1=collist1+","+col;
+		  	set collist2=collist2+","+"''";
+		    end;
+	        end;
+		set collist1=substring(collist1, 1,char_length(collist1));
+		set collist2=substring(collist2,1,char_length(collist2));
+	    for each Charstring col, Charstring colURI where get_columnName_fromTable(tabURI)= <col,colURI> 
+		begin
+		  set coltype=get_columntype_fromNT(colURI);
+		  set colsize= get_columnSize_fromNT(colURI);
+		  if (like_i(coltype,"int*")) then
+			set colt=coltype
+		  else if ( like_i(coltype,"real*")) then	
+			set colt=coltype
+		  else
+			set colt=coltype+"("+colsize+")";
+	     		/*result columnProcedures(get_tableName_fromNT(tabURI),get_tableName_fromNT(tabURI)+"_rowid",col,collist1,collist2,colt);*/
+		 if (sql(j,columnProcedures(get_tableName_fromNT(tabURI),key_col,col,collist1,collist2,colt))) then
+			print( "The procedure  intoCol_"+ get_tableName_fromNT(tabURI)+"_"+col+" was created");
+  		end;
+          end;
+  end;
+
+
+create function dropProcedures(jdbc j)-> Boolean
+as
+  for each Charstring tabURI,Charstring col, Charstring colURI where tabURI=get_tableURIs_fromNT() and get_columnName_fromTable(tabURI)= <col,colURI> 
+	sql(j, "drop procedure intoCol_"+get_tableName_fromNT(tabURI)+"_"+col+";");
+
+
+create function insert_intoCols(jdbc j)-> Charstring
+/*Inserts values in columns in a RDB by stored procedures from N-Triples in column-order*/
+as
+  begin
+    declare Charstring stat1, Charstring stat2, Charstring tname, Charstring collist1,Charstring collist2,Charstring coltype,Charstring procname;
+     	for each original Charstring subject, Charstring property, Charstring value where dataDB_NTprint()=<subject, property, value> 
+           begin
+		set tname=get_tableName_fromRowID(subject);
+		set stat1=get_columnName_fromNT(property);	
+		set stat2="'" + value+"'";
+		set procname="intoCol_"+tname+"_"+stat1;
+		sql(j,"exec "+procname+ " "+  get_numerID(subject)+","+stat2+";");
+
+           end;
+    end;
+
+
+
+
+create function insert_intoCol_fromNTP(jdbc j)-> Charstring
+/*Constructs INSERT statements and inserts rows in a RDB from N-Triples in column-order*/
+as
+  begin
+    declare Charstring stat1, Charstring stat2, Charstring tname, Charstring collist1,Charstring collist2;
+     	for each original Charstring subject, Charstring property, Charstring value where dataDB_NTprint()=<subject, property, value> 
+           begin
+		set tname=get_tableName_fromRowID(subject);
+		set stat1=get_columnName_fromNT(property);	
+		set stat2="'" + value+"'";
+		if (notany(sql(j,"select * FROM " + tname +" where "+ tname+"_rowid="+ get_numerID(subject)+";") )) then
+		    begin
+			set collist2=list_colNames(get_tableURI_fromRowID(subject));
+			set collist1=list_colNames1(get_tableURI_fromRowID(subject));
+			sql(j, "INSERT INTO " + tname+ "("+tname+"_rowid," + collist1+ ") VALUES (" + get_numerID(subject) +","+ collist2+");");   	
+		    end;
+		sql(j,"UPDATE " + tname+ " SET " + stat1  + " =" + stat2 + " WHERE " +tname+"_rowid="+get_numerID(subject)+  ";");      
+		
+		set stat1="";
+		set stat2="";
+           end;
+    end;
+
+
+
+		

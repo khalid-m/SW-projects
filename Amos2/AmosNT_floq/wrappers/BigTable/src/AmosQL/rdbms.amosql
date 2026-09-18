@@ -1,0 +1,27 @@
+
+create function location(Jdbc ds)->Charstring as stored;
+
+create function absorber(Jdbc ds)->Charstring as stored;
+
+create function finalizer(Jdbc ds)->Charstring as stored;
+
+create function driver(Jdbc ds)->Charstring as stored;
+
+create function tablesName(Jdbc ds)->Bag of Charstring
+  as select tbn
+     from Charstring tbn,Charstring catalog,Charstring schema, 
+	  Charstring tbl_type
+     where (tbn, catalog, schema, tbl_type) in tables(ds); 
+     
+create function wrap(jdbc ds, charstring url, vector params)->boolean
+	as 
+	begin
+	set location(ds) = url; 
+	set driver(ds) = cast(params[0] as Charstring);
+	load_driver(cast(params[0] as Charstring));
+	connect(ds, url, (cast(params[1] as Charstring)), (cast(params[2] as Charstring)));
+	   for each Charstring tbn where tbn in tablesName(ds)
+	   begin
+	     import_table(ds, tbn);
+           end;
+	end;

@@ -1,0 +1,80 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2013 Tore Risch, UDBL
+ * $RCSfile: CanBusWrapper.osql,v $
+ * $Revision: 1.5 $ $Date: 2013/11/20 21:16:31 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Interface to the general CANBUS stream wrapper in C
+ ****************************************************************************
+ * $Log: CanBusWrapper.osql,v $
+ * Revision 1.5  2013/11/20 21:16:31  chexu484
+ * *** empty log message ***
+ *
+ * Revision 1.4  2013/11/13 21:10:36  torer
+ * Polishing
+ *
+ * Revision 1.3  2013/11/12 13:25:45  torer
+ * *** empty log message ***
+ *
+ * Revision 1.2  2013/11/11 13:55:22  torer
+ * Vector based canbus wrapper model
+ *
+ * Revision 1.1  2013/11/09 15:35:11  torer
+ * Volvo wrappers added
+ *
+ ****************************************************************************/
+
+/****************************************************************************
+* The functions below require a C implementation named 'CanBus_StreamRead'  *
+* that reads frames from a CanBus.                                          *
+* In file 'data/CanBus_Recorded.csv' there is a recorded raw CanBus stream  *
+* from a wheel loader. 
+* The simulated CanBus data stream wrapper in 'RecordedCanBusWrapper.osql'  *
+* simulates canBusStream() by reading the recorded stream.                  *
+****************************************************************************/
+
+create type CanBusStream under RawDataStream
+   properties (canbusid Charstring key);
+
+/* the settings if the canbus is streamed ONLINE */
+create function settings(CanBusStream cs) -> Charstring
+  as stored;
+
+/* all the signals that is mesured */
+create function signals(CanBusStream cs) -> Vector of Charstring
+  as stored;
+
+/* the log file of the stream if the steram is generated from a log file */
+create function loggedAt(CanBusStream cs) -> Charstring
+  as stored;
+
+create function theCanBusStream(Charstring cid) -> CanBusStream
+  as select s from CanBusStream s where canbusid(s) = cid;
+
+create function canBusRawReader(Charstring settings) -> Bag of Numarray
+  as foreign 'CanBus_StreamRead';
+
+create function canBusReader(Charstring settings)
+                           -> Bag of Vector of Number
+  as select v
+      from Vector of Number v, Numarray frame, Object r
+      where v = na2vec(frame) 
+            and frame in canBusRawReader(settings)
+            and r = set_vref(v, 0, realbytes(frame[0]));
+
+create function canBusStream(Charstring settings)
+                           -> Stream of Vector of Number
+  as streamof(canBusReader(settings));
+
+create function recordCanBus(Charstring settings, Charstring file, Number n)
+                           -> Boolean
+  as writecsvfile(file, bsection(canBusReader(settings), 0, n));
+
+/* convinient function */
+create function canBusStream(CanBusStream vs) -> Stream of Vector of Number
+  as canBusStream(settings(vs));
+
+create function simCanBusStream(CanBusStream vs) -> Stream of Vector of Number
+  as streamof(cast(csv_file_stream(loggedAt(vs)) as Bag of Vector of Number));

@@ -1,0 +1,85 @@
+
+set :vi = vi("callout_radio.vi");
+
+set :f = fixstream(:vi, "i2,ci2[122],ci2[122],ci2[122]");
+
+set :a = streamof(select abs(fft(x))
+	from integer i, numarray x, numarray y, numarray z
+	where (i, x, y, z) in :f);
+
+set :g = {vi("callout_graph1.vi")};
+
+visualize(:g, :a);
+
+visualize({vi("visualize_radio.dll")}, :a);
+
+set :b = streamof(select x
+	from integer i, numarray x, numarray y, numarray z
+	where (i, x, y, z) in :f);
+
+visualize({vi("callout_graph3.vi")}, :b);
+
+select i
+	from integer i, numarray x, numarray y, numarray z
+	where (i, x, y, z) in :f;
+
+
+
+set :vi = vi("callout_radio2.vi");
+
+set :f = fixstream(:vi, "i2,ci2[366]");
+
+set :a = streamof(select abs(fft(il(x, 0, 3)))
+	from integer i, numarray x
+	where (i, x) in :f);
+
+set :b = streamof(
+	select darray({real(x)}) from integer x where x in sliota(0.01, 1, 1000)
+	);
+
+extract({:a,:b});
+
+set :g = {vi("callout_graph1.vi")};
+
+set :v1 = streamof(visualize({vi("callout_graph1.vi")}, :a));
+
+set :v2 = streamof(visualize({vi("callout_chart1.vi")}, :b));
+
+sink(extract({:v1, :v2}));
+
+
+set :v = streamof(visualize({vi("callout_graph1.vi")}, :a));
+
+sink(extract({:v}));
+
+sink(visualize({vi("callout_graph1.vi")}, :a));
+
+
+set :g = {vi("callout_graph1.vi"), vi("callout_graph1.vi")};
+
+set :a = streamof(select abs(fft(il(x, 0, 3))), abs(fft(il(x, 1, 3))), abs(fft(il(x, 2, 3)))
+	from integer i, numarray x
+	where (i, x) in :f);
+
+visualize({vi("callout_graph3.vi")}, :b);
+
+
+visualize(:g, {:a, :b});
+
+
+
+set :a = streamof(select i, i*2 from integer i where i in sliota(0.1,1,10));
+lisp;
+(defun test-+ (s)
+  (mapbag s (f/l (x)
+		 (print x))))
+
+:osql
+/*create function test(stream) -> bag of integer as foreign 'test-+';*/
+
+
+create function radio(charstring) -> bag of (integer, numarray, numarray, numarray)
+	as foreign "FIXSTREAM:3d_radio_labview:i2,ci2[122],ci2[122],ci2[122]";
+
+create function visualize_radio(stream) -> boolean
+	as foreign "VISUALIZE:visualize_radio";

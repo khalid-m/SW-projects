@@ -1,0 +1,47 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> 2012 <author>Minpeng Zhu, UDBL
+ * $RCSfile: test4.amosql,v $
+ * $Revision: 1.1 $ $Date: 2012/12/18 09:21:06 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: regression test of integrating data from different kind of
+ *              data sources. 
+ ****************************************************************************/
+
+create type person properties(name charstring, age integer);
+
+create person (name, age) instances 
+ :p1("Morrei", 32), 
+ :p2("Green", 30);
+
+select name(p), age(p) from person p;
+
+select name(p), age(p) from person p where p in {:p1, :p2};
+
+create type LogDB;
+
+create logDB instances :logdb1, :logdb2;
+
+/* suppose we have 8 local logdb and each one located at a site, 
+   LogDB returns these 8 local logdb instances, e.g :b, :c ... */
+
+create function logdb_instances(LogDB)->Jdbc as stored;
+
+set :b = jdbc("B", "com.mysql.jdbc.Driver");
+
+connect(:b, "jdbc:mysql://localhost:3306/" + "regress", "regress", "regress"); 
+
+set :c = jdbc("C", "com.mysql.jdbc.Driver");
+
+connect(:c, "jdbc:mysql://localhost:3306/" + "regress", "regress", "regress"); 
+
+add logdb_instances(:logdb1)=:b;
+
+add logdb_instances(:logdb2)=:c;
+
+
+select mid(i), name(o)
+from Machine@A m, MachineInstallation@A i, Site@A s, LogDB ldb
+where ldb in {:logdb1, :logdb2};

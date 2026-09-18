@@ -1,0 +1,42 @@
+<html>
+    <head>
+        <title>List of students</title>
+        <script type="text/javascript" src="scripts/utility.js"></script>
+        <script type="text/javascript" src="scripts/SOAPClient.js"></script>
+        <script type="text/javascript" language="javascript">
+            var error;
+            var oMyObject = window.dialogArguments;
+            var cname = oMyObject.selectedCourse;
+            
+            function listStudent(){
+                error = null;
+                SOAPClient.invoke("LISTSTUDENTS", [3,"inc",cname], true, listStudent_callBack, error_callBack);
+            }
+
+            function listStudent_callBack(o, xmlDoc)
+            {
+                    var tblHead = "<tr style='background-color:lightgrey'><th>Name</th><th>e-mail</th><th>Group No.</th></tr>";
+                    var table = resultToTable(o,null,tblHead);
+                    document.getElementById("listDiv").innerHTML = table;
+            }
+
+            function error_callBack(e, errorCode){
+                if (e != null){
+                    error = e;
+                    document.getElementById("listDiv").style.display='none';
+                    document.getElementById("errorDiv").innerHTML="Error callBack:<br>" + error + "<br><br>Error code:<br>" + errorCode;
+                }
+            }
+
+            function close_onclick(){
+                window.close();
+            }
+        </script>
+    </head>
+    <body onload="return listStudent();">
+        <h2>The students currently registered for the course are:</h2>
+        <div id="listDiv" style="display:block;"></div>
+        <div id="errorDiv"></div>
+        <div align="center"><input type="button" value="close" align="center" onclick="return close_onclick();" /><div>
+    </body>
+</html>

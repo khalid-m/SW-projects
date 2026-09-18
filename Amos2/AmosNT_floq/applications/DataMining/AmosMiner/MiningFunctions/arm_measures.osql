@@ -1,0 +1,40 @@
+/*-*-sql-*-******************************************************************/
+
+create function ar_lift(Function fisfn, Function arfn, Number n) ->
+                Bag of (Vector of Number head, Vector of Number tail, Number)
+   as
+  /* Compute Lift (Interest) measure values of each rule in arfn
+     fisfn : Type E function storing the (itemset, support) pairs
+     arfn  : Type F function storing the association rules 
+     n     : Number of transactions processed */
+  select head, tail, conf*n / tsupp 
+  from Number supp, Number conf, Number tsupp
+  where {head,tail,supp,conf} in extent(arfn)
+    and {tail,tsupp} in extent(fisfn);
+
+
+create function ar_is(Function fisfn, Function arfn) ->
+              Bag of (Vector of Number head, Vector of Number tail, Number)
+  as
+  /* Compute IS (Cosine) measure values of each rule in arfn
+     fisfn : Type E function storing the (itemset, support) pairs
+     arfn  : Type F function storing the association rules */
+  select head, tail, supp / sqrt(hsupp*tsupp)
+  from Number supp, Number hsupp, Number tsupp, Number conf
+  where {head,tail,supp,conf} in extent(arfn)
+    and {head,hsupp} in extent(fisfn)
+    and {tail,tsupp} in extent(fisfn);
+
+
+create function ar_ps(Function fisfn, Function arfn, Number n) ->
+              Bag of (Vector of Number head, Vector of Number tail, Number)
+  as
+  /* Compute PS (Piatetskiy-Shapiro) measure values of each rule in arfn
+     fisfn : Type E function storing the (itemset, support) pairs
+     arfn  : Type F function storing the association rules
+     n     : Number of transactions processed */
+  select head, tail, supp / n - hsupp * tsupp / (n * n)
+  from Number supp, Number conf, Number hsupp, Number tsupp
+  where {head,tail,supp,conf} in extent(arfn)
+    and {head,hsupp} in extent(fisfn)
+    and {tail,tsupp} in extent(fisfn);

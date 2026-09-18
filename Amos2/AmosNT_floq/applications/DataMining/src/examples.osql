@@ -1,0 +1,78 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 Tore Risch, UDBL
+ * $RCSfile: examples.osql,v $
+ * $Revision: 1.5 $ $Date: 2010/08/30 08:11:57 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Example of use of datamining utility functions
+ *
+ ****************************************************************************
+ * $Log: examples.osql,v $
+ * Revision 1.5  2010/08/30 08:11:57  torer
+ * wrong file
+ *
+ * Revision 1.4  2010/08/29 10:05:17  torer
+ * Example of how to normalize dfn(cid)->Vector of Number
+ *
+ * Revision 1.3  2010/08/29 09:26:55  torer
+ * Command miner.cmd to run amos2 with data mining script loaded
+ * Functions showing range normalization added
+ *
+ * Revision 1.2  2010/08/27 08:22:28  torer
+ * Generic data population functions
+ *
+ * Revision 1.1  2010/08/25 20:56:50  torer
+ * Examples of use of datamining utility functions
+ *
+ ****************************************************************************/
+
+create function class_members(Number cid)->Bag of Vector of Number v 
+  /* Function storing training data by 
+     mapping class identifiers cid to value vector v */
+  as stored;
+
+/* For fast search among values of data function class_members: */
+create_index("class_members","v","mbtree","multiple");
+
+/* position in file row for cid: */
+set :idpos = 9;
+
+/* Positions in file row for value vector: */
+set :valposl = {0,1,2,3,4,5,6,7,8};
+
+/* Read training data from file into stored function class_members: */
+add_dfn("data/glassdata.nt",#'class_members',:idpos,:valposl);
+
+/* Look at extent of class_members: */
+extent(#'class_members');
+
+create function data_to_classify()->Bag of Vector of Number val
+  /* Function storing data values to classify */
+  as stored;
+
+/* Populate data_to_classify from file data/testdata.nt */
+add_dfn("data/testdata.nt",#'data_to_classify',:valposl);
+
+data_to_classify();
+
+/* Inspect read data: */
+upper_range(data_to_classify());
+
+lower_range(data_to_classify());
+
+normalize_range(data_to_classify());
+
+sourcecode("normalize_range");
+
+select cid, normalize_rangev(val, upper, lower)
+from Number cid, Vector of Number val,
+                 Vector of Number lower,
+                 Vector of Number upper
+where val in class_members(cid) and
+      <lower,upper> = ranges(select cm
+                             from Number c,
+                                  Vector of Number cm
+                             where cm in class_members(c));
+

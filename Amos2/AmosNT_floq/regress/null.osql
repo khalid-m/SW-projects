@@ -1,0 +1,92 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Tore Risch, UDBL
+ * $RCSfile: null.osql,v $
+ * $Revision: 1.4 $ $Date: 2013/02/17 14:42:50 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: testing nil
+ ****************************************************************************
+ * $Log: null.osql,v $
+ * Revision 1.4  2013/02/17 14:42:50  torer
+ * New functiion identity(Object x)->Object
+ * Removed problem with queries coercing numbers to integers
+ *
+ * Revision 1.3  2013/02/13 17:46:40  torer
+ * Regression testing illegal type tolerance
+ *
+ * Revision 1.2  2012/05/22 17:45:16  torer
+ * New optional() and union cases
+ *
+ * Revision 1.1  2012/04/22 19:23:09  torer
+ * nil tolerant mapfunction + better regression testing of nil
+ *
+ ****************************************************************************/
+
+create function f(Integer i)-> Bag of Integer;
+create function g(Integer)-> (Integer,Integer);
+set g(1)=(nil,2);
+set f(1)=nil;
+
+lisp;
+
+
+(checkequal "NIL values"
+            ((osql "g(1);") '((nil 2)))
+	    ((osql "nil			;") '((nil)));;Should be nil!
+            ((osql "identity(nil)	;") nil) ;;Should be nil!
+	    ((extent 'f) nil)
+	    ((osql "add f(1)=nil;") nil)
+	    ((extent 'f) nil)
+	    ((osql "add f(1)=2;") nil)
+	    ((extent 'f) '((1 2)))
+	    ((osql "set f(1)=nil;") nil)
+	    ((extent 'f) nil)
+	    ((osql "g(1);") '((nil 2)))
+            ((osql "select identity(nil) where true;") nil)
+            ((osql "select o from object o where o=identity(nil);") nil)
+            ((osql "select o,1 from object o where o=identity(nil);")
+             '((nil 1)))
+            ((osql "select where identity(nil)=1;") nil)
+            ((osql "select identity(nil),identity(nil);") nil)
+            ((osql "select identity(nil),identity(nil),1;") '((nil nil 1)))
+	    )
+
+(checkequal "Illegal type tolerance"
+	    ((osql "1+cast('a' as number);") nil)
+	    ((osql "mod(1,cast('a' as number));") nil)
+	    ((osql "1-cast('a' as number);") nil)
+	    ((osql "2*cast('a' as number);") nil)
+	    ((osql "1/cast('a' as number);") nil)
+	    )
+
+:osql
+
+rollback;
+
+create function f(Integer x) -> Integer as stored; 
+set f(2) = 20; 
+set f(3) = 30; 
+
+create function g(Integer x) -> Integer as stored; 
+set g(3) = 300; 
+set g(4) = 400; 
+
+lisp;
+
+(checkequal "NIL in vector"
+	    ((osql "
+evalv('select x,y,z from Integer x, Integer y, Integer z 
+       where x in iota(1,5) and 
+             (y = f(x) or z = g(x));');")
+	     '((#(2 20 nil)) (#(3 30 nil)) (#(3 nil 300)) (#(4 nil 400))))
+	    )
+
+(checkequal "Outer union all"
+            ((osql "
+select x,y,z from Integer x, Integer y, Integer z 
+where x in iota(1,5) and 
+      (y = f(x) or z = g(x));")
+	     '((2 20 NIL) (3 30 NIL) (3 NIL 300) (4 NIL 400)))
+	    )

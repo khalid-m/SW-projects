@@ -1,0 +1,9 @@
+/* Definitions of systems to download */
+
+create System (name,responsible,fullname,location,file,reserve_time) 
+       instances ("sward","Johan.Petrini@it.uu.se", "Sward",
+                  "D:/downloads/","sward",600.0),
+                 ("amos","Tore.Risch@it.uu.se", "Amos II",
+                  "D:/downloads/","amos2",600.0);
+
+

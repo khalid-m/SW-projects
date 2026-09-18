@@ -1,0 +1,77 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Tore Risch, UDBL
+ * $RCSfile: mapped.osql,v $
+ * $Revision: 1.3 $ $Date: 2011/01/27 11:26:15 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Testing mapped types
+ *
+ ****************************************************************************
+ * $Log: mapped.osql,v $
+ * Revision 1.3  2011/01/27 11:26:15  torer
+ * Changed from <...> to SQL's (...) notation for tuples (much nicer)
+ *
+ * Revision 1.2  2010/02/17 19:01:36  torer
+ * Changed variable number
+ *
+ * Revision 1.1  2008/12/18 21:59:28  torer
+ * Testing composite key mapped types
+ *
+ ****************************************************************************/
+
+create function accountdata(Integer ssn,Integer ano)
+  -> (Integer balance, Charstring kind) as stored;
+
+set accountdata(1001, 1) = (45000, "Savings");
+set accountdata(1001, 2) = (100000, "Money market");
+set accountdata(1002,1) = (50000, "Money market");
+set accountdata(1003, 1) = (25000, "Savings");
+set accountdata(1004, 1) = (4000, "Savings");
+
+create function account_ccf()->Bag of (Integer ssn, Integer ano, 
+                                       Integer balance, Charstring kind)
+  as select ssn, ano, balance, kind 
+     where accountdata(ssn, ano) = (balance, kind);
+
+create_mapped_type("Account",{"ssn","ano"},{"ssn","ano","balance","kind"},
+                   "account_ccf");
+
+create function t1()-> Bag of (Integer, Integer)
+  as select ssn(a), ano(a)
+     from account a;
+
+create function t2(Charstring k)-> Bag of (Integer, Integer)
+  as select ssn(a),ano(a) 
+     from account a 
+     where kind(a)=k;
+
+create function t3(Integer s) -> Bag of Integer
+  as select ano(a) 
+     from account a 
+     where ssn(a)=s;
+
+lisp;
+
+(defun getoptpred (fn)
+  (selectbody-optpred (getselectbody (theresolvent fn))))
+
+(checkequal "Mapped types"
+  ((osql "sort(t1());")
+   '((#(#(1001 1) #(1001 2) #(1002 1) #(1003 1) #(1004 1)))))
+  ((osql "sort(t2('Savings'));")
+   '((#(#(1001 1) #(1003 1) #(1004 1)))))
+  ((osql "t3(1002);") '((1)))
+  ((externalize (getoptpred 't1))
+   '(P_INTEGER.INTEGER.ACCOUNTDATA->INTEGER.CHARSTRING _V3 _V4 * *))
+  ((length (getoptpred 't2)) 3) ;; suboptimal
+  ((externalize (getoptpred 't3))
+   '(P_INTEGER.INTEGER.ACCOUNTDATA->INTEGER.CHARSTRING S _V3 * *))
+)
+
+:osql
+
+rollback;
+
+

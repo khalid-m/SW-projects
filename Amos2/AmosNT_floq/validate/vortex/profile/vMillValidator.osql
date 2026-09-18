@@ -1,0 +1,351 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Cheng Xu, UDBL
+ * $RCSfile: vMillValidator.osql,v $
+ *
+ * Description: Mill validator, for directly stream from file
+ *
+ ****************************************************************************
+ * $Log: vMillValidator.osql,v $
+ * Revision 1.5  2013/01/14 09:39:49  chexu484
+ * return vector
+ *
+ * Revision 1.4  2013/01/08 13:22:09  chexu484
+ * returns vector on top of model and validate
+ *
+ * Revision 1.3  2013/01/08 12:23:51  chexu484
+ * 30 second stream generator
+ *
+ * Revision 1.2  2013/01/04 13:18:00  chexu484
+ * experiment
+ *
+ * Revision 1.1  2012/12/19 20:07:04  chexu484
+ * central vs paralell
+ *
+ *
+ ****************************************************************************/
+
+create function hm(Vector v) -> Number
+  as (2*pi()*sin(90*pi()/180)*ae(v)*fz(v))/(pi()*dcap(v)*acos(1-2*ae(v)/dcap(v)));
+
+create function kc(Vector v) -> Number
+  as 1950*power(hm(v), -0.25)*(1-2.5/100);
+
+create function expectedPower(Vector v) -> Number
+  as (ap(v)*ae(v)*fz(v)*vc(v)*zt(v)*kc(v))/(pi()*dcap(v)*60000);
+
+/* origianl vector wrapped with time stamp and machine id */
+create function expectedPower1(Vector v) -> Number
+  as select expectedPower(vv)
+     from Vector vv
+     where vv = v[2];
+
+/* original validation function */
+create function validatePower1(Vector v, Number ref, Number threshold) ->
+       		(Number ts, Number measured, Number expected, Number invalid)
+  as select ts, measured, expected, invalid
+     where ts = timestamp(v)
+     and measured = measuredPower(v)
+     and expected = ref
+     and invalid = ifsome(abs(measured - expected) > threshold, 1, 0);
+
+/* orginal validation function, returns the meausre tuple to calculate the response time */
+create function validatePower2(Vector v, Number ref, Number threshold) ->
+       		(Number ts, Vector, Number expected, Number invalid)
+  as select ts, v, expected, invalid
+  from Number measured
+  where ts = relative_ts() /* timestamp(v) */
+  and measured = measuredPower(v)
+  and expected = ref
+  and invalid = ifsome(abs(measured - expected) > threshold, 1, 0);
+
+/* wrapped with ts, machine id, the validation function */
+create function validatePower3(Vector v, Number ref, Number threshold) ->
+       		(Number ts, Number measured, Number expected, Number invalid)
+  as select ts, measured, expected, invalid
+     where ts = relative_ts() /* timestamp(v) */
+     and measured = measuredPower1(v)
+     and expected = ref
+     and invalid = ifsome(abs(measured - expected) > threshold, 1, 0);
+
+/* wrapped with ts, machine id, the validation function */
+create function validatePower4(Vector v, Number ref, Number threshold) ->
+       		(Number ts, Vector, Number expected, Number invalid)
+  as select ts, v, expected, invalid
+     from Number measured
+     where ts = relative_ts() /* timestamp(v) */
+     and measured = measuredPower1(v)
+     and expected = ref
+     and invalid = ifsome(abs(measured - expected) > threshold, 1, 0);
+
+create function millDeviations1_b(Stream s) 
+                                      -> Bag of Vector
+				      	 /*(Number, Number, Number, Number)*/
+  /* Model-and-validate emitting invalid milling data */
+  as for each Number ts, Number measured, Number expected, Number invalid
+     where (ts, measured, expected, invalid) in
+            model_n_validate(s, #'expectedPower', #'validatePower1', 1.2)
+     if invalid = 1 then return {ts, measured, expected, invalid};
+
+/* validate orginal stream tuple, also returns measured as measured power */
+create function millDeviations1(Stream s)
+  /* Model-and-validate emitting invalid milling data */
+                             -> Stream of Vector
+			     	       	  /*
+			     	       	  (Number ts,
+                                           Number measured,
+                                           Number expected, 
+                                           Number Alertflag)*/
+  as streamof(millDeviations1_b(s));
+
+/* validate orginal stream tuple, also returns measured as original vector */
+create function millDeviations2_b(Stream s)
+			     -> Bag of Vector
+                             	    /*(Number, Vector, Number, Number)*/
+  /* Model-and-validate emitting invalid milling data */
+  as for each Number ts, Vector measured, Number expected, Number invalid
+     where (ts, measured, expected, invalid) in
+            model_n_validate(s, #'expectedPower', #'validatePower2', 1.2)
+     if invalid = 1 then return {ts, measured, expected, invalid};
+
+create function millDeviations2(Stream s)
+  /* Model-and-validate emitting invalid milling data */
+                             -> Stream of Vector
+			     	       	  /*
+					  (Number ts, 
+                                           Vector orginal,
+                                           Number expected,
+                                           Number Alertflag)*/
+  as streamof(millDeviations2_b(s));
+
+create function millDeviations3_b(Stream s) 
+                             -> Bag of Vector /*(Number, Number, Number, Number)*/
+  /* Model-and-validate emitting invalid milling data */
+  as for each Number ts, Vector measured, Number expected, Number invalid
+     where (ts, measured, expected, invalid) in
+            model_n_validate(s, #'expectedPower1', #'validatePower3', 1.2)
+     if invalid = 1 then return {ts, measured, expected, invalid};
+
+create function millDeviations3(Stream s)
+  /* Model-and-validate emitting invalid milling data */
+                             -> Stream of Vector
+			     	       	  /*
+			     	       	  (Number ts,
+                                           Number measured,
+                                           Number expected, 
+                                           Number Alertflag)*/
+  as streamof(millDeviations3_b(s));
+
+create function millDeviations4_b(Stream s) 
+                             -> Bag of Vector /*(Number, Vector, Number, Number)*/
+  /* Model-and-validate emitting invalid milling data */
+  as for each Number ts, Vector measured, Number expected, Number invalid
+     where (ts, measured, expected, invalid) in
+            model_n_validate(s, #'expectedPower1', #'validatePower4', 1.2)
+     if invalid = 1 then return {ts, measured, expected, invalid};
+
+create function millDeviations4(Stream s)
+  /* Model-and-validate emitting invalid milling data */
+                             -> Stream of Vector
+			     	       	  /*
+					  (Number ts, 
+                                           Vector orginal,
+                                           Number expected,
+                                           Number Alertflag)*/
+  as streamof(millDeviations4_b(s));
+
+/*********************************************************************************************/
+
+/* time window validation applies on the wrapped stream tuple only */
+
+create function measuredPowerGrouper(Bag of Vector bv) -> Vector of Number
+  as vselect measuredPower(in(bv));
+
+create function expectedPowerGrouper(Bag of Vector bv) -> Vector of Number
+  as vselect expectedPower(in(bv));
+
+create function powerGroupby(Window w, Function groupby) -> Bag of Vector
+  as select {id, pv}
+     from Integer id, Vector of Number pv
+     where (id, pv) in
+     	   groupby((select id, v
+     	     	    from Integer id, Number ts, Vector of Number v
+                    where {ts, id, v} in w), groupby);
+
+/* for a timed window, validate the power for each machine
+   this is done by a groupby operator, groupby machine id
+   WC => windowed central validation                    */
+create function measuredPowerWC(Window w) -> Bag of Vector
+  as powerGroupby(w, #'measuredPowerGrouper');
+
+create function expectedPowerWC(Window w) -> Bag of Vector
+  as powerGroupby(w, #'expectedPowerGrouper');
+
+create function validatePowerWC(Window m, Bag ref, Number threshold)
+       			-> (Number ts, Vector measured, Vector expected, Number invalid)
+  as select relative_ts(), {mts, mid, mpv}, {mts, eid, epv}, invalid
+     from Integer mid, Integer eid, Number mts, Vector of Number mpv, Vector of Number epv
+     where mid = eid
+     and mts = ts(m)
+     and {mid, mpv} in measuredPowerWC(m)
+     and {eid, epv} in ref
+     and invalid = ifsome(euclid(mpv, epv)/dim(epv) > threshold, 1, 0);
+
+create function millDeviationsW_b(Stream s)
+                                      -> Bag of Vector /*(Number, Vector, Vector, Number)*/
+  /* Model-and-validate emitting invalid milling data */
+  as for each Number ts, Vector measured, Vector expected, Number invalid, Stream of Window sw
+     where (ts, measured, expected, invalid) in
+            model_n_validate(sw, #'expectedPowerWC', #'validatePowerWC', 0)
+	   and sw = millWindow(s)
+     if invalid = 1 then return {ts, measured, expected, invalid};
+
+create function millDeviationsW(Stream s)
+  /* Model-and-validate emitting invalid milling data */
+                             -> Stream of Vector
+			     	       	  /*
+					  (Number ts,
+                                           Vector measured,
+                                           Vector expected,
+                                           Number Alertflag)*/
+  as streamof(millDeviationsW_b(s));
+
+
+/* convenience function */
+
+/* measuring the total process time for a 30 sec stream
+   the paces of all stream sources are all with freq 5 ms */
+
+/* central: first merge all streams sources and then validate */
+create function centralValidationQ1(Number logicSize, Integer fanout)
+       		-> Bag of Vector /*(Number ts, Number measured, Number expected, Number invalid)*/
+  as select in(millDeviations3(s))
+     from Stream s
+     where s = mergestreams(vectorof(newStreams2(logicSize, fanout)));
+
+/* parallel: validation node per stream */
+create function parallelValidationQ1(Number logicSize, Integer fanout)
+       		-> Bag of Vector /*(Number ts, Number measured, Number expected, Number invalid)*/
+  as in(mergestreams(mapstreams(vectorof(newStreams2(logicSize, fanout)), #'millDeviations3')));
+
+/* measuring the total process time for a 30 sec stream the paces
+   of all stream sources are randomly distributed between 1 - 10 ms */
+
+/* central: first merge all streams sources and then validate */
+create function centralValidationDiffRateQ1(Number logicSize, Integer fanout)
+       		-> Bag of Vector /*(Number ts, Number measured, Number expected, Number invalid)*/
+  as select in(millDeviations3(s))
+     from Stream s
+     where s = mergestreams(vectorof(newStreams3(logicSize, fanout)));
+
+/* parallel: validation node per stream */
+create function parallelValidationDiffRateQ1(Number logicSize, Integer fanout)
+       		-> Bag of Vector /*(Number ts, Number measured, Number expected, Number invalid)*/
+  as in(mergestreams(mapstreams(vectorof(newStreams3(logicSize, fanout)), #'millDeviations3')));
+
+
+/* measuring the total process time for a 30 sec stream
+   the paces of all stream sources are all with freq 5 ms */
+
+/* central: first merge all streams sources and then validate */
+create function centralValidationQ2(Number logicSize, Integer fanout)
+       		-> Bag of Vector /*(Number ts, Vector measured, Vector expected, Number invalid)*/
+  as select in(millDeviationsW(s))
+     from Stream s
+     where s = smjstreamsv(vectorof(newStreams2(logicSize, fanout)), 0);
+
+
+/* parallel: validation node per stream */
+create function parallelValidationQ2(Number logicSize, Integer fanout)
+       		-> Bag of Vector /*(Number ts, Vector measured, Vector expected, Number invalid)*/
+  as in(mergestreams(mapstreams(vectorof(newStreams2(logicSize, fanout)), #'millDeviationsW')));
+
+/* measuring the total process time for a 30 sec stream the paces
+   of all stream sources are randomly distributed between 1 - 10 ms */
+
+/* central: first merge all streams sources and then validate */
+create function centralValidationDiffRateQ2(Number logicSize, Integer fanout)
+       		-> Bag of Vector /*(Number ts, Vector measured, Vector expected, Number invalid)*/
+  as select in(millDeviationsW(s))
+     from Stream s
+     where s = smjstreamsv(vectorof(newStreams3(logicSize, fanout)), 0);
+
+/* parallel: validation node per stream */
+create function parallelValidationDiffRateQ2(Number logicSize, Integer fanout)
+       		-> Bag of Vector /*(Number ts, Vector measured, Vector expected, Number invalid)*/
+  as in(mergestreams(mapstreams(vectorof(newStreams3(logicSize, fanout)), #'millDeviationsW')));
+
+
+/* measuring only the merge and window operator, streaming in the same rate 5 ms */
+create function centralWindow(Number logicSize, Integer fanout) -> Number
+  as count(in(millWindow(smjstreamsv(vectorof(newStreams2(logicSize, fanout)), 0))));
+
+/* measuring only the merge and window operator, streaming in the random rate 1 - 10 ms */
+create function centralWindowDiffRate(Number logicSize, Integer fanout) -> Number
+  as count(in(millWindow(smjstreamsv(vectorof(newStreams3(logicSize, fanout)), 0))));
+
+/*** measure the average response time ***/
+
+/* Q1 */
+
+/* fixed pace central */
+create function centralAvgResponseQ1(Number logicSize, Integer fanout) -> Number
+  as avg(select ts - cast(m[0] as Number)
+   	 from Number ts, Vector m, Number e, Number invalid
+   	 where {ts, m, e, invalid} in
+              millDeviations4(mergestreams(vectorof(newStreams2(logicSize, fanout)))));
+
+/* fixed pace parallel */
+create function millMapperQ1(Stream s) -> Stream of Number
+  as streamof(select ts - cast(m[0] as Number)
+   	        from Number ts, Vector m, Number e, Number invalid
+   	  	  where {ts, m, e, invalid} in millDeviations4(s));
+
+create function parallelAvgResponseQ1(Number logicSize, Integer fanout) -> Number
+  as avg(select response from Number response
+         where response in mergestreams(mapstreams(vectorof(newStreams2(logicSize, fanout)), #'millMapperQ1')));
+
+/* random pace central */
+create function centralAvgResponseDiffRateQ1(Number logicSize, Integer fanout) -> Number
+  as avg(select ts - cast(m[0] as Number)
+   	 from Number ts, Vector m, Number e, Number invalid
+   	 where {ts, m, e, invalid} in
+              millDeviations4(smjstreamsv(vectorof(newStreams3(logicSize, fanout)), 0)));
+
+/* random pace parallel */
+create function parallelAvgResponseDiffRateQ1(Number logicSize, Integer fanout) -> Number
+  as avg(select response from Number response
+         where response in mergestreams(mapstreams(vectorof(newStreams3(logicSize, fanout)), #'millMapperQ1')));
+
+
+/* Q2 */
+
+/* fixed pace central */
+create function centralAvgResponseQ2(Number logicSize, Integer fanout) -> Number
+  as avg(select ts - cast(m[0] as Number)
+   	 from Number ts, Vector m, Vector e, Number invalid
+   	 where {ts, m, e, invalid} in
+              millDeviationsW(smjstreamsv(vectorof(newStreams2(logicSize, fanout)), 0)));
+
+/* fixed pace parallel */
+create function millMapperQ2(Stream s) -> Stream of Number
+  as streamof(select ts - cast(m[0] as Number)
+   	        from Number ts, Vector m, Vector e, Number invalid
+   	  	  where {ts, m, e, invalid} in millDeviationsW(s));
+
+create function parallelAvgResponseQ2(Number logicSize, Integer fanout) -> Number
+  as avg(select response from Number response
+         where response in mergestreams(mapstreams(vectorof(newStreams2(logicSize, fanout)), #'millMapperQ2')));
+
+/* random pace central */
+create function centralAvgResponseDiffRateQ2(Number logicSize, Integer fanout) -> Number
+  as avg(select ts - cast(m[0] as Number)
+   	 from Number ts, Vector m, Vector e, Number invalid
+   	 where {ts, m, e, invalid} in
+              millDeviationsW(smjstreamsv(vectorof(newStreams3(logicSize, fanout)), 0)));
+
+/* random pace parallel */
+create function parallelAvgResponseDiffRateQ2(Number logicSize, Integer fanout) -> Number
+  as avg(select response from Number response
+         where response in mergestreams(mapstreams(vectorof(newStreams3(logicSize, fanout)), #'millMapperQ2')));

@@ -1,0 +1,25 @@
+A full system compilation under Windows requires:
+
+1) Borland C++ compiler
+
+2) MicroSoft Visual Studio C++ with command line tools installed
+
+3) Java JDK 1.4 or later
+
+4) %amos_home%\bin included in environment variable PATH
+
+Normally the system is compiled and installed by running
+    install       (no ODBC)
+ or install all
+
+It will compile all C/C++ code with Borland C++ and then load the database image.
+
+In a second step the corresponding Visual C++ executable is compiled. 
+Notice that the first VC++ linking might fail because its makefile (system/MBC/amoslib.mak) is 
+path dependent. In that case the VC++ project 
+   %amos_home%\system\MVC\amoslib.dsw
+has to be compiled interactively and then amoslib.mak regenerated.
+
+The Linux installation does not include Java and ODBC. It is compiled using 
+   %amos_home%\system\Linux\Makefile
+

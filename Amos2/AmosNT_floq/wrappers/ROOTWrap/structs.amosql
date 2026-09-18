@@ -1,0 +1,194 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Ruslan Fomkin
+ * $RCSfile: structs.amosql,v $
+ * $Revision: 1.23 $ $Date: 2012/05/15 19:27:15 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Functions for struct type.
+ *
+ ****************************************************************************
+ * $Log: structs.amosql,v $
+ * Revision 1.23  2012/05/15 19:27:15  torer
+ * result -> return
+ *
+ * Revision 1.22  2008/10/20 11:01:24  ruslan
+ * names
+ *
+ * Revision 1.21  2008/09/04 11:24:59  ruslan
+ * reflects renaming. sobject_transpose_tovector in interface
+ *
+ * Revision 1.20  2008/09/01 11:05:48  ruslan
+ * sobject_transpose is added
+ *
+ * Revision 1.19  2008/09/01 08:11:17  ruslan
+ * names of C transpose functions correspond to their AmosQL names
+ *
+ * Revision 1.18  2008/08/20 11:47:30  ruslan
+ * rename specialized version of transpose to avoid confusion
+ *
+ * Revision 1.17  2008/05/13 11:14:34  ruslan
+ * a bug is fixed. id is renamed to sid to avoid collision with the attribute name in the particle view
+ *
+ * Revision 1.16  2008/03/01 10:05:21  ruslan
+ * collecting cardinality statistics for vector slots
+ *
+ * Revision 1.15  2008/02/28 13:11:31  ruslan
+ * using sobject
+ *
+ * Revision 1.14  2008/02/07 08:33:07  ruslan
+ * transpose with making additional slots for particles. bug fixing in caching
+ *
+ * Revision 1.13  2008/02/06 12:33:44  ruslan
+ * general caching function in AmosQL
+ *
+ * Revision 1.12  2007/12/17 16:56:19  ruslan
+ * specific transpose operating on structs
+ *
+ * Revision 1.11  2007/12/17 15:52:15  ruslan
+ * types are corrected at the struct
+ *
+ * Revision 1.10  2007/12/05 09:21:19  ruslan
+ * test code removed
+ *
+ * Revision 1.9  2007/12/05 09:13:55  ruslan
+ * updating cost hints. add fucntion to set default stat collecting function and flag to TRUE
+ *
+ * Revision 1.8  2007/12/02 11:24:49  ruslan
+ * collecting statistics during setting slots with vectors
+ *
+ * Revision 1.7  2007/11/24 08:59:17  ruslan
+ * cost hint for get_slot_bag
+ *
+ * Revision 1.6  2007/11/17 10:00:00  ruslan
+ * example, where multidirectional does not close derived query
+ *
+ * Revision 1.5  2007/11/06 12:45:36  ruslan
+ * transpose returning vector of structs
+ *
+ * Revision 1.4  2007/11/06 11:04:47  ruslan
+ * traspose vector of vector into vector of vector
+ *
+ * Revision 1.3  2007/11/05 09:07:56  ruslan
+ * multidirectional get_slot functions, which ability to return, when index is not provided
+ *
+ * Revision 1.2  2007/11/03 11:49:31  ruslan
+ * AmosQL interface function to create new struct
+ *
+ * Revision 1.1  2007/11/03 10:10:10  ruslan
+ * returning structs
+ *
+ ****************************************************************************/
+
+load_lisp('structs.lsp');
+
+create function get_slot(sobject s, integer i) -> object as multidirectional 
+	("bbf" foreign 'sobject_getbbf' cost {2,1})
+	("bff" foreign 'sobject_getbff' cost {20,10});
+
+create function get_slot_bag(sobject s, integer i) -> bag of object as
+	foreign 'sobject_getbagbbf';
+
+create function set_slot(sobject s, integer i, object v) -> boolean
+	as foreign 'sobject_setbbb';
+
+create function size(sobject s) -> integer as
+	foreign 'sobject_sizebf';
+
+create function sobject_type(sobject s) -> type as
+	foreign 'sobject_typebf';
+
+create function source(sobject s) -> type as
+	foreign 'sobject_srcbf';
+
+create function sid(sobject s) -> object as
+	foreign 'sobject_idbf';
+
+create function new_sobject(Type t, Object source, Object sid, Vector cont) -> 
+	sobject as foreign 'make_sobjectbbbbf';
+
+create function new_sobject(Type t, Object source, Object sid, Integer n) -> 
+	sobject as foreign 'make_sobjectbbbbf';
+
+create function new_sobject(Type t, Object sid, Vector cont) -> 
+	sobject as foreign 'make_sobjectbbbf';
+
+create function transpose(Vector v) -> vector r as
+	foreign 'vector_transpose';
+
+create function sobject_transpose(Vector v, sobject s, type t) -> 
+	bag of sobject as foreign 'sobject_transpose';
+
+create function sobject_transpose_vect(Vector v, sobject s, type t) -> 
+	vector of sobject as foreign 'sobject_transpose_tovector';
+
+create function mat_sobject_transpose(Vector v, sobject s, type t, integer pos) -> boolean
+	as foreign 'mat_sobject_transpose';
+
+create function mat_sobject_transpose_add(Vector v, sobject s, type t, integer pos, 
+				integer addslots) -> boolean
+	as foreign 'mat_sobject_transpose_and_add_slots';
+
+create function sobjectstat(boolean flag) -> boolean as
+	foreign 'set_structstat';
+
+create function slotstat(boolean flag) -> boolean as
+	foreign 'set_slotstat';
+
+create function sobjectstat_setfno(function fno) -> boolean as
+	foreign 'set_structstatfnb';
+
+create function sobjectstat_setfno(charstring fn) -> boolean as
+	select sobjectstat_setfno(functionnamed(fn));
+
+create function sobjectstat(charstring fn) -> boolean as
+begin
+	if (sobjectstat_setfno(fn))
+	then return sobjectstat(TRUE);
+end;
+
+create function sobjectstat_getfno() -> function fno as
+	foreign 'get_structstatfnf';
+
+create function set_slotvector(sobject s, integer i, vector v) -> boolean
+	as foreign 'sobject_setvectorbbb';
+
+create function set_slotvector(sobject s, integer i, vector v, function fno) ->
+	boolean	as foreign 'sobject_setvectorbbbb';
+
+create function sobject_stat(type t, integer i)-> 
+	(integer calls, integer results, integer sqsum) as stored;
+
+create function set_sobjectstat(type t, integer i, integer arity) -> boolean 
+as
+begin
+	declare integer calls, integer results, integer sqsum;
+	select c,r,s into calls, results, sqsum
+		from integer c, integer r, integer s
+		where (c,r,s) = sobject_stat(t,i);
+	if (calls != nil)
+		then set calls = calls + 1
+		else set calls = 1;
+	if (results != nil)
+		then set results = results + arity
+		else set results = arity;
+	if (sqsum != nil)
+		then set sqsum = sqsum + arity*arity
+		else set sqsum = arity*arity;
+	set sobject_stat(t,i) = (calls,results,sqsum);
+	return TRUE;
+end;
+
+create function set_sobjectstatfno() -> boolean as
+select sobjectstat_setfno("type.integer.integer.set_sobjectstat->boolean");
+
+create function sobjectstat() -> boolean as
+select sobjectstat("type.integer.integer.set_sobjectstat->boolean");
+
+create function set_slotvector_stat(sobject s, integer i, vector v) -> boolean
+as select set_slotvector(s,i,v,
+	functionnamed("type.integer.integer.set_sobjectstat->boolean"));
+
+create function cachefn(Function fno, integer slot, sobject ev) -> 
+	Object as foreign "cachefn";

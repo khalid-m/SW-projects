@@ -1,0 +1,45 @@
+OPTIONS {
+    package orwise;
+}
+
+SCHEMA {
+
+        String[] currency;
+        String[] bid;
+        String[] mid;
+        String[] ask;
+        String[] change;
+        String time;
+}
+
+EXTRACTION {
+
+        currency = 	html.body->tr[3-17].td[0].font[0].txt;
+        bid = 	html.body->tr[3-17].td[1].font[0].txt;
+        mid = 	html.body->tr[3-17].td[2].b.font[0].txt;
+        ask = 	html.body->tr[3-17].td[3].font[0].txt;
+        change = 	html.body->tr[3-17].td[4].font[0].txt, match("([-0-9].*)");
+	/*unicode characters not supported in W4F, therefore problems with 'á'  */
+        time = html.body->font[0].b[0].txt;
+
+
+        }
+
+RETRIEVAL {
+        search() {
+                METHOD: GET;
+                URL: "http://www.swissquote.ch/fcgi-bin/parsefquote";
+                PARAM:  "quote"="23";
+        }
+
+        get(String url) {
+               GET "$url$" ;
+        }
+}
+
+JAVACODE {
+
+    public static void main(String args[]) throws Exception {
+            System.out.println(search());
+    }
+}

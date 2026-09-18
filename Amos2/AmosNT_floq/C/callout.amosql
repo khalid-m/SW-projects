@@ -1,0 +1,22 @@
+/* Initialization script for calloutdemo.c to define foreign functions
+   by the symbolic bindings to their C code and make image.
+   Initialize by calling
+     callout ../bin/amos2.dmp callout.amosql 
+*/
+
+create function solve2(Real a, Real b, Real c) -> Real x
+     as foreign 'solve2bbbf';
+
+create function solve2b(Real a, Real b, Real c) -> Real x
+     as multidirectional ('bbbf' foreign 'solve2bbbf')
+                         ('bbfb' foreign 'solve2bbfb')
+                         ('bfbb' foreign 'solve2bfbb')
+                         ('fbbb' foreign 'solve2fbbb');
+create function cplus(Complex x, Complex y)->Complex z
+     /* Adds two complex numbers */
+     as foreign "complex_plus";
+create function cvector(Real x, Real y, Integer s)->Vector of Complex z
+    /* Returns vector of size s with all elements complex(x,y) */
+     as foreign "cvector";
+save "callout.dmp";
+quit;

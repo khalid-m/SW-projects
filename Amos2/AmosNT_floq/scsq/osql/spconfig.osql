@@ -1,0 +1,41 @@
+ /*-*-sql-*-*************************************
+ * AMOS2
+ *
+ * Replace this to suit your sp configuration */
+
+set prepcoordhost() = "localhost";
+set sp_start("") = "start /min cmd.exe /c ";
+/*set sp_start() = "start cmd.exe /k";*/
+
+/* scsq.dmp is used if no dumpfile specified */
+/*set dumpfile() = getenv("AMOS_HOME") + "\\bin\\scsq.dmp";*/
+
+set prepstartcmd("") = "scsq.exe";
+set sprocstart() = "lsproc2";
+set prephosts() = {"localhost"};
+set spstdout() = "";
+set sppostfix() = "";
+
+set preprsh() = "ssh -n";
+set cpus_per_host() = 2;
+
+/* Default config for queue system */
+
+create function qrsh() -> Charstring as getenv("TMPDIR") + "/rsh -n";
+create function qnodelistfile() -> Charstring 
+  as getenv("TMPDIR") + "/machines";
+create function qnodelist() -> Charstring
+  as select s
+     from Charstring s
+     where s in read_ntuples(qnodelistfile())[0];
+
+create function genodes() -> Charstring;
+create function distgenodes() -> Charstring as
+select distinct genodes();
+create function slnodes() -> Charstring;
+create function distslnodes() -> Charstring as
+select distinct slnodes();
+
+/* Set a generous timeout for open-port */
+
+porttimeout(10.0);

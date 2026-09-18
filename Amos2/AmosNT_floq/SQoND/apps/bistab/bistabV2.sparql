@@ -1,0 +1,102 @@
+
+lisp;
+
+language-sparql
+
+# LOAD("C:/DATA/TESTCASES/SantaBarbara/bistab2/bistab2V2toy.ttl",true);
+
+PREFIX : <http://udbl.uu.se/bistab#>;
+
+# Q1
+
+SELECT (?tspan[?j] AS ?t)
+       (array_sum(?U[?A-1::?MSpecies,?j]) AS ?sum_A)
+ WHERE { :Task1 :U ?U ;
+                :inExperiment ?experiment .
+         ?experiment :A ?A ;
+                     :MSpecies ?MSpecies ;
+                     :tspan ?tspan };
+
+# Q2 (tuned for bistab2 & bistab2toy)
+
+SELECT (array_sum(?U[?A-1::?MSpecies,?j]) AS ?res)
+ WHERE { ?task :U ?U ;
+               :k_a ?k_a ;
+               :k_d ?k_d ;
+               :inExperiment ?experiment .
+         ?experiment :A ?A ;
+                     :MSpecies ?MSpecies ;
+                     :tspan ?tspan .
+         FILTER (?tspan[?j] = 1.5 &&
+                 1.0E8 <= ?k_d &&
+                 ?k_d <= 1.0E9 &&
+                 50 <= ?k_a &&
+                 ?k_a <= 90 ) };
+
+# Q2a
+
+SELECT (count(?U) AS ?res)
+ WHERE { ?task :U ?U ;
+               :k_a ?k_a ;
+               :k_d ?k_d ;
+               :inExperiment ?experiment .
+         ?experiment :A ?A ;
+                     :MSpecies ?MSpecies ;
+                     :tspan ?tspan .
+         FILTER (?tspan[?j] = 1.5 &&
+                 1.0E8 <= ?k_d &&
+                 ?k_d <= 1.0E9 &&
+                 50 <= ?k_a &&
+                 ?k_a <= 90 ) };
+
+# Q3
+
+DEFINE FUNCTION max_AB_sum(?task) AS
+SELECT (MAX(max2(array_sum(?U[?A-1::?MSpecies,?j]),
+                 array_sum(?U[?B-1::?MSpecies,?j])))
+        AS ?res)
+ WHERE { ?task :U ?U ;
+               :inExperiment ?exeperiment .
+         ?experiment :A ?A ;
+                     :B ?B ;
+                     :MSpecies ?MSpecies };
+
+SELECT (ARGMAX( max_AB_sum ) AS ?maxtask);
+
+# Q3a
+
+max_AB_sum(:Task1);
+
+# AmosQL functions for measurements
+
+lisp;
+
+:osql
+
+create function q1() -> Bag of (Literal, Literal) as
+select apr(aref(tspan,0,j)), rdf:array_sum(apr(aref(asub(u,0,rdf:minus(a, 1),mspecies,-2),1,j)))
+  from Literal experiment, Literal mspecies, Literal a, Literal u, Literal j, Literal tspan
+ where (URI('http://udbl.uu.se/bistab#Task1'), URI('http://udbl.uu.se/bistab#U'), u) in SDEF()
+   and (URI('http://udbl.uu.se/bistab#Task1'), URI('http://udbl.uu.se/bistab#inExperiment'), experiment) in SDEF()
+   and (experiment, URI('http://udbl.uu.se/bistab#A'), a) in SDEF()
+   and (experiment, URI('http://udbl.uu.se/bistab#MSpecies'), mspecies) in SDEF()
+   and (experiment, URI('http://udbl.uu.se/bistab#tspan'), tspan) in SDEF();
+
+
+create function q2() -> Literal as
+select rdf:array_sum(apr(aref(asub(u,0,rdf:minus(a, 1),mspecies,-2),1,j)))
+  from Literal tspan, Literal experiment, Literal k_d, Literal k_a, Literal task, Literal j, Literal mspecies, Literal a, Literal u
+ where (task, URI('http://udbl.uu.se/bistab#U'), u) in SDEF()
+   and (task, URI('http://udbl.uu.se/bistab#k_a'), k_a) in SDEF()
+   and (task, URI('http://udbl.uu.se/bistab#k_d'), k_d) in SDEF()
+   and (task, URI('http://udbl.uu.se/bistab#inExperiment'), experiment) in SDEF()
+   and (experiment, URI('http://udbl.uu.se/bistab#A'), a) in SDEF()
+   and (experiment, URI('http://udbl.uu.se/bistab#MSpecies'), mspecies) in SDEF()
+   and (experiment, URI('http://udbl.uu.se/bistab#tspan'), tspan) in SDEF()
+   and rdf:equal(apr(aref(tspan,0,j)),1.5) and 1.0E8<=k_d and comparable(1.0E8, k_d) and k_d<=1.0E9 and comparable(k_d, 1.0E9) and 50<=k_a and comparable(50, k_a) and k_a<=90 and comparable(k_a, 90);
+
+create function q3() -> Literal as
+select rdf:argmax(groupby((select arg:1, rdf:max_ab_sum(arg:1) from Literal arg:1), #'rdf:max'));
+
+create function q3a() -> Literal as
+select rdf:max(rdf:max_ab_sum(URI('http://udbl.uu.se/bistab#Task1')));

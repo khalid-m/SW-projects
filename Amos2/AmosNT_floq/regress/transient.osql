@@ -1,0 +1,150 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Tore Risch, UDBL
+ * $RCSfile: transient.osql,v $
+ * $Revision: 1.1 $ $Date: 2012/08/15 18:23:14 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Testing transient objects
+ *
+ ****************************************************************************
+ * $Log: transient.osql,v $
+ * Revision 1.1  2012/08/15 18:23:14  torer
+ * New function
+ * (CREATE-TRANSIENT-FOREIGN-FUNCTION ARGTYPES RESTYPES DEF &OPTIONAL COST)
+ * to create transient foreign function which is garbage collected when
+ * no longer referenced
+ *
+ ****************************************************************************/
+
+create type trans;
+
+lisp;
+
+(let (
+      (o1 (encode-mapped-object 1000 'trans))
+      (o2 (encode-mapped-object 2000 'trans))
+      (o3 (encode-mapped-object 1000 'trans))
+      (o4 (create-transient-object 'trans))
+      (ht (make-hash-table :test 'equal))
+      )
+  (setf (gethash o1 ht) 1)
+  (checkequal "Transient objects"
+	      ((equal (create-transient-object 'trans)
+		      (create-transient-object 'trans)) nil)
+	      ((compare o1 o2) -1)
+	      ((compare o2 o1) 1)
+	      ((compare o1 o3) 0)
+	      ((compare o4 o4) 0)
+	      ((gethash o1 ht) 1)
+	      ((gethash o3 ht) 1)
+              ((osql "count(select t from trans t);") '((0)))
+              ((null(make-persistent o1)) nil)
+              ((compare o1 o2) -1)
+              ((null (make-persistent o2)) nil)
+              ((compare o1 o2) -1) 
+              ((null (make-persistent o3)) nil)
+              ((compare o1 o3) 0)
+              ((gethash o3 ht) 1)
+              ((gethash o1 ht) 1)
+              ((osql "count(select t from trans t);") '((3)))
+	      )
+  )
+
+:osql
+
+create type RDF_resource
+ properties
+   (nickname charstring, 
+   intid charstring key);
+
+lisp;
+
+(defglobal _rdf_resource_ (gettypenamed 'rdf_resource))
+
+(defun create-persistent (fno k resource)
+  (let ((o (/createobject _rdf_resource_)))
+    (putobject o 'encodes)
+    (/putobject o 'encodes k)
+    (osql-result k o)))
+
+:osql
+
+create function create_persistent(charstring k)->rdf_resource
+  as foreign 'create-persistent';
+
+create function new_persistent(charstring k, charstring nn)->rdf_resource
+ as begin
+	declare rdf_resource r;
+	set r = create_persistent(k);
+	set intid(r) = k;
+	set nickname(r) = nn;
+	return r;
+   end;
+
+
+create function new_dum_persistent(charstring uri, charstring nn)
+                                 -> rdf_resource r
+  as begin
+        create rdf_resource(intid, nickname) instances r(URI,nn);
+        return r;
+     end;
+
+
+create function new_transient(Charstring uri key)->RDF_resource key
+  as foreign "encode-transient-object";
+
+lisp;
+
+(defun encode-transient-object (fno extobj transient)
+ ;;; Convert external object EXTOBJ to transient object of type RDF_RESOURCE
+  (let ((new (create-transient-object 'RDF_RESOURCE)))
+    (putobject new 'encodes extobj)
+    (osql-result extobj new)))
+
+:osql
+
+set :r1 = new_persistent("http://www.apa.com", "apa");
+set :r2 = new_persistent("http://www.banan.com", "banan");
+
+lisp;
+
+(checkequal "compare on persistent object with encodes"
+	    ((osql "intid(:r1);") '(("http://www.apa.com"))))
+
+:osql
+
+set :r3 = new_dum_persistent("http://www.apple.com", "apple");
+set :r4 = new_dum_persistent("http://www.orange.com", "orange");
+
+lisp;
+
+(checkequal "compare on dum persistent i.e object without encodes"
+	    ((osql "intid(:r3);") '(("http://www.apple.com"))))
+
+
+(checkequal "equality between transients and persistent/dum persistent"
+	    ((osql 
+	      "select true where new_transient('http://www.apa.com')=:r1;")
+	     '((true)))
+	    ((osql 
+	      "select true where new_transient('http://www.apple.com')=:r3;")
+	     nil))
+
+:osql
+
+lisp;
+
+(defun add1-+ (fno x y)(osql-result x (1+ x)))
+
+(defglobal _fn1_ (create-transient-foreign-function 
+		  '((integer x)) '((integer)) 'add1-+ '(0.5 1)))
+(checkequal "Transient functions"
+	    ((getfunction _fn1_ '(1)) '((2)))
+	    ((firstn 2 (exec-cost-of-fn _fn1_)) '(0.5 1))
+	    )
+
+:osql
+
+rollback;

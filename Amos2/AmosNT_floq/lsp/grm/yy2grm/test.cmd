@@ -1,0 +1,1 @@
+amos2 %AMOS_HOME%/bin/amos2.dmp yy2grm.lsp -l "(yy2grm \"sql_parser.y\" \"sql-grammar.lsp\" \"sql\")" -l "(quit)"

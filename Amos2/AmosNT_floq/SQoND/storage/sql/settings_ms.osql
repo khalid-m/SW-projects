@@ -1,0 +1,16 @@
+set :sql_dialect = 'tsql';
+
+set :driver = 'com.microsoft.sqlserver.jdbc.SQLServerDriver';
+
+set :connection_str = 'jdbc:sqlserver://localhost;databaseName=bistab2';
+
+set :username = 'guest';
+
+set :password = 'guest';
+
+set :nma_proxy_threshold = 256;
+
+set :isHex = 1;
+
+
+

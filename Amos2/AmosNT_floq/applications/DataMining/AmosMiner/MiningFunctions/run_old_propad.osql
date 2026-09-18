@@ -1,0 +1,13 @@
+/*-*-sql-*-*******************************************************************/
+
+load_transact(getenv('AMOS_HOME')+'/applications/datamining/amosminer/data/transactions1000.nt');
+
+"Running old PROPAD with 1000 transactions, minsupp = 100";
+
+set :before = now();
+
+/* completes in 22.811 s */
+count(fim(100));
+
+timespan(:before, now());
+

@@ -1,0 +1,4 @@
+< 'schema.osql';
+load_lisp("../lsp/cost_model.populated.lsp");
+< 'parameters.osql';
+save "../aleh_load.cost.populated.dmp";

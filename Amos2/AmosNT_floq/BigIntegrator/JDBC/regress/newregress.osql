@@ -1,0 +1,40 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: newregress.osql,v $
+ * $Revision: 1.1 $ $Date: 2012/12/28 10:53:32 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: <description>
+ *
+ ****************************************************************************/
+
+/* import tables from data source c1 */
+import_table(first(:js),'EquipmentModel');
+
+import_table(first(:js),'SensorModel');
+
+import_table(first(:js),'InstalledEquipment');
+
+import_table(first(:js),'Site');
+
+import_table(first(:js),'SensorInstallation');
+
+import_table(first(:js),'Measured');
+
+create type Measures;
+
+create function q2()->Integer as
+select ie(e)
+from Installedequipment@c1 e, Site@c1 s
+where location(s)='Uppsala' and site(e)=site(s);
+
+/* what equipment has failed */
+/* should use Measures instead of Measured@c1 */
+create function q3()->Integer as
+select ie(n)
+from Site@c1 s, Measured@c1 m, SensorInstallation@c1 n
+where Mv(m)-ev(n)>th(n) and 
+      Si(m)=si(n) and
+      Logdbid(s)=logdbid(m);

@@ -1,0 +1,100 @@
+# Load the experiment data
+
+LOAD(<http://user.it.uu.se/~andan342/files/procdata.ttl>, true);
+
+# Check how many triples there are:
+
+SELECT (count(?o) as ?count)
+WHERE { ?s ?p ?o };
+
+# Check how many arrays there are:
+
+SELECT (count(?o) as ?count)
+WHERE { ?s ?p ?o .
+        FILTER isArray(?o) };
+
+
+# Get all de-facto numeric properties of :YeastPolarizationExperiment instances
+
+PREFIX : <http://udbl.uu.se/YeastPolarization#>;
+
+SELECT DISTINCT ?p
+WHERE { ?s ?p ?o .
+        ?s a :YeastPolarizationExperiment .
+        FILTER isNumeric(?o) };
+
+
+# Load some external functions
+
+lisp;
+
+(load "../apps/yeast/extfns.lsp")
+
+language-sparql
+
+# (1) What is the mean and variance of the values of each trajectory, having kon parameter below 0.015? 
+
+SELECT ?Km ?kon ?TrajNo
+       (mean(?Width) AS ?WidthMean)
+       (variance(?Width) AS ?WidthVariance)
+WHERE { ?trData a :TrajectoryData ;
+                :inExperiment :Experiment001 ;
+                :Km ?Km ;
+                :kon ?kon ;
+                :TrajNo ?trajNo ;
+                :Width ?Width .
+        FILTER (?kon < 0.015) };
+
+
+# (2) For each combination of the parameters km and kon,  where kon is below 0.015, compute the mean trajectory where each value is the average of the stored trajectory values. 
+
+SELECT ?Km ?kon 
+       (meanAgg(?Width) AS ?MeanTrajectory) 
+WHERE { ?trData a :TrajectoryData ;
+                :inExperiment :Experiment001 ;
+                :Km ?Km ;
+                :kon ?kon ;
+                :Width ?Width  . 
+        FILTER (?kon < 0.015) };
+
+# (3) What is the mean of the last five trajectory values in trajectories with time step of 2 minutes?
+
+SELECT ?Km ?kon ?TrajNo ?step (mean(?Width[((adims(?Width)[0]-4*?step)-1)::?step]) AS ?L5Mean) 
+WHERE { ?trData a :TrajectoryData ;
+                :inExperiment :Experiment001 ;
+                :Km ?Km ;
+                :kon ?kon ;
+                :TrajNo ?trajNo ;
+                :Width ?Width .
+        :Experiment001 :TimeStep_s ?timestep .
+        BIND (round(120/?timestep) AS ?step) .
+	FILTER (?kon < 0.015) };
+
+
+# (4) Define a function computing the final time of a given parameter ?trajectory:
+
+DEFINE FUNCTION final_time(?trajectory)  
+  AS SELECT ((adims(?width)[0]-1)*?timestep AS ?res)
+      WHERE {?trajectory :inExperiment ?experiment ;
+                         :Width ?width .
+             ?experiment :TimeStep_s ?timestep };
+
+lisp;
+
+:osql
+
+sourcecode('rdf:final_time');
+
+lisp;
+
+language-sparql
+
+# Show the final times of different trajectories are different
+
+SELECT DISTINCT (final_time(?t) AS ?final_time)
+WHERE { ?t :inExperiment :Experiment001 };
+
+
+        
+    
+               

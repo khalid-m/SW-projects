@@ -1,0 +1,47 @@
+/*-*-sql-*-*******************************************************************/
+
+logging off;
+
+set my_jdbc() = jdbc("myds", "com.mysql.jdbc.Driver");
+connect(my_jdbc(), "jdbc:mysql://" + "mei.it.uu.se" + ":3306/" + "lrtest",
+        "lr", "lr");
+
+lisp;
+
+;"
+
+(checkequal "local jdbc lrhist on mysql@mei"
+((osql "query_mysql({3,2,1,-1,0,-1,-1,-1,-1,5,-1,-1,-1,-1,64});")
+'((#(3 2 0 5 49)))))
+
+(checkequal "extract from a javascsq SP"
+((osql "vectorof(extract(newsp(siota(1,10))));")
+'((#(1 2 3 4 5 6 7 8 9 10)))))
+
+(checkequal "mysql lrhist, mapflex"
+((osql "in(mergestreams(mapflexv({{'mei.it.uu.se', 'lrtest',
+           streamof({3,2,1,-1,0,-1,-1,-1,-1,5,-1,-1,-1,-1,64})}}, #'dailyexp',
+make_record({'dump', 'lr.dmp', 'exe', 'javascsq'}))));")
+'((#(3 2 0 5 49)))))
+
+(checkequal "stream of lrhist queries, 1.5 xways"
+((osql "select 
+count(extract(spvflex({streamof(mysqltoll('mei.it.uu.se', 'lrtest', s))},
+make_record({'dump', 'lr.dmp', 'hostname', 'localhost', 'exe', 
+             'javascsq'}))[0]))
+from stream s where s=streamof(
+select v from vector v where 
+v=readfile('/home/zeitler/AmosNT/scsq/lr/data/cdp_mid15.out') and v[0]=3);")
+'((40))))
+
+(checkequal "stream of lrhist queries, 4 xways"
+((osql "select 
+count(extract(spvflex({streamof(mysqltoll('mei.it.uu.se', 'lrtest40', s))},
+make_record({'dump', 'lr.dmp', 'hostname', 'localhost', 'exe',
+             'javascsq'}))[0]))
+from stream s where s=streamof(
+select v from vector v where 
+v=readfile('/home/zeitler/AmosNT/scsq/lr/data/cdp_lite40.out') and v[0]=3);")
+'((4))))
+
+(send-form '(quit) (open-nameserver-port))

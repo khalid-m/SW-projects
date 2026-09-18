@@ -1,0 +1,224 @@
+/****************************************************/
+	/* Decode functions  */
+/****************************************************/
+
+
+lisp;
+(set-alias-name 'sequence 'vector  _type_)
+(set-alias-name 'sequence 'vector  _function_)
+:osql
+
+create function elementOf(Sequence s)-> Object
+  as select s[i] from integer i;
+
+create type Vecele1 properties(name charstring,value record);
+create Vecele1 instances :vecele1;
+set value(:vecele1)=make_record({});
+set name(:vecele1)="ele1";
+
+create type foundele properties(value integer);
+create foundele instances :fe;
+set value(:fe)=0;
+
+
+
+create function make_elements1()
+                ->record e as select value(ve)from Vecele1 ve where name(ve)="ele1";
+
+create function iterate1(vector  r)-> record rs
+		as 
+		begin
+		 for each Element e, Vecele1 ve2  
+                 where e=in(r) and name(ve2)="ele1"
+		  begin
+		
+			set value(ve2)=put_record(value(ve2),name(e),make_record({'maxoccurs',maxoccurs(e),'wsmedtype',wsmedtype(e),'wsdltype',wsdltype(e)}));
+			if subelements(e)then 
+				set rs=iterate1(subelements(e));
+			
+		 end;
+	        set rs=make_elements1();	
+		result rs;
+	
+		end;
+
+
+
+create function iterate(vector v)-> record rs 
+		as 
+		begin
+	
+		  for each  Element e,Vecele1  ve 
+                  where e=in(v)and name(ve)="ele1"
+		   begin
+			set value(ve)=put_record(value(ve),name(e),make_record({'maxoccurs',maxoccurs(e),'wsmedtype',wsmedtype(e),'wsdltype',wsdltype(e)}));
+			if subelements(e)then 
+				set rs=iterate1(subelements(e));
+		
+		   end;
+		  set rs=make_elements1();	
+		  result rs;
+		  set value(ve)=make_record({}) from Vecele1 ve where name(ve)="ele1";						 	
+	       end;
+
+
+
+
+
+create function info_elements(Operation op,charstring eleclass)
+                ->record rs as
+begin
+   if eleclass='in' then
+	begin
+	   if input(op) then
+		set rs =iterate(input(op))
+	  else
+	       set rs=make_record({});
+        end
+   else
+     if eleclass='out' then
+	begin
+	  if output(op) then
+		set rs =iterate(output(op))
+	  else
+	       set rs=make_record({});	
+		
+	end
+     else
+	if soapheader(op) then
+		set rs =iterate(soapheader(op))
+	else
+		set rs=make_record({});
+
+	
+   result rs;
+end;
+
+create function concat_obj(Object a, Object b)-> vector as
+					begin
+					 result {a,b};
+					end;
+
+create function resultele(Charstring wsdluri,charstring wsname,charstring opname)->Charstring as 
+					select name(ve[0])
+					from Operation op, Service ws, vector of element ve
+					where name(op)=opname and name(ws)=wsname  and wsdluri(ws)=wsdluri and port(ws)=op and output(op)=ve;
+create function get_element(record r, charstring c)-> record s as
+					begin
+					 for each integer i where  i=iota(0,record_length(r)-1)
+					  begin
+					
+					    if (mod(i,2)=0) then
+					      if (c=r[i]) then 
+							begin
+							  set i=i+1;
+							  result r[i];
+							 end
+					  end;
+					end;
+create function get_ele_properties(record r, charstring elename)->charstring as
+					begin
+					 for each integer i  where  i=iota(0,record_length(r)-1)
+					  begin
+					    if (mod(i,2)=0) then
+					      if (elename=r[i]) then 
+							begin
+							  set i=i+1;
+							  result r[i];
+							 end
+					  end;
+					end;	
+	
+create function countsubelement(element e, charstring elename)->integer r as
+					begin
+					
+					  if (name(e)!=elename) then
+					   begin
+						
+					     for each element f where  f=in(subelements(e))
+					      begin
+						
+						if (name(f)=elename)then
+						  begin		
+						    if subelements(f)then
+								result count(in(subelements(f)))
+						    else
+							result 0;
+						  end
+						else
+						   result countsubelement(f,elename);
+					      end;
+					    end
+					  else
+					    begin
+					     if subelements(e)then
+							 result count(in(subelements(e)))
+					     else
+						result 0;
+					    end
+					
+					end;	
+
+create function findoutput_element(element e, charstring elename)->integer r as
+				       begin
+					
+					  if (like_i(name(e),elename)) then
+					     result 1
+					  else
+					   begin
+					    if (subelements(e)) then
+						begin	
+					          for each element f where  f=in(subelements(e))
+					           begin
+						     result findoutput_element(f,elename);
+					           end;
+					         end
+					    
+					   end
+					end;
+create function find_element(record r, integer eleind)->charstring as select r[eleind];
+create function member_of(record r, charstring eleind)->boolean as select(r[i]=eleind) from integer i where i=iota(0,record_length(r)-1);
+create function subelements(Operation op,charstring elename)->integer as select countsubelement(e,elename) from Element e where e in output(op); 
+create function  findoutput_duplicate(Operation op, charstring elename)->integer as select findoutput_element(e,elename) from Element e where e in input(op);
+
+
+
+lisp;
+(defun cwo (fno wd ws op ip r)
+  (mapfunctionres 'callwebserviceoperation (list wd ws op ip) nil
+	(f/l (row)
+		       (osql-result wd ws op ip (nth 0 row)))))
+:osql
+
+/*****************************************************************************/
+		/* callwebservice  functions  */
+/*****************************************************************************/
+
+create function initoperation(charstring opname, charstring soapactionuri, 
+                                charstring style ,charstring encodingstyle, 
+                                charstring namespaceuri, charstring targeturl,
+                                Record ip,Record sh,Record inele,Record outele, Record soaph,Operation op)
+                 -> Object r 
+as foreign  "JAVA:webservicewrapper/initoperation";  
+
+create function cwo(charstring wsdluri,charstring wsname,charstring opname, 
+                               vector ip)->Object r as foreign "cwo";
+ 
+create function callwebserviceoperation(charstring wsdluri,charstring wsname,charstring opname, 
+                               vector ip)->Object r as 
+ select initoperation(opname,soapactionuri(op),style(op),
+                        encodingstyle(op), namespaceuri(ws),targeturl(op),decode(op,ip),soaphdecode(op,getsoaphvalue(op)),info_elements(op,'in'),info_elements(op,'out'),info_elements(op,'soapheader'),op)
+ from Operation op, Service ws 
+ where name(op)=opname and name(ws)=wsname  and wsdluri(ws)=wsdluri and port(ws)=op and findsignature(ip)=input_elementtype(wsdluri,wsname,op);
+
+
+/*****************************************************************************/
+/*calculate the excution time of query*/
+/****************************************************************************/
+create function testsql(Charstring sql)->Real c 
+as begin set c = clock();
+         sql(sql);
+         result clock()-c;
+   end;
+ 
+

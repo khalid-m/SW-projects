@@ -1,0 +1,55 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2006 Ruslan Fomkin, UDBL
+ * $RCSfile: regression_test.osql,v $
+ * $Revision: 1.4 $ $Date: 2012/01/10 08:19:58 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Regression test for ROOT wrapper
+ ****************************************************************************/
+
+lisp;
+(checkequal "Accessing ROOT file for meta information"
+	    ((osql "root_dirs(\"t.root\");")
+	     '(("/ATLFAST")))
+	    ((osql "root_trees(\"t.root\",\"/ATLFAST\");")
+	     '(("h51;1")))
+	    ((osql "root_columns(\"t.root\",\"/ATLFAST\",\"h51;1\");")
+	     '(("Nele" "Integer") ("Kfele" "Vector") ("Pxele" "Vector") ("Pyele" "Vector") ("Pzele" "Vector") ("Eeele" "Vector") ("Nmuo" "Integer") ("Kfmuo" "Vector") ("Pxmuo" "Vector") ("Pymuo" "Vector") ("Pzmuo" "Vector") ("Eemuo" "Vector") ("Npho" "Integer") ("Kfpho" "Vector") ("Pxpho" "Vector") ("Pypho" "Vector") ("Pzpho" "Vector") ("Eepho" "Vector") ("Nmux" "Integer") ("Kfmux" "Vector") ("Pxmux" "Vector") ("Pymux" "Vector") ("Pzmux" "Vector") ("Eemux" "Vector") ("Njet" "Integer") ("Kfjet" "Vector") ("Pxjet" "Vector") ("Pyjet" "Vector") ("Pzjet" "Vector") ("Eejet" "Vector") ("Ptcalo" "Vector") ("Ptbjet" "Vector") ("Ptujet" "Vector") ("Njetb" "Integer") ("Kfjetb" "Vector") ("Pxjetb" "Vector") ("Pyjetb" "Vector") ("Pzjetb" "Vector") ("Eejetb" "Vector") ("Npart" "Integer") ("Kppart" "Vector") ("Kspart" "Vector") ("Kfpart" "Vector") ("Kpmoth" "Vector") ("Kfmoth" "Vector") ("Pxpart" "Vector") ("Pypart" "Vector") ("Pzpart" "Vector") ("Eepart" "Vector") ("Isub" "Integer") ("Jetb" "Integer") ("Jetc" "Integer") ("Jettau" "Integer") ("Pxmiss" "Real") ("Pymiss" "Real") ("Pxnue" "Real") ("Pynue" "Real"))))
+
+(checkequal 
+ "Reading data through ROOT wrapper"
+ ((osql "count(select in(root_get(\"t.root\",\"/ATLFAST\",\"h51;1\",
+{\"t.root\",\"/ATLFAST\",\"h51;1\",3})));")
+  '((57)))
+ ((osql "count(select v_key from vector v_key, vector v 
+               where (v_key,v) in 
+                     root_scan(\"t.root\",\"/ATLFAST\",\"h51;1\"));")
+  '((25000))))
+
+(checkequal "Reading data through ROOT wrapper with projection"
+	    ((osql "root_get_project(\"t.root\",\"/ATLFAST\",
+	\"h51;1\",{\"Nele\",\"Kfele\"},{\"t.root\",\"/ATLFAST\",\"h51;1\",3,
+{\"Pxmiss\",\"Kfele\"}});")
+	     '((#(2 #(-11 11)))))
+	    ((osql "count(select in(root_get_project(\"t.root\",\"/ATLFAST\",
+\"h51;1\",{\"Pxmiss\",\"Pymiss\",\"Nele\",\"Kfele\",\"Pxele\",\"Pyele\",
+\"Pzele\",\"Eeele\",\"Nmuo\",\"Kfmuo\",\"Pxmuo\",\"Pymuo\",\"Pzmuo\",
+\"Eemuo\",\"Njetb\",\"Kfjetb\",\"Pxjetb\",\"Pyjetb\",\"Pzjetb\",\"Eejetb\"},
+{\"t.root\",\"/ATLFAST\",\"h51;1\",3,{\"Pxmiss\",\"Pymiss\",\"Nele\",
+\"Kfele\",\"Pxele\",\"Pyele\",\"Pzele\",\"Eeele\",\"Nmuo\",\"Kfmuo\",
+\"Pxmuo\",\"Pymuo\",\"Pzmuo\",\"Eemuo\",\"Njetb\",\"Kfjetb\",\"Pxjetb\",
+\"Pyjetb\",\"Pzjetb\",\"Eejetb\"}})));")
+	     '((20)))
+	    ((osql "count(select v from vector v, vector v_key 
+where (v_key,v) in root_scan_project(\"t.root\",\"/ATLFAST\",
+\"h51;1\",{\"Pxmiss\",\"Pymiss\",\"Nele\",\"Kfele\",\"Pxele\",\"Pyele\",
+\"Pzele\",\"Eeele\",\"Nmuo\",\"Kfmuo\",\"Pxmuo\",\"Pymuo\",\"Pzmuo\",
+\"Eemuo\",\"Njetb\",\"Kfjetb\",\"Pxjetb\",\"Pyjetb\",\"Pzjetb\",
+\"Eejetb\"}));")
+	     '((25000))))
+:osql
+
+quit;
+

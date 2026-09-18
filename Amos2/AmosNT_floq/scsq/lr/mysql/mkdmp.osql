@@ -1,0 +1,19 @@
+< 'mysql-lr.osql';
+
+lisp;
+(register-init-form '(delay-emit nil))
+:osql
+
+/*  Decomment this for running SCSQ-MySQL parallelized*/
+/*
+set lrdumpfiledir() = getenv("AMOS_HOME") + 'scsq\\lr\\mysql\\';
+set dumpfile() = 'mysql-lr.dmp';
+
+set daily_exp_node()=<"localhost","lr","fredrik","",3306>;
+add mysql_nodes(0)=<"localhost","lr","fredrik","",3306>;
+add mysql_nodes(1)=<"localhost","lr2","fredrik","",3306>;
+*/
+
+save "mysql-lr.dmp";
+
+quit;

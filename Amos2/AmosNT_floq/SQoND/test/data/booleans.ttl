@@ -1,0 +1,7 @@
+@prefix : <http://example.org/> .
+
+:x :true true ;
+   :false false .
+
+:y :true "true"^^xsd:boolean ;
+   :false "false"^^<http://www.w3.org/2001/XMLSchema#boolean> .

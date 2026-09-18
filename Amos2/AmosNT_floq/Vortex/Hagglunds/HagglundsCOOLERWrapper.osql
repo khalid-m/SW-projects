@@ -1,0 +1,59 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2013 Cheng Xu, UDBL
+ * $RCSfile: HagglundsCOOLERWrapper.osql,v $
+ * $Revision: 1.4 $ $Date: 2013/11/20 21:06:37 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: the wrapper for the hagglunds cooler
+ *
+ ****************************************************************************
+ * $Log: HagglundsCOOLERWrapper.osql,v $
+ * Revision 1.4  2013/11/20 21:06:37  chexu484
+ * *** empty log message ***
+ *
+ * Revision 1.3  2013/10/22 11:58:58  torer
+ * *** empty log message ***
+ *
+ * Revision 1.2  2013/10/20 18:42:09  chexu484
+ * moving average included
+ * To be refined:
+ * 1. how to choose appropriate size of the moving window
+ * 2. how to choose appropriate size of the training data
+ *
+ * Revision 1.1  2013/09/27 12:11:58  chexu484
+ * demo of learn_n_validate
+ * scenario: hagglunds cooler
+ *
+ *
+ ****************************************************************************/
+
+create function hsTS(Record r) -> Number
+  as r["TS"];
+
+/* a set of access functions */
+/* note: the access functions can actually generated automatically */
+
+create function hsDIN01(Record r) -> Number
+  as r["DIN01"];
+
+create function hsREG402(Record r) -> Number
+  as r["REG402"];
+
+create function hsREG403(Record r) -> Number
+  as r["REG403"];
+
+create function hsREG408(Record r) -> Number
+  as r["REG408"];
+
+create function hsREG410(Record r) -> Number
+  as r["REG410"];
+
+create function hagglundsRecords(Charstring hlundid) -> Stream of Record
+  as streamof(select project_record(r, concat({"TS"}, variables))
+     	      from Logdirectory dir, Vector of Charstring variables, Record r
+     	      where dir = dirnamed(logdirname(theHagglundsStream(hlundid)))
+     	      and variables = variables(dir)
+     	      and r in filter_record_agg(simlogeventstream(dir), variables)
+     	      and hsDIN01(r) = 1 and hsREG408(r) > 15);

@@ -1,0 +1,34 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2006 Ruslan Fomkin, UDBL
+ * $RCSfile: basic.osql,v $
+ * $Revision: 1.1 $ $Date: 2006/03/21 13:56:24 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Regression test for ALEH project for no ontology 
+ * implementation.
+ * Tests that some cut queries over entire file t.root located in ROOT wrapper
+ * home directory.
+ ****************************************************************************
+ * $Log: basic.osql,v $
+ * Revision 1.1  2006/03/21 13:56:24  ruslan
+ * Streamed without ontology implementation is added
+ *
+ ****************************************************************************/
+
+lisp;
+(checkequal "3 lepton cut"
+	    ((osql "count(select v_key from vector v_key, vector props, 
+parameters g where 
+<v_key,props> = aleh_access(\"../wrappers/ROOTWrap/t.root\") and
+v_key=threeleptoncut(v_key,props,g));")
+	     '((475))))
+
+(checkequal "Opt all cuts"
+	    ((osql "sort(select v_key[1] from vector v_key, vector props, 
+parameters g where 
+<v_key,props> = aleh_access(\"../wrappers/ROOTWrap/t.root\") and 
+v_key=optallcuts(v_key,props,g));")
+	     '((#(19015 24455)))))
+:osql

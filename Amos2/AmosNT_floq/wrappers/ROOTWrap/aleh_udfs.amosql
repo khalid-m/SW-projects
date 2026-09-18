@@ -1,0 +1,156 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Ruslan Fomkin
+ * $RCSfile: aleh_udfs.amosql,v $
+ * $Revision: 1.17 $ $Date: 2009/03/06 09:58:18 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Numerical UDFs for ALEH queries.
+ ****************************************************************************
+ * $Log: aleh_udfs.amosql,v $
+ * Revision 1.17  2009/03/06 09:58:18  torer
+ * son, cos, tan, atan, exp, ln defined
+ *
+ * Revision 1.16  2009/03/06 07:53:51  torer
+ * ceiling and round to C
+ *
+ * Revision 1.15  2009/03/05 21:19:44  torer
+ * FLOOR removed
+ *
+ * Revision 1.14  2008/03/03 15:24:50  ruslan
+ * sum4 declared
+ *
+ * Revision 1.13  2008/02/18 14:30:45  ruslan
+ * effectivemass and mod over x, y values in addition to vector implementation
+ *
+ * Revision 1.12  2008/02/16 08:51:53  ruslan
+ * not in over tuple. it is not used because it does not improve performance event worse
+ *
+ * Revision 1.11  2008/02/15 12:00:59  ruslan
+ * not in operator is implemented
+ *
+ * Revision 1.10  2008/02/13 15:53:57  ruslan
+ * sum over bag of tuples
+ *
+ * Revision 1.9  2008/02/11 12:49:48  ruslan
+ * key declarations for unification
+ *
+ * Revision 1.8  2008/02/07 10:47:30  ruslan
+ * fixing a bug in general implementation of minagg2. minagg4 with arity 4
+ *
+ * Revision 1.7  2008/02/05 10:48:28  ruslan
+ * compound key declarations
+ *
+ * Revision 1.6  2008/02/01 15:02:08  ruslan
+ * variable arity plus of vectors
+ *
+ * Revision 1.5  2007/11/24 08:58:31  ruslan
+ * notany and some in C
+ *
+ * Revision 1.4  2007/11/16 14:03:07  ruslan
+ * vector.in in C for performance
+ *
+ * Revision 1.3  2007/11/16 11:54:53  ruslan
+ * mathematical definition of round for projects using ROOTwrapper
+ *
+ * Revision 1.2  2007/11/11 09:47:04  ruslan
+ * aleh aggregates are implemented in C
+ *
+ * Revision 1.1  2007/11/10 08:42:00  ruslan
+ * missing file
+ *
+ ****************************************************************************/
+
+create function plus(vector v1, vector v2) -> 
+	vector res as /*multidirectional
+	("bbf" */foreign 'vector_plusbbf'/*)
+	("bfb" foreign 'vector_plusbfb')
+	("fbb" select v1 where plus(v2,v1)=res)*/;
+declare_key(functionnamed("VECTOR.VECTOR.PLUS->VECTOR"),{"v1","v2"});
+
+create function plus(vector v1, vector v2, vector v3) -> 
+	vector res as foreign 'vector_plusbbf';
+declare_key(functionnamed("VECTOR.VECTOR.VECTOR.PLUS->VECTOR"),
+			{"v1","v2","v3"});
+
+create function plus(vector v1, vector v2, vector v3, vector v4) -> 
+	vector res as foreign 'vector_plusbbf';
+declare_key(functionnamed("VECTOR.VECTOR.VECTOR.VECTOR.PLUS->VECTOR"),
+		{"v1","v2","v3","v4"});
+/*
+create function minus(vector of number v1, vector of number v2) ->
+	vector of number res as
+	select res where plus(v2,res)=v1;
+*/
+create function sum(bag of vector vb) -> vector of number as
+	foreign 'vector_sum';
+
+create function sum2(bag vb) -> <number x, number y> as
+	foreign 'tuple_sum';
+
+create function sum4(bag vb) -> <number x1, number x2, number x3, number x4> as
+	foreign 'tuple_sum';
+
+create function atan2(number x, number y) -> real as foreign 'atan2bbf';
+declare_key(functionnamed("NUMBER.NUMBER.ATAN2->REAL"),{"x","y"});
+create function math_round(number key) -> integer as foreign 'roundbf';
+create function log(number key) -> real as foreign 'logbf';
+
+create function sqrt_pos(number x key) -> real r as multidirectional
+	("bf" foreign 'sqrtbf' cost {2,1})
+	("fb" key select x where r*r=x);
+
+create function magnitude(number x, number y, number z) -> real r as
+	foreign 'magnitudebbbf';
+declare_key(functionnamed("NUMBER.NUMBER.NUMBER.MAGNITUDE->REAL"),
+			{"x","y","z"});
+create function pt(number x, number y) -> real r as foreign 'ptbbf';
+declare_key(functionnamed("NUMBER.NUMBER.PT->REAL"),{"x","y"});
+create function eta(number x, number y, number z) -> real r as
+	foreign 'etabbbf';
+declare_key(functionnamed("NUMBER.NUMBER.NUMBER.ETA->REAL"),{"x","y","z"});
+
+create function effectiveMass(Vector v1, Vector v2) -> 
+	real as foreign 'effective_massbbf';
+declare_key(functionnamed("VECTOR.VECTOR.EFFECTIVEMASS->REAL"),{"v1","v2"});
+create function effectiveMass(Number x1, Number y1, Number x2, Number y2) -> 
+	real as foreign 'effective_massbbbbf';
+declare_key(functionnamed("NUMBER.NUMBER.NUMBER.NUMBER.EFFECTIVEMASS->REAL"),
+		{"x1","y1","x2","y2"});
+
+create function mod(vector v key) -> real r as foreign 'modbf';
+create function modulo(number x, number y) -> real r as foreign 'modbbf';
+declare_key(functionnamed("NUMBER.NUMBER.MOD->REAL"),{"x","y"});
+
+create function atleast(integer n, bag b) -> boolean as
+	foreign 'atleastbb';
+
+create function minagg2(bag b) -> <number,object> as foreign 'minagg2bf';
+create function minagg3(bag b) -> <number,object,object> as 
+	foreign 'minagg2bf';
+create function minagg4(bag b) -> <number,object,object,object> as 
+	foreign 'minagg2bf';
+
+create function v_in(vector v) -> object as foreign 'vector_inbf';
+
+create function somec(bag b) -> boolean as foreign 'someb';
+create function notanyc(bag b) -> boolean as foreign 'notanyb';
+
+declare_key(functionnamed("VECTOR.VECTOR.TIMES->NUMBER"),{"x","y"});
+declare_key(functionnamed("NUMBER.NUMBER.NUMBER.PLUS->NUMBER"),{"x","y","z"});
+declare_key(functionnamed("NUMBER.ABS->NUMBER"),{"x"});
+
+create function not_in(object x, vector v) -> boolean as foreign 'notinbb';
+declare_key(functionnamed("OBJECT.VECTOR.NOT_IN->BOOLEAN"),{"x","v"});
+
+create function not_in(object x, object v1, object v2) -> boolean as 
+	foreign 'tuple_notinbb';
+declare_key(functionnamed("OBJECT.OBJECT.OBJECT.NOT_IN->BOOLEAN"),
+		{"x","v1","v2"});
+
+create function not_in(object x, object v1, object v2, object v3) -> boolean 
+	as foreign 'tuple_notinbb';
+declare_key(functionnamed("OBJECT.OBJECT.OBJECT.OBJECT.NOT_IN->BOOLEAN"),
+		{"x","v1","v2","v3"});

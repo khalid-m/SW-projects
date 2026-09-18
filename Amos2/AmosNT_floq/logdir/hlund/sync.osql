@@ -1,0 +1,70 @@
+/* work in progress... */
+
+create function skew(LogDirectory) -> number as stored;
+
+create function timestamp_skewed(logevent e) -> number 
+ as timestamp(e) - skew(directory(logfile(e)));
+
+create function get_lst(logevent e) -> real
+ as real(logstarttime(logfile(e)));
+
+create function min_lst(vector of logevent v)->number as
+ minagg(select real(logstarttime(logfile(e)))
+        from logevent e
+        where e in v);
+
+create function mapvector_args(function,vector,vector) -> vector
+ as foreign 'mapvector-args---+';
+
+create function calc_skew(vector of logevent v)->vector of number as
+ mapvector_args(#'number.number.minus->number',
+                mapvector_args(#'get_lst',v,{}),
+                {min_lst(v)});
+
+create function set_skew(vector of logevent v) -> boolean as
+begin
+ declare integer i, vector skew;
+ set skew = calc_skew(v);
+ set i = 0;
+ for each logevent e where e in v
+ begin
+  set skew(directory(logfile(e))) = skew[i];
+  set i = i + 1;
+ end;
+end;
+
+create function sunionb(vector of stream,function,function,function)->bag of object as foreign 'stream-union----+';
+
+create function sunion(vector of stream v,function kfn,function ofn,function cfn)->stream of object 
+ as streamof(sunionb(v,kfn,ofn,cfn));
+
+create function sunionb(vector of stream,function,function)->bag of object as foreign 'stream-union---+';
+
+create function sunion(vector of stream v,function kfn,function ofn)->stream of object 
+ as streamof(sunionb(v,kfn,ofn));
+
+create function sync_streams(vector of stream of logevent v) -> stream of logevent 
+ as sunion(v,#'logevent.timestamp_skewed->number',#'<',#'set_skew');
+
+create function sync_dirs(vector of logdirectory v) -> stream of logevent
+ /* Stream logevents from the logdirectories in v, synced on their skewed timestamp */
+ as select sync_streams(vse)
+    from vector of stream of logevent vse
+    where vse = (vselect logeventstream(d) from logdirectory d where d in v);
+
+
+/* testing */
+
+create function sim_sync_dirs(vector of logdirectory v) -> stream of logevent
+ /* Simulate stream of logevents from the logdirectories in v, synced on their skewed timestamps */
+ as select sync_streams(vse)
+    from vector of stream of logevent vse
+    where vse = (vselect simlogeventstream(d) from logdirectory d where d in v);
+
+create logdirectory (name,folder,startseq,timeout) instances 
+ ('d2a',pwd()+'/testdata/skew/1/',0,10),('d2b',pwd()+'/testdata/skew/2/',0,10);
+
+create function synctest1() -> bag of (timeval,timeval,number,charstring,charstring,number) as
+ for each logevent e where e in sim_sync_dirs({dirnamed('d2a'),dirnamed('d2b')})
+  return (select timeval(timestamp(e)),timeval(timestamp_skewed(e)),skew(directory(lf)),filename(lf),variable(e),value(e)
+          from logfile lf where lf = logfile(e));

@@ -1,0 +1,81 @@
+/*-*-sql-*-******************************************************************/
+
+load_lisp('extfns.lsp');
+
+create function DEF() -> (Literal s, Literal p, Literal o);
+create_index("def","s","hash","multiple");
+create_index("def","p","hash","multiple");
+create_index("def","o","hash","multiple");
+
+
+add DEF() = turtle('processed.ttl');
+
+/* What is the mean and variance of the width (all time points) */
+set :yp_q1 = " # Calling array-to-scalar versions of mean() and variance() 
+PREFIX : <http://udbl.uu.se/YeastPolarization#> 
+SELECT ?Km ?kon ?TrajNo (mean(?Width) as ?WidthMean) (variance(?Width) as ?WidthVariance)
+WHERE { ?trData a :TrajectoryData ;
+                :inExperiment :Experiment001 ;
+                :Km ?Km ;
+                :kon ?kon ;
+                :TrajNo ?trajNo ;
+                :Width ?Width }
+";
+
+/* What is the mean and variance of the width as a function of time */
+
+set :yp_q2m = " # Calling aggregation function across arrays, implicit group by ?Km, ?kon 
+PREFIX : <http://udbl.uu.se/YeastPolarization#> 
+SELECT ?Km ?kon (aa_mean(?Width) as ?WidthMean) 
+WHERE { ?trData a :TrajectoryData ;
+                :inExperiment :Experiment001 ;
+                :Km ?Km ;
+                :kon ?kon ;
+                :Width ?Width }
+";
+
+set :yp_q2v = " # Calling aggregation function across arrays, implicit group by ?Km, ?kon 
+PREFIX : <http://udbl.uu.se/YeastPolarization#> 
+SELECT ?Km ?kon (aa_variance(?Width) as ?WidthVariance) 
+WHERE { ?trData a :TrajectoryData ;
+                :inExperiment :Experiment001 ;
+                :Km ?Km ;
+                :kon ?kon ;
+                :Width ?Width }
+";
+
+/* What is the mean of the last five width values with the step of 2 minutes */
+
+set :yp_q3 = " # Sub-sampling ?Width array using metadata 
+PREFIX : <http://udbl.uu.se/YeastPolarization#> 
+SELECT ?Km ?kon ?TrajNo (mean(?Width[adims(?Width)[0]-6 : 
+                                     round(120/?timestep) :]) as ?L5Mean) 
+WHERE { ?trData a :TrajectoryData ;
+                :inExperiment :Experiment001 ;
+                :Km ?Km ;
+                :kon ?kon ;
+                :TrajNo ?trajNo ;
+                :Width ?Width .
+	:Experiment001 :TimeStep_s ?timestep }
+";
+
+set :yp_d4 = " # Defining a view is SparQL
+PREFIX : <http://udbl.uu.se/YeastPolarization#> 
+DEFINE FUNCTION final_time(?trajectory)  
+  AS SELECT ((adims(?width)[0]-1)*?timestep AS ?res)
+      WHERE { ?trajectory :inExperiment ?experiment ;
+                          :Width ?width .
+              ?experiment :TimeStep_s ?timestep } 
+";
+
+set :yp_q4 = " # Using the defined view
+PREFIX : <http://udbl.uu.se/YeastPolarization#> 
+SELECT ?Km ?kon ?TrajNo (final_time(?trData) as ?finalTime)
+WHERE { ?trData a :TrajectoryData ;
+                :inExperiment :Experiment001 ;
+                :Km ?Km ;
+                :kon ?kon ;
+                :TrajNo ?trajNo }
+";
+
+

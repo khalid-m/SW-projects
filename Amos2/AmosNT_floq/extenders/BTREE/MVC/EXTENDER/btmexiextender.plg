@@ -1,0 +1,38 @@
+<html>
+<body>
+<pre>
+<h1>Build Log</h1>
+<h3>
+--------------------Configuration: btmexiextender - Win32 Release--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "C:\Users\Silvia\AppData\Local\Temp\RSP48BF.tmp" with contents
+[
+/nologo /MT /W3 /GX /O2 /I "..\..\..\..\C" /I "..\..\..\system\include" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "JAVAAMOS_EXPORTS" /Fo"./Release/" /Fd"./Release/" /FD /c 
+"C:\AmosNT\extenders\BTREE\bt.c"
+"C:\AmosNT\extenders\BTREE\BT_mexi_extender.c"
+]
+Creating command line "cl.exe @C:\Users\Silvia\AppData\Local\Temp\RSP48BF.tmp" 
+Creating temporary file "C:\Users\Silvia\AppData\Local\Temp\RSP48C0.tmp" with contents
+[
+kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /incremental:no /pdb:"./Release/bt.pdb" /machine:I386 /out:"../../../../bin/bt.dll" /implib:"./Release/bt.lib" 
+.\Release\bt.obj
+.\Release\BT_mexi_extender.obj
+..\..\..\..\bin\amos2.lib
+]
+Creating command line "link.exe @C:\Users\Silvia\AppData\Local\Temp\RSP48C0.tmp"
+<h3>Output Window</h3>
+Compiling...
+bt.c
+BT_mexi_extender.c
+Generating Code...
+Linking...
+   Creating library ./Release/bt.lib and object ./Release/bt.exp
+
+
+
+<h3>Results</h3>
+bt.dll - 0 error(s), 0 warning(s)
+</pre>
+</body>
+</html>

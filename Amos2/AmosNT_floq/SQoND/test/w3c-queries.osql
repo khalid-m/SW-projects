@@ -1,0 +1,724 @@
+/*-*-sql-*-*******************************************************************/
+
+/* QUERIES FROM http://www.w3.org/TR/sparql11-query/
+   EARLIER VERSION: http://www.w3.org/TR/rdf-sparql-query/ 
+*/
+
+/* LOAD 2.1.ttl */
+
+set :q2_1 = '
+SELECT ?title
+WHERE
+{
+  <http://example.org/book/book1> <http://purl.org/dc/elements/1.1/title> ?title .
+}
+';
+
+/* LOAD 2.2.ttl */
+
+set :q2_2 = '
+PREFIX foaf:   <http://xmlns.com/foaf/0.1/>
+SELECT ?name ?mbox
+WHERE
+  { ?x foaf:name ?name .
+    ?x foaf:mbox ?mbox }
+';
+
+/* LOAD 2.3.ttl */
+
+set :q2_3_1a = '
+SELECT ?v WHERE { ?v ?p "cat" }
+';
+
+set :q2_3_1b = '
+SELECT ?v WHERE { ?v ?p "cat"@en }
+';
+
+set :q2_3_2 = '
+SELECT ?v WHERE { ?v ?p 42 }
+';
+
+set :q2_3_3 = '
+SELECT ?v WHERE { ?v ?p "abc"^^<http://example.org/datatype#specialDatatype> }
+';
+
+/* LOAD 2.5.ttl */
+
+set :q2_5a = '
+PREFIX foaf:   <http://xmlns.com/foaf/0.1/>
+SELECT ( CONCAT(?G, " ", ?S) AS ?name )
+WHERE  { ?P foaf:givenName ?G ; foaf:surname ?S }
+';
+
+set :q2_5b = '
+PREFIX foaf:   <http://xmlns.com/foaf/0.1/>
+SELECT ?name
+WHERE  { 
+   ?P foaf:givenName ?G ; 
+      foaf:surname ?S 
+   BIND(CONCAT(?G, " ", ?S) AS ?name)
+}
+';
+
+/* LOAD 2.6.ttl */
+
+set :q2_6 = '
+PREFIX foaf:   <http://xmlns.com/foaf/0.1/>
+PREFIX org:    <http://example.com/ns#>
+
+CONSTRUCT { ?x foaf:name ?name }
+WHERE  { ?x org:employeeName ?name }
+';
+
+/* LOAD 3.ttl */
+
+set :q3_1a = '
+PREFIX  dc:  <http://purl.org/dc/elements/1.1/>
+SELECT  ?title
+WHERE   { ?x dc:title ?title .
+          FILTER regex(?title, "^SPARQL") 
+        }
+';
+
+set :q3_1b = '
+PREFIX  dc:  <http://purl.org/dc/elements/1.1/>
+SELECT  ?title
+WHERE   { ?x dc:title ?title .
+          FILTER regex(?title, "web", "i" ) 
+        }
+';
+
+set :q3_2 = '
+PREFIX  dc:  <http://purl.org/dc/elements/1.1/>
+PREFIX  ns:  <http://example.org/ns#>
+SELECT  ?title ?price
+WHERE   { ?x ns:price ?price .
+          FILTER (?price < 30.5) .
+          ?x dc:title ?title . }
+';
+
+/* LOAD 6.1.ttl */
+
+set :q6_1 = '
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+SELECT ?name ?mbox
+WHERE  { ?x foaf:name  ?name .
+         OPTIONAL { ?x  foaf:mbox  ?mbox }
+       }
+';
+
+/* LOAD 3.ttl */
+
+set :q6_2 = '
+PREFIX  dc:  <http://purl.org/dc/elements/1.1/>
+PREFIX  ns:  <http://example.org/ns#>
+SELECT  ?title ?price
+WHERE   { ?x dc:title ?title .
+          OPTIONAL { ?x ns:price ?price . FILTER (?price < 30) }
+        }
+';
+
+/* LOAD 6.3.ttl */
+
+set :q6_3 = '
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+SELECT ?name ?mbox ?hpage
+WHERE  { ?x foaf:name  ?name .
+         OPTIONAL { ?x foaf:mbox ?mbox } .
+         OPTIONAL { ?x foaf:homepage ?hpage }
+       }
+';
+
+/* LOAD 7.ttl */
+
+set :q7a= '
+PREFIX dc10:  <http://purl.org/dc/elements/1.0/>
+PREFIX dc11:  <http://purl.org/dc/elements/1.1/>
+
+SELECT ?title
+WHERE  { { ?book dc10:title  ?title } UNION { ?book dc11:title  ?title } }
+';
+
+set :q7b= '
+PREFIX dc10:  <http://purl.org/dc/elements/1.0/>
+PREFIX dc11:  <http://purl.org/dc/elements/1.1/>
+
+SELECT ?x ?y
+WHERE  { { ?book dc10:title ?x } UNION { ?book dc11:title  ?y } }
+';
+
+set :q7c= '
+PREFIX dc10:  <http://purl.org/dc/elements/1.0/>
+PREFIX dc11:  <http://purl.org/dc/elements/1.1/>
+
+SELECT ?title ?author
+WHERE  { { ?book dc10:title ?title .  ?book dc10:creator ?author }
+         UNION
+         { ?book dc11:title ?title .  ?book dc11:creator ?author }
+       }
+';
+
+/* LOAD 8.1.ttl */
+
+set :q8_1_1 = '
+PREFIX  rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
+PREFIX  foaf:   <http://xmlns.com/foaf/0.1/> 
+
+SELECT ?person
+WHERE 
+{
+    ?person rdf:type  foaf:Person .
+    FILTER NOT EXISTS { ?person foaf:name ?name }
+}     
+';
+
+set :q8_1_2 = '
+PREFIX  rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
+PREFIX  foaf:   <http://xmlns.com/foaf/0.1/> 
+
+SELECT ?person
+WHERE 
+{
+    ?person rdf:type  foaf:Person .
+    FILTER EXISTS { ?person foaf:name ?name }
+}
+';
+
+/* LOAD 8.3.1.ttl */
+
+set :q8_3_1a = '
+SELECT *
+{ 
+  ?s ?p ?o
+  FILTER NOT EXISTS { ?x ?y ?z }
+}
+';
+
+set :q8_3_2a = '
+PREFIX : <http://example/>
+SELECT * 
+{ 
+  ?s ?p ?o 
+  FILTER NOT EXISTS { :a :b :c }
+}
+';
+
+/* LOAD 8.3.3.ttl */
+
+set :q8_3_3a = '
+PREFIX : <http://example.com/>
+SELECT * WHERE {
+        ?x :p ?n
+        FILTER NOT EXISTS {
+                ?x :q ?m .
+                FILTER(?n = ?m)
+        }
+}
+';
+
+
+/* LOAD 10.1.ttl */
+
+set :q10_1a = '
+PREFIX  dc:  <http://purl.org/dc/elements/1.1/>
+PREFIX  ns:  <http://example.org/ns#>
+
+SELECT  ?title ?price
+{  ?x ns:price ?p .
+   ?x ns:discount ?discount
+   BIND (?p*(1-?discount) AS ?price)
+   FILTER(?price < 20)
+   ?x dc:title ?title . }
+';
+
+/* LOAD 10.1x.ttl */
+
+set :q10_1ax = '
+PREFIX  dc:  <http://purl.org/dc/elements/1.1/>
+PREFIX  ns:  <http://example.org/ns#>
+
+SELECT  ?title ?price
+{  ?x ns:price ?p .
+   OPTIONAL { ?x ns:discount ?discount }
+   BIND (?p*(1-?discount) AS ?price)
+   ?x dc:title ?title . }
+';
+
+/* NOT TESTED! */
+set :q10_1y = '
+PREFIX  dc:  <http://purl.org/dc/elements/1.1/>
+PREFIX  ns:  <http://example.org/ns#>
+
+SELECT  ?title (?p*(1-?discount) AS ?price)
+{  ?x ns:price ?p .
+   OPTIONAL { ?x ns:discount ?discount }
+   ?x dc:title ?title . }
+';
+
+/* LOAD 11.1.ttl */
+
+set :q11_1 = '
+PREFIX : <http://books.example/>
+SELECT (SUM(?lprice) AS ?totalPrice)
+WHERE {
+  ?org :affiliates ?auth .
+  ?auth :writesBook ?book .
+  ?book :price ?lprice .
+}
+GROUP BY ?org
+HAVING (SUM(?lprice) > 10)
+';
+
+/* NO DATA! */
+
+set :q11_2 = '
+SELECT (AVG(?y) AS ?avg)
+WHERE {
+  ?a :x ?x ;
+     :y ?y .
+}
+GROUP BY ?x
+';
+
+set :q11_3 = '
+PREFIX : <http://data.example/>
+SELECT (AVG(?size) AS ?asize)
+WHERE {
+  ?x :size ?size
+}
+GROUP BY ?x
+HAVING(AVG(?size) > 10)
+';
+
+set :q11_4 = '
+PREFIX : <http://example.com/data/#>
+SELECT ?x (MIN(?y) * 2 AS ?min)
+WHERE {
+  ?x :p ?y .
+  ?x :q ?z .
+} GROUP BY ?x (STR(?z))
+';
+
+/* LOAD 11.5.ttl */
+
+/* TODO: Expression with multiple grouping */
+set :q11_5 = '
+PREFIX : <http://example.com/data/#>
+SELECT ?g (AVG(?p) AS ?avg) ((MIN(?p) + MAX(?p)) / 2 AS ?c)
+WHERE {
+  ?g :p ?p .
+}
+GROUP BY ?g
+';
+
+/* cross-referencing aggregation results: */
+set :q11_5x = '
+PREFIX : <http://example.com/data/#>
+SELECT ?g (MIN(?p) AS ?min) (MAX(?p) - ?min AS ?range)
+WHERE {
+  ?g :p ?p .
+}
+';
+
+set :q11_5y = '
+PREFIX : <http://example.com/data/#>
+SELECT ?g (MIN(?p)*0.9 AS ?min) (MAX(?p) - ?min AS ?range)
+WHERE {
+  ?g :p ?p .
+}
+';
+
+set :q11_5z = '
+PREFIX : <http://example.com/data/#>
+SELECT (MAX(?p)/2 AS ?median)
+WHERE {
+  ?g :p ?p .
+}
+';
+
+set :q11_5zz = '
+PREFIX : <http://example.com/data/#>
+SELECT (MAX(?p) AS ?max) (?max/2 AS ?median)
+WHERE {
+  ?g :p ?p .
+}
+';
+
+/* LOAD 12x.ttl */
+
+/* Using count() instead of min()*/
+set :q12x = '
+PREFIX : <http://people.example/>
+SELECT ?y ?nameCount
+WHERE {
+  :alice :knows ?y .
+  {
+    SELECT ?y (COUNT(?name) AS ?nameCount)
+    WHERE {
+      ?y :name ?name .
+    } GROUP BY ?y
+  }
+}
+';
+
+/* Using HAVING clause */
+set :q12y = '
+PREFIX : <http://people.example/>
+SELECT ?y ?nameCount
+WHERE {
+  :alice :knows ?y .
+  {
+    SELECT ?y (COUNT(?name) AS ?nameCount)
+    WHERE {
+      ?y :name ?name .
+    } GROUP BY ?y
+      HAVING ?nameCount > 2
+  }
+}
+';
+
+/* Using cross-references in SELECT clause */
+set :q12z = '
+PREFIX : <http://people.example/>
+SELECT ?y ?nameEst ?nameRank
+WHERE {
+  :alice :knows ?y .
+  {
+    SELECT ?y (COUNT(?name)*2 AS ?nameEst) (1/?nameEst AS ?nameRank)
+    WHERE {
+      ?y :name ?name .
+    } GROUP BY ?y
+      HAVING ?nameEst > 4
+  }
+}
+';
+
+/* LOAD 13.2.1.ttl -> http://example.org/foaf/aliceFoaf */
+
+set :q13_2_1 = '
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+SELECT  ?name
+FROM    <http://example.org/foaf/aliceFoaf>
+WHERE   { ?x foaf:name ?name }
+';
+
+/* LOAD 13.2.3.ttl -> http://example.org/dft.ttl */
+/* LOAD 13.2.3.alice.ttl -> http://example.org/alice */
+/* LOAD 13.2.3.bob.ttl -> http://example.org/bob */
+
+set :q13_2_3 = '
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+PREFIX dc: <http://purl.org/dc/elements/1.1/>
+
+SELECT ?who ?g ?mbox
+FROM <http://example.org/dft.ttl>
+FROM NAMED <http://example.org/alice>
+FROM NAMED <http://example.org/bob>
+WHERE
+{
+   ?g dc:publisher ?who .
+   GRAPH ?g { ?x foaf:mbox ?mbox }
+}
+';
+
+/* LOAD 13.3.alice.ttl -> http://example.org/foaf/aliceFoaf */
+/* LOAD 13.3.bob.ttl -> http://example.org/foaf/bobFoaf */
+
+set :q13_3_1 = '
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+
+SELECT ?src ?bobNick
+FROM NAMED <http://example.org/foaf/aliceFoaf>
+FROM NAMED <http://example.org/foaf/bobFoaf>
+WHERE
+  {
+    GRAPH ?src
+    { ?x foaf:mbox <mailto:bob@work.example> .
+      ?x foaf:nick ?bobNick
+    }
+  }
+';
+
+set :q13_3_2 = '
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+PREFIX data: <http://example.org/foaf/>
+
+SELECT ?nick
+FROM NAMED <http://example.org/foaf/aliceFoaf>
+FROM NAMED <http://example.org/foaf/bobFoaf>
+WHERE
+  {
+     GRAPH data:bobFoaf {
+         ?x foaf:mbox <mailto:bob@work.example> .
+         ?x foaf:nick ?nick }
+  }
+';
+
+set :q13_3_3 = '
+PREFIX  data:  <http://example.org/foaf/>
+PREFIX  foaf:  <http://xmlns.com/foaf/0.1/>
+PREFIX  rdfs:  <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?mbox ?nick ?ppd
+FROM NAMED <http://example.org/foaf/aliceFoaf>
+FROM NAMED <http://example.org/foaf/bobFoaf>
+WHERE
+{
+  GRAPH data:aliceFoaf
+  {
+    ?alice foaf:mbox <mailto:alice@work.example> ;
+           foaf:knows ?whom .
+    ?whom  foaf:mbox ?mbox ;
+           rdfs:seeAlso ?ppd .
+    ?ppd  a foaf:PersonalProfileDocument .
+  } .
+  GRAPH ?ppd
+  {
+      ?w foaf:mbox ?mbox ;
+         foaf:nick ?nick
+  }
+}
+';
+
+/* LOAD 13.3.4.ttl */
+/* LOAD 13.3.4.graph1.ttl -> tag:example.org,2005-06-06:graph1 */
+/* LOAD 13.3.4.graph2.ttl -> tag:example.org,2005-06-06:graph2 */
+
+set :q13_3_4 = '
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+PREFIX dc:   <http://purl.org/dc/elements/1.1/>
+
+SELECT ?name ?mbox ?date
+WHERE
+  {  ?g dc:publisher ?name ;
+        dc:date ?date .
+    GRAPH ?g
+      { ?person foaf:name ?name ; foaf:mbox ?mbox }
+  }
+';
+
+/* LOAD 15.3.ttl */
+
+set :q15_3 = '
+PREFIX foaf:    <http://xmlns.com/foaf/0.1/>
+SELECT ?name WHERE { ?x foaf:name ?name }
+';
+
+set :q15_3_1 = '
+PREFIX foaf:    <http://xmlns.com/foaf/0.1/>
+SELECT DISTINCT ?name WHERE { ?x foaf:name ?name }
+';
+
+/* LOAD 16.1.1.ttl */
+
+set :q16_1_1 = '
+PREFIX foaf:    <http://xmlns.com/foaf/0.1/>
+SELECT ?nameX ?nameY ?nickY
+WHERE
+  { ?x foaf:knows ?y ;
+       foaf:name ?nameX .
+    ?y foaf:name ?nameY .
+    OPTIONAL { ?y foaf:nick ?nickY }
+  }
+';
+
+/* LOAD 16.1.2.ttl */
+
+set :q16_1_2a = '
+PREFIX  dc:  <http://purl.org/dc/elements/1.1/>
+PREFIX  ns:  <http://example.org/ns#>
+SELECT  ?title (?p*(1-?discount) AS ?price)
+{ ?x ns:price ?p .
+  ?x dc:title ?title . 
+  ?x ns:discount ?discount 
+}
+';
+
+set :q16_1_2b = '
+PREFIX  dc:  <http://purl.org/dc/elements/1.1/>
+PREFIX  ns:  <http://example.org/ns#>
+SELECT  ?title (?p AS ?fullPrice) (?fullPrice*(1-?discount) AS ?customerPrice)
+{ ?x ns:price ?p .
+   ?x dc:title ?title . 
+   ?x ns:discount ?discount 
+}
+';
+
+/* LOAD 16.2.ttl */
+
+set :q16_2 = '
+PREFIX foaf:    <http://xmlns.com/foaf/0.1/>
+PREFIX vcard:   <http://www.w3.org/2001/vcard-rdf/3.0#>
+CONSTRUCT   { <http://example.org/person#Alice> vcard:FN ?name }
+WHERE       { ?x foaf:name ?name }
+';
+
+/* LOAD 16.3.ttl */
+
+set :q16_3 = '
+PREFIX foaf:    <http://xmlns.com/foaf/0.1/>
+ASK  { ?x foaf:name  "Alice" }
+';
+
+
+/* BUG: select 1 where USTR('2004') > timeval(); */
+/* TODO: should translate timezones to GMT */
+
+/* LOAD 17.ttl */
+
+/* not being tested! */
+set :q17 = '
+PREFIX a:      <http://www.w3.org/2000/10/annotation-ns#>
+PREFIX dc:     <http://purl.org/dc/elements/1.1/>
+PREFIX xsd:    <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?annot
+WHERE { ?annot  a:annotates  <http://www.w3.org/TR/rdf-sparql-query/> .
+        ?annot  dc:date      ?date .
+        FILTER ( ?date > "2005-01-01T00:00:00Z"^^xsd:dateTime ) }
+';
+
+set :q17a = '
+PREFIX a:      <http://www.w3.org/2000/10/annotation-ns#>
+PREFIX dc:     <http://purl.org/dc/elements/1.1/>
+PREFIX xsd:    <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?annot
+WHERE { ?annot  a:annotates  <http://www.w3.org/TR/rdf-sparql-query/> .
+        ?annot  dc:date      ?date .
+        FILTER ( xsd:dateTime(?date) < xsd:dateTime("2005-01-01T00:00:00Z") ) }
+';
+
+set :q17z = '
+PREFIX a:      <http://www.w3.org/2000/10/annotation-ns#>
+PREFIX dc:     <http://purl.org/dc/elements/1.1/>
+PREFIX xsd:    <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?annot
+WHERE { ?annot  a:annotates  <http://www.w3.org/TR/rdf-sparql-query/> .
+        ?annot  dc:date      ?date .
+        FILTER ( ?date > "2004-12-31T00:19:00Z"^^xsd:dateTime ) }
+';
+
+set :q17a = '
+PREFIX a:      <http://www.w3.org/2000/10/annotation-ns#>
+PREFIX dc:     <http://purl.org/dc/elements/1.1/>
+PREFIX xsd:    <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?annot
+WHERE { ?annot  a:annotates  <http://www.w3.org/TR/rdf-sparql-query/> .
+        ?annot  dc:date      ?date .
+        FILTER ( xsd:dateTime(?date) < xsd:dateTime("2005-01-01T00:00:00Z") ) }
+';
+
+/* LOAD 17.4.1.1.tll */
+
+/* TODO: remove redundant check NEQ(data,UB()) */
+set :q17_4_1_1 = '
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+PREFIX dc:   <http://purl.org/dc/elements/1.1/>
+PREFIX xsd:   <http://www.w3.org/2001/XMLSchema#>
+SELECT ?givenName
+ WHERE { ?x foaf:givenName  ?givenName .
+         OPTIONAL { ?x dc:date ?date } .
+         FILTER ( bound(?date) ) }
+';
+
+/* LOAD 17.4.2.1.ttl */
+
+set :q17_4_2_1 = '
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+SELECT ?name ?mbox
+ WHERE { ?x foaf:name  ?name ;
+            foaf:mbox  ?mbox .
+         FILTER isIRI(?mbox) }
+';
+
+set :q17_4_2_3 = '
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+SELECT ?name ?mbox
+ WHERE { ?x foaf:name  ?name ;
+           foaf:mbox  ?mbox .
+         FILTER isLiteral(?mbox) }
+';
+
+/* LOAD 17.4.2.2.ttl */
+
+set :q17_4_2_2 = '
+PREFIX a:      <http://www.w3.org/2000/10/annotation-ns#>
+PREFIX dc:     <http://purl.org/dc/elements/1.1/>
+PREFIX foaf:   <http://xmlns.com/foaf/0.1/>
+
+SELECT ?given ?family
+ WHERE { ?annot  a:annotates  <http://www.w3.org/TR/rdf-sparql-query/> .
+         ?annot  dc:creator   ?c .
+         OPTIONAL { ?c  foaf:given   ?given ; foaf:family  ?family } .
+         FILTER isBlank(?c)
+       }
+';
+
+/* LOAD 17.4.2.5.ttl */
+
+set :q17_4_2_5 = '
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+SELECT ?name ?mbox
+ WHERE { ?x foaf:name  ?name ;
+            foaf:mbox  ?mbox .
+         FILTER regex(str(?mbox), "@work.example") }
+';
+
+/* LOAD 17.4.2.6 */
+
+set :q17_4_2_6 = '
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+SELECT ?name ?mbox
+ WHERE { ?x foaf:name  ?name ;
+            foaf:mbox  ?mbox .
+         FILTER ( lang(?name) = "es" ) }
+';
+
+/* LOAD 17.4.2.7.ttl */
+
+set :q17_4_2_7 = '
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+PREFIX eg:   <http://biometrics.example/ns#>
+SELECT ?name ?shoeSize
+ WHERE { ?x foaf:name  ?name ; eg:shoeSize  ?shoeSize .
+         FILTER ( datatype(?shoeSize) = xsd:integer ) }
+';
+
+/* LOAD 17.4.1.7a.ttl */
+
+set :q17_4_1_7a = '
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+SELECT ?name1 ?name2
+ WHERE { ?x foaf:name  ?name1 ;
+            foaf:mbox  ?mbox1 .
+         ?y foaf:name  ?name2 ;
+            foaf:mbox  ?mbox2 .
+         FILTER (?mbox1 = ?mbox2 && ?name1 != ?name2)
+       }
+';
+
+/* LOAD 17.4.1.7a.ttl */
+
+/* TODO: timezones! */
+set :q17_4_1_7b = '
+PREFIX a:      <http://www.w3.org/2000/10/annotation-ns#>
+PREFIX dc:     <http://purl.org/dc/elements/1.1/>
+PREFIX xsd:    <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?annotates
+WHERE { ?annot  a:annotates  ?annotates .
+        ?annot  dc:date      ?date .
+        FILTER ( ?date = xsd:dateTime("2005-01-01T00:00:00Z") ) }
+';
+
+/* LOAD 17.4.3.14.ttl  */
+set :q17_4_3_14 = '
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+SELECT ?name
+ WHERE { ?x foaf:name  ?name . 
+         FILTER regex(?name, "^ali", "i") }
+';

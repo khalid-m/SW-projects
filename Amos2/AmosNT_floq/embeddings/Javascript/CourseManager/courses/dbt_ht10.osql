@@ -1,0 +1,37 @@
+/******* DATA ****************************************************/
+/*** DBT course HT 2007                                        ***/
+/*****************************************************************/
+
+assignment(1, "Normalization",              date(2010,7,2),"DBT-HT2010");
+assignment(2, "DB design and EER modeling", date(2010,8,3),"DBT-HT2010");
+assignment(3, "SQL: Queries and Views",     date(2010,8,15),"DBT-HT2010");
+
+
+set :a1=assistant("Lars","Melander","lars",".lm?","lars.melander@it.uu.se");
+set :a2=assistant("Cheng","Xu","cheng",".cx?","cheng.xu@it.uu.se");
+set :a3=assistant("Cheng","Xu","cheng1",".cx?","cheng.xu@it.uu.se");
+set :a4=assistant("Thanh","Truong","thanh",".tt?","thanh.truong@it.uu.se");
+set :a5=assistant("Robert","Kajic","robert",".rk?","robert.kajic@it.uu.se");
+set :a6=assistant("Robert","Kajic","robert1",".rk?","robert.kajic@it.uu.se");
+
+declare course :c1;
+set :c1 = course("DBT-HT2010");
+
+set share(:a1,"DBT-HT2010")=0.16;
+set share(:a2,"DBT-HT2010")=0.16;
+set share(:a3,"DBT-HT2010")=0.16;
+set share(:a4,"DBT-HT2010")=0.16;
+set share(:a5,"DBT-HT2010")=0.16;
+set share(:a6,"DBT-HT2010")=0.16;
+
+
+add responsible(:c1) = lecturer("Kjell","Orsborn","kjello",".ko?","Kjell.Orsborn@it.uu.se");
+add responsible(:c1) = lecturer("Manivasakan","Sabesan","sabesan",".ms?","Manivasakan.Sabesan@it.uu.se");
+add assistants(:c1) = :a1;
+add assistants(:c1) = :a2;
+add assistants(:c1) = :a3;
+add assistants(:c1) = :a4;
+add assistants(:c1) = :a5;
+add assistants(:c1) = :a6;
+
+add assignments(:c1) = in(select a from assignment a where coursename(a) = name(:c1));

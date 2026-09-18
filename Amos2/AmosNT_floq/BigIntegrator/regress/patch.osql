@@ -1,0 +1,189 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: patch.osql,v $
+ * $Revision: 1.1 $ $Date: 2013/12/12 16:00:41 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: LOcal multi-SQL scenario
+ ****************************************************************************
+ * $Log: patch.osql,v $
+ * Revision 1.1  2013/12/12 16:00:41  minzh812
+ * *** empty log message ***
+ *
+ * Revision 1.1  2013/06/18 09:42:25  minzh812
+ * *** empty log message ***
+ *
+ * Revision 1.2  2013/01/03 16:38:34  minzh812
+ * *** empty log message ***
+ ****************************************************************************/
+
+
+/* import just a source predicate not bound to any specific dsinst */
+create function import_table2(Relational r,
+                     Charstring catalog_name,
+                     Charstring schema_name,
+                     Charstring table_name,
+                 Charstring typename,
+                        Boolean updateable,
+                             Vector supertypes,
+                             Bag of Relational js) -> Mappedtype mt
+  as foreign 'import_table2-------+';
+
+lisp;
+
+(setq _save-intermediates_ t)
+
+(setq *use-dnf* nil)
+
+
+
+(defun import_table2-------+ (fno ds catalog-name schema-name table-name
+                 type-name updateable supertypes js mtp)
+  (let ((mt (import-table2 ds
+              (convert catalog-name)
+              (convert schema-name)
+              (convert table-name)
+              (or (convert type-name)
+                  table-name)
+              (convert updateable)
+              (mapcar #'gettypenamed (convert supertypes))
+              js)))
+
+    (osql-result ds catalog-name schema-name table-name
+         type-name updateable supertypes js mt)))
+
+;;i want to add an extra attribute uri in measuresA
+(defun import-table2 (ds catalog schema table mtname updateable supertypes js)
+  (let* ((columns1 (get-columns-amos-typed ds table 'noerror))
+	(columns (cons (list 'CHARSTRING 'jdbcURI) columns1));;new added
+     (keycols (get-key-columns-amos-typed ds catalog schema table))
+     (cc-fno  (create-relational-sp-fn
+           ds table columns keycols mtname js))
+     (cc-name (generic-fnname cc-fno))
+     mt)
+
+    (/putobject cc-fno 'CCLUSTERFCT? t)
+    (setq mt (create-mapped-type  (mksymbol mtname)
+                  supertypes
+                  columns
+                  keycols
+                  cc-name))
+    (add-amos-type    ds :wrapped table :amos mt)
+    (add-wrapped-type ds :wrapped table :amos mt)
+    (if updateable (create-keyed-update-fns ds mt columns keycols))
+    (if updateable
+    (set-constructor mt (create-sql-constructor ds mt))
+      (forbid-constructor mt "This mapped type is read-only"))
+    mt))
+
+
+(defun create-relational-sp-fn (ds table columns keys relation-name js)
+  (let* ((width (length columns))
+     (name (concat (make-relational-core-cluster-fn-name relation-name)))
+     (fullname (concat name (packlist (buildn width '+))))
+     (column-names (mapcar #'second columns))
+     (fbunch (make-string width "f"))
+     (fno (createfunction
+           name;; the arguments; none
+           nil;; its result types
+           columns;; RESV
+           'multidirectional;; QUANT
+           `((,fbunch foreign ,fullname));; PRED, whatever that is
+           nil)))
+    (declare-keys fno keys columns)
+    (defc (mksymbol fullname)
+      `(lambda ,(cons 'fno column-names)
+     (mapfunction ,(resolvename 'sql (list ds ""))
+              (vector ,ds
+                  ,(concat "select "
+                       (concatl column-names "," (function id))
+                       " from "table))
+              (f/l (row)
+               (applyarray (function osql-result) (car row))))))
+
+    ;; This is something that should be on all mapped types of type
+    ;; relational.
+    (/putobject fno 'tablename table)
+    (addfunction 'datasource (list fno) (list js))
+    fno))
+
+(quote "back up"
+(defun import-table2 (ds catalog schema table mtname updateable supertypes js)
+  (let* ((columns (get-columns-amos-typed ds table 'noerror))
+     (keycols (get-key-columns-amos-typed ds catalog schema table))
+     (cc-fno  (create-relational-sp-fn
+           ds table columns keycols mtname js))
+     (cc-name (generic-fnname cc-fno))
+     mt)
+
+    (/putobject cc-fno 'CCLUSTERFCT? t)
+    (setq mt (create-mapped-type  (mksymbol mtname)
+                  supertypes
+                  columns
+                  keycols
+                  cc-name))
+    (add-amos-type    ds :wrapped table :amos mt)
+    (add-wrapped-type ds :wrapped table :amos mt)
+    (if updateable (create-keyed-update-fns ds mt columns keycols))
+    (if updateable
+    (set-constructor mt (create-sql-constructor ds mt))
+      (forbid-constructor mt "This mapped type is read-only"))
+    mt))
+
+
+(defun create-relational-sp-fn (ds table columns keys relation-name js)
+  (let* ((width (length columns))
+     (name (concat (make-relational-core-cluster-fn-name relation-name)))
+     (fullname (concat name (packlist (buildn width '+))))
+     (column-names (mapcar #'second columns))
+     (fbunch (make-string width "f"))
+     (fno (createfunction
+           name;; the arguments; none
+           nil;; its result types
+           columns;; RESV
+           'multidirectional;; QUANT
+           `((,fbunch foreign ,fullname));; PRED, whatever that is
+           nil)))
+    (declare-keys fno keys columns)
+    (defc (mksymbol fullname)
+      `(lambda ,(cons 'fno column-names)
+     (mapfunction ,(resolvename 'sql (list ds ""))
+              (vector ,ds
+                  ,(concat "select "
+                       (concatl column-names "," (function id))
+                       " from "table))
+              (f/l (row)
+               (applyarray (function osql-result) (car row))))))
+
+    ;; This is something that should be on all mapped types of type
+    ;; relational.
+    (/putobject fno 'tablename table)
+    (addfunction 'datasource (list fno) (list js))
+    fno))
+)
+
+
+(with-directory "../../wrappers/relational/"
+	(load "sql_finalizer_new.lsp"))
+
+(load "fedquery.lsp")
+
+:osql
+
+create function import_table2(Relational r,
+                 Charstring table_name,
+                 Boolean updateable,
+                             Bag of Relational js)
+                         -> Mappedtype mt
+  as import_table2(r, '', '', table_name, '', updateable, {}, js);
+
+create function import_table2(Relational r, Charstring table_name, Bag of Relational js)
+                         -> Mappedtype mt
+  as import_table2(r, table_name, false, js);
+
+
+parteval("now");
+
+parteval("real");

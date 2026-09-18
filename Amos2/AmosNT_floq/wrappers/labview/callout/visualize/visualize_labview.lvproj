@@ -1,0 +1,202 @@
+﻿<?xml version='1.0' encoding='UTF-8'?>
+<Project Type="Project" LVVersion="10008000">
+	<Item Name="My Computer" Type="My Computer">
+		<Property Name="server.app.propertiesEnabled" Type="Bool">true</Property>
+		<Property Name="server.control.propertiesEnabled" Type="Bool">true</Property>
+		<Property Name="server.tcp.enabled" Type="Bool">false</Property>
+		<Property Name="server.tcp.port" Type="Int">0</Property>
+		<Property Name="server.tcp.serviceName" Type="Str">My Computer/VI Server</Property>
+		<Property Name="server.tcp.serviceName.default" Type="Str">My Computer/VI Server</Property>
+		<Property Name="server.vi.callsEnabled" Type="Bool">true</Property>
+		<Property Name="server.vi.propertiesEnabled" Type="Bool">true</Property>
+		<Property Name="specify.custom.address" Type="Bool">false</Property>
+		<Item Name="visualize_labview_next.vi" Type="VI" URL="../visualize_labview_next.vi"/>
+		<Item Name="visualize_labview_next_2.vi" Type="VI" URL="../visualize_labview_next_2.vi"/>
+		<Item Name="visualize_labview_next_3.vi" Type="VI" URL="../visualize_labview_next_3.vi"/>
+		<Item Name="Dependencies" Type="Dependencies"/>
+		<Item Name="Build Specifications" Type="Build">
+			<Item Name="visualize_labview" Type="DLL">
+				<Property Name="App_copyErrors" Type="Bool">true</Property>
+				<Property Name="App_INI_aliasGUID" Type="Str">{C8C9E6E3-42F0-45B7-AA2F-66659C62C16E}</Property>
+				<Property Name="App_INI_GUID" Type="Str">{DCE8C3C5-48BA-4CB4-AACE-982FD3671C43}</Property>
+				<Property Name="Bld_buildSpecName" Type="Str">visualize_labview</Property>
+				<Property Name="Bld_excludeLibraryItems" Type="Bool">true</Property>
+				<Property Name="Bld_excludePolymorphicVIs" Type="Bool">true</Property>
+				<Property Name="Bld_localDestDir" Type="Path">..</Property>
+				<Property Name="Bld_localDestDirType" Type="Str">relativeToCommon</Property>
+				<Property Name="Bld_modifyLibraryFile" Type="Bool">true</Property>
+				<Property Name="Destination[0].destName" Type="Str">visualize_labview.dll</Property>
+				<Property Name="Destination[0].path" Type="Path">../NI_AB_PROJECTNAME.dll</Property>
+				<Property Name="Destination[0].preserveHierarchy" Type="Bool">true</Property>
+				<Property Name="Destination[0].type" Type="Str">App</Property>
+				<Property Name="Destination[1].destName" Type="Str">Support Directory</Property>
+				<Property Name="Destination[1].path" Type="Path">../data</Property>
+				<Property Name="DestinationCount" Type="Int">2</Property>
+				<Property Name="Dll_delayOSMsg" Type="Bool">true</Property>
+				<Property Name="Dll_headerGUID" Type="Str">{A518BFD9-911F-471E-848E-E2489264646E}</Property>
+				<Property Name="Dll_libGUID" Type="Str">{6724D956-8FB1-4F5D-A3BA-7448B5BB4784}</Property>
+				<Property Name="Source[0].itemID" Type="Str">{AE807617-031A-4C5D-B9CE-142C88AAA07A}</Property>
+				<Property Name="Source[0].type" Type="Str">Container</Property>
+				<Property Name="Source[1].destinationIndex" Type="Int">0</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[0]VIProtoDir" Type="Int">1</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[0]VIProtoInputIdx" Type="Int">-1</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[0]VIProtoLenInput" Type="Int">-1</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[0]VIProtoLenOutput" Type="Int">-1</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[0]VIProtoName" Type="Str">return value</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[0]VIProtoOutputIdx" Type="Int">3</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[0]VIProtoPassBy" Type="Int">1</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[1]VIProtoDir" Type="Int">0</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[1]VIProtoInputIdx" Type="Int">11</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[1]VIProtoLenInput" Type="Int">-1</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[1]VIProtoLenOutput" Type="Int">-1</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[1]VIProtoName" Type="Str">reference</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[1]VIProtoOutputIdx" Type="Int">-1</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[1]VIProtoPassBy" Type="Int">1</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[2]VIProtoDir" Type="Int">0</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[2]VIProtoInputIdx" Type="Int">10</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[2]VIProtoLenInput" Type="Int">3</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[2]VIProtoLenOutput" Type="Int">-1</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[2]VIProtoName" Type="Str">Input</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[2]VIProtoOutputIdx" Type="Int">-1</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[2]VIProtoPassBy" Type="Int">1</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[3]CallingConv" Type="Int">1</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[3]Name" Type="Str">visualize_labview_next</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[3]VIProtoDir" Type="Int">3</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[3]VIProtoInputIdx" Type="Int">-1</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[3]VIProtoLenInput" Type="Int">-1</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[3]VIProtoLenOutput" Type="Int">-1</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[3]VIProtoName" Type="Str">len</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[3]VIProtoOutputIdx" Type="Int">-1</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfo[3]VIProtoPassBy" Type="Int">1</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfoCPTM" Type="Bin">%!#!!!!!!!=!"!!!!!N!!Q!%9W^E:1!!$5!+!!&gt;/&gt;7VF=GFD!"*!1!!"`````Q!#"5FO=(6U!&amp;1!]!!-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!$!A!!?!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!)!!!!!"B!=!!)!!%!"!!#!!!*=G6G:8*F&lt;G.F!&amp;1!]!!-!!!!!!!!!!%!!!!!!!!!!!!!!!!!!Q!&amp;!Q!!?!!!!!!!!!!!!!!!!!!!#1!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1I!!!!)!!!!!!%!"A</Property>
+				<Property Name="Source[1].ExportedVI.VIProtoInfoVIProtoItemCount" Type="Int">4</Property>
+				<Property Name="Source[1].itemID" Type="Ref">/My Computer/visualize_labview_next.vi</Property>
+				<Property Name="Source[1].sourceInclusion" Type="Str">TopLevel</Property>
+				<Property Name="Source[1].type" Type="Str">ExportedVI</Property>
+				<Property Name="Source[2].destinationIndex" Type="Int">0</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[0]VIProtoDir" Type="Int">1</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[0]VIProtoInputIdx" Type="Int">-1</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[0]VIProtoLenInput" Type="Int">-1</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[0]VIProtoLenOutput" Type="Int">-1</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[0]VIProtoName" Type="Str">return value</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[0]VIProtoOutputIdx" Type="Int">3</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[0]VIProtoPassBy" Type="Int">1</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[1]VIProtoDir" Type="Int">0</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[1]VIProtoInputIdx" Type="Int">11</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[1]VIProtoLenInput" Type="Int">-1</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[1]VIProtoLenOutput" Type="Int">-1</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[1]VIProtoName" Type="Str">reference</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[1]VIProtoOutputIdx" Type="Int">-1</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[1]VIProtoPassBy" Type="Int">1</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[2]VIProtoDir" Type="Int">0</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[2]VIProtoInputIdx" Type="Int">10</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[2]VIProtoLenInput" Type="Int">3</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[2]VIProtoLenOutput" Type="Int">-1</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[2]VIProtoName" Type="Str">Input1</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[2]VIProtoOutputIdx" Type="Int">-1</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[2]VIProtoPassBy" Type="Int">1</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[3]VIProtoDir" Type="Int">3</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[3]VIProtoInputIdx" Type="Int">-1</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[3]VIProtoLenInput" Type="Int">-1</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[3]VIProtoLenOutput" Type="Int">-1</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[3]VIProtoName" Type="Str">len</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[3]VIProtoOutputIdx" Type="Int">-1</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[3]VIProtoPassBy" Type="Int">1</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[4]VIProtoDir" Type="Int">0</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[4]VIProtoInputIdx" Type="Int">9</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[4]VIProtoLenInput" Type="Int">5</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[4]VIProtoLenOutput" Type="Int">-1</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[4]VIProtoName" Type="Str">Input2</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[4]VIProtoOutputIdx" Type="Int">-1</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[4]VIProtoPassBy" Type="Int">1</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[5]CallingConv" Type="Int">1</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[5]Name" Type="Str">visualize_labview_next2</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[5]VIProtoDir" Type="Int">3</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[5]VIProtoInputIdx" Type="Int">-1</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[5]VIProtoLenInput" Type="Int">-1</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[5]VIProtoLenOutput" Type="Int">-1</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[5]VIProtoName" Type="Str">len2</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[5]VIProtoOutputIdx" Type="Int">-1</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfo[5]VIProtoPassBy" Type="Int">1</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfoCPTM" Type="Bin">%!#!!!!!!!A!"!!!!!N!!Q!%9W^E:1!!$5!+!!&gt;/&gt;7VF=GFD!"2!1!!"`````Q!#"UFO=(6U)$)!&amp;%"!!!(`````!!)(37ZQ&gt;81A-1"5!0!!$!!!!!!!!!!!!!!!!!!!!!!!!!!!!!-!"!)!!(A!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!)!!!!#!!!!!!91(!!#!!"!!5!!A!!#8*F:G6S:7ZD:1"5!0!!$!!!!!!!!!!"!!!!!!!!!!!!!!!$!!1!"A-!!(A!!!!!!!!!!!!!!!!!!!E!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1I!!!%+!!!!#!!!!!!"!!=</Property>
+				<Property Name="Source[2].ExportedVI.VIProtoInfoVIProtoItemCount" Type="Int">6</Property>
+				<Property Name="Source[2].itemID" Type="Ref">/My Computer/visualize_labview_next_2.vi</Property>
+				<Property Name="Source[2].sourceInclusion" Type="Str">TopLevel</Property>
+				<Property Name="Source[2].type" Type="Str">ExportedVI</Property>
+				<Property Name="Source[3].destinationIndex" Type="Int">0</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[0]VIProtoDir" Type="Int">1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[0]VIProtoInputIdx" Type="Int">-1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[0]VIProtoLenInput" Type="Int">-1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[0]VIProtoLenOutput" Type="Int">-1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[0]VIProtoName" Type="Str">return value</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[0]VIProtoOutputIdx" Type="Int">3</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[0]VIProtoPassBy" Type="Int">1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[1]VIProtoDir" Type="Int">0</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[1]VIProtoInputIdx" Type="Int">11</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[1]VIProtoLenInput" Type="Int">-1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[1]VIProtoLenOutput" Type="Int">-1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[1]VIProtoName" Type="Str">reference</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[1]VIProtoOutputIdx" Type="Int">-1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[1]VIProtoPassBy" Type="Int">1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[2]VIProtoDir" Type="Int">0</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[2]VIProtoInputIdx" Type="Int">10</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[2]VIProtoLenInput" Type="Int">3</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[2]VIProtoLenOutput" Type="Int">-1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[2]VIProtoName" Type="Str">Input1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[2]VIProtoOutputIdx" Type="Int">-1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[2]VIProtoPassBy" Type="Int">1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[3]VIProtoDir" Type="Int">3</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[3]VIProtoInputIdx" Type="Int">-1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[3]VIProtoLenInput" Type="Int">-1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[3]VIProtoLenOutput" Type="Int">-1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[3]VIProtoName" Type="Str">len</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[3]VIProtoOutputIdx" Type="Int">-1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[3]VIProtoPassBy" Type="Int">1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[4]VIProtoDir" Type="Int">0</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[4]VIProtoInputIdx" Type="Int">9</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[4]VIProtoLenInput" Type="Int">5</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[4]VIProtoLenOutput" Type="Int">-1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[4]VIProtoName" Type="Str">Input2</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[4]VIProtoOutputIdx" Type="Int">-1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[4]VIProtoPassBy" Type="Int">1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[5]VIProtoDir" Type="Int">3</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[5]VIProtoInputIdx" Type="Int">-1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[5]VIProtoLenInput" Type="Int">-1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[5]VIProtoLenOutput" Type="Int">-1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[5]VIProtoName" Type="Str">len2</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[5]VIProtoOutputIdx" Type="Int">-1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[5]VIProtoPassBy" Type="Int">1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[6]VIProtoDir" Type="Int">0</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[6]VIProtoInputIdx" Type="Int">8</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[6]VIProtoLenInput" Type="Int">7</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[6]VIProtoLenOutput" Type="Int">-1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[6]VIProtoName" Type="Str">Input3</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[6]VIProtoOutputIdx" Type="Int">-1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[6]VIProtoPassBy" Type="Int">1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[7]CallingConv" Type="Int">1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[7]Name" Type="Str">visualize_labview_next3</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[7]VIProtoDir" Type="Int">3</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[7]VIProtoInputIdx" Type="Int">-1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[7]VIProtoLenInput" Type="Int">-1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[7]VIProtoLenOutput" Type="Int">-1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[7]VIProtoName" Type="Str">len3</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[7]VIProtoOutputIdx" Type="Int">-1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfo[7]VIProtoPassBy" Type="Int">1</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfoCPTM" Type="Bin">%!#!!!!!!!E!"!!!!!N!!Q!%9W^E:1!!$5!+!!&gt;/&gt;7VF=GFD!"2!1!!"`````Q!#"UFO=(6U)$-!&amp;%"!!!(`````!!)(37ZQ&gt;81A-A!51%!!!@````]!!A&gt;*&lt;H"V&gt;#!R!&amp;1!]!!-!!!!!!!!!!!!!!!!!!!!!!!!!!-!"!!&amp;!A!!?!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!#!!!!!A!!!!)!!!!!"B!=!!)!!%!"A!#!!!*=G6G:8*F&lt;G.F!&amp;1!]!!-!!!!!!!!!!%!!!!!!!!!!!!$!!1!"1!(!Q!!?!!!!!!!!!!!!!!!!!!!#1!!!!!!!!!!!!!!!!!!!!!!!!%+!!!"#A!!!1I!!!!)!!!!!!%!#!</Property>
+				<Property Name="Source[3].ExportedVI.VIProtoInfoVIProtoItemCount" Type="Int">8</Property>
+				<Property Name="Source[3].itemID" Type="Ref">/My Computer/visualize_labview_next_3.vi</Property>
+				<Property Name="Source[3].sourceInclusion" Type="Str">TopLevel</Property>
+				<Property Name="Source[3].type" Type="Str">ExportedVI</Property>
+				<Property Name="SourceCount" Type="Int">4</Property>
+				<Property Name="TgtF_companyName" Type="Str">UDBL</Property>
+				<Property Name="TgtF_fileDescription" Type="Str">visualize_labview</Property>
+				<Property Name="TgtF_fileVersion.major" Type="Int">1</Property>
+				<Property Name="TgtF_internalName" Type="Str">visualize_labview</Property>
+				<Property Name="TgtF_legalCopyright" Type="Str">Copyright © 2011 UDBL</Property>
+				<Property Name="TgtF_productName" Type="Str">visualize_labview</Property>
+				<Property Name="TgtF_targetfileGUID" Type="Str">{DA35756B-4DC0-46A7-A5B3-E4383492DC09}</Property>
+				<Property Name="TgtF_targetfileName" Type="Str">visualize_labview.dll</Property>
+			</Item>
+		</Item>
+	</Item>
+</Project>

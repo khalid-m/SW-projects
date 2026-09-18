@@ -1,0 +1,340 @@
+
+
+/*************************************************************************
+BASIC KNN FUNCTIONS
+**************************************************************************/
+
+create function distance(Vector of Number x, Function disfn, 
+                         Object dispara, Vector of Number v)
+                -> Number distance
+  /* Helping function to calculate the distance between two vector x and v
+     using the distance function difn(x,y) with optional extra parameter
+     disopara */
+  as (apply(disfn, {x, v, dispara}))[0];
+
+create function classdistances(Vector of Number x, Function disfn,
+                               Object dispara, 
+			       Bag of <Number, Vector of Number> bv)
+                -> Bag of <Number distance, Number cid>
+  /* Given a distance function disfn(x,y) or disfn(x,y,dispara)
+     calculate all distances from query point x to the points
+     in bag bv */
+  as select distance(x, disfn, dispara, v), cid
+     from Number cid, Vector of Number v
+     where <cid,v> in bv;
+
+create function k_nearest(Vector of Number x, Integer k, 
+                          Function disfn, Object para, 
+			  Bag of <Number , Vector of Number> bv)
+                       -> Bag of <Object, Object>
+  /* Function searching K nearest neighbours of a query point x 
+     in values bv for a given distance function. 
+     Brute force algorithm */
+  as leastk(classdistances(x, disfn, para, bv ), k);
+
+create function k_votes(Vector of Number x, Integer k, Function disfn,
+                        Object par, Bag of <Number, Vector of Number> bv)
+                       -> Bag of <Integer class, Number count>
+  /* Function voting classes among K nearest neighbours of a query point x */
+  as groupby((select cl 
+		from Number cl, Real dist
+		where <dist, cl> in k_nearest(x, k, disfn, par, bv))
+	     ,#'count');
+
+
+create function knnclassifyvalue(Vector of Number x, Integer k,
+	Function disfn, Object para,
+	Bag of <Number, Vector of Number> cd)
+	-> Number class
+  /* x    : Data value to be classified
+     k    : Classify based on K nearest neighbours
+     disfn: Used distance function
+     para : Optional extra parameter of disfn
+     cd  :  */
+  as select cid from Number cid, Number votes
+     where <votes, cid> in
+            topk((select vo, class 
+                  from Number vo, Number class 
+                  where <class, vo> in 
+                        k_votes(x, k, disfn, para, bv)), 1);
+ 
+
+create function store_knnclassification(Vector of Number x, Integer k, 
+	Function disfn, Object para, 
+	Bag of <Number , Vector of Number> bv,
+	Function classified_data_fn)-> Boolean
+  /* Classify a query point x and store the found class together with x in
+     the stored function classified_data_fn */
+  as addfunction(classified_data_fn, {knnclassify(x, k, disfn, para, bv)}, 
+                 vectorof(x));
+
+/*****************************************************************************
+CROSS-VALIDATION FUNCTIONS
+******************************************************************************/
+
+create function invalid_classifications (Integer k, Function disfn, 
+                                         Object dispara,
+                                         Function cm,
+                                         Bag of <Number, Vector of Number> ts)
+       -> Bag of <Number class, Vector of Number val>
+  /* Brute force cross-validation. 
+     k          : number of Nearest neghbours
+     disfn      : distance function
+     dispara    : extra argument for disfn
+     cm         : already classified data
+     ts	        : training set
+
+     The function returns a bag of <class, value> where 
+     class     : is a class identifier
+     val       : a value of class incorrectly classified */ 
+  as select classid, ve from Vector of Number ve, Number classid
+     where {classid,ve} in cast(extent(cm) as Bag of Vector of Number)
+     and classid != knnclassify(ve, k, disfn, dispara,
+                  (select c,v from Number c, Vector of Number v
+                   where <c,v> in ts and
+                         ve != v));
+
+/*****************************************************************************
+NORMALIZATION FUNCTIONS
+******************************************************************************/
+
+create function values_of_known_data()->Bag of Vector of Number
+  /* Function returning all vector values of the data stored in known_data */
+  as select ww
+     from vector of number ww, number cid
+     where ww in known_data(cid);
+
+
+create function normalize_iddata(Bag of <Number, Vector of Number> bv,
+                                 Vector of Number substract, 
+                                 Vector of Number divide,
+                                 Function normalized_data_fn) -> Boolean
+  /* Function normalizing a given set of classified data values in bv 
+     storing the normalized data in function normalized_data_fn */
+  as for each Integer cid, Vector v where <cid, v> in bv
+ 	  addfunction(normalized_data_fn,
+		      {cid}, vectorof((v - substract)./
+                      substv(0,000001, divide - substract)));
+
+create function normalize_data(Bag of <Vector of Number> bv,
+	Vector of Number substract, 
+	Vector of Number divide,
+	Function normalized_data_fn)->Boolean
+  /* Function normalizing a given set of data values in bv storing the 
+     normalized data values in function normalized_data_fn */
+  as for each Vector v where v in bv
+ 	 addfunction(normalized_data_fn,
+		     {},
+                     vectorof((v - substract) ./ 
+                              substv(0,000001, divide - substract)));
+
+/*****************************************************************************
+ ******  NOTICE:
+ ******  1. Everyting up till now should be in a database image!
+ ******  2. Make a command procedure mkminer.cmd that creates the 
+ ******     database image, miner.dmp, containing all code necessary to run 
+ ******     all excercises
+ ******  3. Make command procedure, Miner.cmd, to run Amos II with the
+ ******     created database image
+ ******  4. The folder structure must be as simple as possible. 
+ ******     Right now it is messy with sub-files and data in
+ ******     superdirectores.  
+ ******     Keep it all in ONE directory, possibly with subdirectories.
+ ******     It must be SIMPLE to download system configure Miner
+ *****************************************************************************/
+
+
+
+
+
+/*****************************************************************************
+ ******  The remainer of this file is about using Miner.
+ ******  This should be in a separate file!
+******************************************************************************/
+
+/*****************************************************************************
+DEFINITION OF USER DATA FUNCTION
+******************************************************************************/
+
+
+create function known_data(Number cid) -> Bag of <Vector of Number v> 
+   /* Function to store training data mappings between each class 
+      identifier its bag of value vectors */
+  as stored;
+
+/* For fast search among values of data function class_members: */
+create_index("known_data","v","mbtree","multiple");
+
+create function normalized_known_data(Number cid)
+   /* Function to store normalized training data per class */
+                -> Bag of <Vector of Number val>
+  as stored;
+
+create function unknown_data() 
+   /* Function storing data to be classified */
+                -> Bag of vector of number
+  as stored;
+
+create function normalized_unknown_data() -> Bag of <Vector of Number val> 
+   /* Function to store normalized data values to be classified */
+  as stored;
+
+create function classified_data(Number cid)-> Bag of <Vector of Number v> 
+   /* Function to store mappings between each class identifier and 
+      a bag of value vectors for each class for data to be classified */
+  as stored;
+
+/* For fast search among values of data function class_members: */
+create_index("classified_data","v","mbtree","multiple");
+
+/*****************************************************************************
+DEFINITION OF USER SESSION PARAMETERS
+******************************************************************************/
+
+/* Set position in rows of mined file for class identifier: */
+set :cidpos = 9;
+
+/* Ser positions in rows of mined file for value vector: */
+set :valposl = {0,1,2,3,4,5,6,7,8};
+
+/* The used best k for KNN classification: */
+set :k = 2;
+
+/*STEP 0*/ 
+/*Import data from file into known data set'*/
+add_dfn("../../data/glassdata.nt",#'known_data',:cidpos,:valposl);
+
+/*Import data from file into unknown data set'*/
+add_dfn("../../data/testdata.nt",#'unknown_data',:valposl);
+
+/*STEP 1*/
+/* EZ: Different normalizations: gaussian (mean + stdev), 
+minmax (min + max), and so on...
+Then, provide some hint to the students on how to normalize using gaussian */
+
+/* Normalize the known data'*/
+dropfunction(#"normalized_known_data",1);
+normalize_iddata((select cid, v 
+                  from Number cid, Vector of Number v
+                  where v in known_data(cid)),
+		 aggv(values_of_known_data(), #'minagg'), 
+		 aggv(values_of_known_data(), #'maxagg'), 
+		#'normalized_known_data');
+
+/*-b- Normalize the unknown data*/
+dropfunction(#'normalized_unknown_data',1);
+normalize_data(unknown_data(), 
+		aggv(values_of_known_data(), #'minagg'), 
+		aggv(values_of_known_data(), #'maxagg'), 
+		#'normalized_unknown_data');
+
+
+/*STEP 2 - Validate for different K to pick up the best K*/
+select count(invalid_classification(k, #'euclid', 0, #'known_data',
+		    (select cid, v 
+		           from Number cid, Vector of Number v
+		           where v in known_data(cid)))),k 
+       from Integer k 
+       where k in iota(1, 5);
+
+set :k = 2;
+
+/*****************************************************************************
+CLASSIFICATION
+******************************************************************************/
+dropfunction(#'classified_data', 1);
+select store_knnclassification(x, :k, #'euclid', 0
+	, (select cid, v 
+           from Number cid, Vector of Number v
+           where v in known_data(cid))
+	, #'classified_data')
+	from vector of Number x
+	where x in unknown_data();
+
+/*=============================================================================
+TODO list for student
+*==============================================================================
+-------------------------------------------------------------------------------
+1. LEAVE-ONE-OUT CROSS VALIDATION
+-------------------------------------------------------------------------------
+You are supposed to complete step 2 in Data Preprocessing part. 
+In this step, you should use Leave-One-Out cross validation to achieve 
+the best k.
+
+Hint :
+
+- Do the cross_validate over known data with k in between 1 and 10. 
+- Choose value of k which gives you the maximum number of points classied 
+  correctly.
+- You should store value of K in :k.
+
+Question :
+  - What is the best K?
+  - Will normalizing the data improve the classifier result?
+
+
+-------------------------------------------------------------------------------
+2. NORMALIZATION
+-------------------------------------------------------------------------------
+You should experiment different normalization methods.
+
+Question:
+- Which normalization gives the best classifier accuracy (i.e. minimizes the 
+  error rate)?
+- Why?
+
+-------------------------------------------------------------------------------
+3. DISTANCE FUNCTION
+-------------------------------------------------------------------------------
+Try #'minkowski' with some different /r/ factors and #'maxnorm'.
+
+Question:
+- What /r/ gives the best performance?
+- Why?
+- Tell us something about maxnorm
+
+-------------------------------------------------------------------------------
+4. WEIGHTS
+-------------------------------------------------------------------------------
+In KNN , all attributes of an object equally contribute to calculate 
+the distance between this vector to other vectors. However, in reality, 
+some attributes might be less important than others in order to determine
+the difference (distance) betwen two object. So in some cases, the less 
+important attributes can influence on the distance rather the important ones.
+
+The problem can be limited by weighting the contribution of each attribute. So
+that the some attributes will have more impact the result and some will have 
+less than. 
+
+Question:
+
+- If all the values of a dimension are the same, 
+  how good is that dimension as a clasifier?
+
+- Discuss what weights give the best classification?
+
+Hint :
+
+Define a vector weight 
+
+ create function weights()->vector of number;
+ set weights() = {1,1,1,1,1,1,1,1,1};
+
+Then distance function should take weights into account
+
+ distance(x*weights(), disfn, dispara, v),
+
+
+-------------------------------------------------------------------------------
+5. CLASSIFY THE UNKNOWN DATA
+-------------------------------------------------------------------------------
+Classify the unknown data with the best settings found in 
+excercise 1, 2, 3, 4 above.
+
+
+-------------------------------------------------------------------------------
+FEEDBACK OF THE SCRIPT ITSELF [Optional]
+This part is optional, but you are welcome to give any suggestion for
+which part or which function in the script should be improved?
+-------------------------------------------------------------------------------
+*/

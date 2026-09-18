@@ -1,0 +1,1 @@
+..\bin\svali -O "hagglundsCOOLERDump.osql" -L "regress/cooler.lsp"

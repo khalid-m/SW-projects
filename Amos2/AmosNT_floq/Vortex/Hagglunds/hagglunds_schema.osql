@@ -1,0 +1,57 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: hagglunds_schema.osql,v $
+ * $Revision: 1.2 $ $Date: 2012/10/26 15:16:34 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: hagglunds schema
+ *
+ ****************************************************************************
+ * $Log: hagglunds_schema.osql,v $
+ * Revision 1.2  2012/10/26 15:16:34  chexu484
+ * pull out some part of Mikael's logevent stream
+ * now possible to run the hagglunds validation model in SVALI
+ *
+ * Revision 1.1  2012/10/24 17:15:28  chexu484
+ * hagglunds model and validate now works
+ * record is used instead of vector
+ *
+ * Revision 1.1  2006/02/12 20:01:08  torer
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+
+load_lisp('../../logdir/src/lisp/logdir.lsp');
+
+<'../../logdir/src/amosql/logdir.osql';
+
+<'../../logdir/hlund/hlund.osql';
+
+
+load_lisp('../../logdir/hlund/hlund.lsp');
+
+load_lisp('../../logdir/hlund/dgen.lsp');
+
+create function variables(Logdirectory dir) -> Vector of Charstring
+as stored;
+
+create function hagglunds_stream(Logdirectory dir) -> Stream of Vector
+as streamof(select {timestamp(e), variable(e), value(e)}
+   from Logevent e where e in simlogeventstream(dir));
+
+create function hagglunds_tuples0(Stream s, Vector of Charstring variables)
+                                                                -> Bag of Vector
+as foreign 'hagglunds-vtuples--+';
+
+create function hagglunds_tuples(Logdirectory dir) -> Stream of Vector
+       as streamof(hagglunds_tuples0(hagglunds_stream(dir), variables(dir)));
+
+
+create function hagglunds_records0(Stream s, Vector of Charstring variables)
+                                                                -> Bag of Record
+as foreign 'hagglunds-rtuples--+';
+
+create function hagglunds_records(Logdirectory dir) -> Stream of Record
+       as streamof(hagglunds_records0(hagglunds_stream(dir), variables(dir)));

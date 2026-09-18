@@ -1,0 +1,26 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: 2013 Sobhan Badiozamany
+ * $RCSfile: delays.osql,v $
+ * $Revision: 1.1 $ $Date: 2013/05/22 12:50:17 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: response time calculations for DEBS2013 GC
+ *
+ ****************************************************************************/
+
+propagate_delays(false);
+
+create function csv_delay(Charstring filename) 
+                        -> (Number avg, Number stdev)
+  as avgstdev(select v[1]-v[0] 
+              from Vector of Number v 
+              where v in csv_file_tuples(filename));
+
+create function csv_delays() -> Bag of Vector
+  as select {filename,csv_delay("output/"+filename)}
+     from Charstring filename
+     where filename in dir("output","*.csv");
+
+writecsvfile("delays.csv",csv_delays());

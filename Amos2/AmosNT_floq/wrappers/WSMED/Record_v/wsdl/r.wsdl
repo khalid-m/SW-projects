@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions name="Webamos" targetNamespace="urn:WSAmos" xmlns:tns="urn:WSAmos" xmlns:wsdlsoap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/encoding/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+  <wsdl:types>
+    <xsd:schema targetNamespace="urn:WSAmos" xmlns="http://www.w3.org/2001/XMLSchema"><xsd:element name="AnyType" type="xsd:string"/><xsd:element name="OID" type="xsd:string"/><xsd:element name="INTEGER" type="xsd:long"/><xsd:element name="BOOLEAN" type="xsd:boolean"/><xsd:element name="REAL" type="xsd:double"/><xsd:element name="CHARSTRING" type="xsd:string"/><xsd:element name="TIME" type="xsd:Time"/><xsd:element name="VectorofAnyType"><xsd:complexType><xsd:sequence><xsd:element maxOccurs="unbounded" minOccurs="0" type="xsd:string"/></xsd:sequence></xsd:complexType></xsd:element><xsd:element name="VectorofOID"><xsd:complexType><xsd:sequence><xsd:element maxOccurs="unbounded" minOccurs="0" type="xsd:string"/></xsd:sequence></xsd:complexType></xsd:element><xsd:element name="VectorofINTEGER"><xsd:complexType><xsd:sequence><xsd:element maxOccurs="unbounded" minOccurs="0" type="xsd:integer"/></xsd:sequence></xsd:complexType></xsd:element><xsd:element name="VectorofBOOLEAN"><xsd:complexType><xsd:sequence><xsd:element maxOccurs="unbounded" minOccurs="0" type="xsd:boolean"/></xsd:sequence></xsd:complexType></xsd:element><xsd:element name="VectorofREAL"><xsd:complexType><xsd:sequence><xsd:element maxOccurs="unbounded" minOccurs="0" type="xsd:double"/></xsd:sequence></xsd:complexType></xsd:element>
+<xsd:element name="VectorofCHARSTRING">
+	<xsd:complexType>
+		<xsd:sequence>
+			<xsd:element minOccurs="0"  maxOccurs="unbounded" name="vchs" type="xsd:string"/>
+		</xsd:sequence>
+	</xsd:complexType>
+</xsd:element>
+
+
+<xsd:element name="VectorofTIME"><xsd:complexType><xsd:sequence><xsd:element maxOccurs="unbounded" minOccurs="0" type="xsd:Time"/></xsd:sequence></xsd:complexType></xsd:element><xsd:element name="RESULTS"><xsd:complexType><xsd:sequence><xsd:element name="R" type="tns:OID"/></xsd:sequence></xsd:complexType></xsd:element><xsd:element name="RESULTSResponse"><xsd:complexType><xsd:sequence><xsd:element maxOccurs="unbounded" minOccurs="0" name="result"><xsd:complexType><xsd:sequence><xsd:element name="DESCR" type="tns:VectorofAnyType"/></xsd:sequence></xsd:complexType></xsd:element></xsd:sequence></xsd:complexType></xsd:element></xsd:schema>
+  </wsdl:types>
+  <wsdl:message name="RESULTSRequestMsg">
+    <wsdl:part name="parameters" element="tns:VectorofCHARSTRING"/>
+  </wsdl:message>
+  <wsdl:message name="RESULTSResponseMsg">
+    <wsdl:part name="parameters" element="tns:CHARSTRING"/>
+  </wsdl:message>
+  <wsdl:portType name="WebamosPortType">
+    <wsdl:operation name="RESULTS">
+      <wsdl:input name="RESULTSRequestMsg" message="tns:RESULTSRequestMsg"/>
+      <wsdl:output name="RESULTSResponseMsg" message="tns:RESULTSResponseMsg"/>
+    </wsdl:operation>
+  </wsdl:portType>
+
+  <wsdl:binding name="WebamosSoapBinding" type="tns:WebamosPortType">
+    <wsdlsoap:binding style="documents" transport="http://schemas.xmlsoap.org/soap/http"/>
+    <wsdl:operation name="RESULTS">
+      <wsdlsoap:operation soapAction=""/>
+      <wsdl:input>
+        <wsdlsoap:body use="literal" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:WSAmos"/>
+      </wsdl:input>
+      <wsdl:output>
+        <wsdlsoap:body use="literal" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:WSAmos"/>
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+
+  <wsdl:service name="WebamosService">
+    <wsdl:port name="WebamosPort" binding="tns:WebamosSoapBinding">
+      <wsdlsoap:address location="http://127.0.0.1:8081/myapps/service/AmosServlet"/>
+    </wsdl:port>
+  </wsdl:service>
+
+</wsdl:definitions>

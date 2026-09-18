@@ -1,0 +1,49 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2008 Ruslan Fomkin, UDBL
+ * $RCSfile: testfiles.osql,v $
+ * $Revision: 1.3 $ $Date: 2008/05/20 08:10:32 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Scripts to inspect and test that the file-database.
+ *
+ ****************************************************************************
+ * $Log: testfiles.osql,v $
+ * Revision 1.3  2008/05/20 08:10:32  ruslan
+ * filename in file schema
+ *
+ * Revision 1.2  2008/05/10 13:47:31  ruslan
+ * jetb renamed in jet according the Thesis
+ *
+ * Revision 1.1  2008/05/06 08:02:51  ruslan
+ * the view definition
+ *
+ ****************************************************************************/
+
+
+create function testfiles() -> boolean as
+begin
+	for each eventfile f
+	begin
+		declare integer events, integer electrons, integer muons,
+			integer jets;
+		select ev,e,m,j into events, electrons, muons, jets
+		from integer ev, integer e, integer m, integer j
+		where <ev,e,m,j> = sum4(select 1, els, mus, jbs
+			from event e, integer els, integer mus, integer jbs
+			where e=aleh_stream(filename(f)) and
+				els=count(select p from electron p
+						where p=electrons(e)) and
+				mus=count(select p from muon p
+						where p=muons(e)) and
+				jbs=count(select p from jet p
+						where p=jets(e)));
+		if (size(f)=events)
+		then print(name(f)+","+itoa(electrons)+","+itoa(muons)+","+
+			itoa(jets))
+		else print(name(f)+","+"wrong file size"+itoa(events));
+	end;
+end;
+

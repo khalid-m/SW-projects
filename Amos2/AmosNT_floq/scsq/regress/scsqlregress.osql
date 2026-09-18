@@ -1,0 +1,787 @@
+/*-*-sql-*-*******************************************************************/
+
+coo_storedelays(0);
+sp_ts(0);
+sp_profile(1);
+
+lisp;
+
+(defglobal _q-system_ nil)
+(cond ((getenv "TMPDIR") (setq _q-system_ t)))
+
+(checkequal "twinagg on readfile"
+((osql "select extract(b) from sp b 
+  where b = newsp(streamof(twinagg(streamof(readfile(
+  getenv('AMOS_HOME') + '/scsq/css/data/req21.data')), 600.0, 600.0, 0, 0)));")
+'((#(#(#[T 23880 0] #[T 24480 0])
+   #(#(#[T 23880 0] 16 720650.0 6178950.0 725533.0 6179142.0) 
+   #(#[T 24240 0] 32 722250.0 6176350.0 728221.0 6174755.0) 
+   #(#[T 24420 0] 48 722650.0 6178950.0 723325.0 6175354.0)))) 
+  (#(#(#[T 24480 0] #[T 25080 0]) 
+   #(#(#[T 24660 0] 64 720950.0 6176250.0 727751.0 6173616.0) 
+   #(#[T 24720 0] 80 727050.0 6173450.0 721160.0 6173871.0) 
+   #(#[T 24840 0] 96 721550.0 6174650.0 726432.0 6176538.0) 
+   #(#[T 24960 0] 112 720450.0 6175350.0 723762.0 6174510.0)))) 
+  (#(#(#[T 25080 0] #[T 25680 0]) 
+   #(#(#[T 25080 0] 128 721150.0 6175550.0 724504.0 6173728.0) 
+   #(#[T 25080 0] 144 721950.0 6179950.0 724459.0 6176723.0) 
+   #(#[T 25200 0] 160 722350.0 6172750.0 725011.0 6169970.0) 
+   #(#[T 25200 0] 176 727750.0 6174350.0 722918.0 6172505.0) 
+   #(#[T 25260 0] 192 721550.0 6173250.0 723934.0 6175533.0) 
+   #(#[T 25320 0] 208 723050.0 6178450.0 727104.0 6174680.0) 
+   #(#[T 25320 0] 224 723950.0 6179950.0 721578.0 6176671.0) 
+   #(#[T 25380 0] 240 723950.0 6179950.0 725239.0 6175269.0) 
+   #(#[T 25440 0] 256 725750.0 6171650.0 725867.0 6176192.0) 
+   #(#[T 25440 0] 272 724650.0 6177450.0 725647.0 6174390.0) 
+   #(#[T 25500 0] 288 718850.0 6177850.0 725320.0 6174768.0) 
+   #(#[T 25500 0] 304 719150.0 6173350.0 725533.0 6179142.0) 
+   #(#[T 25500 0] 320 725050.0 6174750.0 724106.0 6178277.0) 
+   #(#[T 25560 0] 336 721850.0 6176950.0 718769.0 6179010.0)))))))
+
+; set :u = {5.000000, 2.414214, 1.000000, 0.414214, 1.000000, -0.414214, 
+;           1.000000, -2.414214};
+; 
+; start_udp_consumer("130.238.30.114");
+; get_udp_packet();
+; get_udp_carray();
+; stop_udp_consumer();
+; 
+
+(checkequal
+ "basic sp/extract"
+ ((osql "extract(newsp(siota(1, 10)));")
+  '((1) (2) (3) (4) (5) (6) (7) (8) (9) (10))))
+
+(checkequal
+ "SP with large image"
+ ((osql "extract(newspflex(siota(1, 10), make_record({'imgsz', 100000000})));")
+  '((1) (2) (3) (4) (5) (6) (7) (8) (9) (10))))
+
+(checkequal 
+ "sp/extract of numarrays"
+ ((osql "count(extract(newsp(gen_array(1, 4))));")
+  '((4))))
+
+(checkequal 
+ "extract of an sp returning no elements"
+ ((osql "count(extract(newsp(streamof(
+     select i from integer i where i>8 and i in iota(1,5)))));")
+  '((0))))
+
+(checkequal
+ "error propagation in extract"
+ ((errcond-msg (catch-error 
+  (osql "extract(newsp(streamof(readfile('non-existing-file'))));")))
+  '"Cannot open file"))
+
+(checkequal 
+ "error propagation through more than one SP"
+ ((errcond-msg (catch-error 
+  (osql "extract(newsp(stract(newsp(
+streamof(readfile('non-existing-file'))))));")))
+  '"Cannot open file"))
+
+(checkequal 
+ "error propagation through parallel SPs"
+ ((errcond-msg (catch-error (osql "
+	select zip({a,b})
+	from sp a, sp b, sp c
+	where a = newsp(streamof(extract(c)))
+	and b = newsp(streamof(extract(c)))
+	and c = newspflex(streamof(readfile('non-existing-file')),
+                          make_record({'nsub', 2}));")))
+  '"Cannot open file"))
+
+(checkequal "diamond" ((osql "count(select zip({a,b}) from sp a, sp b, sp c   
+         where a = newsp(ostream(c, 0))
+           and b = newsp(ostream(c, 1))
+           and c = newspflex(streamof(iota(1, 10)),
+                             make_record({'nsub', 2})));") '((10)))) 
+
+(checkequal "diamond with darray" 
+  ((osql "select dim(cast (d[0] as darray)) from sp a, sp b, sp c, vector d
+         where a = newsp(ostream(c, 0))
+           and b = newsp(ostream(c, 1))
+           and c = newspflex(streamof(darray(vectorof(real(iota(0,255))))),
+                             make_record({'nsub', 2}))
+           and d = zip({a,b});") '((256)))) 
+
+:osql
+set :fft_input = carray(vectorof(real(iota(0,7))),
+                        vectorof(real(0*iota(0,7))));
+set :expected_result = fft(:fft_input);
+lisp;
+
+(checkequal "parallel FFT, 2 SP"
+ ((osql "select roundto(enorm(:expected_result - radix2combine(cast(
+     zip({a,b}) as vector of carray))),3)
+   from sp a, sp b, sp c 
+   where a = newsp(streamof(fftpart(even(
+     cast(in(ostream(c, 0)) as carray)), 8))) 
+   and b = newsp(streamof(fftpart(odd(cast(in(ostream(c, 1)) as carray)), 8))) 
+   and c = newspflex(streamof(carray(vectorof(real(iota(0,7))), 
+                                     vectorof(real(0*iota(0,7))))),
+                     make_record({'nsub', 2}));") 
+ '((0.0))))
+
+(checkequal "FFT, 2 partitions"
+  ((osql "select roundto(enorm(:expected_result - radix2combine({a,b})), 3)
+    from carray a, carray b, carray src
+    where a = fftpart(even(src), 8)
+    and   b = fftpart(odd (src), 8)
+    and src = carray(vectorof(real(iota(0,7))), 
+                     vectorof(real(0*iota(0,7))));")
+  '((0.0))))
+
+;(checkequal "FFT, 4 partitions"
+;  ((osql "select roundto(enorm(:expected_result - 
+;                               radix2combine({radix2combine({a,b}),
+;                                              radix2combine({c,d})})),3)
+;    from carray a, carray b, carray c, carray d, carray src
+;    where a = fftpart(even(even(src)), 8)
+;    and   b = fftpart(odd (even(src)), 8)
+;    and   c = fftpart(even(odd (src)), 8)
+;    and   d = fftpart(odd (odd (src)), 8)
+;    and src = carray(vectorof(real(iota(0,7))), 
+;                               vectorof(real(0*iota(0,7))));") 
+;  '((0.0))))
+
+(checkequal "uall"
+ ((osql "count(uall(spv(
+   vselect streamof(iota(1,40+i)) 
+   from integer i
+   where i in iota(1,3))));")
+ '((126))))
+
+(checkequal "uallr"
+ ((osql "count(uallr(spv(
+   vselect streamof(iota(1,40+i)) 
+   from integer i
+   where i in iota(1,3))));")
+ '((126))))
+
+(checkequal "error propagation in unionall"
+ ((errcond-msg (catch-error
+	(osql "uall({newsp(streamof(readfile('non-existing-file')))});")))
+  '"Cannot open file"))
+
+(checkequal "error propagation in unionallR"
+ ((errcond-msg (catch-error
+	(osql "uallr({newsp(streamof(readfile('non-existing-file')))});")))
+  '"Cannot open file"))
+
+(checkequal "Sort Merge Join"
+ ((osql "vectorof(smj(spv(vselect streamof({i*iota(1,5)}) 
+        from integer i where i in iota(1,3)), 0));")
+ '((#(#(1) #(2) #(2) #(3) #(3) #(4) #(4) #(5) #(6) #(6) #(8) #(9) #(10) #(12)
+    #(15)))))
+ ((osql "vectorof(smj(spv(vselect streamof({0, i*iota(1, 3+i), 1})
+         from integer i where i in iota(1, 3)), 1));")
+ '((#(#(0 1 1) #(0 2 1) #(0 2 1) #(0 3 1) #(0 3 1) #(0 4 1) #(0 4 1) #(0 6 1) 
+      #(0 6 1) #(0 8 1) #(0 9 1) #(0 10 1) #(0 12 1) #(0 15 1) #(0 18 1))))))
+
+(checkequal "SMJ on (int) numarray"
+((osql "na2vec(smjna(spv(vselect streamof(iarray({integer(i*iota(1,5))}))
+                         from integer i where i in iota(1,3)), 0)); ")
+'((#(1)) (#(2)) (#(2)) (#(3)) (#(3)) (#(4)) (#(4)) (#(5)) (#(6)) (#(6)) (#(8))
+  (#(9)) (#(10)) (#(12)) (#(15)))))
+
+(checkequal "SMJ on (float) numarray"
+((osql "na2vec(smjna(spv(vselect streamof(darray({real(i*iota(1,5))}))
+                         from integer i where i in iota(1,3)), 0)); ")
+'((#(1)) (#(2)) (#(2)) (#(3)) (#(3)) (#(4)) (#(4)) (#(5)) (#(6)) (#(6)) (#(8))
+  (#(9)) (#(10)) (#(12)) (#(15)))))
+
+(checkequal "SMJ on delayed numarrays (poll timing out)"
+((osql "na2vec(smjna(spv(vselect streamof(retard(0.5, iarray(
+ {integer(i*iota(1,5))}))) from integer i where i in iota(1,3)), 0, 0.1));")
+'((#(1)) (#(2)) (#(2)) (#(3)) (#(3)) (#(4)) (#(4)) (#(5)) (#(6)) (#(6)) (#(8))
+(#(9)) (#(10)) (#(12)) (#(15)))))
+
+
+;; Disabled due to segfault
+;; (checkequal "error propagation at start of smjna"
+;; ((errcond-msg (catch-error (osql 
+;; "count(smjna({newsp(streamof(select iarray(v) from vector of integer v
+;; where v in readfiles({'non-existing-file'})))}, 1));")))
+;; "Cannot open file"))
+
+(checkequal "error propagation inside smjna"
+((errcond-msg (catch-error (osql 
+"count(smjna({newsp(streamof(select iarray(v) from vector of integer v
+where v in readfiles({getenv('AMOS_HOME') + '/scsq/generator/data/c100-0', 
+'non-existing-file'})))}, 1));")))
+"Cannot open file"))
+
+:osql
+
+create function smjsrc()->vector of stream of vector of integer as
+vectorize(select i-1, streamof({integer(i*iota(1,5))})
+from integer i where i in iota(1,3));
+
+create function smjsrcna()->vector of stream of vector of integer as
+vectorize(select i-1, streamof(iarray({integer(i*iota(1,5))}))
+from integer i where i in iota(1,3));
+
+lisp;
+
+(checkequal "smjstreamsv"
+((osql "in(smjstreamsv(exestreams(smjsrc()), 0));")
+ '((#(1)) (#(2)) (#(2)) (#(3)) (#(3)) (#(4)) (#(4)) (#(5)) (#(6)) (#(6)) (#(8))
+  (#(9)) (#(10)) (#(12)) (#(15)))))
+
+(checkequal "smjstreamsna"
+((osql "na2vec(in(smjstreamsna(exestreams(smjsrcna()), 0)));")
+ '((#(1)) (#(2)) (#(2)) (#(3)) (#(3)) (#(4)) (#(4)) (#(5)) (#(6)) (#(6)) (#(8))
+  (#(9)) (#(10)) (#(12)) (#(15)))))
+
+(checkequal 
+ "error propagation at start of Sort Merge Join"
+ ((errcond-msg (catch-error 
+  (osql "count(smj({newsp(streamof(readfiles({'non-existing-file'})))},0));")))
+  '"Cannot open file"))
+
+(checkequal 
+ "error propagation at start of Sort Merge Join, > 1 proc"
+ ((errcond-msg (catch-error 
+  (osql "count(smj({newsp(streamof(readfiles({'non-existing-file'}))),
+                    newsp(streamof(retard(0.5, {iota(0, 10)})))},0));")))
+  '"Cannot open file"))
+
+(checkequal 
+ "error propagation inside Sort Merge Join"
+ ((errcond-msg (catch-error 
+  (osql "count(smj({newsp(streamof(readfiles({'generator/data/c100-0', 
+                                              'non-existing-file'})))},0));")))
+  '"Cannot open file"))
+
+(checkequal 
+ "error propagation inside Sort Merge Join, > 1 proc"
+ ((errcond-msg (catch-error 
+  (osql "count(smj(
+         {newsp(streamof(readfiles(
+          {'generator/data/c100-0', 'non-existing-file'}))), 
+          newsp(streamof(retard(0.5, {iota(0, 10)}))), 
+          newsp(streamof(retard(0.5, {iota(0, 10)})))},0));")))
+  '"Cannot open file"))
+
+(checkequal "round robin routing function"
+  ((osql "select zip(b) from vector of sp b, sp c, integer n
+where b = spv(vselect ostream(c, i) 
+  from integer i where i in iota(0, n - 1))
+and c = newsp(streamof(winagg(iota(1, 5*n), n, n)), n, #'rr')
+and n = 4;")
+   '((#(1 2 3 4)) (#(5 6 7 8)) 
+     (#(9 10 11 12)) (#(13 14 15 16)) (#(17 18 19 20)))))
+
+(checkequal "splitstream_rr"
+((osql "in(zipstreams(splitstream_rr(siota(1, 12), 3)));")
+	'((#(1 2 3)) (#(4 5 6)) (#(7 8 9)) (#(10 11 12)))))
+
+(checkequal "splitstreams_rr"
+((osql "in(zipstreams(splitstreams_rr(vectorize(
+select i, siota(1, 12) from integer i where i in iota(0, 1)), 3)));")
+'((#(1 2 3 1 2 3)) (#(4 5 6 4 5 6)) (#(7 8 9 7 8 9)) (#(10 11 12 10 11 12))))) 
+
+(checkequal "intra bg p2p streaming"
+ ((osql "select count(extract(b))
+from sp a, sp b
+where b = newsp(streamof(extract(a)))
+and a = newsp(gen_array(1, 3));")
+  '((3))))
+
+(checkequal "extract of sp of sapply"
+((osql "extract(newsp(sapply(#'saddconst', {siota(1, 3)})));")
+'((6) (7) (8))))
+
+(checkequal "mapv over one argument vector"
+((osql "in(mergestreams(mapv({{siota(1, 3), 9}}, #'sadd')));")
+'((10) (11) (12))))
+
+(checkequal "mapv of two argument vectors"
+((osql "sort(in(mergestreams(mapv(
+{{siota(1, 3), 9}, {siota(2,4), 4}}, #'sadd'))));")
+'((#(6 7 8 10 11 12)))))
+
+(checkequal "splitstream with rfn+bfn"
+((osql "count(in(mergestreams(splitstream(siota(1,10), 2, #'randr', #'f'))));")
+'((10)))
+((osql "count(in(mergestreams(
+  splitstream(siota(1,10), 2, #'irandr', #'integer.even->boolean'))));")
+'((20)))
+((osql "count(in(mergestreams(
+  splitstream(siota(1,10), 2, #'randr', #'integer.even->boolean'))));")
+'((20)))
+((osql "count(in(mergestreams(
+  splitstream(siota(1,10), 2, #'randrodd', #'integer.even->boolean'))));")
+'((15)))
+((osql "in(zipstreams(
+  splitstream(siota(1,10), 2, #'integer.integer.oddeven->integer', #'f')));")
+'((#(2 1)) (#(4 3)) (#(6 5)) (#(8 7)) (#(10 9)))))
+
+;; (checkequal "splitstream with rfn = bfn = false"
+;; ((osql "in(zipstreams(splitstream(siota(1,10), 2, #'f', #'f')));")
+;; nil))
+
+(checkequal "splitstream with rfn = false"
+((osql "in(zipstreams(
+  splitstream(siota(1,10), 2, #'f', #'integer.even->boolean')));")
+'((#(2 2)) (#(4 4)) (#(6 6)) (#(8 8)) (#(10 10)))))
+
+(checkequal "mapstreams with identity function /sids/"
+((osql "in(mergestreams(mapstreams({siota(1,4)}, #'sids')));")
+'((1) (2) (3) (4))))
+
+(checkequal "mapstreams of splitstream"
+((osql "sort(in(mergestreams(mapstreams(splitstream(streamof(
+winagg(iota(1, 10), 3, 3)), 2, #'rr'), #'saddconst'))));")
+'((#(6 7 9 10 12 13)))))
+
+(checkequal "source - split - map - merge"
+((osql "sort(in(mergestreams(mapstreams(splitstream(
+source(streamof(winagg(iota(1, 10), 3, 3))), 2, #'rr'), #'saddconst'))));")
+'((#(6 7 9 10 12 13)))))
+
+
+;;(checkequal "source - split - map - merge - sink"
+;;((osql "sink(mergestreams(mapstreams(splitstream(
+;;source(streamof(winagg(iota(1, 10), 3, 3))), 2, #'rr'), #'saddconst')), 
+;; #'writefile', ));")
+;;'((#(6 7 9 10 12 13)))))
+
+(checkequal "mapflex with empty opt"
+((osql "in(mergestreams(mapflexv({{siota(1, 3), 9}}, #'sadd', 
+        make_record({}))));")
+'((10) (11) (12))))
+
+(checkequal "running a set of mapflex in parallel"
+((osql "select in(zipstreams(proc))
+from vector of stream proc, vector of stream src, vector of integer argv,
+integer width
+where proc = mapflexv((vselect {src[i], argv[i]} from integer i), 
+#'sadd', make_record({}))
+and src = splitstream(siota(1, 5), width, #'bcast')
+and argv = {1000, 100, 200}
+and width = dim(argv);")
+'((#(1001 101 201)) (#(1002 102 202)) (#(1003 103 203)) (#(1004 104 204))
+  (#(1005 105 205)))))
+
+(if (not _q-system_)
+(checkequal "mapflex with opt: hostname 'localhost'"
+((osql "in(mergestreams(mapflexv({{siota(1, 3), 9}}, #'sadd', 
+  make_record({'hostname', 'localhost'}))));")
+ '((10) (11) (12)))))
+
+(checkequal "mapflex with opt: sfn #'rr'"
+((osql "in(mergestreams(mapflexv({{streamof(winagg(iota(1, 10),2,2)), 9}}, 
+  #'svadd', make_record({'sfn', #'rr'}))));")
+'((10) (12) (14) (16) (18))))
+
+(checkequal "mapflex with opt: osql 'set addconst()=10;'"
+((osql "in(mergestreams(mapflexv({{siota(1, 3)}}, #'saddconst', 
+        make_record({'osql', 'set addconst()=10;'}))));")
+'((11) (12) (13))))
+
+;" '
+
+(checkequal "zipstreams of mapstreams of splitstream"
+((osql "select in(zipstreams(mapstreams(s, #'stream.scount->stream')))
+from vector of stream s
+where s = splitstream(streamof(winagg(iota(1,90),8,8)), 8, #'rr');") 
+'((#(11 11 11 11 11 11 11 11)))))
+
+(checkequal "splitflexra on ext round robin"
+((osql "select in(zipstreams(mapstreams(s, #'stream.scount->stream')))
+from vector of stream s
+where s = splitflexra(streamof(winagg(iota(1,90),8,8)), 8, #'rra', {0},
+make_record({}));") 
+'((#(11 11 11 11 11 11 11 11)))))
+
+(checkequal "splitflexra on ext round robin {0}"
+((osql "select in(zipstreams(s))
+from vector of stream s
+where s = splitflexra(streamof(winagg(iota(1,10),2,2)), 2, #'rra', {0},
+make_record({}));") 
+'((#(1 2)) (#(3 4)) (#(5 6)) (#(7 8)) (#(9 10)))))
+
+(checkequal "splitflexra on ext round robin {1}"
+((osql "select in(zipstreams(s))
+from vector of stream s
+where s = splitflexra(streamof(winagg(iota(1,10),2,2)), 2, #'rra', {1},
+make_record({}));") 
+'((#(2 3)) (#(4 5)) (#(6 7)) (#(8 9)) (#(10 11)))))
+
+(checkequal
+"splitflexra on proute: fanout = 1 (degenerate), {attrib, div} = {0, 1}"
+((osql "select i, na2vec(na[i])
+from vector of stream s, vector of numarray na, integer i
+where na = in(zipstreams(s))
+and s = splitflexra(streamof(iarray({iota(1,4)})), 1, #'proute', {0, 1},
+make_record({}));") 
+'((0 #(1)) (0 #(2)) (0 #(3)) (0 #(4)))))
+
+(checkequal "splitflexra on proute: fanout = 2 {attrib, div} = {1, 1}"
+((osql "select i, na2vec(na[i])
+from vector of stream s, vector of numarray na, integer i
+where na = in(zipstreams(s))
+and s = splitflexra(streamof(iarray({0, iota(1, 10)})), 2, #'proute', {1, 1},
+make_record({}));") 
+'((0 #(0 2)) (1 #(0 1)) (0 #(0 4)) (1 #(0 3)) (0 #(0 6)) (1 #(0 5)) (0 #(0 8))
+(1 #(0 7)) (0 #(0 10)) (1 #(0 9)))))
+
+(checkequal "splitflexra on proute: fanout = 2 {attrib, div} = {1, 2}"
+((osql "select i, na2vec(na[i])
+from vector of stream s, vector of numarray na, integer i
+where na = in(zipstreams(s))
+and s = splitflexra(streamof(iarray({0, iota(1, 10)})), 2, #'proute', {1, 2},
+make_record({}));") 
+'((0 #(0 1)) (1 #(0 2)) (0 #(0 4)) (1 #(0 3)) (0 #(0 5)) (1 #(0 6)) (0 #(0 8))
+(1 #(0 7)) (0 #(0 9)) (1 #(0 10)))))
+
+(checkequal "hsplitstream"
+((osql "select i, na2vec(na[i])
+from vector of numarray na, integer i
+where na = in(zipstreams(hsplitstream(streamof(iarray({iota(0, 9)})),
+#'proute', 2, 0, 1)));")
+'((0 #(0)) (1 #(1)) (0 #(2)) (1 #(3)) (0 #(4)) (1 #(5)) (0 #(6)) (1 #(7))
+  (0 #(8)) (1 #(9)))))
+
+(checkequal "hpartstream. [width 2, 4, 8] [fanout 2]"
+((osql "select i, na2vec(na[i]) 
+from vector of iarray na, integer i
+where na=in(zipstreams(hpartstream(streamof(iarray({iota(0, 16)})), 
+#'proute', 2, 2, 0)));")
+'((0 #(0)) (1 #(1)) (0 #(2)) (1 #(3)) (0 #(4)) (1 #(5)) (0 #(6)) (1 #(7))
+(0 #(8)) (1 #(9)) (0 #(10)) (1 #(11)) (0 #(12)) (1 #(13)) (0 #(14)) (1 #(15))))
+((osql "select i, na2vec(na[i])
+from vector of iarray na, integer i
+where na=in(zipstreams(hpartstream(streamof(iarray({iota(0, 16)})),
+#'proute', 4, 2, 0)));")
+'((0 #(0)) (1 #(2)) (2 #(1)) (3 #(3)) (0 #(4)) (1 #(6)) (2 #(5)) (3 #(7))
+(0 #(8)) (1 #(10)) (2 #(9)) (3 #(11)) (0 #(12)) (1 #(14)) (2 #(13)) (3 #(15))))
+((osql "select i, na2vec(na[i])
+from vector of iarray na, integer i
+where na=in(zipstreams(hpartstream(streamof(iarray({iota(0, 16)})),
+#'proute', 8, 2, 0)));")
+'((0 #(0)) (1 #(4)) (2 #(2)) (3 #(6)) (4 #(1)) (5 #(5)) (6 #(3)) (7 #(7))
+  (0 #(8)) (1 #(12)) (2 #(10)) (3 #(14)) (4 #(9)) (5 #(13)) (6 #(11)) 
+  (7 #(15)))))
+
+(checkequal "hpartstreamv. [width 30] [fanout {2,3,5}]"
+((osql "select i, na2vec(na[i])
+from vector of iarray na, integer i
+where na=in(zipstreams(hpartstreamv(streamof(iarray({iota(0, 59)})),
+#'proute', 30, {2,3,5}, 0)));")
+'((0 #(0)) (1 #(6)) (2 #(12)) (3 #(18)) (4 #(24)) (5 #(2)) (6 #(8)) (7 #(14))
+(8 #(20)) (9 #(26)) (10 #(4)) (11 #(10)) (12 #(16)) (13 #(22)) (14 #(28))
+(15 #(1)) (16 #(7)) (17 #(13)) (18 #(19)) (19 #(25)) (20 #(3)) (21 #(9))
+(22 #(15)) (23 #(21)) (24 #(27)) (25 #(5)) (26 #(11)) (27 #(17)) (28 #(23))
+(29 #(29)) (0 #(30)) (1 #(36)) (2 #(42)) (3 #(48)) (4 #(54)) (5 #(32))
+(6 #(38)) (7 #(44)) (8 #(50)) (9 #(56)) (10 #(34)) (11 #(40)) (12 #(46))
+(13 #(52)) (14 #(58)) (15 #(31)) (16 #(37)) (17 #(43)) (18 #(49)) (19 #(55))
+(20 #(33)) (21 #(39)) (22 #(45)) (23 #(51)) (24 #(57)) (25 #(35)) (26 #(41))
+(27 #(47)) (28 #(53)) (29 #(59)))))
+
+;; TODO: This swallows some of the tuples. Fix!
+;;(osql "count(select i, na2vec(na[i])
+;;from vector of iarray na, integer i
+;;where na=in(zipstreams(hpartstreamv(streamof(iarray({iota(0, 59)})),
+;;#'proute', 9, expv(9), 0))));")
+
+(checkequal "intra bg merge"
+ ((osql "select extract(c)
+from sp a, sp b, sp c
+where c = newsp(streamof(sum(dim(zip({a,b})))))
+and   a = newsp(gen_array(1, 3))
+and   b = newsp(gen_array(1, 3));")
+  '((6))))
+
+(checkequal "Query I"
+ ((osql "select extract(c) from
+vector of sp a, sp b, sp c, 
+integer n
+where c = newsp(streamof(extract(b)))
+and   b = newsp(streamof(sum(dim(zip(a)))))
+and   a = spv(
+  vselect gen_array(1, 3)
+  from integer i where i in iota(1,n))
+and n=4;")
+  '((12))))
+
+(checkequal "Query III"
+ ((osql "select extract(c) from
+ vector of sp a, vector of sp b, sp c,
+ integer n
+ where c = newsp(streamof(vsum(cast(zip(b) as vector of number))))
+ and   b = spv(
+   vselect streamof(countbag(extract(a[cast(i-1 as integer)])))
+   from integer i 
+   where i in iota(1,n))
+ and a=spv(
+   vselect gen_array(1, 3)
+   from integer i where i in iota(1,n))
+ and n=4;")
+  '((12))))
+
+;;(checkequal "delay analysis using timestamps"
+;; ((osql "sp_ts(1);
+;;         sp_report_freq(1.0);
+;;         sp_ts_freq(0.1);
+;;         extract(newsp(scount(stract(newsp(stract(newsp(
+;;         siota(1, 100000))))))));")
+;; '((100000)))
+;; ((osql "extract(newsp(scount(stract(newsp(stract(newsp(
+;;         siota(1, 100000))))))));")
+;; '((100000)))
+;; ((reval@nameserver 
+;;   '(process-delay (concat (getenv "AMOS_HOME") "/scsq/proctime/delay")
+;;                   (concat (getenv "AMOS_HOME") "/scsq/proctime/delout")))
+;; nil)
+;; ((osql "select count(readfile('proctime/delout')) > 0;")
+;; '((TRUE)))
+;; ((osql "select count(readfile('proctime/delout.csv')) > 0;")
+;; '((TRUE))))
+
+;; (checkequal "timestamps turned off"
+;;  ((progn
+;;    (sleep 3)
+;;    (reval@nameserver 't)
+;;    (delete-file (concat (getenv "AMOS_HOME") "/scsq/proctime/delay"))
+;;    (osql "sp_ts(0);
+;;           sp_proctime(0);
+;;           extract(newsp(scount(stract(newsp(stract(newsp(
+;;           siota(1, 100000))))))));"))
+;; '((100000)))
+;; ((osql "count(dir('proctime', 'delay'));")
+;;  '((0))))
+
+;;(checkequal "sum_proc_sum"
+;; ((> (caar 
+;;      (osql "sumprocsum(vselect 'proctime/' + dir('proctime', 'spr*'));"))
+;;   0.0)
+;; t))
+
+(checkequal "bcast routing function (true for all)"
+ ((osql "in(zipstreams(splitstream(siota(1,5), 4, #'bcast')));")
+ '((#(1 1 1 1)) (#(2 2 2 2)) (#(3 3 3 3)) (#(4 4 4 4)) (#(5 5 5 5)))))
+
+(let ((res (osql "in(stcount(siota(1, 1000000)));")))
+ (checkequal "time stamps of stcount"
+  ((> (elt (caar res) 2) 0) t)
+  ((elt (caar res) 3) 1000000)))
+
+(checkequal "distributed stcount"
+((osql "count(in(zipstreams(
+   mapstreams(splitstream(siota(1, 10000), 2, #'bcast'), 
+              #'stcount'))));")
+'((1))))
+
+;;(checkequal "random seed in SP"
+;;((osql "count(zip(spvflex({randstream(10), randstream(10)}, 
+;;            make_record({'rand', 1}))));")
+;;'((10)))
+;;((let ((resv (caar (osql "select w, z  
+;;from vector w, vector z, vector of vector v 
+;;where v = (vselect x from vector of integer x 
+;;  where x=zip(spvflex({randstream(10), randstream(10)}, 
+;;              make_record({'rand', 0}))))
+;;and w = (vselect v[i][0] from integer i) 
+;;and z = (vselect v[i][1] from integer i);"))))
+;;(not (equal (elt resv 0) (elt resv 1))))
+;;t))
+
+(checkequal "SP multibuffer on iarray"
+((osql "select multi2na(v, 1)[0]
+ from iarray v where v in 
+ extract(newspflex(streamof(iarray({iota(1,10)})), {'na2m':{'ma-size':5}}));")
+'((1) (2) (3) (4) (5) (6) (7) (8) (9) (10))))
+
+(checkequal "SP multibuffer on iarray (bcast sfn)"
+((osql "select multi2na(v, 1)[0]
+ from iarray v
+ where v in extract(newspflex(streamof(iarray({iota(1,10)})),
+   make_record({'sfn',#'bcast','na2m',{'ma-size':5}})));")
+'((1) (2) (3) (4) (5) (6) (7) (8) (9) (10)))
+((osql "count(select multi2na(v, 1) 
+ from iarray v
+ where v in mergestreams(splitflex(streamof(iarray({iota(1,14)})), 4, 
+  #'bcast', {'na2m':{'ma-size':5}})));")
+'((56))))
+
+(checkequal "SP multibuffer on darray (bcast sfn)"
+((osql "select multi2na(v, 1)[0]
+ from darray v
+ where v in extract(newspflex(
+   streamof(darray({real(iota(1, 15))})),
+   make_record({'sfn',#'bcast','na2m',{'ma-size':4}})));")
+'((1.0) (2.0) (3.0) (4.0) (5.0) (6.0) (7.0) (8.0) (9.0) (10.0) (11.0) (12.0)
+  (13.0) (14.0) (15.0))))
+
+(checkequal "SP multibuffer on arrays"
+((osql "select na2vec(multi2na(v, 2))
+ from iarray v
+ where v in extract(newspflex(
+   streamof(select iarray({iota(1, 3), iota(101, 102)})),
+   make_record({'sfn',#'bcast','na2m',{'ma-size':4}})));")
+'((#(1 101)) (#(1 102)) (#(2 101)) (#(2 102)) (#(3 101)) (#(3 102))))
+((osql "select na2vec(multi2na(v, 2))
+ from darray v
+ where v in extract(newspflex(
+   streamof(darray({real(iota(1, 3)), real(iota(101, 102))})),
+   make_record({'sfn',#'bcast','na2m',{'ma-size':4}})));")
+'((#(1.0 101.0)) (#(1.0 102.0)) (#(2.0 101.0)) (#(2.0 102.0)) (#(3.0 101.0))
+  (#(3.0 102.0)))))
+
+(checkequal "Splitstream with multibuffers"
+((osql "sort(select na2vec(multi2na(v, 2))
+from darray v where v in mergestreams(mapstreams(splitflex(streamof(select 
+retard(0.01, darray({real(iota(1, 2)), real(iota(101, 102))}))), 
+3, #'bcast', {'na2m':{'ma-size':4}}), #'id')));")
+'((#(#(1.0 101.0) #(1.0 101.0) #(1.0 101.0) #(1.0 102.0) #(1.0 102.0)
+     #(1.0 102.0) #(2.0 101.0) #(2.0 101.0) #(2.0 101.0) #(2.0 102.0)
+     #(2.0 102.0) #(2.0 102.0))))))
+
+(checkequal "zipmulti"
+((osql "zipmulti({newsp(streamof(iarray({1,2,3,4}))),
+newsp(streamof(iarray({1,2,3,4})))},2);")
+(list (list (listtoarray (list (init-iarray #(1 2)) (init-iarray #(1 2)))))
+(list (listtoarray (list (init-iarray #(3 4)) (init-iarray #(3 4)))))))
+((osql "zipmulti({newsp(streamof(darray({1.0,2.0,3.0,4.0}))),
+newsp(streamof(darray({5.0,6.0,7.0,8.0})))},2);")
+(list 
+(list 
+(listtoarray (list (init-darray #(1.0 2.0)) (init-darray #(5.0 6.0)))))
+(list
+(listtoarray (list (init-darray #(3.0 4.0)) (init-darray #(7.0 8.0))))))))
+
+(checkequal "zipmulti different multiarray sizes"
+((osql "count(zipmulti({
+newsp(streamof(select iarray({1,2,3,4,5,6})
+from integer i where i in iota(1, 3))),
+newsp(streamof(select iarray({1,2,3,4,5,6,7,8,9})
+from integer i where i in iota(1, 2)))}, 3));")
+'((6))))
+
+(checkequal "zipmulti of mapstreams of splitstream with multi"
+((osql "select vectorize(select i, na2vec(v[i]) from integer i)
+from vector of numarray v
+where v in zipstreamsm(mapstreams(splitflex(streamof(select 
+darray({real(iota(1, 2)), real(iota(101, 102))})), 
+3, #'bcast', {'na2m':{'ma-size':4}}), #'id'), 2);")
+'((#(#(1.0 101.0) #(1.0 101.0) #(1.0 101.0))) 
+  (#(#(1.0 102.0) #(1.0 102.0) #(1.0 102.0)))
+  (#(#(2.0 101.0) #(2.0 101.0) #(2.0 101.0)))
+  (#(#(2.0 102.0) #(2.0 102.0) #(2.0 102.0))))))
+
+(checkequal "ziplayer"
+((osql "in(ziplayer(splitstream(siota(1,2), 8, #'bcast'), 1)[0]);")
+ '((#(1 1 1 1 1 1 1 1)) (#(2 2 2 2 2 2 2 2))))
+((osql "in(ziplayer(ziplayer(splitstream(siota(1,2),8,#'bcast'),4), 1)[0]);")
+ '((#(#(1 1) #(1 1) #(1 1) #(1 1))) (#(#(2 2) #(2 2) #(2 2) #(2 2))))))
+
+(checkequal "splitstream(sfn=bcast) -- zipmlayer"
+((osql "select in(s) 
+from vector of stream src, stream s
+where s = zipmlayer(src, 1, 2)[0]
+and src = splitflex(streamof(select
+darray({real(iota(1, 2)), real(iota(101, 102))})),
+3, #'bcast', {'na2m':{'ma-size':4}});")
+(osql "select {d,d,d} from darray d
+where d = darray({real(iota(1, 2)), real(iota(101, 102))});")))
+
+(checkequal "2 level ziptree: zipmlayer -- zipstreams"
+((osql "select in(s)
+from vector of stream src, stream s
+where s = zipstreams(zipmlayer(src, 3, 2))
+and src = splitflex(streamof(select
+darray({real(iota(1, 2)), real(iota(101, 102))})),
+6, #'bcast', {'na2m':{'ma-size':4}});")
+(osql "select {{d,d},{d,d},{d,d}} from darray d
+where d = darray({real(iota(1, 2)), real(iota(101, 102))});")))
+
+(checkequal "splitstream(rfn=f bfn=t) -- zipmmaplayer(mapfn=id)"
+((osql "select in(res)
+from vector of stream src, stream res
+where res = zipstreams(zipmmaplayer(src, 3, 2, #'sids'))
+and src = splitflex(streamof(select
+darray({real(iota(1, 2)), real(iota(101, 102))})),
+6, #'f', #'t', {'na2m':{'ma-size':4}});")
+(osql "select {{d,d},{d,d},{d,d}} from darray d
+where d = darray({real(iota(1, 2)), real(iota(101, 102))});")))
+
+(checkequal "splitstream(rfn=f bfn=t) -- zipmmaplayer(mapfn=vdsum)"
+((osql "select in(zipstreams(zipmmaplayer(src, 3, 2, #'vdsum')))
+from vector of stream src
+where src = splitflex(streamof(select
+darray({real(iota(1, 2)), real(iota(101, 102))})),
+6, #'f', #'t', {'na2m':{'ma-size':4}});")
+(osql "select {d,d,d} from darray d
+where d = darray({real(2*iota(1, 2)), real(2*iota(101, 102))});")))
+
+(checkequal "2 level zipmmap tree: zipmmaplayer -- zipmaplayer"
+((osql "select in(s)
+from vector of stream src, vector of stream z1, stream s
+where src = splitflex(streamof(select
+darray({real(iota(1, 2)), real(iota(101, 102))})),
+6, #'f', #'t', {'na2m':{'ma-size':4}})
+and z1 = zipmmaplayer(src, 3, 2, #'vdsum')
+and s = zipmaplayer(z1, 1, #'vdsum')[0];")
+(osql "darray({real(6*iota(1, 2)), real(6*iota(101, 102))});")))
+
+(checkequal "2 level zipmmapm tree: zipmmaplayerm -- zipmmaplayer"
+((osql "select in(s)
+from vector of stream src, vector of stream z1, stream s
+where src = splitflex(streamof(select
+darray({real(iota(1, 2)), real(iota(101, 102))})),
+6, #'f', #'t', {'na2m':{'ma-size':4}})
+and z1 = zipmmaplayerm(src, 3, 2, #'vdsum', 3)
+and s = zipmmaplayer(z1, 1, 2, #'vdsum')[0];")
+(osql "darray({real(6*iota(1, 2)), real(6*iota(101, 102))});")))
+
+(checkequal "interrupted extract of SP"
+((osql "some(extract(newsp(siota(1,10))));")
+'((TRUE))))
+
+(checkequal "interrupted extract of a chain of SP"
+((osql "some(extract(newsp(stract(newsp(siota(1,10))))));")
+'((TRUE))))
+
+(checkequal "interrupted extract of retarded SP"
+((osql "some(extract(newsp(streamof(retard(1.0, iota(1,10))))));")
+'((TRUE))))
+
+(checkequal "interrupted extract of a chain of retarded SP"
+((osql "some(extract(newsp(stract(newsp(
+streamof(retard(1.0, iota(1,10))))))));")
+'((TRUE))))
+
+(checkequal "interrupted uall of retarded SP"
+((osql "some(uall({newsp(streamof(retard(1.0, iota(1,10))))}));")
+'((TRUE))))
+
+(checkequal "interrupted uall of SPs"
+((osql "some(uall(spv(vectorize(
+select i, siota(1,3) from integer i where i in iota(0, 9)))));")
+'((TRUE))))
+
+(checkequal "interrupted uall of retarded SPs"
+((osql "some(uall(spv(vectorize(
+select i, streamof(retard(2.0, iota(1, 100)))
+from integer i where i in iota(0, 9)))));")
+'((TRUE))))
+
+; '"
+
+(checkequal "numarray hash merge of two streams"
+((osql "select na2vec(res[0]), na2vec(res[1])
+from stream of numarray nav, vector of numarray res
+where res = nahmerge(in(nav), 1, 2)
+and nav = mergestreams({
+ostream(newsp(streamof(select iarray({0, i, integer(i+9)})
+from integer i where i in iota(1, 5))), 0),
+ostream(newsp(streamof(select iarray({0, integer(8-i), i})
+from integer i where i in iota(1, 5))), 0)});")
+'((#(0 5 14) #(0 5 3)) (#(0 4 13) #(0 4 4)) (#(0 3 12) #(0 3 5)))))
+
+(sleep 1) ; Let SPs exit before killing daemons + nameserver
+:osql

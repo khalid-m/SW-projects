@@ -1,0 +1,387 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 Silvia Stefanova UDBL
+ * $RCSfile: ideas10.osql,v $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Unbound-property SparQL queries to RDFS views of RDB
+ ******************************************************************************/
+
+defineDS("customer1DS",
+         "jdbc:microsoft:sqlserver://localhost;DatabaseName=customer1",
+        "com.microsoft.jdbc.sqlserver.SQLServerDriver",
+         "customer1",
+         "customer1",
+         "sard1",
+         "sard1");
+
+
+defineUPV("customer1DS","cust1", "http://user.it.uu.se/~udbl/sard/customer1");
+
+DSConnect("cust1");	
+
+wrapRDB(jdbcOfDS("customer1DS"), "customer1", "customer1", "customer1");
+
+assignIDs("cust1","customer1", "customer1");
+
+ViewRDB("cust1");
+
+
+parteval('pmap');
+parteval('cmap');
+
+parteval('rowid');
+
+lisp;
+
+(setup-sard-cache)
+
+:osql
+
+
+(profile-functions rewrite-typechecks)   
+
+(PROFILE-FUNCTIONS rewrite-before-view-expansion)
+
+(profile-functions expand-predicate)   
+
+(profile-functions rewrite-after-view-expansion)
+
+(profile-functions rewrite-after-normalization)  
+
+(profile-functions transformpredicate)
+
+(profile-functions rewritesubst-dnf-new2)
+
+(profile-functions gct) 
+
+(profile-functions rewrite-coerced-pred)
+
+(profile-functions optimize-pred)
+
+(profile-functions RELATIONAL-FINALIZE)
+
+(profile-functions RELATIONAL-TRANSLATE-CORE-CLUSTER)
+
+(profile-functions CREATE-SPECIALIZED-QUERY-FN)
+
+:osql
+
+set :sparq_schema="SELECT ?s ?p ?val
+		FROM <http://user.it.uu.se/~udbl/sard/customer1> 
+		WHERE {?s ?p ?val.
+		FILTER regex(?p,'http://www.w3.org/*')}";
+
+
+eval("create function exec_sparq_sh()-><Charstring,Charstring,Literal> as " + parse_sparql(:sparq_schema));   
+
+unloadQueryasNT("cust1_schema_unload.nt","exec_sparq_sh");
+
+
+
+
+set :sparq0="SELECT ?s ?p ?val
+		FROM <http://user.it.uu.se/~udbl/sard/customer1> 
+		WHERE {?s ?p ?val.}";
+
+eval("create function exec_sparq0()-><Charstring,Charstring,Literal> as " + parse_sparql(:sparq0));    
+
+
+unloadQueryasNT("cust1_column_unload.nt","exec_sparq0");
+
+
+unloadQueryasNT("cust1_row_unload.nt","exec_sparq0");
+
+set :db_name="reload";
+
+set :db_schema="reload";
+
+set :jd = jdbc("reload","com.microsoft.jdbc.sqlserver.SQLServerDriver");
+
+set jdbcofDS("reload")=:jd;
+
+connect (:jd,"jdbc:microsoft:sqlserver://localhost;"+"DatabaseName=reload","reload", "reload");
+
+
+
+insert_intoTab_fromNTP("cust1_schema_unload.nt","customer1row_unload.nt","http://user.it.uu.se/~udbl/sard/customer1");
+
+insert_intoTab_fromNTP(:jd,"cust1_schema_unload.nt","customer1row_unload.nt","http://user.it.uu.se/~udbl/sard/customer1");
+
+
+createProcedures(:jd,"cust1_schema_unload.nt","http://user.it.uu.se/~udbl/sard/customer1");
+
+
+insert_intoCols(:jd,"cust1_schema_unload.nt","http://user.it.uu.se/~udbl/sard/customer1","cust001_column_unload.nt");
+
+
+
+
+
+set :sparql_q2 = "SELECT ?s1 ?p4 ?val4
+		FROM <http://user.it.uu.se/~udbl/sard/customer1>
+		WHERE {	?s <http://user.it.uu.se/~udbl/sard/customer1#orders_o_orderprice> '44730' .
+			?s <http://user.it.uu.se/~udbl/sard/customer1#orders_o_custkey> ?val2 .
+			?s1 <http://user.it.uu.se/~udbl/sard/customer1#customer_c_custkey> ?val2 .
+			?s1 ?p4 ?val4 .}";
+
+		
+eval("create function exec_q2()-><Charstring,Charstring,Literal> as " + parse_sparql(:sparql_q2)); 
+
+
+
+
+
+set :sparql_q3= "SELECT ?s2  ?p6 ?val6
+		   FROM  <http://user.it.uu.se/~udbl/sard/customer1>
+		   WHERE {?s <http://user.it.uu.se/~udbl/sard/customer1#part_p_size> '30'.
+			  ?s <http://user.it.uu.se/~udbl/sard/customer1#part_p_partkey> ?val2.
+         		  ?s1 <http://user.it.uu.se/~udbl/sard/customer1#partsupp_ps_partkey> ?val2.
+			  ?s1 <http://user.it.uu.se/~udbl/sard/customer1#partsupp_ps_suppkey> ?val4.
+			  ?s2 <http://user.it.uu.se/~udbl/sard/customer1#supplier_s_suppkey> ?val4.
+			  ?s1 <http://user.it.uu.se/~udbl/sard/customer1#partsupp_ps_supplycost> '771.64'.
+			  ?s2  ?p6 ?val6.
+		   FILTER (?p6!=<http://user.it.uu.se/~udbl/sard/customer1#supplier_s_comment> )
+	           FILTER (?p6!=<http://user.it.uu.se/~udbl/sard/customer1#supplier_s_address> )
+ }";
+
+
+
+eval("create function exec_q3()-><Charstring,Charstring,Literal> as " + parse_sparql(:sparql_q3)); 
+
+
+
+set :sparql_q33= "SELECT ?s2  ?p6 ?val6
+		   FROM  <http://user.it.uu.se/~udbl/sard/customer1>
+		   WHERE {?s <http://user.it.uu.se/~udbl/sard/customer1#part_p_size> '30'.
+			  ?s <http://user.it.uu.se/~udbl/sard/customer1#part_p_partkey> ?val2.
+         		  ?s1 <http://user.it.uu.se/~udbl/sard/customer1#partsupp_ps_partkey> ?val2.
+			  ?s1 <http://user.it.uu.se/~udbl/sard/customer1#partsupp_ps_suppkey> ?val4.
+			  ?s2 <http://user.it.uu.se/~udbl/sard/customer1#supplier_s_suppkey> ?val4.
+			  ?s2  ?p6 ?val6.}";
+
+eval("create function exec_q33()-><Charstring,Charstring,Literal> as " + parse_sparql(:sparql_q33));
+
+
+set :sparq4 = "SELECT ?s ?p ?val
+		FROM <http://user.it.uu.se/~udbl/sard/customer1>
+		WHERE {	?s <http://user.it.uu.se/~udbl/sard/customer1#customer_c_mktsegment> ?val1 .
+			?s ?p ?val .
+		FILTER regex(?val1,'BUILDIN*') }";
+
+eval("create function exec_sparq4()-><Charstring,Integer> as " + parse_sparql(:sparq4)); 
+
+
+create function amos_sparq4()-> <Charstring,Charstring,Literal> 
+as
+	select s,p,val from Charstring s,Charstring p,Charstring val,Charstring val1 
+	where cust1()=<s,'http://user.it.uu.se/~udbl/sard/customer1#customer_c_mktsegment',val1> 
+			and cust1()=<s,p,val> and like(val1,'BUILDIN*');
+
+
+
+
+/*********************************/
+
+
+defineDS("customer2DS",
+         "jdbc:microsoft:sqlserver://localhost;DatabaseName=customer2",
+        "com.microsoft.jdbc.sqlserver.SQLServerDriver",
+         "customer2",
+         "customer22",
+         "sard22",
+         "sard22");
+
+
+defineUPV("customer2DS","cust2", "http://user.it.uu.se/~udbl/sard/customer2");
+
+DSConnect("cust2");
+
+wrapRDB(jdbcOfDS("customer2DS"), "customer2", "customer2", "customer22");
+
+assignIDs("cust2","customer2", "customer22");
+
+ViewRDB("cust2");
+
+parteval('pmap');
+parteval('cmap');
+
+parteval('rowid');
+
+lisp;
+
+(setup-sard-cache)
+
+(setq _unif_ t)
+
+(setq _gct_ t)
+
+:osql
+
+(profile-functions rewrite-typechecks)   
+
+(PROFILE-FUNCTIONS rewrite-before-view-expansion)
+
+(profile-functions expand-predicate)   
+
+(profile-functions rewrite-after-view-expansion)
+
+(profile-functions rewrite-after-normalization)  
+
+(profile-functions transformpredicate)
+
+(profile-functions rewritesubst-dnf-new2)
+
+(profile-functions gct) 
+
+(profile-functions rewrite-coerced-pred)
+
+(profile-functions optimize-pred)
+
+(profile-functions RELATIONAL-FINALIZE)
+
+(profile-functions RELATIONAL-TRANSLATE-CORE-CLUSTER)
+
+(profile-functions CREATE-SPECIALIZED-QUERY-FN)
+
+:osql
+
+
+set :sparq0="SELECT ?s ?p ?val
+		FROM <http://user.it.uu.se/~udbl/sard/customer2> 
+		WHERE {?s ?p ?val.}";
+
+eval("create function exec_sparq0()-><Charstring,Charstring,Literal> as " + parse_sparql(:sparq0));       
+
+
+unloadQueryasNT("cust2_column_unload.nt","exec_sparq0");
+
+unloadQueryasNT("cust2_row_unload.nt","exec_sparq0");
+
+
+set :sparql_q2 = "SELECT ?s1 ?p4 ?val4
+		FROM <http://user.it.uu.se/~udbl/sard/customer2>
+		WHERE {	?s <http://user.it.uu.se/~udbl/sard/customer2#orders_o_orderprice> '84368.5' .
+			?s <http://user.it.uu.se/~udbl/sard/customer2#orders_o_custkey> ?val2 .
+			?s1 <http://user.it.uu.se/~udbl/sard/customer2#customer_c_custkey> ?val2 .
+			?s1 ?p4 ?val4 .}";
+
+ 		
+eval("create function exec_q2()-><Charstring,Charstring,Literal> as " + parse_sparql(:sparql_q2));  
+
+
+set :sparql_q3= "SELECT ?s2  ?p6 ?val6
+		   FROM  <http://user.it.uu.se/~udbl/sard/customer2>
+		   WHERE {?s <http://user.it.uu.se/~udbl/sard/customer2#part_p_size> '30'.
+			  ?s <http://user.it.uu.se/~udbl/sard/customer2#part_p_partkey> ?val2.
+         		  ?s1 <http://user.it.uu.se/~udbl/sard/customer2#partsupp_ps_partkey> ?val2.
+			  ?s1 <http://user.it.uu.se/~udbl/sard/customer2#partsupp_ps_suppkey> ?val4.
+			  ?s2 <http://user.it.uu.se/~udbl/sard/customer2#supplier_s_suppkey> ?val4.
+			  ?s1 <http://user.it.uu.se/~udbl/sard/customer2#partsupp_ps_supplycost> '771.64'.
+			  ?s2  ?p6 ?val6.
+			 FILTER (?p6!=<http://user.it.uu.se/~udbl/sard/customer2#supplier_s_comment> )
+	           	 FILTER (?p6!=<http://user.it.uu.se/~udbl/sard/customer2#supplier_s_address> ) }";
+
+eval("create function exec_q3()-><Charstring,Charstring,Literal> as " + parse_sparql(:sparql_q3)); 
+
+
+set :sparql_q33= "SELECT ?s2  ?p6 ?val6
+		   FROM  <http://user.it.uu.se/~udbl/sard/customer2>
+		   WHERE {?s <http://user.it.uu.se/~udbl/sard/customer2#part_p_size> '30'.
+			  ?s <http://user.it.uu.se/~udbl/sard/customer2#part_p_partkey> ?val2.
+         		  ?s1 <http://user.it.uu.se/~udbl/sard/customer2#partsupp_ps_partkey> ?val2.
+			  ?s1 <http://user.it.uu.se/~udbl/sard/customer2#partsupp_ps_suppkey> ?val4.
+			  ?s2 <http://user.it.uu.se/~udbl/sard/customer2#supplier_s_suppkey> ?val4.
+			  ?s2  ?p6 ?val6.}";
+
+eval("create function exec_q33()-><Charstring,Charstring,Literal> as " + parse_sparql(:sparql_q33));
+
+
+------------------------------------------
+
+
+defineDS("examDS",
+         "jdbc:microsoft:sqlserver://localhost;DatabaseName=example",
+        "com.microsoft.jdbc.sqlserver.SQLServerDriver",
+         "example",
+         "example",
+         "sard",
+         "sard");
+
+
+defineUPV("examDS","exam", "http://user.it.uu.se/~udbl/sard/example");
+
+DSConnect("exam");	
+
+wrapRDB(jdbcOfDS("examDS"), "example", "example", "example");
+
+assignIDs("exam","example", "example");
+
+ViewRDB("exam");
+
+parteval('pmap');
+parteval('cmap');
+
+parteval('rowid');
+
+
+
+set :sparq0="SELECT ?s ?p ?val
+		FROM <http://user.it.uu.se/~udbl/sard/example> 
+		WHERE {?s ?p ?val
+		FILTER regex(?p,'http://user.it.uu.se/~udbl/sard/example*')}";
+
+eval("create function exec_sparq0()-><Charstring,Charstring,Literal> as " + parse_sparql(:sparq0));   
+
+unloadQueryasNT("exam_column_unload.nt","exec_sparq0");
+
+
+set :sparq_schema="SELECT ?s ?p ?val
+		FROM <http://user.it.uu.se/~udbl/sard/example> 
+		WHERE {?s ?p ?val.
+		FILTER regex(?p,'http://www.w3.org/*')
+	
+
+eval("create function exec_sparq_sh()-><Charstring,Charstring,Literal> as " + parse_sparql(:sparq_schema));   
+
+unloadQueryasNT("exam_schmea_unload.nt","exec_sparq_sh");
+
+
+
+/*Insert procedures*/
+
+create procedure intoCol_customer_c_custkey 
+	@numID int, 
+	@val int
+AS
+  begin
+	DECLARE @num int;
+	SET @num=(SELECT c_custkey FROM customer WHERE c_custkey=@numID);
+	if @num is null 
+	   BEGIN
+		INSERT INTO customer (c_custkey,c_name,c_address,c_nationkey,c_phone,c_acctbal,c_comment,c_segment) VALUES(@numID,'','','','','','','');
+		UPDATE customer SET c_custkey=@val WHERE c_custkey=@numID;
+	   END
+	else
+		UPDATE customer SET c_custkey=@val WHERE c_custkey=@numID;
+ end;
+
+
+create procedure intoCol_customer_c_name 
+	@numID int, 
+	@val varchar
+AS
+  begin
+	DECLARE @num int;
+	SET @num=(SELECT c_custkey FROM customer WHERE c_custkey=@numID);
+	if @num is null 
+	   BEGIN
+		INSERT INTO customer (c_custkey,c_name,c_address,c_nationkey,c_phone,c_acctbal,c_comment,c_segment) VALUES(@numID,'','','','','','','');
+		UPDATE customer SET c_name=@val WHERE c_custkey=@numID;
+	   END
+	else
+		UPDATE customer SET c_name=@val WHERE c_custkey=@numID;
+ end;
+
+sql(jdbcOfDS("customer1DS"),"select O_ORDERKEY,O_CUSTKEY,C_NAME,C_ADDRESS,C_NATIONKEY,C_PHONE,C_ACCTBAL,C_MKTSEGMENT,C_COMMENT from ORDERS O_,CUSTOMER C_ where O_ORDERPRICE = '44730' and C_CUSTKEY = O_CUSTKEY");

@@ -1,0 +1,236 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Johan Petrini, UDBL
+ * 		2010,2011 Silvia Stefanova
+ * Description: Master regression test of SARD system exporting and querying 
+ * the Company relational database 
+ *
+ * The following queries are tested:
+ *
+ *  Schema queries accessing the relational database schema.
+ *  1. Give me all properties of the class, identified by 
+ *     <http://user.it.uu.se/~udbl/sard/regress#customer>, except  
+ *     the property, identified by <http://user.it.uu.se/~udbl/sard/regress#customer/customerid>.
+ *
+ *  Content queries accessing the relational database data.
+ *  1. Give me the market segment of the customer who made 
+ *     the order '1'.
+ *  2. Give me the class of the instance with 
+ *     identifier <http://user.it.uu.se/~udbl/sard/regress#customer/_120>. 
+ *  3. Give me all customers.
+ *  4. Give me the selling clerk, the buying customer (co:Customer)
+ *     and the market segment for that customer, for all orders (co:Orders).
+ *
+ *  Hybrid queries joining schema and content data. 
+ *  1. Give me all properties, except for 
+ *     <http://user.it.uu.se/~udbl/sard/regress#customer/customerid>, 
+ *     and values of the customer who placed the order '1'.      
+ ******************************************************************************/
+/* Load SARD master regression setup  
+ */		
+
+<'company_setup.amosql';
+
+/* Generate the UPVs
+ */
+
+ViewRDB("Comp");
+
+
+/* SPARQL queries 
+ */
+
+
+set :sparql_schema_1 = 
+"SELECT ?prop
+ FROM <http://udbl.it.uu.se/upv/comp/>
+ WHERE {?prop <http://www.w3.org/2000/01/rdf-schema#domain>
+		 <http://user.it.uu.se/~udbl/sard/regress#customer> .
+ FILTER (?prop != <http://user.it.uu.se/~udbl/sard/regress#customer/custid>) .}";
+
+
+set :sparql_schema_2="SELECT ?s ?p ?val
+	     FROM <http://udbl.it.uu.se/upv/comp/>
+	     WHERE {?s ?p ?val.
+	       	  {FILTER REGEX (?p,'*#PRIMARY_KEY')}
+	     UNION
+		  {FILTER REGEX (?p,'*#FOREIGN_KEY')}
+	     UNION
+		{ FILTER REGEX (?val, '*#Seq'). 
+	          FILTER REGEX (?p,'*#type')} 
+	     UNION
+		{ FILTER REGEX (?p, '*rdf-syntax-ns#_*')}
+	     UNION
+		{FILTER REGEX (?p,'*#REFERENCES')}}";
+
+
+
+set :sparql_content_2 = 
+"SELECT ?ocust ?mkt
+ FROM <http://udbl.it.uu.se/upv/comp/>
+ WHERE { <http://user.it.uu.se/~udbl/sard/regress#orders/_1> <http://user.it.uu.se/~udbl/sard/regress#OrderedBy> ?ocust .
+        ?ocust  <http://user.it.uu.se/~udbl/sard/regress#customer/mktsegment> ?mkt .}";
+
+
+
+set :sparql_hybrid_3 = 
+"SELECT ?ocust ?prop ?val
+FROM <http://udbl.it.uu.se/upv/comp/>	
+WHERE { <http://user.it.uu.se/~udbl/sard/regress#orders/_1> <http://user.it.uu.se/~udbl/sard/regress#OrderedBy> ?ocust .
+       ?prop <http://www.w3.org/2000/01/rdf-schema#domain> <http://user.it.uu.se/~udbl/sard/regress#customer> .      
+       ?ocust ?prop ?val .
+FILTER (?prop != <http://user.it.uu.se/~udbl/sard/regress#customer/custid>) .}";
+
+
+set :sparql_content_4 = 
+"SELECT ?class
+ FROM <http://udbl.it.uu.se/upv/comp/>
+ WHERE {<http://user.it.uu.se/~udbl/sard/regress#customer/_120> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>
+         ?class .}";
+
+set :sparql_content_5 = 
+"SELECT ?sub ?prop
+ FROM <http://udbl.it.uu.se/upv/comp/>
+ WHERE {?sub ?prop '150' .}";
+
+set :sparql_content_6 = 
+"SELECT ?cust
+ FROM <http://udbl.it.uu.se/upv/comp/>
+ WHERE {?cust <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>
+         <http://user.it.uu.se/~udbl/sard/regress#customer> .}";
+
+set :sparql_content_7 = 
+"SELECT ?cust ?mkt ?clerk 
+ FROM <http://udbl.it.uu.se/upv/comp/>
+ WHERE {?order <http://user.it.uu.se/~udbl/sard/regress#orders/clerk> ?clerk .
+        ?order <http://user.it.uu.se/~udbl/sard/regress#OrderedBy> ?cust .
+        ?cust <http://user.it.uu.se/~udbl/sard/regress#customer/mktsegment> ?mkt .}";
+
+set :sparql_content_8 = 
+"SELECT ?ocustid ?mkt ?clerk 
+ FROM <http://udbl.it.uu.se/upv/comp/>
+ WHERE {?order <http://user.it.uu.se/~udbl/sard/regress#orders/clerk> ?clerk .
+        ?order <http://user.it.uu.se/~udbl/sard/regress#OrderedBy> ?ocustid .
+        ?ocustid <http://user.it.uu.se/~udbl/sard/regress#customer/mktsegment> ?mkt .}";
+
+
+set :sparql_content_9 = 
+"SELECT ?s ?p
+ FROM <http://udbl.it.uu.se/upv/comp/>
+ WHERE { ?s ?p 'AUTOMOBILE'}";
+
+
+
+/* Defining the results of and evaluating the example queries
+ */
+lisp;
+(defglobal _schema_1_res_ 
+ (list (list (listtoarray 
+    (list "http://user.it.uu.se/~udbl/sard/regress#customer/mktsegment")))))
+
+
+(defglobal _schema_2_res_
+  (list (list (listtoarray
+     		(list "http://user.it.uu.se/~udbl/sard/regress#customer" "http://user.it.uu.se/~udbl/sard#PRIMARY_KEY" "http://user.it.uu.se/~udbl/sard/regress#customer/PrimaryK")))
+	(list (listtoarray
+		(list "http://user.it.uu.se/~udbl/sard/regress#orders" "http://user.it.uu.se/~udbl/sard#PRIMARY_KEY" "http://user.it.uu.se/~udbl/sard/regress#orders/PrimaryK")))
+	(list (listtoarray
+		(list "http://user.it.uu.se/~udbl/sard/regress#orders/PrimaryK" "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" "http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq")))
+	(list (listtoarray
+		(list "http://user.it.uu.se/~udbl/sard/regress#customer/PrimaryK" "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" "http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq")))
+	(list (listtoarray
+		(list "http://user.it.uu.se/~udbl/sard/regress#orders/PrimaryK" "http://www.w3.org/1999/02/22-rdf-syntax-ns#_1" "http://user.it.uu.se/~udbl/sard/regress#orders/ORDERID")))
+	(list (listtoarray
+		(list "http://user.it.uu.se/~udbl/sard/regress#customer/PrimaryK" "http://www.w3.org/1999/02/22-rdf-syntax-ns#_1" "http://user.it.uu.se/~udbl/sard/regress#customer/CUSTID")))))
+
+
+(defglobal _content_2_res_ 
+ (list (list (listtoarray 
+    (list "http://user.it.uu.se/~udbl/sard/regress#customer/_120" "AUTOMOBILE"))))) 
+
+(defglobal _hybrid_3_res_
+(list (list (listtoarray 
+  (list "http://user.it.uu.se/~udbl/sard/regress#customer/_120" 
+		"http://user.it.uu.se/~udbl/sard/regress#customer/mktsegment" "AUTOMOBILE")))))
+
+(defglobal _content_4_res_ 
+ (list 
+  (list (listtoarray 
+	(list "http://user.it.uu.se/~udbl/sard/regress#customer")))))
+
+(defglobal _content_5_res_ 
+ (list 
+  (list (listtoarray 
+	(list "http://user.it.uu.se/~udbl/sard/regress#lineitem/_2_12345" "http://user.it.uu.se/~udbl/sard/regress#lineitem/quantity")))))
+
+(defglobal _content_6_res_ 
+ (list 
+  (list (listtoarray 
+	(list "http://user.it.uu.se/~udbl/sard/regress#customer/_120" )))))
+
+(defglobal _content_7_8_res_ 
+ (list 
+  (list (listtoarray 
+	(list "http://user.it.uu.se/~udbl/sard/regress#customer/_120" "AUTOMOBILE" "Wesson")))
+  (list (listtoarray 
+	(list "http://user.it.uu.se/~udbl/sard/regress#customer/_120" "AUTOMOBILE" "Doe")))))
+
+(defglobal _content_9_res_ 
+ (list 
+   (list (listtoarray
+	   (list "http://user.it.uu.se/~udbl/sard/regress#customer/_120" "http://user.it.uu.se/~udbl/sard/regress#customer/mktsegment")))))
+
+
+(checkequal "SPARQL schema query Q1"
+	    ((osql "sparql(:sparql_schema_1);")
+		 _schema_1_res_))
+
+;;(checkequal "SPARQL UNION query selecting info only about primary and foreign keys"
+;;	    ((osql "sparql(:sparql_schema_2);")
+;;		 _schema_2_res_))
+
+
+(checkequal "SPARQL content query Q2 "
+	    ((osql "sparql(:sparql_content_2);")
+		 _content_2_res_))
+
+
+(checkequal "SPARQL hybrid query Q3"
+	    ((osql "sparql(:sparql_hybrid_3);")
+		 _hybrid_3_res_))
+
+
+(checkequal "SPARQL content query Q4"
+	    ((osql "sparql(:sparql_content_4);")
+ 		 _content_4_res_))
+
+(checkequal "SPARQL content query Q5 "
+	    ((osql "sparql(:sparql_content_5);")
+		 _content_5_res_))
+
+(checkequal "SPARQL content query Q6 "
+	    ((osql "sparql(:sparql_content_6);")
+		 _content_6_res_))
+
+(checkequal "SPARQL content query Q7 with FK"
+	    ((osql "sparql(:sparql_content_7);")
+		 _content_7_8_res_))
+
+(checkequal "SPARQL content query Q8 "
+	    ((osql "sparql(:sparql_content_8);")
+		 _content_7_8_res_))
+
+(checkequal "SPARQL content query Q9"
+	    ((osql "sparql(:sparql_content_9);")
+		 _content_9_res_))	
+
+
+:osql
+
+DSDisconnect("Comp");
+
+
+
+
+

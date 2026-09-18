@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions name="Webamos" targetNamespace="urn:WSAmos" xmlns:tns="urn:WSAmos" xmlns:wsdlsoap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/encoding/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+  <wsdl:types>
+    <xsd:schema targetNamespace="urn:WSAmos" xmlns="http://www.w3.org/2001/XMLSchema"><xsd:complexType name="VectorofanyType"><xsd:sequence><xsd:element maxOccurs="unbounded" minOccurs="1" name="member" type="xsd:anyType"/></xsd:sequence></xsd:complexType><xsd:complexType name="VectorofOID"><xsd:sequence><xsd:element maxOccurs="unbounded" minOccurs="1" name="member" type="xsd:string"/></xsd:sequence></xsd:complexType><xsd:complexType name="VectorofINTEGER"><xsd:sequence><xsd:element maxOccurs="unbounded" minOccurs="1" name="member" type="xsd:int"/></xsd:sequence></xsd:complexType><xsd:complexType name="VectorofREAL"><xsd:sequence><xsd:element maxOccurs="unbounded" minOccurs="1" name="member" type="xsd:double"/></xsd:sequence></xsd:complexType><xsd:complexType name="VectorofCHARSTRING"><xsd:sequence><xsd:element maxOccurs="unbounded" minOccurs="1" name="member" type="xsd:string"/></xsd:sequence></xsd:complexType><xsd:complexType name="INFOReturn0"><xsd:sequence><xsd:element maxOccurs="unbounded" minOccurs="0" name="row"><xsd:complexType><xsd:sequence><xsd:element name="NAME" type="xsd:string"/><xsd:element name="AGE" type="xsd:int"/></xsd:sequence></xsd:complexType></xsd:element></xsd:sequence></xsd:complexType><xsd:complexType name="INFOReturn0"><xsd:sequence><xsd:element maxOccurs="unbounded" minOccurs="0" name="row"><xsd:complexType><xsd:sequence><xsd:element name="NAME" type="xsd:string"/><xsd:element name="AGE" type="xsd:int"/></xsd:sequence></xsd:complexType></xsd:element></xsd:sequence></xsd:complexType></xsd:schema>
+  </wsdl:types>
+  <wsdl:message name="INFOResponseMsg0">
+    <wsdl:part name="results" type="tns:INFOReturn0"/>
+  </wsdl:message>
+  <wsdl:message name="INFORequestMsg0">
+  </wsdl:message>
+  <wsdl:portType name="WebamosPortType">
+    <wsdl:operation name="INFO" parameterOrder="P">
+      <wsdl:input name="INFORequestMsg0" message="tns:INFORequestMsg0"/>
+      <wsdl:output name="INFOResponseMsg0" message="tns:INFOResponseMsg0"/>
+    </wsdl:operation>
+    <wsdl:operation name="INFO" parameterOrder="">
+      <wsdl:input name="INFORequestMsg0" message="tns:INFORequestMsg0"/>
+      <wsdl:output name="INFOResponseMsg0" message="tns:INFOResponseMsg0"/>
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="WebamosSoapBinding" type="tns:WebamosPortType">
+    <wsdlsoap:binding style="rpc" transport="http://schemas.xmlsoap.org/soap/http"/>
+    <wsdl:operation name="INFO">
+      <wsdlsoap:operation soapAction=""/>
+      <wsdl:input name="INFORequestMsg0">
+        <wsdlsoap:body use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:WSAmos"/>
+      </wsdl:input>
+      <wsdl:output name="INFOResponseMsg0">
+        <wsdlsoap:body use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:WSAmos"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="INFO">
+      <wsdlsoap:operation soapAction=""/>
+      <wsdl:input name="INFORequestMsg0">
+        <wsdlsoap:body use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:WSAmos"/>
+      </wsdl:input>
+      <wsdl:output name="INFOResponseMsg0">
+        <wsdlsoap:body use="encoded" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" namespace="urn:WSAmos"/>
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="WebamosService">
+    <wsdl:port name="WebamosPort" binding="tns:WebamosSoapBinding">
+      <wsdlsoap:address location="http://130.238.12.227:8082/wsmos/service/AmosServlet"/>
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

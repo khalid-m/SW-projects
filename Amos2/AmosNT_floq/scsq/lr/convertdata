@@ -1,0 +1,6 @@
+pushd data
+cat o-t2.out |sed 's/#(//g'|sed 's/)//g'|awk '{print $1,$2,int($3+0.5),$4,int($5+0.5),int($6+0.5)}'|sed 's/ /,/g' >o-t2
+  	cat o-t3.out |sed 's/#(//g'|sed 's/)//g'|awk '{print $1,$2,int($3+0.5),$4,$5}'|sed 's/ /,/g' >o-t3
+  	cat o-acc-alert.out |sed 's/#(//g'|sed 's/)//g'|awk '{print $1,$2,int($3+0.5),$4,$5}'|sed 's/ /,/g' >o-acc-alert
+  	cat o-tollalert.out |sed 's/#(//g'|sed 's/)//g'|awk '{print $1,$2,$3,int($4+0.5),int($5),int($6)}'|sed 's/ /,/g' >o-tollalert
+popd

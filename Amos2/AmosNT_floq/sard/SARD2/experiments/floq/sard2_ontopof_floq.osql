@@ -1,0 +1,185 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: multisql.osql,v $
+ * $Revision: 1.7 $ $Date:
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: script for FLOQ bind join experiment set upScript to run 
+		SARD2 mappings needed for FLOQ
+ ****************************************************************************
+ *
+ ****************************************************************************/
+
+lisp;
+:osql
+
+/* create triple view over the meta database(s) */ 
+set :id2="metaDS";
+set :url2="jdbc:mysql://localhost:3306/metadb_l";
+set :driver2="com.mysql.jdbc.Driver";
+set :dbname2="metadb_l";
+set :usern2="regress";
+set :passw2="regress";
+set :catal2="metadb_l";
+set :schem2="";
+
+set :upv2="meta";
+set :uriOfupv2="http://user.it.uu.se/~udbl/prod";
+
+defineDS(:id2,
+         :url2,
+         :driver2,
+         :catal2,
+         :schem2,
+         :usern2,
+         :passw2);
+
+
+defineUPV(:id2,:upv2, :uriofupv2);
+/*defineUPV(:id,:upv_fn, :uriofupv_fn);*/
+
+DSConnect(:upv2);
+
+assignIDS(:upv2,:catal2,:schem2);
+
+ViewRDB("meta");
+
+
+<'experiments/floq/bjexp.osql';
+
+
+/* setting for running in sequence */
+/* to get :js for generate source predicate of measuresA */
+set :js = jdbcSet(2,"com.microsoft.jdbc.sqlserver.SQLServerDriver");
+
+/* to import the measuresA schema from one of the server regardless the 
+   logdb size since they have the same schema */
+set :logdb1url = "jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB";
+
+set :logdb2url = "jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB";
+
+connect2(first(:js), :logdb1url, "udbl", "udbl");
+
+connect2(last(:js), :logdb2url, "udbl", "udbl");
+
+
+
+/* create triple view over the sensor database(s) */ 
+set :id="sensorid";
+set :url="jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="bm1GB";
+set :usern="udbl";
+set :passw="udbl";
+set :catal="bm1GB";
+set :schem="dbo";
+/*set :schem="bm1GB";*/
+
+
+
+set :upv="sensor";
+set :uriOfupv="http://user.it.uu.se/~udbl/sensor";
+
+defineDS(:id,
+         :url,
+         :driver,
+         :catal,
+         :schem,
+         :usern,
+         :passw);
+
+
+defineUPV(:id,:upv, :uriofupv);
+
+/*Define RDF view mappings*/
+set pMap("measuresA","m","sensor")=uri("http://user.it.uu.se/~udbl/sensor/measuresA_m");
+set pMap("measuresA","s","sensor")=uri("http://user.it.uu.se/~udbl/sensor/measuresA_s");
+set pMap("measuresA","bt","sensor")=uri("http://user.it.uu.se/~udbl/sensor/measuresA_bt");
+set pMap("measuresA","et","sensor")=uri("http://user.it.uu.se/~udbl/sensor/measuresA_et");
+set pMap("measuresA","mv","sensor")=uri("http://user.it.uu.se/~udbl/sensor/measuresA_mv");
+set pMap("measuresA","jdbcuri","sensor")=uri("http://user.it.uu.se/~udbl/sensor/measuresA_jdbcuri");
+set cMap("measuresA","sensor")=uri("http://user.it.uu.se/~udbl/sensor/measuresA"); 
+set ucMap("measuresA","sensor")="http://user.it.uu.se/~udbl/sensor/measuresA"; 
+set typemap("measuresA","m","sensor")="http://www.w3.org/2001/XMLSchema#int";
+set typemap("measuresA","s","sensor")="http://www.w3.org/2001/XMLSchema#int";
+set typemap("measuresA","bt","sensor")="http://www.w3.org/2001/XMLSchema#float";
+set typemap("measuresA","et","sensor")="http://www.w3.org/2001/XMLSchema#float";
+set typemap("measuresA","mv","sensor")="http://www.w3.org/2001/XMLSchema#float";
+set typeMap("measuresA","jdbcuri","sensor")="http://www.w3.org/2001/XMLSchema#string";
+
+DSConnect(:upv);
+
+defineP(:upv,:js);
+
+/* ViewRDB(:upv);*/
+
+create function floqview()->(literal,Literal,Literal)
+as
+	select s,p,o from Literal s, Literal p, Literal o
+	where (s,p,o) in psensor() or
+	       (s,p,o) in meta();
+
+set :idf="floqid";
+set :urif= "http://user.it.uu.se/~udbl/federatedsensor";
+set upv("floqview")=<:idf,:urif>;
+
+lisp;
+(setq _rewrite_filter_ t)
+(setq *use-dnf* t)
+:osql
+
+
+create function q1()-> (literal,Literal,Literal)
+as
+select s,p,o from Literal s, Literal p, Literal o,
+Literal p1, Literal o1
+where (s,p,o) in  floqview() and
+p= uri("http://user.it.uu.se/~udbl/sensor/measuresA_bt") and 
+o <= 1313681296 and 
+(s,p1,o1) in psensor() and
+p1= uri("http://user.it.uu.se/~udbl/sensor/measuresA_et") and 
+o1 <= 1313681296;
+
+	
+set :q4=
+	"SELECT ?m ?bt ?et
+	FROM <http://user.it.uu.se/~udbl/federatedsensor>
+	WHERE { ?s1 <http://user.it.uu.se/~udbl/sensor/measuresA_mv> ?o1 .
+		?s2 <http://user.it.uu.se/~udbl/prod#sensorinstallation/ev> ?o2 .
+		?s2 <http://user.it.uu.se/~udbl/prod#sensorinstallation/th> ?o3 .
+		FILTER ( ?o1 > ?o2 + ?o3) .
+		?s4 <http://user.it.uu.se/~udbl/prod#location/lid> ?o4 .
+		?s5 <http://user.it.uu.se/~udbl/prod#machineinstallation/locatedat> ?o4 .
+		?s5 <http://user.it.uu.se/~udbl/prod#machineinstallation/mi> ?o5 .
+		?s2 <http://user.it.uu.se/~udbl/prod#sensorinstallation/mi> ?o5 .
+		?s5 <http://user.it.uu.se/~udbl/prod#machineinstallation/m> ?o6 .
+		?s6 <http://user.it.uu.se/~udbl/prod#machine/m> ?o6 .
+		?s1 <http://user.it.uu.se/~udbl/sensor/measuresA_s> ?o7 .
+		?s2 <http://user.it.uu.se/~udbl/prod#sensorinstallation/si> ?o7 .
+		?s1 <http://user.it.uu.se/~udbl/sensor/measuresA_m> ?m .
+		?s2 <http://user.it.uu.se/~udbl/prod#sensorinstallation/mi> ?m .
+		?s4 <http://user.it.uu.se/~udbl/prod#location/uri> ?o9 .
+		?s1 <http://user.it.uu.se/~udbl/sensor/measuresA_jdbcuri> ?o9 . 
+		?s1 <http://user.it.uu.se/~udbl/sensor/measuresA_bt> ?bt .
+		?s1 <http://user.it.uu.se/~udbl/sensor/measuresA_et> ?et }";
+
+eval("create function q4()-> (Literal,Literal,Literal)
+	as " + sparql_translate(:q4));
+		
+
+
+create function newq4l()->(Integer, Number, Number) as
+select m(ma), bt(ma), et(ma)
+from SensorInstallation@metal si, Location@metal l, MeasuresA ma, 
+     MachineInstallation@metal mi, Machine@metal m
+where mv(ma)> ev(si) + th(si) and
+      lid(l)=locatedat(mi) and
+      mi(mi)=mi(si) and
+      m(mi)=m(m) and
+      s(ma)=si(si) and 
+      m(ma)=mi(si) and 
+      uri(l)=jdbcuri(ma);
+
+

@@ -1,0 +1,329 @@
+/*****************************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2005 Ruslan Fomkin, UDBL
+ * $RCSfile: grids_data.osql,v $
+ * $Revision: 1.10 $ $Date: 2005/08/09 12:56:27 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Contains description (data) of Grid parts: data and clusters
+ *
+ ****************************************************************************/
+
+/** 
+ * Clusters 
+ */
+
+create cluster instances :ingrid, :hagrid, :hive, :beppe, :sigrid, 
+	:bluesmoke;
+create grid instances :ng, :swegrid;
+
+set name(:beppe)="sg-access.pdc.kth.se";
+set nickname(:beppe)="beppe";
+set binarypath(:beppe)="/home/udbl/ruslan/Amox/bin/Ingrid/";
+set rootRE(:beppe)="APPS/HEP/ATLAS-8.0.8";
+/*set mpiRE(:beppe)="";*/
+set cputime(:beppe,1)=6;
+set cputime(:beppe,2)=20;
+set cputime(:beppe,3)=40;
+set cputime(:beppe,4)=60;
+set cputime(:beppe,5)=82;
+set cputime(:beppe,6)=120;
+set cputime(:beppe,7)=155;
+set cputime(:beppe,8)=200;
+set cputime(:beppe,9)=300;
+set binarypath(:beppe,"Ingrid")="/home/r/ruslan/Public/Amox/bin/";
+set binarypath(:beppe,"Hagrid")="/home/udbl/ruslan/Amox/bin/Ingrid/";
+
+
+set name(:bluesmoke)="bluesmoke.nsc.liu.se";
+set nickname(:bluesmoke)="bluesmoke";
+set binarypath(:bluesmoke)="/home/udbl/ruslan/Amox/bin/Ingrid/";
+set rootRE(:bluesmoke)="ATLAS-8.0.8";
+/* set mpiRE(:bluesmoke)="";*/
+set cputime(:bluesmoke,1)=6;
+set cputime(:bluesmoke,2)=20;
+set cputime(:bluesmoke,3)=40;
+set cputime(:bluesmoke,4)=60;
+set cputime(:bluesmoke,5)=82;
+set cputime(:bluesmoke,6)=120;
+set cputime(:bluesmoke,7)=155;
+set cputime(:bluesmoke,8)=200;
+set cputime(:bluesmoke,9)=300;
+set binarypath(:bluesmoke,"Ingrid")="/home/r/ruslan/Public/Amox/bin/";
+set binarypath(:bluesmoke,"Hagrid")="/home/udbl/ruslan/Amox/bin/Ingrid/";
+
+set name(:hagrid)="hagrid.it.uu.se";
+set nickname(:hagrid)="hagrid";
+set binarypath(:hagrid)="/home/udbl/ruslan/Amox/bin/Ingrid/";
+set rootRE(:hagrid)="APPS/HEP/ROOT-3.10.02";
+/* set mpiRE(:hagrid)="MPICH/1.2.5/GCC"; */
+set cputime(:hagrid,1)=6;
+set cputime(:hagrid,2)=20;
+set cputime(:hagrid,3)=40;
+set cputime(:hagrid,4)=60;
+set cputime(:hagrid,5)=82;
+set cputime(:hagrid,6)=120;
+set cputime(:hagrid,7)=155;
+set cputime(:hagrid,8)=200;
+set cputime(:hagrid,9)=300;
+set binarypath(:hagrid,"Ingrid")="/home/r/ruslan/Public/Amox/bin/";
+set binarypath(:hagrid,"Hagrid")="/home/udbl/ruslan/Amox/bin/Ingrid/";
+
+set name(:hive)="hive.unicc.chalmers.se";
+set nickname(:hive)="hive";
+set binarypath(:hive)="/home/udbl/ruslan/Amox/bin/Ingrid/";
+set rootRE(:hive)="APPS/HEP/ATLAS-9.0.3";
+/* set mpiRE(:hive)="";*/
+set cputime(:hive,1)=6;
+set cputime(:hive,2)=20;
+set cputime(:hive,3)=40;
+set cputime(:hive,4)=60;
+set cputime(:hive,5)=82;
+set cputime(:hive,6)=120;
+set cputime(:hive,7)=155;
+set cputime(:hive,8)=200;
+set cputime(:hive,9)=300;
+set binarypath(:hive,"Ingrid")="/home/r/ruslan/Public/Amox/bin/";
+set binarypath(:hive,"Hagrid")="/home/udbl/ruslan/Amox/bin/Ingrid/";
+
+set name(:ingrid)="ingrid.hpc2n.umu.se";
+set nickname(:ingrid)="ingrid";
+set binarypath(:ingrid)="/home/udbl/ruslan/Amox/bin/Ingrid/";
+set rootRE(:ingrid)="APPS/PHYSICS/HEP/ROOT-3.10.02";
+set mpiRE(:ingrid)="MPICH/1.2.5/GNU";
+set cputime(:ingrid,1)=6;
+set cputime(:ingrid,2)=20;
+set cputime(:ingrid,3)=40;
+set cputime(:ingrid,4)=60;
+set cputime(:ingrid,5)=82;
+set cputime(:ingrid,6)=120;
+set cputime(:ingrid,7)=155;
+set cputime(:ingrid,8)=200;
+set cputime(:ingrid,9)=300;
+set binarypath(:ingrid,"Ingrid")="/home/r/ruslan/Public/Amox/bin/";
+set binarypath(:ingrid,"Hagrid")="/home/udbl/ruslan/Amox/bin/Ingrid/";
+
+set name(:sigrid)="sigrid.lunarc.lu.se";
+set nickname(:sigrid)="sigrid";
+set binarypath(:sigrid)="/home/udbl/ruslan/Amox/bin/Ingrid/";
+set rootRE(:sigrid)="APPS/HEP/ATLAS-9.0.3";
+/* set mpiRE(:sigrid)="";*/
+set cputime(:sigrid,1)=6;
+set cputime(:sigrid,2)=20;
+set cputime(:sigrid,3)=40;
+set cputime(:sigrid,4)=60;
+set cputime(:sigrid,5)=82;
+set cputime(:sigrid,6)=120;
+set cputime(:sigrid,7)=155;
+set cputime(:sigrid,8)=200;
+set cputime(:sigrid,9)=300;
+set binarypath(:sigrid,"Ingrid")="/home/r/ruslan/Public/Amox/bin/";
+set binarypath(:sigrid,"Hagrid")="/home/udbl/ruslan/Amox/bin/Ingrid/";
+
+set nickname(:ng)="NorduGrid";
+add clusters(:ng)=:ingrid;
+add clusters(:ng)=:hagrid; 
+add clusters(:ng)=:hive;
+add clusters(:ng)=:beppe;
+add clusters(:ng)=:sigrid;
+add clusters(:ng)=:bluesmoke;
+
+set nickname(:swegrid)="swegrid";
+set binarypath(:swegrid)="/home/udbl/ruslan/Amox/bin/Ingrid/";
+add clusters(:swegrid)=:ingrid;
+add clusters(:swegrid)=:hagrid; 
+add clusters(:swegrid)=:hive;
+add clusters(:swegrid)=:beppe;
+add clusters(:swegrid)=:sigrid;
+add clusters(:swegrid)=:bluesmoke;
+set binarypath(:swegrid,"Ingrid")="/home/r/ruslan/Public/Amox/bin/";
+set binarypath(:swegrid,"Hagrid")="/home/udbl/ruslan/Amox/bin/Ingrid/";
+
+/**
+ * Event data files *
+ */
+
+create EventData instances :bkg0, :bkg1, :bkg2, :bkg3, :bkg4, :bkg5, :bkg6, :bkg7, :bkg8, :bkg9, :bkg10, :bkg11, :bkg12, :bkg13, :bkg14, :bkg15, :bkg16, :bkg17, :bkg18, :bkg19, :bkg20, :bkg21, :bkg22, :bkg23, :bkg24, :bkg25, :bkg26, :bkg27, :bkg28, :bkg29, :bkg20, :bkg21, :bkg22, :bkg23, :bkg24, :bkg25, :bkg26, :bkg27, :bkg28, :bkg29, :bkg30, :bkg31, :bkg32, :bkg33, :bkg34, :bkg35, :bkg36, :bkg37, :bkg38, :bkg39, :bkg40;
+
+set name(:bkg0)="bkg2Events_ruslan_000.root";
+set size(:bkg0)=25000;
+set path(:bkg0)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg1)="bkg2Events_ruslan_001.root";
+set size(:bkg1)=25000;
+set path(:bkg1)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg2)="bkg2Events_ruslan_002.root";
+set size(:bkg2)=25000;
+set path(:bkg2)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg3)="bkg2Events_ruslan_003.root";
+set size(:bkg3)=25000;
+set path(:bkg3)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg4)="bkg2Events_ruslan_004.root";
+set size(:bkg4)=25000;
+set path(:bkg4)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg5)="bkg2Events_ruslan_005.root";
+set size(:bkg5)=25000;
+set path(:bkg5)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg6)="bkg2Events_ruslan_006.root";
+set size(:bkg6)=25000;
+set path(:bkg6)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg7)="bkg2Events_ruslan_007.root";
+set size(:bkg7)=25000;
+set path(:bkg7)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg8)="bkg2Events_ruslan_008.root";
+set size(:bkg8)=25000;
+set path(:bkg8)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg9)="bkg2Events_ruslan_009.root";
+set size(:bkg9)=25000;
+set path(:bkg9)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg10)="bkg2Events_ruslan_010.root";
+set size(:bkg10)=25000;
+set path(:bkg10)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg11)="bkg2Events_ruslan_011.root";
+set size(:bkg11)=25000;
+set path(:bkg11)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg12)="bkg2Events_ruslan_012.root";
+set size(:bkg12)=25000;
+set path(:bkg12)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg13)="bkg2Events_ruslan_013.root";
+set size(:bkg13)=25000;
+set path(:bkg13)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg14)="bkg2Events_ruslan_014.root";
+set size(:bkg14)=25000;
+set path(:bkg14)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg15)="bkg2Events_ruslan_015.root";
+set size(:bkg15)=25000;
+set path(:bkg15)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg16)="bkg2Events_ruslan_016.root";
+set size(:bkg16)=25000;
+set path(:bkg16)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg17)="bkg2Events_ruslan_017.root";
+set size(:bkg17)=25000;
+set path(:bkg17)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg18)="bkg2Events_ruslan_018.root";
+set size(:bkg18)=25000;
+set path(:bkg18)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg19)="bkg2Events_ruslan_019.root";
+set size(:bkg19)=25000;
+set path(:bkg19)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg20)="bkg2Events_ruslan_020.root";
+set size(:bkg20)=25000;
+set path(:bkg20)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg21)="bkg2Events_ruslan_021.root";
+set size(:bkg21)=25000;
+set path(:bkg21)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg22)="bkg2Events_ruslan_022.root";
+set size(:bkg22)=25000;
+set path(:bkg22)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg23)="bkg2Events_ruslan_023.root";
+set size(:bkg23)=25000;
+set path(:bkg23)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg24)="bkg2Events_ruslan_024.root";
+set size(:bkg24)=25000;
+set path(:bkg24)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg25)="bkg2Events_ruslan_025.root";
+set size(:bkg25)=25000;
+set path(:bkg25)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg26)="bkg2Events_ruslan_026.root";
+set size(:bkg26)=25000;
+set path(:bkg26)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg27)="bkg2Events_ruslan_027.root";
+set size(:bkg27)=25000;
+set path(:bkg27)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg28)="bkg2Events_ruslan_028.root";
+set size(:bkg28)=25000;
+set path(:bkg28)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg29)="bkg2Events_ruslan_029.root";
+set size(:bkg29)=25000;
+set path(:bkg29)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg30)="bkg2Events_ruslan_030.root";
+set size(:bkg30)=25000;
+set path(:bkg30)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg31)="bkg2Events_ruslan_031.root";
+set size(:bkg31)=25000;
+set path(:bkg31)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg32)="bkg2Events_ruslan_032.root";
+set size(:bkg32)=25000;
+set path(:bkg32)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg33)="bkg2Events_ruslan_033.root";
+set size(:bkg33)=25000;
+set path(:bkg33)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg34)="bkg2Events_ruslan_034.root";
+set size(:bkg34)=25000;
+set path(:bkg34)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg35)="bkg2Events_ruslan_035.root";
+set size(:bkg35)=25000;
+set path(:bkg35)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg36)="bkg2Events_ruslan_036.root";
+set size(:bkg36)=25000;
+set path(:bkg36)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg37)="bkg2Events_ruslan_037.root";
+set size(:bkg37)=25000;
+set path(:bkg37)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg38)="bkg2Events_ruslan_038.root";
+set size(:bkg38)=25000;
+set path(:bkg38)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg39)="bkg2Events_ruslan_039.root";
+set size(:bkg39)=25000;
+set path(:bkg39)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+set name(:bkg40)="bkg2Events_ruslan_040.root";
+set size(:bkg40)=25000;
+set path(:bkg40)="gsiftp://se1.hpc2n.umu.se:2811/se3/ruslan_poqsec/";
+
+
+/*************************** not used ***************/
+/* create MPI instances :ingMPI, :hagMPI;
+create ROOT instances :ingROOT, :hagROOT;*/
+/* set REs(:ingrid)=:ingMPI;
+set name(:ingMPI)="MPICH/1.2.5/GNU";
+add REs(:ingrid)=:ingROOT;
+set name(:ingROOT)="APPS/PHYSICS/HEP/ROOT-3.10.02";*/
+/* set REs(:hagrid)=:hagMPI;
+set name(:hagMPI)="MPICH/1.2.5/GCC";
+add REs(:hagrid)=:hagROOT;
+set name(:hagROOT)="ROOT-3.10.02";*/
+
+create function ingrid() -> cluster as
+	for each cluster site
+		set binarypath(site)="/home/r/ruslan/Public/Amox/bin/";

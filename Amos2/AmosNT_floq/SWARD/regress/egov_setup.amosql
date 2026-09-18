@@ -1,0 +1,63 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Johan Petrini, UDBL
+ * 
+ * Description: Setup of master regression test of SWARD system exporting 
+ * and querying the eGovBus relational database with strategies END-P.
+ *****************************************************************************/
+/* Settings 
+ */
+lisp;
+(setq _save-intermediates_ t)
+:osql
+
+/* Define DS for EGOVBUS relational database.
+ * Only done once for each relational database by admin.
+ */
+defineDS("EGOVDS",
+         getenv("URLDB"),
+         getenv("DRIVERDB"),
+         "",
+         "",
+         getenv("USERDB"),
+         getenv("PASSWORDDB"));
+
+/* Define UPV 'EGov' associated with data source 'EGOVDS'. 
+ */
+defineUPV("EGOVDS","EGov","http://udbl.it.uu.se/upv/eGov/");
+
+/* Populate SWARD system tables 
+ */
+
+/* Set property and class mappings
+ */
+assignPropID("LIFEEVENT","LID","EGov",
+      "http://udbl.it.uu.se/schemas/eGovern#LifeEventID");
+assignPropID("LIFEEVENT","NAME","EGov",
+      "http://purl.org/dc/elements/1.1/title");
+assignPropID("LIFEEVENT","DESCR","EGov",
+      "http://purl.org/dc/elements/1.1/description");
+
+assignPropID("FORM","FID","EGov",
+      "http://udbl.it.uu.se/schemas/eGovern#FormID");
+assignPropID("FORM","URL","EGov",
+      "http://udbl.it.uu.se/schemas/eGovern#URL");
+assignPropID("FORM","CREATOR","EGov",
+      "http://www.egov_project.org/GovMLSchema#Creator");
+assignPropID("FORM","NOFF","EGov",
+      "http://udbl.it.uu.se/schemas/eGovern#NumberOfFields");
+
+assignPropID("SERVICE","TITLE","EGov",
+      "http://purl.org/dc/elements/1.1/title");
+
+assignCRID("FORM","LIFEEVENT","LIFEEVENT","EGov","http://udbl.it.uu.se/schemas/eGovern#Concern");
+
+assignClassID("FORM","EGov","http://udbl.it.uu.se/schemas/eGovern#Form"); 
+assignClassID("LIFEEVENT","EGov",
+                "http://udbl.it.uu.se/schemas/eGovern#LifeEvent");
+
+
+/* Connect to predefined data source assigned to UPV 'eGov'. 
+ */
+DSConnect("EGov");	

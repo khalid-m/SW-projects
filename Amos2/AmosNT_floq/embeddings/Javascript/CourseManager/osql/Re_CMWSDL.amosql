@@ -1,0 +1,4 @@
+register("me");
+
+ship("wsmos","set deploy_dir()= getenv('AMOS_HOME')+'/wsmed/wsdl/'; deploy_wsdl({'existcourse'},'CMWS.wsdl','cm');");
+quit;

@@ -1,0 +1,140 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Thanh Truong, UDBL
+ * $RCSfile: test_dll.osql,v $
+ * $Revision: 1.5 $ $Date: 2011/05/02 06:59:45 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Test for DLL
+ *
+ ****************************************************************************
+ * $Log: test_dll.osql,v $
+ * Revision 1.5  2011/05/02 06:59:45  thatr500
+ * *** empty log message ***
+ *
+ * Revision 1.4  2011/05/02 06:33:28  thatr500
+ * *** empty log message ***
+ *
+ * Revision 1.3  2011/04/29 13:32:42  thatr500
+ * *** empty log message ***
+ *
+ * Revision 1.2  2011/04/09 02:27:00  thatr500
+ * add test cases
+ *
+ * Revision 1.1  2011/02/22 21:58:44  thatr500
+ * Unite all extensible indexes and their tests at one place.
+ *
+ * Revision 1.1  2011/01/28 18:05:46  thatr500
+ * test for linh.dll
+ *
+ *
+ ****************************************************************************/
+
+/*Register Linear Hashing index type written in C and provided as a DLL*/
+register_exindextype("LINH", "C:linh", FALSE);
+
+/*From a state to several cities of it*/
+create function cityofstate(Charstring state)-> Charstring city;
+
+/*Create a Linear Hashing index on position 1*/
+create_index("cityofstate", "city", "LINH", "multiple");
+
+/*Drop the default Hash index */
+drop_index("cityofstate", "state");
+
+
+/*Populate data*/
+add cityofstate("New York") = "New York";
+
+add cityofstate("California") = "Los Angeles";
+add cityofstate("California") = "SanDiego";
+add cityofstate("California") = "San Jose";
+add cityofstate("Texas") = "Dallas";
+add cityofstate("Texas") = "San Antionio";
+add cityofstate("Arizona") = "Phoneix";
+add cityofstate("Pennsylvania") = "Philadelphia";
+
+print("---Testing multiple---------");
+add cityofstate("New Year") = "New York";
+remove cityofstate("Pennsylvania") = "Philadelphia";
+
+/*Deletion is not working*/
+
+create function q()-> <Charstring , Charstring >
+as 
+  select c, s from Charstring c, Charstring s
+  where cityofstate(s) = c;
+
+create function q1(Charstring city)->Charstring
+as 
+  select s from Charstring s
+  where cityofstate(s) = city;
+
+lisp;
+
+(checkequal 
+ "Full scan LINH"
+ ((osql "q();")
+ '(("SanDiego" "California") 
+  ("New York" "New Year") 
+  ("New York" "New York") 
+  ("Dallas" "Texas") 
+  ;;("Philadelphia" "Pennsylvania") 
+  ("Los Angeles" "California") 
+  ("San Antionio" "Texas") 
+  ("San Jose" "California") 
+  ("Phoneix" "Arizona"))))
+(checkequal 
+ "Index scan LINH"
+ ((osql "q1('Dallas');")
+  '(("Texas"))))
+(checkequal 
+ "Full scan LINH"
+ ((osql "q();")
+ '(("SanDiego" "California") 
+  ("New York" "New Year") 
+  ("New York" "New York") 
+  ("Dallas" "Texas") 
+  ;;("Philadelphia" "Pennsylvania") 
+  ("Los Angeles" "California") 
+  ("San Antionio" "Texas") 
+  ("San Jose" "California") 
+  ("Phoneix" "Arizona"))))
+(checkequal 
+ "Index scan LINH"
+ ((osql "q1('Dallas');")
+  '(("Texas"))))
+(checkequal 
+ "Full scan LINH"
+ ((osql "q();")
+ '(("SanDiego" "California") 
+  ("New York" "New Year") 
+  ("New York" "New York") 
+  ("Dallas" "Texas") 
+  ;;("Philadelphia" "Pennsylvania") 
+  ("Los Angeles" "California") 
+  ("San Antionio" "Texas") 
+  ("San Jose" "California") 
+  ("Phoneix" "Arizona"))))
+(checkequal 
+ "Index scan LINH"
+ ((osql "q1('Dallas');")
+  '(("Texas"))))
+(checkequal 
+ "Full scan LINH"
+ ((osql "q();")
+ '(("SanDiego" "California") 
+  ("New York" "New Year") 
+  ("New York" "New York") 
+  ("Dallas" "Texas") 
+  ;;("Philadelphia" "Pennsylvania") 
+  ("Los Angeles" "California") 
+  ("San Antionio" "Texas") 
+  ("San Jose" "California") 
+  ("Phoneix" "Arizona"))))
+(checkequal 
+ "Index scan LINH"
+ ((osql "q1('Dallas');")
+  '(("Texas"))))
+:osql

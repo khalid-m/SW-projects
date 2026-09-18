@@ -1,0 +1,7 @@
+#!/bin/bash
+
+(( port = $(../get_nsport.sh) ))
+echo "Using nameserverport " $port
+
+../../bin/scsq.exe lr.dmp -o "nameserverport($port);" -l "(trace server-eval)" -ns > LRLog-$port&
+../../bin/scsq.exe lr.dmp -o "nameserverport($port);" -O "src/fullfras.osql"

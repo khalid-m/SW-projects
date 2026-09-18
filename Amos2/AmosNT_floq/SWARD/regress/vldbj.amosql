@@ -1,0 +1,403 @@
+ /*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Johan Petrini, UDBL
+ * 
+ * Description: Test of SWARD system using the Company example with
+ *              strategies END-P and DVS-P.
+ * 
+ * We give exemples of three different types of queries:
+ *
+ *  1. Schema queries accessing the relational database schema.
+ *	E.g.: Give me all properties, except for 
+ *	http://udbl.it.uu.se/schemas/company#CustID, of a customer.
+ * 
+ *  2. Data queries accessing the relational database content.
+ *	E.g.: Give me the market segment of the customer who placed 
+ *	the order '1'.
+ *
+ *  3. Hybrid queries joining schema and content data. 
+ *	E.g.:Give me all properties, except for 
+ *	http://udbl.it.uu.se/schemas/company#CustID, 
+ *	and values of the customer who placed the order '1'.
+ *****************************************************************************/
+/* Settings 
+ */
+lisp;
+(setq _save-intermediates_ t)
+:osql
+
+set :ds = jdbc("cds", "interbase.interclient.Driver");
+set url(:ds)= "jdbc:interbase://localhost/" + getenv("INTERBASE_BIN")+ 
+              	"/COMPANY.GDB";
+set catalog(:ds) = "";
+set schema(:ds) = "";
+set :user = "SYSDBA";
+set :pword = "masterkey";
+
+set :strategy1 = "END";				/* Scenario */
+set :strategy2 = "DPS";				/* Scenario */
+set :uri = 
+   "http://udbl.it.uu.se/upv/comp/";		/* URI of UPV */
+set :uri_dps = 
+   "http://udbl.it.uu.se/upv/comp_dps/";	/* URI of UPV */
+set :co = 
+      "http://udbl.it.uu.se/schemas/company";	/* Ontology*/
+set :upv = "Comp";
+set :upv_dps = "CompDPS";			/* UPV name */
+set :upvds = "CompDS";
+
+/* Define UPVDS for EGOVERN relational database.
+ * Only done once for each relational database by admin.
+ */
+defineUPVDS(:upvds,
+            "jdbc:interbase://localhost/" + getenv('AMOS_HOME') + "sward/data/COMPANY.gdb",
+            "interbase.interclient.Driver",
+            "",
+            "",
+            "SYSDBA",
+            "masterkey");
+
+/* Define UPV 'Comp' associated with UPV data source 'CompDS'. 
+ */
+defineUPV(:upv,:upvds,:uri);
+
+/* Define UPV 'CompDPS' associated with UPV data source 'CompDS'. 
+ */
+defineUPV(:upv_dps,:upvds,:uri_dps);
+
+/* Populate SWARD system tables 
+ */
+
+/* Set property and class mappings
+ */
+
+/* For UPV 'Comp'
+ */
+assignPropID("ORDERS","ORDERID",:upv,:co + "#OrderID");
+assignPropID("ORDERS","OCUSTID",:upv,:co + "#OrderCustomer");
+assignPropID("ORDERS","CLERK",:upv,:co + "#Clerk");
+assignPropID("CUSTOMER","CUSTID",:upv,:co + "#CustID");
+assignPropID("CUSTOMER","MKTSEGMENT",:upv,:co + "#Market");
+
+assignClassID("CUSTOMER",:upv,:co + "#Customer");
+assignClassID("ORDERS",:upv,:co + "#Orders");
+
+/* For UPV 'CompDPS'
+ */
+assignPropID("ORDERS","ORDERID",:upv_dps,:co + "#OrderID");
+assignPropID("ORDERS","OCUSTID",:upv_dps,:co + "#OrderCustomer");
+assignPropID("ORDERS","CLERK",:upv_dps,:co + "#Clerk");
+assignPropID("CUSTOMER","CUSTID",:upv_dps,:co + "#CustID");
+assignPropID("CUSTOMER","MKTSEGMENT",:upv_dps,:co + "#Market");
+
+assignClassID("CUSTOMER",:upv_dps,:co + "#Customer");
+assignClassID("ORDERS",:upv_dps,:co + "#Orders");
+
+
+/* Initialize predefined UPV data source assigned to UPV 'Comp'. 
+ */
+UPVDSConnect(:upv);	
+
+/* Initialize predefined UPV data source assigned to UPV 'CompDPS'. 
+ */
+UPVDSConnect(:upv_dps);	
+
+/* Generate the UPVs
+ */
+dispatch(:strategy1,:upv);
+dispatch(:strategy2,:upv_dps);
+
+/* Regression test of SWARD 
+ */
+
+/* Defining the example queries 
+ */
+
+/* SparQ queries 
+ */
+set :sparql_schema = 
+"SELECT ?prop
+ FROM <" + :uri + ">
+ WHERE {?prop <http://www.w3.org/2000/01/rdf-schema#domain>
+		 <" + :co + "#Customer> .
+ FILTER (?prop != <" + :co + "#CustID>) .}";
+
+set :sparql_content = 
+"SELECT ?cust ?mkt
+ FROM <" + :uri + ">
+ WHERE {?order <" + :co + "#OrderID> 1 .
+        ?order <" + :co + "#OrderCustomer> ?ocust .
+        ?cust  <" + :co + "#CustID> ?ocust .
+        ?cust  <" + :co + "#Market> ?mkt .}";
+
+
+set :sparql_hybrid = 
+"SELECT ?cust ?prop ?val
+FROM <" + :uri + ">	
+WHERE {?order <" + :co + "#OrderID> 1 .
+       ?order <" + :co + "#OrderCustomer> ?ocust .
+       ?cust <" + :co + "#CustID> ?ocust .
+       ?prop <http://www.w3.org/2000/01/rdf-schema#domain> 
+		<" + :co + "#Customer> .      
+       ?cust ?prop ?val .
+FILTER (?prop != <" + :co + "#CustID>) .}";
+
+
+/* Parsed AmosQL queries used in VLDBJ paper 
+ */
+
+/*
+select prop
+from Charstring prop
+where rdf_tr_c("http://udbl.it.uu.se/upv/comp/")=<prop,"http://www.w3.org/2000/01/rdf-schema#domain","http://udbl.it.uu.se/schemas/company#Customer">and
+FLTR((NEQ(prop,"http://udbl.it.uu.se/schemas/company#CustID")));
+
+select cust,mkt
+from Charstring cust,Charstring mkt,Charstring order,Charstring ocust
+where rdf_tr_c("http://udbl.it.uu.se/upv/comp/",1)=<order,"http://udbl.it.uu.se/schemas/company#OrderID">and
+rdf_tr_c("http://udbl.it.uu.se/upv/comp/")=<order,"http://udbl.it.uu.se/schemas/company#OrderCustomer",ocust>and
+rdf_tr_c("http://udbl.it.uu.se/upv/comp/")=<cust,"http://udbl.it.uu.se/schemas/company#CustID",ocust>and
+rdf_tr_c("http://udbl.it.uu.se/upv/comp/")=<cust,"http://udbl.it.uu.se/schemas/company#Market",mkt>;
+
+select cust,prop,val
+from Charstring cust,Charstring prop,Charstring val,Charstring order,Charstring ocust
+where rdf_tr_c("http://udbl.it.uu.se/upv/comp/",1)=<order,"http://udbl.it.uu.se/schemas/company#OrderID">and
+rdf_tr_c("http://udbl.it.uu.se/upv/comp/")=<order,"http://udbl.it.uu.se/schemas/company#OrderCustomer",ocust>and
+rdf_tr_c("http://udbl.it.uu.se/upv/comp/")=<cust,"http://udbl.it.uu.se/schemas/company#CustID",ocust>and
+rdf_tr_c("http://udbl.it.uu.se/upv/comp/")=<prop,"http://www.w3.org/2000/01/rdf-schema#domain","http://udbl.it.uu.se/schemas/company#Customer">and
+rdf_tr_c("http://udbl.it.uu.se/upv/comp/")=<cust,prop,val>and
+FLTR((NEQ(prop,"http://udbl.it.uu.se/schemas/company#CustID")));
+*/
+
+/* Corresponding SQL queries 
+ */
+ set :sql_schema =
+"select c1.s
+ from comp c1
+ where c1.p = 'http://www.w3.org/2000/01/rdf-schema#domain' and
+       c1.val = '" + :co + "#Customer' and
+       c1.s <> '" + :co + "#CustID';";
+
+ set :sql_schema_dps =
+"select c1.s
+ from comp_dps c1
+ where c1.p = 'http://www.w3.org/2000/01/rdf-schema#domain' and
+       c1.val = '" + :co + "#Customer' and
+       c1.s <> '" + :co + "#CustID';";
+
+ set :sql_content =
+"select c4.s, c4.val
+ from comp c1,
+      comp c2,
+      comp c3,
+      comp c4
+ where c1.p = '" + :co + "#OrderID' and
+       c2.p = '" + :co + "#OrderCustomer' and
+       c3.p = '" + :co + "#CustID' and       
+       c4.p = '" + :co + "#Market' and
+       c1.val = '1' and
+       c1.s = c2.s and
+       c2.val = c3.val and
+       c3.s = c4.s;";
+
+ set :sql_content_dps =
+"select c4.s, c4.val
+ from comp_dps c1,
+      comp_dps c2,
+      comp_dps c3,
+      comp_dps c4
+ where c1.p = '" + :co + "#OrderID' and
+       c2.p = '" + :co + "#OrderCustomer' and
+       c3.p = '" + :co + "#CustID' and       
+       c4.p = '" + :co + "#Market' and
+       c1.val = '1' and
+       c1.s = c2.s and
+       c2.val = c3.val and
+       c3.s = c4.s;";
+
+ set :sql_hybrid =
+"select c5.s, c5.p, c5.val
+ from comp c1,
+      comp c2,
+      comp c3,
+      comp c4,
+      comp c5
+ where c1.p = '" + :co + "#OrderID' and
+       c2.p = '" + :co + "#OrderCustomer' and
+       c3.p = '" + :co + "#CustID' and       
+       c4.p = 'http://www.w3.org/2000/01/rdf-schema#domain' and
+       c4.val = '" + :co + "#Customer' and
+       c1.val = '1' and
+       c1.s = c2.s and
+       c2.val = c3.val and
+       c3.s = c5.s and
+       c4.s = c5.p and
+       c5.p <> '" + :co + "#CustID' ;";
+
+ set :sql_hybrid_dps =
+"select c5.s, c5.p, c5.val
+ from comp_dps c1,
+      comp_dps c2,
+      comp_dps c3,
+      comp_dps c4,
+      comp_dps c5
+ where c1.p = '" + :co + "#OrderID' and
+       c2.p = '" + :co + "#OrderCustomer' and
+       c3.p = '" + :co + "#CustID' and       
+       c4.p = 'http://www.w3.org/2000/01/rdf-schema#domain' and
+       c4.val = '" + :co + "#Customer' and
+       c1.val = '1' and
+       c1.s = c2.s and
+       c2.val = c3.val and
+       c3.s = c5.s and
+       c4.s = c5.p and
+       c5.p <> '" + :co + "#CustID' ;";
+
+/* Defining the results of and evaluating the example queries
+ */
+lisp;
+(defglobal _schema_res_ 
+ (list (list (listtoarray 
+    (list "http://udbl.it.uu.se/schemas/company#Market")))))
+
+(defglobal _content_res_ 
+ (list (list (listtoarray 
+    (list "http://udbl.it.uu.se/schemas/company#CustID/120" "AUTOMOBILE"))))) 
+
+(defglobal _hybrid_res_ (list 
+ (list (listtoarray 
+  (list "http://udbl.it.uu.se/schemas/company#CustID/120" 
+		"http://udbl.it.uu.se/schemas/company#Market" "AUTOMOBILE")))))
+
+(checkequal "SparQL schema query Q1 with END-P"
+ ((osql 
+   "select prop
+    from Charstring prop
+    where rdf_tr_c('http://udbl.it.uu.se/upv/comp/')=
+    		<prop,'http://www.w3.org/2000/01/rdf-schema#domain',
+	      		'http://udbl.it.uu.se/schemas/company#Customer'> and
+    FLTR((NEQ(prop,'http://udbl.it.uu.se/schemas/company#CustID')));")
+   (list (list "http://udbl.it.uu.se/schemas/company#Market"))))
+
+(checkequal "SparQL content query Q2 with END-P"
+ ((osql 
+   "select cust,mkt
+    from Charstring cust,Charstring mkt,Charstring order,Charstring ocust
+    where rdf_tr_c('http://udbl.it.uu.se/upv/comp/',1)=
+		<order,'http://udbl.it.uu.se/schemas/company#OrderID'> and
+    	  rdf_tr_c('http://udbl.it.uu.se/upv/comp/')=
+		<order,'http://udbl.it.uu.se/schemas/company#OrderCustomer',
+			ocust> and
+	  rdf_tr_c('http://udbl.it.uu.se/upv/comp/')=
+		<cust,'http://udbl.it.uu.se/schemas/company#CustID', ocust> and
+  	  rdf_tr_c('http://udbl.it.uu.se/upv/comp/')=
+		<cust,'http://udbl.it.uu.se/schemas/company#Market', mkt>;")
+   (list (list "http://udbl.it.uu.se/schemas/company#CustID/120" 
+		"AUTOMOBILE"))))
+
+(checkequal "SparQL hybrid query Q3 with END-P"
+ ((osql 
+   "select cust,prop,val
+    from Charstring cust,Charstring prop,Charstring val,
+		Charstring order,Charstring ocust
+    where rdf_tr_c('http://udbl.it.uu.se/upv/comp/',1)=
+		<order,'http://udbl.it.uu.se/schemas/company#OrderID'> and
+          rdf_tr_c('http://udbl.it.uu.se/upv/comp/')=
+		<order,'http://udbl.it.uu.se/schemas/company#OrderCustomer',ocust> and
+	  rdf_tr_c('http://udbl.it.uu.se/upv/comp/')=
+		<cust,'http://udbl.it.uu.se/schemas/company#CustID',ocust> and
+	  rdf_tr_c('http://udbl.it.uu.se/upv/comp/')=
+		<prop,'http://www.w3.org/2000/01/rdf-schema#domain',
+			'http://udbl.it.uu.se/schemas/company#Customer'> and
+	  rdf_tr_c('http://udbl.it.uu.se/upv/comp/')=<cust,prop,val> and
+	  FLTR((NEQ(prop,'http://udbl.it.uu.se/schemas/company#CustID')));")
+   (list (list "http://udbl.it.uu.se/schemas/company#CustID/120" 
+		"http://udbl.it.uu.se/schemas/company#Market" "AUTOMOBILE"))))
+
+(checkequal "SQL schema query Q1 with END-P"
+	    ((osql "sql(:sql_schema);")
+		 _schema_res_))
+
+(checkequal "SQL schema query Q2 with DVS-P"
+	    ((osql "sql(:sql_schema_dps);")
+		 _schema_res_))
+
+(checkequal "SQL content query Q3 with END-P"
+	    ((osql "sql(:sql_content);")
+		 _content_res_))
+
+(checkequal "SQL content query Q3 with DVS-P"
+	    ((osql "sql(:sql_content_dps);")
+		 _content_res_))
+
+(checkequal "SQL hybrid query Q3 with END-P"
+	    ((osql "sql(:sql_hybrid);")
+		 _hybrid_res_))
+
+(checkequal "SQL hybrid query Q3 with DVS-P"
+	    ((osql "sql(:sql_hybrid_dps);")
+		 _hybrid_res_))
+
+:osql
+
+set :r1 = uri("http://www.somethingcool.com");
+set :r2 = uri("http://www.somethingcool.com");
+set :r3 = lit("http://www.somethingcool.com");
+set :r4 = lit("http://www.somethingawsome.com");
+set :r5 = uri("http://www.somethingawsome.com");
+set :r6 = lit("http://www.somethingcool.com");
+set :c7 = rowid("" + :co + "#CustID", 1);
+
+create function foo(resource r)->charstring as stored;
+set foo(:r1) = "URI obj";
+set foo(:r3) = "RDF literal"; 
+
+lisp;
+(checkequal "Equality of resource"
+
+ ;Equality between URI obj
+ ((osql "select where :r1 = :r2;") '((true)))
+
+ ;Equality between URI obj and RDF literal
+ ((osql "select where :r1 = :r3;") nil)
+
+ ;Equality between URI obj		
+ ((osql "select where :r1 = :r5;") nil)
+		
+ ;Equality between RDF literals
+ ((osql "select where :r3 = :r4;") nil)
+		
+ ;Equality between RDF literals
+ ((osql "select where :r3 = :r6;") '((true)))
+	
+ ;Equality between URI obj and RDF literal
+ ((osql "select where :r1 = :r4;") nil)  	
+)
+
+(checkequal "Hashindex on resources"
+	    ((osql "foo(:r1);") '(("URI obj")))
+	    ((osql "foo(:r3);") '(("RDF literal"))))
+	
+(checkequal "Invertability of uri fn"
+	    ((osql "select l from literal l where uri(l)=:r1; ") 
+	     '(("http://www.somethingcool.com"))))
+
+(checkequal "Invertability of lit fn"	
+	    ((osql "select l from literal l where lit(l)=:r4; ") 
+	     '(("http://www.somethingawsome.com"))))
+
+(checkequal "Invertability of rowid fn"
+	    ((osql "select uri, val from Charstring uri,Literal val 
+		where rowid(uri,val)=:c7; ") 
+	     '(("http://udbl.it.uu.se/schemas/company#CustID" 1))))
+
+:osql
+
+/*
+	Disconnect UPV data source
+*/
+UPVDSDisconnect(:upv);
+UPVDSDisconnect(:upv_dps);
+
+quit;

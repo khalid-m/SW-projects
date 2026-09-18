@@ -1,0 +1,16 @@
+
+set :v1 = vi("sandvik.vi");
+
+set :s = fixstream(:v1, "d[28]");
+
+set :a = streamof(select x from numarray x where x in :s);
+
+in(:a);
+
+visualize({vi("visualize_sandvik.vi")}, :a);
+
+visualize({
+vi("visualize_sandvik1.vi"),
+vi("visualize_sandvik2.vi"),
+vi("visualize_sandvik3.vi")
+}, :a);

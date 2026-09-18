@@ -1,0 +1,52 @@
+lisp;
+
+(defun startwsmedpeers(fno r d)
+  " s- start from r -number of peers"
+  (let* ((pl (list)))
+          
+    (dotimes (i r)
+      (setq pl (adjoin i pl)))
+	
+    (send-form (list 'setpeerl (kwote pl)) 'nameserver)
+    
+    (dotimes (i r)
+      (system  (concat "peer.vbs " d " " i))
+      )
+    
+    ))
+(defun startwsmedpeers-wsmos(fno r d)
+  " s- start from r -number of peers"
+  (system  (concat "peer.vbs " d " " r))  
+  )    
+      
+
+(defun wsmedns(fno)
+  (system "start /min amos2 -O src/amosql/ns_peer.amosql -n"))
+
+(defun kill_lowpeers(ps)
+  (dolist (p ps);; kill the excess peers
+    (send-form (list 'kill_lowpeers) (port-of-peer p))
+    (send-form '(osql "quit;")(port-of-peer p))
+    (close-named-port p))
+  )
+:osql
+
+ create function startwsmedpeers(integer nopeers, charstring dmp)-> boolean as foreign "startwsmedpeers";
+ create function startwsmedpeers_wsmos(integer nopeers, charstring dmp)-> boolean as foreign "startwsmedpeers-wsmos";
+ create function wsmedns()-> boolean as foreign "wsmedns";
+
+ create function nextpeer(integer i)->vector as select call_function("nameserver","nextpeer",{i},i);
+
+
+create function kill_all()->boolean as
+			    begin
+				kill_all_peers();
+				kill_peer("nameserver");
+                            end;				
+                                  
+                                         
+
+  
+
+
+

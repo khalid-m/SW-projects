@@ -1,0 +1,80 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2003 Timour Katchaounov, UDBL
+ * $RCSfile: isydb.osql,v $
+ * $Revision: 1.1 $ $Date: 2003/02/28 09:50:39 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Definition of the ISY department database. The function 
+ * 'generate_isyemp' is an example of synthetic generation of a database
+ * in AmosQL.
+ ****************************************************************************/
+
+create type isyemp properties (
+  id     charstring key,
+  name   charstring, 
+  pay    integer,
+  wplace integer
+);
+
+
+create function generate_isyemp(integer count) -> isyemp
+/* Generate 'count' eployees so that there is some overlap
+   between this employees and the ones in the idaemp
+   database.
+   Count must be divisible by 4.
+*/
+as begin
+  declare isyemp emp,
+          charstring e_id,
+          charstring e_name,
+          integer e_pay,
+          integer e_wplace,
+          integer isy1,
+          integer other1,
+          integer isy_ida,
+          integer other2;
+
+  if (mod(count, 4) != 0) then begin
+    error('The number of employees to be generated must be a multiple of 4')
+  end;
+
+  set isy1    = count / 4;
+  set other1  = count / 2;
+  set isy_ida = 3 * (count / 4);
+  set other2  = count;
+
+  for each integer i where i = iota(1, count)
+  begin
+    set e_id     = itoa(i);
+    set e_name   = 'isyemp' + e_id;
+    set e_pay    = i;
+
+    if (i < isy1) then begin
+      set e_wplace = 1 end
+    else if ((i >= isy1) and (i < other1)) then begin
+      set e_wplace = 2 end
+    else if ((i >= other1) and (i < isy_ida)) then begin
+      set e_wplace = 1 end
+    else if (i > isy_ida) then begin
+      set e_wplace = 3
+    end;
+
+    create isyemp(id, name, pay, wplace) instances
+           emp(e_id, e_name, e_pay, e_wplace);
+
+    result emp;
+  end;
+end;
+
+
+create function id_to_ssn(charstring id) -> integer ssn
+/* A simple conversion function between employee IDs and SSNs */
+as select atoi(id);
+
+/* Generate 8 employees */
+generate_isyemp(8);
+
+register('isydb');
+listen();

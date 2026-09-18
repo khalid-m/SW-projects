@@ -1,0 +1,108 @@
+<html>
+  <head>
+    <TITLE>WSMED</TITLE>
+      
+     <SCRIPT LANGUAGE="JavaScript" src="WSRequest.js"></SCRIPT>
+     <SCRIPT LANGUAGE="JavaScript" src="wsqs.js"></SCRIPT>
+  </head>
+
+  <body>
+
+<div id="wsqs">
+<h1 align="middle">WSMED Demo</h1>
+<A HREF="http://udbl2.it.uu.se/WSMED/wsmed_example.txt" target="_blank">Examples</A>
+ <br \> 
+<A HREF="http://user.it.uu.se/~udbl/publ/ICDEWS2009.pdf" target="_blank">Adaptive Parallelization of Queries over Dependent Web Service Calls</A>
+<br \> 
+<A HREF="http://user.it.uu.se/~msabesan/PAP/PAP.pdf" target="_blank">PAP(Parameterized Adaptive Parallelization)-pseudo code</A>
+ <br \> 
+
+
+</div>
+
+<div id="image">
+<img src="http://udbl2.it.uu.se/WSMED/uppsala.PNG" alt="description of the photo" align="right" width="150" height="150" ></img>
+
+</div>
+<div id="user">  <br \>    
+    <!-- Register user name --> 
+   Enter User Name <input id="userName" type="text" name="tag" value=""/>
+    <input type="button" value="Register" onclick="enterUSER()"/>
+    <strong><span id="message" style="color:red"></span></strong>
+</div>
+ <br \> 
+
+<div id="WSBench" style="visibility:hidden">
+   <!--WSBench -->
+   <A HREF="http://localhost/WSMED/WSBench/wsbench.html" target="_blank">WSBench</A>
+    <input type="button" value="get UserID" onclick="getUSERID()"/>
+</div> 
+<br \> 
+
+<div id="NEWWSDLURI" style="visibility:hidden">
+   <!--import WSDL URI -->
+    Enter New WSDLURL
+    <input id= "newWSDL" type="text"  size="80" name="tag" value=""/>
+    <input type="button" value="Import WSDL" onclick="importWSDL()"/>
+    <strong><span id="message1" style="color:blue"></span></strong>
+</div> 
+
+<div id="WSDLURI" style="visibility:hidden">
+     <!--import WSDL URI -->
+      Available WSDL URLs
+      <SELECT id="DLU"  onClick="newWSDL()" >
+	<option value="val1">http://udbl2.it.uu.se/WSMED/wsmed.wsdl</option>
+        <option value="val2"> http://codebump.com/services/PlaceLookup.asmx?wsdl</option>
+        <option value="val3">http://codebump.com/services/ZipCodeLookup.asmx?wsdl</option>
+        <option value="val4">http://www.webservicex.net/uszip.asmx?wsdl</option>
+        <option value="val5">http://terraserver-usa.com/TerraService2.asmx?WSDL</option>
+      </SELECT>
+</div> 
+
+
+
+<div id="Table" style="visibility:hidden"> 
+      <br /> 
+     Available Views  <SELECT id="DLT"></SELECT>
+      <input type="button" value="View Info" onclick="availableTables()"/>
+     <input type="button" value="Authentication" onclick="newInfo()"/>
+    <strong><span id="message6" style="color:blue"></span></strong>
+ </div> 
+
+<div id="Auth"  style="visibility:hidden">
+   <!--Enter New Authentication Value -->
+    Enter New Authentication Value
+    <input id= "auStr" type="text" name="tag" value=""/>
+    <input type="button" value="ENTER" onclick="enterInfo()"/>
+</div> 
+
+
+<br />
+ <div id="Query" style="visibility:hidden">     
+    <!-- SQL --> 
+    Enter SQL Query <strong><span id="message3" style="color:blue"></span></strong>
+    <br /><input id="sqlq" type="text" size="175"  name="tag" value=""/>
+    <input type="button" value="Execute" onclick="executeQuery()"/>
+   
+</div>
+ 
+<!-- where we show results -->
+<div id="resultBox" style="visibility:hidden">
+</div>
+
+
+<br />
+<div id="Exitapp" style="visibility:hidden">   
+  <input type="button" value="EXIT" onclick="exitApp()"/>
+</div> 
+
+<hr/>
+
+
+ 
+
+
+
+
+  </body>
+</html>

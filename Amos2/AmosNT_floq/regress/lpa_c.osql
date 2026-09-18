@@ -1,0 +1,61 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 Erik Zeitler, UDBL
+ * $RCSfile: lpa_c.osql,v $
+ * $Revision: 1.2 $ $Date: 2011/01/27 11:26:15 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Background receiver test
+ *
+ ****************************************************************************
+ * $Log: lpa_c.osql,v $
+ * Revision 1.2  2011/01/27 11:26:15  torer
+ * Changed from <...> to SQL's (...) notation for tuples (much nicer)
+ *
+ * Revision 1.1  2010/12/30 21:07:08  zeitler
+ * testing lprint of symbol
+ *
+ * Revision 1.1  2010/12/16 14:31:14  zeitler
+ * lprint + lread tests
+ *
+ ****************************************************************************/
+
+register("bgc1");
+
+lisp;
+(defglobal _syncsrv_ (open-socket nil 0))
+(defglobal _sync_ nil)
+(foreign-lispfn syncsocketport () ((integer))
+	(foreign-result (socket-portno _syncsrv_)))
+
+:osql
+
+ship("s", "add bglisteners() = ('" + this_amosid() +  "', 'localhost', " 
+          + stringify(syncsocketport()) + ");");
+
+lisp;
+(setq _sync_ (accept-socket _syncsrv_))
+
+(defglobal w)
+(let ((connectto (caar (osql "ship('s', 'bglisteners(\"BGSRV\");');"))))
+	(setq w (open-socket (elt connectto 0) (elt connectto 1))))
+
+(read _sync_)
+(formatl t " (sending \"hej\")" t)
+(lprint "hej" w) (flush w)
+(pf t _sync_)
+
+(read _sync_)
+(formatl t " (sending 'HEJ)" t)
+(lprint 'HEJ w) (flush w)
+;'
+(pf t _sync_)
+
+(formatl t " (wait for final sync)...")
+(read _sync_)
+(sleep 0.2)
+(pf t _sync_)
+(formatl t " (sync message sent) (now quit)" t)
+(sleep 1)
+(quit)

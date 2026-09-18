@@ -1,0 +1,88 @@
+/**-*-sql-*-***********************************************
+ * Linear Algebra
+ * 
+ * Solve a linear system, decompose a matrix, reconstruct a
+ * decomposed matrix.
+ * 
+ * @see agsl-linalg.lsp for the bindings to agsl linalg
+ *
+ */
+
+/* Decompose, recompose and solve where matrix A is general
+   (square) */
+
+create function decomp (matrix A)->matrix B
+  as multidirectional
+    ('bf' foreign 'gsl-linalg-decomp-+' cost {10,1})
+    ('fb' foreign 'gsl-linalg-decomp+-' cost {10,1});
+
+create function recomp (matrix A)->matrix B
+  as multidirectional
+    ('bf' foreign 'gsl-linalg-recomp-+' cost {10,1})
+    ('fb' foreign 'gsl-linalg-recomp+-' cost {10,1});
+
+
+
+/* Solve for B where A is general (square) */
+
+create function solve (number alpha, matrix A, matrix C)->matrix B
+  as multidirectional
+    ('bbbf' foreign 'gsl-linalg-solve-alpha-ab---+' cost {10,1})
+    ('bbfb' foreign 'gsl-linalg-solve-alpha-ab--+-' cost {10,1});
+
+create function solve (matrix A, matrix B)->matrix C
+  as solve (1.0, A, B);
+
+/* LU decomposition, recomposition and solving */
+
+create function lu (matrix LU)->lumatrix B
+  as multidirectional
+    ('bf' foreign 'gsl-linalg-lu-decomp-+' cost {10,1})
+    ('fb' foreign 'gsl-linalg-lu-decomp+-' cost {10,1});
+
+create function lu_recomp (matrix A)->lumatrix LU
+  as multidirectional
+    ('bf' foreign 'gsl-linalg-lu-recomp-+' cost {10,1})
+    ('fb' foreign 'gsl-linalg-lu-recomp+-' cost {10,1});
+
+create function lusolve (number alpha, lumatrix LU, matrix B)->matrix C
+  as multidirectional
+    ('bbbf' foreign 'gsl-linalg-lu-solve-alpha-ab---+' cost {10,1})
+    ('bbfb' foreign 'gsl-linalg-lu-solve-alpha-ab--+-' cost {10,1});
+
+create function lusolve (lumatrix LU, matrix B)->matrix C
+  as solve (1.0, LU, B);
+
+
+/* Cholesky decomposition, recomposition and solving  */
+
+create function chol (matrix A)->cholesky CHOL
+  as multidirectional
+    ('bf' foreign 'gsl-linalg-cholesky-decomp-+' cost {10,1})
+    ('fb' foreign 'gsl-linalg-cholesky-decomp+-' cost {10,1});
+
+create function chol_recomp (cholesky CHOL)->matrix B
+  as multidirectional
+    ('bf' foreign 'gsl-linalg-cholesky-recomp-+' cost {10,1})
+    ('fb' foreign 'gsl-linalg-cholesky-recomp+-' cost {10,1});
+
+
+create function cholsolve (number alpha, cholesky CHOL, matrix B)->matrix C
+  as multidirectional
+    ('bbbf' foreign 'gsl-linalg-cholesky-solve-alpha-ab---+' cost {10,1})
+    ('bbfb' foreign 'gsl-linalg-cholesky-solve-alpha-ab--+-' cost {10,1});
+
+create function cholsolve (cholesky CHOL, matrix B)->matrix C
+  as cholsolve (1.0, CHOL, B);
+
+
+create function qr (matrix A)->matrix B
+  as multidirectional
+    ('bf' foreign 'gsl-linalg-qr-decomp-+' cost {10,1})
+    ('fb' foreign 'gsl-linalg-qr-decomp+-' cost {10,1});
+
+create function qr_recomp (matrix A)->matrix B
+  as multidirectional
+    ('bf' foreign 'gsl-linalg-qr-recomp-+' cost {10,1})
+    ('fb' foreign 'gsl-linalg-qr-recomp+-' cost {10,1});
+

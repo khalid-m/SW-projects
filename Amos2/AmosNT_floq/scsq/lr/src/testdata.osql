@@ -1,0 +1,201 @@
+/*-*-sql-*-*******************************************************************/
+
+/* enum() enumerates a bag of darray */
+
+lisp;
+(defun enum--+ (fno bag rep res)
+  (dotimes (i rep)
+    (mapbag bag (f/l (x) 
+      (osql-result bag rep (na-seta (car x) 1 i))))))
+(defun denum--+ (fno bag rep res)
+  (dotimes (i rep)
+    (mapbag bag (f/l (x) 
+      (osql-result bag rep (na-seta (car x) 1 (+ i 0.0)))))))
+:osql
+
+create function enum(bag of iarray ia, integer rep) -> iarray
+as foreign 'enum--+';
+
+create function denum(bag of darray da, integer rep) -> darray
+as foreign 'denum--+';
+
+create function lrinp_hybrid(integer L, integer promille)->iarray;
+create_index("lrinp_hybrid", "L", "hash", "multiple");
+
+create function tplsizes(integer dim) -> integer bytes;
+
+create function smallaccbalresults() -> vector of darray;
+create function accbalresults() -> vector of darray;
+
+/* Account balance result data used for benchmarking */
+
+add accbalresults() = (select vectorize(
+ select i, darray({2.0, real(j), real(j), real(1000 + j), real(j), 1.0})
+ from integer i where i in iota(0, L-1))
+from integer L, integer rep, integer j
+where j in iota(1, rep)
+and L = 64
+and rep = 1000);
+
+create function accbalresultstream(integer xway, integer rep)->stream of darray
+as streamof(denum(accbalresults()[mod(xway,64)], rep));
+
+/* abrproc: L // streams of account balance response data */
+
+create function abrproc(integer L, integer rep)->vector of stream of darray
+as vectorize(select i, ostream(newsp(accbalresultstream(i, rep)), 0)
+from integer i where i in iota(0, L-1));
+
+/* abrprocm: L // multiarray acccbal response streams */
+
+create function abrprocm(integer L, integer rep, integer masize)
+-> vector of stream of darray as
+vectorize(select i, ostream(newspflex(accbalresultstream(i, rep), 
+make_record({'na2m', make_record({'ma-size', masize})})), 0)
+from integer i where i in iota(0, L-1));
+
+/* abrproc_rr: L // accbal streams, each split into fo streams */
+
+create function abrprocsplit(integer xway, integer rep, integer fo)
+-> vector of stream of darray as
+splitstream_rr(accbalresultstream(xway, rep), fo);
+
+create function abrproc_rr(integer L, integer rep, integer fo)
+-> vector of vector of stream of darray as
+vectorize(select i, abrprocsplit(i, rep, fo)
+from integer i where i in iota(0, L-1)); 
+
+/* abrprocm_rr: L // accbal multiarray streams, each split into fo streams */
+
+create function abrprocmsplit(integer xway, integer rep, integer masize, 
+                             integer fo) -> vector of stream of darray as
+splitflex(streamof(winagg(denum(accbalresults()[mod(xway,64)], rep), fo, fo)),
+fo, #'rr', make_record({'na2m', make_record({'ma-size', masize})}));
+
+create function abrprocm_rr(integer L, integer rep, integer masize, integer fo)
+-> vector of vector of stream of darray as
+vectorize(select i, abrprocmsplit(i, rep, masize, fo)
+from integer i where i in iota(0, L-1));
+
+/* smallaccbalresults() is used for testing lrfd() etc */
+
+add smallaccbalresults() = {darray({2.0, 10.0, 11.0, 10000.0, 10.0, 100.0}),
+                darray({2.0, 10.0, 13.0, 10000.0, 5.0, 500.0}),
+                darray({2.0, 10.0, 12.0, 10000.0, 11.0, 0.0})};
+
+/* These tpl sizes were reported in DASFAA 2010 */
+
+add tplsizes(dim) = bytes
+from integer dim, integer bytes
+where {dim, bytes} in 
+  {{1, 27}, {2, 31}, {4, 39}, {8, 55}, {15, 83}, {26, 128}, {58, 256}, 
+   {122, 512}, {250, 1025}, {506, 2049}, {1200, 4825}, {2400, 9625}, 
+   {4800, 19226}, {9600, 38426}, {19200, 76826}, {38400, 153627}};
+
+create function numarray_testdata(integer dim)->iarray;
+
+add numarray_testdata(dim) = iarray(dim)
+from integer dim, integer bytes
+where bytes = tplsizes(dim);
+
+create function na_stream(integer dim, integer rep)->stream of iarray as
+streamof(
+  select numarray_testdata(dim)
+  from integer i
+  where i in iota(1, rep));
+
+lisp;
+
+(defun posrep--+ (fno L c res)
+  (dotimes (i c)
+    (osql-result L c (listtoarray 
+      (list 0 0 114 30 (rand 0 L) 0 0 0 497 -1 -1 -1 -1 -1 -1)))))
+
+:osql
+
+create function posrep(integer L, integer cnt) -> vector of integer
+as foreign 'posrep--+';
+
+create function populate_hybrid(integer L, integer promille) -> boolean
+as begin
+  add lrinp_hybrid(L, promille) = iarray(posrep(L, integer(1000 - promille)));
+  add lrinp_hybrid(L, promille) = 
+  iarray({2,0,119,-1,-1,-1,-1,-1,-1,0,-1,-1,-1,-1,-1}) 
+  from integer i
+  where i in iota(1, promille);
+end;
+
+create function i_hybrid(integer L, integer promille, integer rep)
+-> stream of iarray as streamof(
+select lrinp_hybrid(L, promille)
+from integer i where i in iota(1, rep));
+
+create function i_multihybrid(integer L, integer promille, integer rep, 
+                              integer multi) -> stream of iarray as 
+streamof(
+na2multi((
+select lrinp_hybrid(L, promille) from integer i where i in iota(1, rep)),
+multi));
+
+create function i_multihybrid_enumc(integer L, integer promille, integer rep,
+                              integer multi) -> stream of iarray as
+streamof(na2multi(enum(lrinp_hybrid(L, promille), rep), multi));
+
+create function i_hybrid_enumc(integer L, integer promille, integer rep)
+-> stream of iarray as streamof(enum((select lrinp_hybrid(L, promille)), rep));
+
+create function i_hybrid_enumf(integer L, integer promille, integer rep)
+-> stream of iarray as streamof(enum_na(in(
+select ia
+from integer i, iarray ia
+where i in iota(1, rep)
+and ia = lrinp_hybrid(L, promille)), 1));
+
+populate_hybrid(1, 0);
+populate_hybrid(1, 5);
+populate_hybrid(1, 10);
+populate_hybrid(1, 50);
+populate_hybrid(1, 100);
+populate_hybrid(1, 500);
+populate_hybrid(1, 1000);
+
+populate_hybrid(64, 0);
+populate_hybrid(64, 5);
+populate_hybrid(64, 10);
+populate_hybrid(64, 50);
+populate_hybrid(64, 100);
+populate_hybrid(64, 500);
+populate_hybrid(64, 1000);
+
+populate_hybrid(256, 0);
+populate_hybrid(256, 5);
+populate_hybrid(256, 10);
+populate_hybrid(256, 48);
+populate_hybrid(256, 50);
+populate_hybrid(256, 100);
+populate_hybrid(256, 500);
+populate_hybrid(256, 1000);
+
+populate_hybrid(512, 0);
+populate_hybrid(512, 5);
+populate_hybrid(512, 10);
+populate_hybrid(512, 50);
+populate_hybrid(512, 100);
+populate_hybrid(512, 500);
+populate_hybrid(512, 1000);
+
+populate_hybrid(1024, 0);
+populate_hybrid(1024, 5);
+populate_hybrid(1024, 10);
+populate_hybrid(1024, 50);
+populate_hybrid(1024, 100);
+populate_hybrid(1024, 500);
+populate_hybrid(1024, 1000);
+
+create function experiment()->integer;
+create function experiment(integer e)->boolean as begin
+set experiment() = e;
+end;
+
+create function sxway(stream of iarray s)->stream of integer as
+streamof(select xway(in(s)));

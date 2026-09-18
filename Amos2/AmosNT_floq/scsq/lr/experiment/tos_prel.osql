@@ -1,0 +1,216 @@
+/*-*-sql-*-*******************************************************************/
+
+/* Preliminary experiments for TOS, defined as parallel fsplit */
+
+create function fsplit(stream of iarray s, integer fo, function mapfn)
+-> object as
+select in(zipstreams(proc))
+from vector of stream proc,
+vector of stream fsplit,
+stream src
+where proc = mapstreams(fsplit, mapfn)
+and fsplit = splitflexra(src, fo, #'lrproute', {0, 1}, make_record({}))
+and src = ostream(newsp(s), 0);
+
+create function tos_no(stream of iarray s, integer fo, function mapfn)
+-> object
+as select in(zipstreams(proc))
+from vector of stream proc,
+vector of stream pmerge,
+vector of stream fl,
+vector of stream fr,
+vector of stream rr,
+stream src
+where proc = mapstreams(pmerge, mapfn)
+and pmerge = vselect mergestreams({fl[i], fr[i]}) from integer i
+and fl = splitflexra(rr[0], fo, #'lrproute', {0, 1}, make_record({}))
+and fr = splitflexra(rr[1], fo, #'lrproute', {0, 1}, make_record({}))
+and rr = splitstream(streamof(winagg(in(src), 2, 2)), 2, #'rr')
+and src = ostream(newsp(s), 0);
+
+lisp;
+(checkequal "fsplit"
+ ((osql "select distinct vectorize(select i, mod(v[i][4], 4) from integer i)
+         from vector of iarray v
+         where v = fsplit(i_hybrid_enumf(64, 0, 1), 4, #'id');")
+ '((#(0 1 2 3)))))
+(checkequal "round robin pre splitter"
+ ((osql "select distinct vectorize(select i, mod(ia[i][4], 8) from integer i)
+         from vector of iarray ia
+         where ia = tos_no(i_hybrid_enumf(64, 0, 1), 8, #'id');")
+ '((#(0 1 2 3 4 5 6 7)))))
+:osql
+
+create function rrsmj(stream of iarray s, integer fo) -> iarray
+as select in(smjstreamsna(rr, 1))
+from vector of stream rr,
+stream src
+where rr = splitstream(streamof(winagg(in(src), fo, fo)), fo, #'rr')
+and src = ostream(newsp(s), 0);
+
+lisp;
+(checkequal "rrsmj"
+ ((osql "select distinct v[1] from iarray v 
+         where v = rrsmj(i_hybrid_enumc(64, 0, 50), 2);")
+ '((0) (1) (2) (3) (4) (5) (6) (7) (8) (9) (10) (11) (12) (13) (14) (15) (16)
+   (17) (18) (19) (20) (21) (22) (23) (24) (25) (26) (27) (28) (29) (30) (31)
+   (32) (33) (34) (35) (36) (37) (38) (39) (40) (41) (42) (43) (44) (45) (46)
+   (47) (48) (49)))
+ ((osql "count(rrsmj(i_hybrid_enumc(64, 0, 100), 4));")
+ '((100000))))
+:osql
+
+create function tos(stream of iarray s, integer fo, function mapfn) -> object
+as select in(zipstreams(proc))
+from vector of stream proc,
+vector of stream pmerge,
+vector of stream fl,
+vector of stream fr,
+vector of stream rr,
+stream src
+where proc = mapstreams(pmerge, mapfn)
+and pmerge = vselect smjstreamsna({fl[i], fr[i]}, 1) from integer i
+and fl = splitflexra(rr[0], fo, #'lrproute', {0, 1}, make_record({}))
+and fr = splitflexra(rr[1], fo, #'lrproute', {0, 1}, make_record({}))
+and rr = splitstream(streamof(winagg(in(src), 2, 2)), 2, #'rr')
+and src = ostream(newsp(s), 0);
+
+select vectorize(select i, ia[i][1] from integer i)
+from vector of iarray ia
+where ia = tos(i_hybrid_enumc(64, 0, 10), 4, #'id');
+
+/* smjstreamsna on rr split */
+
+select in(smjstreamsna(rr, 1))
+from vector of stream rr, integer fo
+where rr = splitstream(streamof(winagg(in(i_hybrid_enumc(64, 0, 10)), 2, 2)), 2, #'rr')
+and fo = 4;
+
+/* smjstreamsna on splitflexra */
+
+select in(smjstreamsna(sfr, 1))
+from vector of stream sfr, integer fo
+where sfr = splitflexra(i_hybrid_enumc(64, 0, 10), fo, #'lrproute', {0, 1}, make_record({}))
+and fo = 4;
+
+/* smjstreamsna on rr split + mapstreams */
+
+select in(smjstreamsna(map, 1))
+from stream s, vector of stream ra, vector of stream map, integer fo
+where map = mapstreams(ra, #'id')
+and ra = splitflexra(s, fo, #'lrproute', {0, 1}, make_record({}))
+and s = i_hybrid_enumc(64, 0, 10)
+and fo = 4;
+
+/* mergestreams on rr + splitflexra */
+
+select in(mergestreams(concat(fl, fr)))
+from vector of stream rr, vector of stream fl, vector of stream fr, integer fo
+where fl = splitflexra(rr[0], fo, #'lrproute', {0, 1}, make_record({}))
+and fr = splitflexra(rr[1], fo, #'lrproute', {0, 1}, make_record({}))
+and rr = splitstream(streamof(winagg(in(i_hybrid_enumc(64, 0, 10)), 2, 2)), 2, #'rr')
+and fo = 4;
+
+/* smjstreamsna on rr split + splitflexra => stuck when reading 1st tuple */
+
+count(select in(mergestreams(pmerge))
+from vector of stream pmerge, vector of stream rr, vector of stream fl,
+vector of stream fm, vector of stream fr, integer fo
+where pmerge = mapstreams(vectorof(
+  select smjstreamsna({fl[i], fm[i], fr[i]}, 1) from integer i), #'id')
+and fl = splitflexra(rr[0], fo, #'lrproute', {0, 1}, make_record({}))
+and fm = splitflexra(rr[1], fo, #'lrproute', {0, 1}, make_record({}))
+and fr = splitflexra(rr[2], fo, #'lrproute', {0, 1}, make_record({}))
+and rr = splitstream(streamof(winagg(enum_na(in(i_hybrid_enumc(64, 0, 10)), 2),
+                              3, 3)), 3, #'rr')
+and fo = 2);
+
+count(select in(mergestreams(pmerge))
+from vector of stream pmerge, vector of stream rr, vector of stream fl,
+vector of stream fm, vector of stream fr, integer fo
+where pmerge = mapstreams(vectorof(
+  select smjstreamsna({fl[i], fm[i], fr[i]}, 1) from integer i), #'id')
+and fl = splitflexra(rr[0], fo, #'lrproute', {0, 1}, make_record({}))
+and fm = splitflexra(rr[1], fo, #'lrproute', {0, 1}, make_record({}))
+and fr = splitflexra(rr[2], fo, #'lrproute', {0, 1}, make_record({}))
+and rr = splitstream(streamof(enum_na(in(i_hybrid_enumc(64, 0, 10)), 2)),
+                              3, #'randrobin')
+and fo = 2);
+
+vectorof(select ia[2]
+from iarray ia, vector of stream pmerge, vector of stream rr,
+vector of stream fl, vector of stream fr, integer fo
+where pmerge = mapstreams(vectorof(
+  select smjstreamsna({fl[i], fr[i]}, 1) from integer i), #'id')
+and fl = splitflexra(rr[0], fo, #'lrproute', {0, 1}, make_record({}))
+and fr = splitflexra(rr[1], fo, #'lrproute', {0, 1}, make_record({}))
+and rr = splitstream(streamof(enum_na(in(i_hybrid_enumc(64, 0, 10)), 2)),
+                     2, #'randrobin')
+and fo = 2
+and ia in mergestreams(pmerge));
+
+count(select ia[2]
+from iarray ia, vector of stream pmerge, vector of stream rr,
+vector of stream fl, vector of stream fr, integer fo
+where pmerge = mapstreams(vectorof(
+  select smjstreamsna({fl[i], fr[i]}, 1) from integer i), #'id')
+and fl = splitflexra(rr[0], fo, #'lrproute', {0, 1}, make_record({}))
+and fr = splitflexra(rr[1], fo, #'lrproute', {0, 1}, make_record({}))
+and rr = splitstream(i_hybrid_enumc(64, 0, 10), 2, #'randrobin')
+and fo = 2
+and ia in mergestreams(pmerge));
+
+select in(mergestreams(pmerge))
+from vector of stream pmerge, vector of stream rr, vector of stream fl,
+vector of stream fr, integer fo 
+where pmerge = mapstreams(vectorof(select mergestreams({fl[i], fr[i]})
+                                   from integer i), #'id')
+and fl = splitflexra(rr[0], fo, #'lrproute', {0, 1}, make_record({}))
+and fr = splitflexra(rr[1], fo, #'lrproute', {0, 1}, make_record({}))
+and rr = splitstream(streamof(winagg(enum_na(
+  in(i_hybrid_enumc(64, 0, 10)), 2), 2, 2)), 2, #'rr')
+and fo = 2;
+
+select in(zipstreams(mapstreams(pmerge, #'stcount')))
+from vector of stream pmerge, vector of stream rr, vector of stream fl,
+vector of stream fr, integer fo
+where pmerge = mapstreams(vectorof(select mergestreams({fl[i], fr[i]})
+                                 from integer i), #'id')
+and fl = splitflexra(rr[0], fo, #'lrproute', {0, 1}, make_record({}))
+and fr = splitflexra(rr[1], fo, #'lrproute', {0, 1}, make_record({}))
+and rr = splitstream(streamof(winagg(enum_na(in(i_hybrid_enumc(64, 0, 10)), 2),
+                              2, 2)), 2, #'rr')
+and fo = 4;
+
+select in(zipstreams(mapstreams(pmerge, #'stcount')))
+from vector of stream pmerge, vector of stream rr, vector of stream fl,
+vector of stream fr, integer fo
+where pmerge = mapstreams(vectorof(select mergestreams({fl[i], fr[i]})
+                                 from integer i), #'id')
+and fl = splitflexra(rr[0], fo, #'lrproute', {0, 1}, make_record({}))
+and fr = splitflexra(rr[1], fo, #'lrproute', {0, 1}, make_record({}))
+and rr = splitstream(i_hybrid_enumc(64, 0, 150), 2, #'randrobin')
+and fo = 4;
+
+select in(zipstreams(mapstreams(pmerge, #'stcount')))
+from vector of stream pmerge, vector of stream rr, vector of stream fl,
+vector of stream fr, integer fo, stream src
+where pmerge = mapstreams(vectorof(select mergestreams({fl[i], fr[i]})
+                                 from integer i), #'id')
+and fl = splitflexra(rr[0], fo, #'lrproute', {0, 1}, make_record({}))
+and fr = splitflexra(rr[1], fo, #'lrproute', {0, 1}, make_record({}))
+and rr = splitstream(src, 2, #'randrobin')
+and src = ostream(newsp(i_hybrid_enumc(64, 0, 1)), 0)
+and fo = 2;
+
+select in(zipstreams(mapstreams(pmerge, #'stcount')))
+from vector of stream pmerge, vector of stream rr, vector of stream fsplit,
+stream src, integer fo, integer rrfo
+where pmerge = mapstreams(
+vectorof(select mergestreams(vectorize(select j, fsplit[i + j*fo] from integer j where j in iota(0, rrfo - 1)))
+from integer i where i in iota(0, fo - 1)), #'id')
+and fsplit = splitflexras(rr, fo, #'lrproute', {0, 1}, make_record({}))
+and rr = splitstream(src, rrfo, #'randrobin')
+and src = ostream(newsp(i_hybrid_enumc(64, 100, 1000)), 0)
+and rrfo = 3
+and fo = 4;

@@ -1,0 +1,296 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: 2009 Erik Zeitler, UDBL
+ * $RCSfile: knnmat.osql,v $
+ * $Revision: 1.4 $ $Date: 2013/11/07 17:48:41 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: KNN-classifier
+ *
+ ****************************************************************************/
+
+/* Look at the optimization at the bottom. We want this to happen
+   automatically. */
+
+/* Use knownclasses to store the data points with known class belonging */
+
+create function knownclasses(Vector of Number x) -> Number v as stored;
+
+create function add_kc(Vector of Number w) -> Boolean as
+add knownclasses({w[0], w[1], w[2], w[3], w[4], w[5], w[6], w[7], w[8]})=w[9];
+
+create function readnumfile(Charstring f) -> Vector of Number w
+  as read_ntuples(f);
+
+create function unknown() -> Bag of vector of number as stored;
+
+/* Read data files */
+
+add_kc(readnumfile("../data/glassdata.nt"));
+
+add unknown() = readnumfile("../data/testdata.nt");
+
+/* Use testclasses() and k() to store the result of your assignment */
+
+create function testclasses(vector of number) -> number as stored;
+
+create function k() -> Integer as stored;
+
+/* knownclasses() on tuple form (coordinate, class) is useful in queries */
+
+create function kct() -> (Vector of Number x, Number v)
+  as select ww, cc
+     from vector of number ww, number cc
+     where cc = knownclasses(ww);
+
+/* Projecting the knownclasses to its coordinates is useful when normalizing */
+
+create function knowncoordinates() -> vector of number
+  as select ww
+     from vector of number ww, number cc
+     where cc = knownclasses(ww);
+
+
+/* all_but_this is useful for leave-one-out cross-validation */
+
+create function all_but_this(vector of number x)
+  -> bag of (vector of number, number)
+  as select ww, cc
+     from vector of number ww, number cc
+     where (ww, cc) = kct()
+     and ww != x;
+
+/* Basic functions for kNN */
+
+create function classdistances(Vector of Number x,
+                               Bag of (Vector of Number, Number) P)
+                               -> Bag of (Number distance, Number class)
+  as select euclid(x, v), class
+     from Vector of Number v
+     where (v, class) in P;
+
+create function k_nearest(Vector of Number x, Integer k, 
+                          Bag of (Vector of Number, Number) P)
+  -> Bag of (Object, Object)
+  as leastk(classdistances(x, P), k);
+
+create function k_votes(Vector of Number x, Integer k,
+                        Bag of (Vector of Number, Number) P)
+  -> Bag of (Integer class, Number count)
+  as groupby((select cl 
+              from Number cl, Real dist
+              where (dist, cl) in k_nearest(x, k, P)),
+             #'count');
+
+
+/* TODO:
+  (1) Implement knnclassify (replace '...' below with code).
+
+  (2) Implement cross validation on known data. 
+      Leave-One-Out Cross-Validation on the known data should correctly
+      classify approx. 90 of the 163 known points for k = 3.
+
+  (3) Try to improve classifier performance by normalizing and find best k.
+      Hint: You might find it appropriate to implement normalization using
+            aggregates (aggv(..., 'avg') and aggv(..., 'stdev') etc) in the
+            classdistances() function.
+
+  (4) Classify the unknown data using the best possible classifier based
+      on your findings in (3). How should the unknown data be normalized?
+      == Don't forget to store your results in k() and testclasses() ==
+
+  (5) (optional): Try to improve classifier performance by changing distance
+      function. Classify the unknown data using the best distance function.*/
+
+
+/* ===================== (1) knnclassify implementation */
+create function knnclassify(Vector of Number x, Integer k,
+                           Bag of (Vector of Number, Number) P) -> Number
+  as select cl 
+	from Number cl, Number cnt, Bag of (Integer, Number) votes
+	where votes = k_votes(x,k,p)
+	and (cl,cnt) in votes
+	and cnt = maxagg(select cnt2 
+				from Number cl2, Number cnt2 
+				where (cl2,cnt2) in votes);
+/* returns bag of those classes which have received maximum number votes */
+	
+
+/* ================= (2) Cross-validation of known data */
+
+create function cross_validate(Vector of Number x, Integer c, Integer k) -> Boolean
+  as c in knnclassify(x,k,all_but_this(x));
+/* returns true if c is among classes returned by knnclassify */
+
+create function cross_validation_uncertainty(Vector of Number x, Integer k) -> Number
+  as count(knnclassify(x,k,all_but_this(x)));
+/* returns the number of possible classes of x returned by knnclassify */
+
+create function cross_validate_count(Integer k) -> Number
+  as count(select x
+	from Vector of Number x, Integer c
+	where c = knownclasses(x)
+	and cross_validate(x,c,k));
+/* returns count of glassdata points which have passed cross-validation */
+
+create function uncertainty_count(Integer k) -> Number
+	as count(select x
+		from Vector of Number x
+		where x = knowncoordinates()
+		and (cross_validation_uncertainty(x,k) > 1));
+/* returns count of glassdata points which were classified for 2 or more classes */
+
+create function evaluate_k(Number k) -> (Number,Number,Number)
+	as select k, cross_validate_count(k), uncertainty_count(k);
+/* NOTE: if programmed in any language like java, pascal, c/c++/c#, lisp - would do both counts in 1 classification pass through glassdata, not 2 passes as here.
+
+Explanation: evaluate_k actually calls cross_validate_count and uncertainty_count separately. Each of these two apply knnclassify() to all knownclasses.
+If we could do a conditional count for each x, it will most possibly run twice as fast (unless Amos2 optimizes this).
+In java I would have written it like this:
+
+public void EvaluateK(Integer k)
+{
+  this.count_hit = 0; 
+  this.count_uncertainty = 0;
+  for(VectorOfNumber x in KnownCoordinates())
+  {
+    BagOfNumber classifyResult = KnnClassify(x, k, AllButThis(x));
+    if (KnownClasses(x) in classifyResult) 
+	this.count_hit++;
+    if (count(classifyResult) > 1) 
+	this.count_uncertainty++;
+  }
+}
+
+ I found no simple way to implement this in Amos2. Or maybe it actually optimizes this? */
+
+/* By running evaluate_k(iota(1,10)) we will see cross-validation and uncertainty for each k() value 
+  For given test data, best value for k is 3, (cross-validation 103, uncertainty 15) */
+
+/* NOTE: sometimes Amos2 hangs when running this:
+
+evaluate_k(iota(1,10)); 
+*/
+
+set k() = 3;
+
+/* ============== (3) Normalization */
+
+create function allcoordinates() -> Vector of Number
+	as select x 
+	from Vector of Number x
+	where x = knowncoordinates() or x in unknown();
+/* unites all coordinate data */
+
+create function get_normparams(Bag of Vector of Number xs, Integer dim) -> (Integer,Number,Number,Number,Number)
+  as select dim,minagg(projs),maxagg(projs),avg(projs),stdev(projs)
+	from Bag of Number projs
+	where projs = (select project(x,{dim})[0]
+			from Vector of Number x
+			where x in xs);
+/* returns normalization parameters in given dimension, as well as number of dimension */
+
+create function nps() -> Vector of Vector of Number as stored;
+/*REM: set nps() = vectorize(get_normparams(allcoordinates(),iota(0,8))); 
+  - now use only knowncoordinates() to calculate normalization parameters  */
+set nps() = vectorize(get_normparams(knowncoordinates(),iota(0,8)));
+/* stores vector of vectors {min,max,avg,stdev} outer-indexed by dimension */
+
+create function normalize_uniform(Vector of Number x) -> Vector of Number
+  as vectorize(select i,(x[i]-np[i][0])/(np[i][1]-np[i][0])
+	       from Integer i, vector of vector of number np
+               where np = nps());
+/* this complies with what maxmin(unknown()) function returns if we use only unknown data to build nps() */
+
+create function normalize_gauss(Vector of Number x) -> Vector of Number
+  as select vectorize(select i,(x[i]-np[i][2])/np[i][3]
+	              from Integer i)
+       from vector of vector of number np
+        where np = nps();
+/* similarly, with zscore(unknown()) */
+
+/* NOTE: both functions will crash if we have exactly the same values in any dimension (max-min=0, stdev=0).
+ Is there an easy way to implement non-zero check before dividing? */
+
+/* Redefine skeleton function all_but_this for better flexibility */
+
+create function all_but_this2(vector of number x,
+				Bag of (Vector of Number, Number) P)
+  -> bag of (vector of number, number)
+  as select ww, cc
+     from vector of number ww, number cc
+     where (ww, cc) in P
+     and ww != x;
+
+/* Also redefide cross-validation and uncertainty count functions so the accept data as a parameter */
+
+create function cross_validate_count2(Bag of (Vector of Number, Number) P, Integer k) -> Number
+  as count(select x
+	from Vector of Number x, Integer c
+	where (x,c) in P
+	and c in knnclassify(x,k,all_but_this2(x,P)));
+
+create function uncertainty_count2(Bag of (Vector of Number, Number) P, Integer k) -> Number
+  as count(select x
+	from Vector of Number x, Integer c
+	where (x,c) in P
+	and count(knnclassify(x,k,all_but_this2(x,P)))>1);
+
+/* Actual data normalization */
+
+create function uniform_data(Bag of (Vector of Number, Number) P) -> Bag of (Vector of Number, Number)
+  as select normalize_uniform(x),c from Vector of Number x, Number c where (x,c) in P;
+
+/* Uniform normalization results in much better cross-validation and much less uncertainty then raw data (compare to 103, 15):
+
+cross_validate_count2(uniform_data(kct()),3);
+116
+uncertainty_count2(uniform_data(kct()),3);
+9
+
+*/
+
+create function gauss_data(Bag of (Vector of Number, Number) P) -> Bag of (Vector of Number, Number)
+  as select normalize_gauss(x),c from Vector of Number x, Number c where (x,c) in P;
+
+/* Gaussian normalization results in even better cross-validation, however, is a bit more uncertain than previous:
+
+cross_validate_count2(gauss_data(kct()),3);
+122
+uncertainty_count2(gauss_data(kct()),3);
+12
+
+*/
+
+
+/* ================== (4) Classifying the unknown data: k=3, gaussian normalization */
+
+create function mem()->Bag of (Vector of Number, Number) as stored;
+add mem()=gauss_data(kct());
+lisp;
+
+(stop-profile) (start-profile) 
+(time (checkequal "knn without materialization" 
+ ((osql "cross_validate_count2(gauss_data(kct()),3);") '((122))))
+	"Time")
+;(print (profile))
+
+
+(stop-profile) (start-profile) 
+(time
+ (checkequal "knn with materialization" 
+  ((osql "cross_validate_count2(mem(),3);")
+   '((122))))
+ "Time")
+;(print (profile))
+
+:osql
+
+/* Andrej's hack: In the case of a tie both classes with maximum votes are
+   returned from knnclassify. Selecting one of the using first() is the same
+   as picking one of them at random. */
+add testclasses(x) = first(knnclassify(normalize_gauss(x), k(), gauss_data(kct())))
+from vector of number x
+where x in unknown();
+

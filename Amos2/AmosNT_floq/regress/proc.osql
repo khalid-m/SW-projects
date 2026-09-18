@@ -1,0 +1,463 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 1993-2006 Tore Risch, EDSLAB, UDBL
+ * $RCSfile: proc.osql,v $
+ * $Revision: 1.35 $ $Date: 2012/05/15 19:32:51 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: testing stored procedures 
+ ****************************************************************************
+ * $Log: proc.osql,v $
+ * Revision 1.35  2012/05/15 19:32:51  torer
+ * result -> return
+ *
+ * Revision 1.34  2012/03/18 16:41:47  torer
+ * Could not bind call to bag valued procedure to bag variable
+ *
+ * Revision 1.33  2011/12/20 19:57:50  torer
+ * Testing transactional procedure definitions
+ *
+ * Revision 1.32  2011/01/28 09:18:11  torer
+ * 'result' -> 'return'
+ *
+ * Revision 1.31  2011/01/27 11:26:15  torer
+ * Changed from <...> to SQL's (...) notation for tuples (much nicer)
+ *
+ * Revision 1.30  2011/01/26 21:00:47  torer
+ * PSM's (...) notation for tuples allowed as alternative to <...>
+ *
+ * Revision 1.29  2011/01/21 07:30:51  torer
+ * Using debugging(true);
+ *
+ * Revision 1.28  2011/01/20 18:29:02  torer
+ * 1. bag variables can be bound to values of bag valued functions
+ * 2. The 'set f(..)=... ' now updates correctly
+ *
+ * Revision 1.27  2009/11/16 21:54:56  torer
+ * Strict use of in over bag (not =)
+ *
+ * Revision 1.26  2009/04/29 15:51:43  torer
+ * Testing correct return of FALSE
+ *
+ * Revision 1.25  2008/09/01 18:45:19  torer
+ * result may emit result tuples from select statement
+ *
+ * Revision 1.24  2007/05/29 17:14:11  torer
+ * Procedures without begin end
+ *
+ * Revision 1.23  2007/01/07 00:26:43  torer
+ * Use of inferred vector types instead of casting
+ *
+ * Revision 1.22  2006/05/03 20:20:16  torer
+ * Tests of infix 'in'
+ *
+ * Revision 1.21  2006/04/29 17:32:33  torer
+ * More general nested expressions in procedures
+ *
+ * Revision 1.20  2006/04/14 10:02:43  torer
+ * Strict function result tuple declarations using <...>
+ *
+ * Revision 1.19  2006/02/07 22:09:16  torer
+ * Iterative interpretation of ObjectLog changes the biting the tail test
+ *
+ ****************************************************************************/
+
+create type person properties
+(
+	name charstring as stored,
+	income integer as stored,
+	nonkey child person as stored
+);
+create function parent(person c)->person p 
+  as select p where child(p)=c;
+create type student under person properties (score integer as stored);
+create function creperson(charstring nm,integer inc)->person p
+  as begin
+       create person instances p;
+       set name(p)=nm;
+       set income(p)=inc;
+       return p
+     end;
+
+create function equalize_rich_income(integer threshold,integer newinc)->boolean
+  as for each person p where income(p) > threshold
+	      set income(p) = newinc;
+
+create function makestudent(object o,integer sc)->boolean 
+  as add type student(score) to o(sc);
+
+create function unmakestudent(object o)->boolean
+  as remove type student from o;
+
+create function addchild(person p,person q)->boolean
+  as add child(p)=q;
+
+create function removechild(person p,person q)->boolean
+  as remove child(p)=q;
+
+create function flatten_incomes(integer threshold) -> integer res
+  as for each person p where income(p) > threshold
+             begin
+               select income(p) into res;
+               return res;
+	       set income(p) = income(p)-(income(p)-threshold)/2;
+             end;
+
+create function deleterichpeople(integer thres)->boolean
+  as for each person p where income(p) > thres delete p;
+
+create function deleteincomes()->boolean
+  as remove income(p)=i from Person p, Integer i;
+
+create function wham()-> boolean
+  as for each person p delete p;
+
+create function sumincomes()->integer i
+  as select sum((select income(p) from person p));
+
+select creperson("Tore",10) into :tore;
+select creperson("Ulla",100) into :ulla;
+select creperson("Oskar",200) into :oskar;
+
+create function mulresproc(integer i) -> (integer j, integer k)
+  as begin return (i+1,i+2); end;
+
+create function resultproc(integer i) -> integer 
+  as return i+1;
+
+create function nullproc()-> integer 
+  as select nil;
+
+create function nilassign(integer i) -> integer 
+  as begin
+       set i=nullproc();
+       return i;
+     end;
+
+create function fum(integer i)->boolean 
+  as begin; end; 
+
+create function cnt()->integer;
+
+create function inner()->integer
+  as for each integer i where i=0 or i=1
+     begin set cnt()=cnt() + 1; 
+           return cnt();
+     end;
+
+create function outer()->integer
+  as begin set cnt()=0; 
+        inner(); 
+        return (select cnt()); 
+     end;
+
+create type kanon;
+
+create function populate()->Boolean
+  as for each integer i 
+         where i in iota(1,10) 
+         createobject(typenamed("KANON"));
+
+create function kk()->integer i 
+  as begin if i=nil then return 1; end;
+
+create function f()->bag of integer 
+  as begin return 1; return 2; end;
+
+create function nullproc (number n)->number r
+  as begin set r = sqrt(n);
+         return r;
+   end;
+
+create function scopetest(vector bufsizes,integer num) -> integer 
+  as for each integer i where i in bufsizes 
+         return (select sum(select iota(i,count(select distinct iota(1,k)
+                                        from integer k
+                                        where k=num))));
+
+create function falseproc()->Boolean as return false;
+
+populate();
+
+lisp;
+
+(checkequal "updates on copy"
+	    ((osql "outer();") '((2)))
+	    ((osql "count(select p from kanon p);") '((10)))
+	    ((osql "for each kanon p deleteobject(p);") nil)
+	    ((osql "count(select p from kanon p);") '((0)))
+            ((osql "nullproc(-1);") nil)
+	    )
+
+(osql "populate();")
+
+(checkequal "updates on original"
+	    ((osql "for each original kanon p deleteobject(p);") nil)
+	    ((equal (osql "count(select p from kanon p)	;") '((0))) t) ; new!
+	    )
+
+(checkequal 
+ "procedures"
+ ((osql "falseproc();") nil)
+ ((osql "sumincomes();") '((310)))
+ ((osql "equalize_rich_income(99,100);") nil)
+ ((osql "sumincomes();") '((210)))
+ ((osql "flatten_incomes(90);") '((100)(100)))
+ ((osql "sumincomes();") '((200)))
+ ((osql "makestudent(:tore,25);") nil)
+ ((osql "select score(s) from student s;") '((25)))
+ ((osql "unmakestudent(:tore);") nil)
+ ((osql "select score(s) from student s;") nil)
+ ((osql "addchild(:tore,:ulla);") nil)
+ ((osql "addchild(:tore,:oskar);") nil)
+ ((sorttuples (osql "select name(child(:tore));")) 
+  '(("Oskar") ("Ulla")))
+ ((osql "select name(parent(:ulla));") '(("Tore")))
+ ((osql "deleterichpeople(94);") nil)
+ ((osql "sumincomes();") '((10)))
+ ((osql "deleteincomes();") nil)
+ ((osql "select income(p) from person p;") nil)
+ ((osql "wham();") nil)
+ ((osql "select p from person p;") nil)
+ ((osql "return 1;") '((1)))
+ ((osql "return (1,1);") '((1 1)))
+ ((osql "begin return 1; end;") '((1)))
+ ((osql "begin return (1,2); return 1; return(2); end;") 
+  '((1 2)(1)(2)))
+ ((osql "mulresproc(1);") '((2 3)))
+ ((osql "resultproc(1);") '((2)))
+ ((osql "for each integer i where i in iota(1,3) begin return i; end;")
+  '((1) (2) (3)))
+ ((osql "nilassign(1);") nil)
+ ((osql "kk();") '((1)))
+ ((osql "f();") '((1)(2)))
+ ((osql "scopetest({1,2},4);") '((10) (9)))
+ )
+
+:osql
+set :a = createobject("PERSON");
+set :fn = functionnamed("NAME");
+
+lisp;
+
+(checkequal "Dynamic updates"
+	    ((osql "addfunction(:fn,{:a},{'Kalle'});")
+	     '((true)))
+	    ((osql "name(:a);") '(("Kalle")))
+	    ((osql "setfunction(:fn,{:a},{'Ville'});")
+	     '((true)))
+	    ((osql "name(:a);") '(("Ville")))
+	    ((osql "remfunction(:fn,{:a},{'Ville'});")
+	     '((true)))
+	    ((osql "name(:a);") nil))
+
+:osql
+
+create function foo(person)-> (integer,integer);
+
+create function fie(integer i)-> boolean
+  as begin 
+         select from person x where foo(x)=(i,i);
+     end;
+
+create function f1(integer)->person;
+
+create function name(person)->charstring;
+
+begin declare integer a;
+      set name(f1(a)) = "Tore";
+end;
+
+rollback;
+
+/* Advanced object construction */
+
+create type person properties(
+   name charstring,
+   features vector of real,
+   born timeval);
+
+create person (name, features, born) instances ("Tore",{1.2,1.3},now()); 
+
+create function new_person(Charstring name, Vector of Real features,
+                           Timeval born)->Person p as
+  begin
+        create Person(name,features,born) 
+          instances p (name,features,born);
+        return p;
+  end; 
+
+new_person("Kalle",{1.3,1.3},now()); 
+
+create function new_person2(Charstring name, Vector of Real features,
+                           Timeval born)->Boolean as
+  create Person(name,features,born) 
+         instances (name,features,born);
+
+new_person2("Ville",{1.2,1.4},now()); 
+
+create function new_person3(Charstring name, Real low, Real up) -> Person p as
+   begin
+      create Person(name,features,born)
+        instances p (name,{low,up},now());
+      return p;
+   end;
+
+new_person3("Ulla",1.2,4.5);
+lisp;
+
+(checkequal 
+ "Advanced object construction"
+ ((length (osql "select p from person p;")) 4)
+ ((osql "sum(select sum(in(features(p))) from person p);") '((13.4)))
+ )
+
+:osql
+rollback;
+
+create function cnt()->integer;
+set cnt()=0;
+
+create function cnter()->integer
+  as begin set cnt() = cnt() + 1;
+         return cnt();
+     end;
+
+create function testif()->integer j
+  as if (cnter()>0 or cnter()>-1) then return cnt();
+
+lisp;
+
+(checkequal "Lazy if"
+	    ((osql "testif();") '((1)))
+	    )
+:osql
+
+/* Local bag variables in procedures */
+
+create function bagvar1()->Number
+  as begin
+     declare bag of Integer b;
+
+     set b = iota(1,10);
+     return sum(b);
+     end;
+
+create function bagvar2()->Number
+  as begin
+     declare bag of Integer b;
+
+     set b = iota(1,iota(1,5));
+     return sum(b);
+     end;
+
+create function bagvar3()->Number
+  as begin
+     declare bag of Integer b;
+
+     set b = (select i from Integer i where i in iota(1,10));
+     return sum(b);
+     end;
+
+lisp;
+
+(checkequal
+ "Bag variables in procedures"
+ ((osql "bagvar1();") '((55)))
+ ((osql "bagvar2();") '((35)))
+ ((osql "bagvar3();") '((55)))
+ )
+
+:osql
+
+create function bag1fn(Integer)->Bag of Integer;
+
+create function upd1(Integer i,Vector of Integer x)->Bag of Integer
+  as begin
+     set bag1fn(i)=v from Integer v 
+                     where v in x;
+     return bag1fn(i);
+     end;
+
+create function upd2(Vector of Integer i,Vector of Integer x)->Bag of Integer
+  as begin
+     declare Bag of Integer r;
+     set bag1fn(j)=v-j from Integer v, Integer j 
+                     where v in x and j in i;
+     set r = (select bag1fn(j) from Integer j where j in i);
+     return r;
+     end;
+
+create function upd3(Vector of Integer i,Vector of Integer x)->Bag of Integer
+  as begin
+     add bag1fn(j)=v-j from Integer v, Integer j 
+                     where v in x and j in i;
+     return (select bag1fn(j) from Integer j where j in i);
+     end;
+
+create function upd4(Vector of Integer i,Vector of Integer x)->Bag of Integer
+  as begin
+     remove bag1fn(j)=v-j from Integer v, Integer j 
+                     where v in x and j in i;
+     return (select bag1fn(j) from Integer j where j in i);
+     end;
+
+lisp;
+
+(checkequal 
+ "Set orineted update procedures"
+ ((osql "upd1(1,{1,2,3});") '((1) (2) (3)))
+ ((osql "upd1(1,{2,3,4});") '((2) (3) (4)))
+ ((osql "upd2({1,2},{5,6});") '((4) (5) (3) (4)))
+ ((osql "upd3({1,3},{5,6});") '((5) (4) (4) (5) (3) (2)))
+ ((osql "bag1fn(3);") '((3) (2)))
+ ((osql "bag1fn(1);") '((5) (4) (4) (5)))
+ ((osql "upd4({1,3},{5,7});") '((5)(5)(3)))
+ ((osql "bag1fn(1);") '((5)(5)))
+ ((osql "bag1fn(3);") '((3)))
+ )
+
+:osql
+rollback;
+
+create function p1(Number x)-> Number as return(x+1);
+commit;
+
+create function p1(Number x)-> Number as return(x-1);
+
+rollback;
+
+lisp;
+
+(checkequal "Rollback procedure definition"
+  ((osql "p1(1);") '((2)))
+)
+
+:osql
+
+delete function p1;
+commit;
+
+create function g() -> Bag of Integer
+  as return iota(1,3);
+
+create function f() -> Bag of Integer
+  as begin
+       declare Bag of Integer bi;
+       set bi = g();
+       for each Integer i where i in bi return(i);
+     end;  
+
+create function h() -> Bag of Integer
+  as for each Integer i where i in g() return(i);
+
+lisp;
+
+(checkequal "Calling bag valued procedures"
+	    ((osql "g();") '((1) (2) (3)))
+	    ((osql "h();") '((1) (2) (3)))
+	    )
+:osql
+
+rollback;

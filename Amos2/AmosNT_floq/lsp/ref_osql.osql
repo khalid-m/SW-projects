@@ -1,0 +1,144 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2001 Timour Katchaounov, UDBL
+ * $RCSfile: ref_osql.osql,v $
+ * $Revision: 1.3 $ $Date: 2002/04/17 18:54:33 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: OSQL reference package. Functions to query:
+ * - function objects
+ * - type objects
+ * - object statistics, such as internal properties on objects,
+ *   names, values and size of the properties
+ * - check the consistency of the objects in the system
+ ****************************************************************************/
+
+
+create function osql_functions_like(charstring pattern) -> function as
+  select fn
+  from charstring nm, function fn
+  where name(fn) = nm and like_i(nm, pattern);
+
+create function osql_apropos(charstring pattern) -> charstring as
+/* TODO: modify to search in the documentation as well */
+  select name(osql_functions_like(pattern));
+
+
+lisp;
+(defun maparray1 (fn array)
+  "Similar to maparray, but constructs a list of results."
+  (let (result)
+    (dotimes (_index_ (array-total-size array))
+      (setq result (cons (funcall fn (aref array _index_)) result)))
+    (nreverse result)))
+
+(defun oid-property-names-+ (fno obj)
+  "Return the names of all properties of the object 'obj'."
+  (if (oid-p obj)
+      (let ((props (oid-properties obj)))
+	(dolist (p props)
+	  (osql-result obj (mkstring p))))))
+
+(defun oid-property-values--+ (fno obj propname)
+  "Return the value of a particular property of the object 'obj'."
+  (if (oid-p obj)
+      (let ((proplst (getobject obj (mkatom propname))))
+	(dolist (po proplst)
+	  (cond ((listp po)
+		 (setq po (toarray po)))
+		((and (oid-p po) (eq (oid-name po) '*DELETED*))
+		 (setq po "*DELETED*"))
+		((symbolp po)
+		 (setq po (mkstring po))))
+	  (osql-result obj propname po)))))
+
+(defun oid-property-size--+ (fno obj propname)
+  "Return the total number of elements contained in a property of 'obj'."
+  (if (oid-p obj)
+      (let ((proplst (getobject obj (mkatom propname))))
+	(osql-result obj propname (count-deep proplst)))))
+
+(defun oid-stat++++ (fno)
+  (maparray
+   _objects_
+   (f/l (obj)
+	(if (neq obj nil)
+	    (let ((propnames (oid-properties obj)))
+	      (dolist (prop propnames)
+		(let ((proplst (getobject obj prop))
+		      (elem-count 0)
+		      (deleted-count 0))
+		  (setq elem-count (count-deep proplst))
+		  (map-deep (f/l (o)
+				 (if (and (oid-p o) (eq (oid-name o) '*DELETED*))
+				     (1++ deleted-count)))
+			    proplst)
+		  (osql-result obj (mkstring prop) elem-count deleted-count))))))))
+
+:osql
+
+create function oid_property_names(object obj) -> charstring
+as foreign 'oid-property-names-+';
+
+create function all_property_names() -> charstring
+as select distinct oid_property_names(allobjects());
+
+create function oid_property_values(object obj, charstring propname) -> object
+as foreign 'oid-property-values--+';
+
+create function all_property_values(object o) -> bag of object
+as select oid_property_values(o, oid_property_names(o));
+
+create function oid_property_size(object obj, charstring propname) -> integer
+as foreign 'oid-property-size--+';
+
+create function oid_size(object obj) -> integer
+/* Compute the total size of all properties of a surrogate object */
+as select sum(s)
+   from integer s
+   where s = oid_property_size(obj, oid_property_names(obj));
+
+create function stat_gt1(vector sv1, vector sv2) -> boolean
+as select TRUE
+   from integer s1, integer s2
+   where sv1[1] > sv2[1];
+
+create function oid_size_per_type(charstring tpname) -> vector
+/* Compute the total sizes of all objects of type named 'tpname' */
+as select
+     sort((select vector(o, i)
+           from object o, integer i
+           where i = oid_size(o) and o = allobjects(typenamed(tpname))),
+          'stat_gt1');
+
+create function oid_stat() -> <object o, charstring propname, integer propsize, integer numdeleted>
+as foreign 'oid-stat++++';
+
+create function stat_gt2(vector sv1, vector sv2) -> boolean
+as select TRUE where sv1[2] > sv2[2];
+
+create function oid_stat_sorted() -> vector
+as select sort(oid_stat(), 'stat_gt2');
+
+create function oid_deleted() -> <object o, charstring propname, integer propsize, integer numdeleted>
+/* Return inconsistent objects that reference deleted objects */
+as select o, p, s, d
+   from object o, charstring p, integer s, integer d
+   where <o, p, s, d> = oid_stat() and
+         d > 0;
+
+create function topn(vector v, integer n) -> object
+as select o
+   from object o, integer i
+   where i = iota(0, n) and o = v[i];
+
+/* BUG in compiler?
+create function oid_stat_per_type() -> vector
+as select
+     sort((select vector(name(tp), n)
+           from type tp, integer n
+           where n = count(deep_extent(tp))
+          ),
+          'stat_gt1');
+*/

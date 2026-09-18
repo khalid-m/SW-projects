@@ -1,0 +1,19 @@
+/*Unload the database 'example'*/
+set :url = "jdbc:mysql://localhost:3306/" + "example";
+SARDUnload(:url, "com.mysql.jdbc.Driver", "sard", "sard", "example");
+
+/*Load the database 'example' in an empty database 'reloadDB'*/
+set :u = jdbc("myunds", "com.mysql.jdbc.Driver");
+set :dburl = "jdbc:mysql://localhost:3306/";
+
+connect(:u, :dburl + "reloadDB", "sard", "sard");
+
+sql(:u, 'drop table if exists RELATEDSERVICES');
+sql(:u, 'drop table if exists AUTHORS');
+
+disconnect(:u);
+
+set :url = "jdbc:mysql://localhost:3306/" + "reloadDB";
+SARDLoad(:url, "com.mysql.jdbc.Driver", "sard", "sard", "example");
+
+quit;

@@ -1,0 +1,251 @@
+
+create function queries()->stream as stored;
+add queries() = streamof(iota(1,10));
+add queries() = streamof(iota(21,30));
+
+queries();
+
+set :a = spv(vectorof(queries()), "tcp");
+
+:a;
+
+merge(:a);
+
+
+set :a = spv(vectorof(queries()), "tcp");
+extract(:a[0]);
+extract(:a[1]);
+
+/* wE NEED A UNIONALL*/ 
+
+select extract(:a[i]) from integer i;
+
+Query network, :b is parallel
+
+set :a = sp(streamof(iota(1,10)),4,"tcp");
+set :b = spv(vectorof(select streamof(extract(:a)) from integer i where i=iota(1,4)),"tcp");
+merge(:b); 
+
+
+____________________________________________________
+
+set :a= sp(streamof(sql("select state,statename from States")),1,"tcp");
+
+set :a= sp(streamof(sql("select state,statename from States")),1,"tcp");
+
+set :b = spv(vectorof(select streamof(extract(:a)) from integer i where i=iota(1,4)),"tcp");
+merge(:b); 
+**********************************************************************
+select statename,state from Charstring statename, Charstring types, Charstring state, real latDegrees, real lonDegrees, real latRadians, real lonRadians where GetAllStates()=< statename ,types ,state, latDegrees , lonDegrees , latRadians , lonRadians>;6L=Y@E8>
+
+select placename,lon,lat,placetypeid from charstring placename, charstring statename, charstring country,real lon, real lat,integer availablethememask,charstring placetypeid,integer population where GetPlaceList('Atlanta', 100,'true')=<placename, statename, country, lon, lat, availablethememask, placetypeid,population> and statename=input;
+
+select placename from charstring placename ,charstring resultState,charstring types, real latDegrees , real lonDegrees , real latRadians ,real  lonRadians where GetPlaceDetails('Atlanta',state)=< placename ,resultState, types , latDegrees , lonDegrees , latRadians , lonRadians> and state=input1;
+
+
+
+
+select placename,placename1,lon,lat,placetypeid from charstring placename, charstring statename, charstring country,real lon, real lat,integer availablethememask,charstring placetypeid,integer population,charstring placename1 ,charstring resultState,charstring types, real latDegrees , real lonDegrees , real latRadians ,real  lonRadians,charstring city, charstring state where GetPlaceList(city, 100,'true')=<placename, statename, country, lon, lat, availablethememask, placetypeid,population> and GetPlaceDetails(city,state)=< placename1 ,resultState, types , latDegrees , lonDegrees , latRadians , lonRadians> and city= 'Atlanta' and statename='Georgia' and state='GA';
+
+
+create function states()-><charstring state, charstring statename> as 
+				      select statename,state 
+				      from  Charstring types,  real latDegrees, real lonDegrees, real latRadians, real lonRadians 
+				      where GetAllStates()=< statename ,types ,state, latDegrees , lonDegrees , latRadians , lonRadians>;
+
+create function placedetails(charstring city,charstring statename)-><charstring placename,real lon,real lat,charstring placetypeid> as
+					select placename,lon,lat,placetypeid 
+					from charstring country,integer availablethememask,integer population 
+					where GetPlaceList(city, 100,'true')=<placename, statename, country, lon, lat, availablethememask, placetypeid,population>;
+
+create function placedetails_more(charstring city,charstring state)-><charstring placename,real lon,real lat,charstring placetypeid> as
+					select placename,lon,lat,placetypeid 
+					from charstring country,integer availablethememask,integer population, charstring statename 
+					where GetPlaceList(city+", "+state, 100,'true')=<placename, statename, country, lon, lat, availablethememask, placetypeid,population>;
+create function place(charstring city,charstring state)-> charstring placename as
+				   select placename 
+				   from charstring resultState,charstring types, real latDegrees , real lonDegrees , real latRadians ,real  lonRadians
+                                   where GetPlaceDetails(city,state)=< placename ,resultState, types , latDegrees , lonDegrees , latRadians , lonRadians>;
+
+create function subquery1(charstring city, charstring statename, charstring state)-> <charstring placename, real lat , real lon, charstring placetypeid> as
+                                                                           select placename, lat, lon, placetypeid
+									   from   charstring resultState,charstring types, real latDegrees , real lonDegrees , real latRadians ,real  lonRadians
+									   where GetPlaceDetails( city, state)=)=< placename ,resultState, types , latDegrees , lonDegrees , latRadians , lonRadians>;
+
+
+
+**********************************************************************
+set :a= sp(streamof(select statename,state from Charstring statename, Charstring types, Charstring state, real latDegrees, real lonDegrees, real latRadians, real lonRadians where GetAllStates()=< statename ,types ,state, latDegrees , lonDegrees , latRadians , lonRadians>),1,"tcp");
+
+set :b = spv(vectorof(select streamof(extract(:a))),"tcp");
+set :b = spv(vectorof(select streamof(extract(:a))from integer i where i=iota(1,50)),"tcp");
+
+
+select s.placename, p.placename, s.lon, s.lat,s.placetypeid from PlaceDetails p, Place s, States st where s.city='Atlanta' and p.city=s.city and st.state=p.state and st.statename=s.statename  and s.imagepresence='true' and s.maxitems=100");
+
+set :a= sp(streamof(select statename,state from Charstring statename, Charstring types, Charstring state, real latDegrees, real lonDegrees, real latRadians, real lonRadians where GetAllStates()=< statename ,types ,state, latDegrees , lonDegrees , latRadians , lonRadians>),1,"tcp")
+
+
+select extract(pdsp[j])
+from sp st, vector pd, integer i, vector of sp pdsp, integer j, charstring statename
+where st=sp(states(),'tcp') and pd=vectorof(extract(st))and statename=(pd[i])[1] and pdsp=spv(streamof(placedetails('Atlanta',(pd[i])[1])),"tcp");
+	
+
+select merge(st)
+from sp st, integer i
+where st=sp(streamof({states()}),'tcp');
+
+
+select st
+from vector st
+where st=states();
+
+create function top(integer num)->vector as
+select x[i] from vector of vector x, integer i where x = vectorof(states()) and i in iota(1,num);
+
+/*set :a = spv(vectorof(select streamof(bagof(x)) from vector x where x in top(5)), 'tcp');*/
+
+set :a = spv(vectorof(select streamof(x) from vector x where x=top(5)), 'tcp');
+
+select placedetails("Atlanta", cast(top(3)[0] as charstring));
+
+select placedetails ("Atlanta", v)
+from charstring v
+where v in vectorof(cast(top(5)[0] as charstring));
+
+select placedetails ("Atlanta", v[i])
+from vector of charstring v, integer i
+where v=vectorof(cast(top(5)[0] as charstring));
+
+/* This query combination works fine, except some EOF problems(?) /*
+
+set :a = spv(vectorof(select streamof({placedetails ("Atlanta", v)})
+from charstring v
+where v=cast(top(5)[0] as charstring)), 'tcp');
+
+select extract(:a[i]) from integer i;
+
+/* First attempts below ... */
+select placedetails(c,s) from charstring c, vector of charstring s, vector of sp st, integer i
+where c="Atlanta"
+and st = spv(vectorof(select streamof(x) from vector x where x=top(3)), 'tcp')
+
+and s  = placedetails(cast(extract(st[i]) as vector of charstring)
+
+and i = 3;
+
+
+/********************Sabesan attempts*********************/
+
+
+
+
+
+create function first(integer num)-><charstring, charstring> as
+select x[i][0],x[i][1] from vector of vector x, integer i where x = vectorof(states()) and i in iota(1,num);
+
+select stn,st
+from charstring stn, charstring st
+where first(5)=<stn,st> and ;
+
+select extract(pl[i])
+from charstring stn, charstring st, vector of sp pd, vector of sp pl, integer i
+where first(15)=<stn,st> and pd=spv(vectorof(streamof({placedetails("Atlanta",stn)})),'tcp')and pl=spv(vectorof(streamof({place("Atlanta",st)})),'tcp');
+
+
+select extract(pl[i])
+from charstring stn, charstring st,vector of sp pl, integer i
+where first(50)=<stn,st> and pl=spv(vectorof(streamof({place("Atlanta",st)})),'tcp');
+
+select pl
+from charstring stn, charstring st, charstring pl
+where first(50)=<stn,st> and place('Atlanta',st)=pl;
+
+select st,stn
+from charstring stn, charstring st
+where first(50)=<stn,st>;
+
+set :a = vectorof(select st,stn
+from charstring stn, charstring st
+where first(50)=<stn,st>);
+
+:a;
+
+select st[0] from vector of charstring st where st in :a;
+
+place("Atlanta","GA");
+
+select pl from charstring pl, vector of charstring sts, charstring st where pl = place("Atlanta",st) and sts in :a and st=sts[0];
+
+
+select merge(pl)
+from charstring stn, charstring st,vector of sp pl, integer i
+where first(50)=<stn,st> and pl=spv(vectorof(streamof({placedetails("Atlanta",stn)})),'tcp');
+
+select pn,lon,lat,pid
+from charstring stn, charstring st, charstring pn,real lon,real lat,charstring pid
+where first(50)=<stn,st> and placedetails('Atlanta',stn)=<pn,lon,lat,pid>;
+
+
+
+/*******************************************************/
+                  /* testbed functions */
+/*******************************************************/
+
+create function placeinfo(charstring city,charstring state)-><charstring placename, charstring placetypeid,real plon,real plat> as
+					select placename,placetypeid,plon,plat 
+					from charstring country,integer availablethememask,integer population, charstring statename
+					where GetPlaceList(city+", "+state, 100,'true')=<placename, statename, country, plon, plat, availablethememask, placetypeid,population>;
+
+
+
+
+create function cityinfo(charstring city,charstring state)-> <real latD , real lonD> as
+				   select latD, lonD
+				   from charstring resultState,charstring types, charstring placename  , real latRadians ,real  lonRadians
+                                   where GetPlaceDetails(city,state)=< placename ,resultState, types , latD , lonD, latRadians , lonRadians>;
+
+
+
+create function stateinfo()-><charstring state, charstring statename> as 
+				      select statename,state 
+				      from  Charstring types,  real latDegrees, real lonDegrees, real latRadians, real lonRadians 
+				      where GetAllStates()=< statename ,types ,state, latDegrees , lonDegrees , latRadians , lonRadians>;
+
+
+
+create function state_range(integer num1, integer num2)-><charstring> as
+select x[i][1] from vector of vector x, integer i where x = vectorof(states()) and i in iota(num1,num2);
+
+create function state_stream(integer num1, integer num2)-> stream as
+select streamof(state_range(num1,num2));
+
+
+
+
+ /***************queries******************/
+
+ select merge(pl)
+ from charstring stn, charstring st,vector of sp pl, integer i
+ where states()=<stn,st> and pl=spv(vectorof(streamof({placeinfo("Atlanta",st)})),'tcp');
+
+ select pn, pid, plon, plat
+ from charstring stn, charstring st, charstring pn, charstring pid,real plon, real plat
+ where states()=<stn,st> and placeinfo('Atlanta',st)=<pn,pid,plon,plat>;
+
+/* Get All place information in the city Atlanta */
+select pn, pid, plon,plat, clon,clat
+from charstring stn, charstring st, charstring pn, charstring pid, real clon, real clat, real plon, real plat
+where states()=<stn,st> and placeinfo('Atlanta',st)=<pn,pid,plon, plat> and cityinfo('Atlanta',st)=<clon,clat>;
+
+/***********************************************************/
+ select merge(pl1)
+ from charstring stn1, charstring st1,vector of sp pl1,  charstring stn2, charstring st2,vector of sp pl2
+ where state_range(1,10)=<stn1,st1> and pl1=spv(vectorof(streamof({placeinfo("Atlanta",st1)})),'tcp') and  state_range(11,20)=<stn1,st1> and pl2=spv(vectorof(streamof({placeinfo("Atlanta",st2)})),'tcp');
+
+
+ select merge(pl1)
+ from charstring st1,vector of sp pl1
+ where state_range(1,50)=st1 and pl1=spv(vectorof(streamof({placeinfo("Atlanta",st1)})),'tcp');
+
+ 

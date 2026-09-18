@@ -1,0 +1,286 @@
+/*-*-sql-*-******************************************************************/
+
+/* Single node experiments */
+
+/* L 1.0 */
+clear_function("history");
+loadhistory(cast(readfile("/home/zeitler/data/lr/L10/historical-tolls10.osql") as vector of integer));
+
+save "h10.dmp";
+
+writefile("/home/zeitler/lroutput/1/fullfras-ts.out", tsrec(lr_t(cast(lreadfast_t({"/scratch/zeitler/1/xaa"}, 1) as vector of integer))));
+
+writefile("/home/zeitler/lroutput/1/fullfras-no-ts.out", tsrec(lr(cast(lreadfast("/scratch/zeitler/1/xaa", 1) as vector of integer))));
+
+
+/* L 1.5 */
+
+loadhistory(cast(readfile("/home/zeitler/data/lr/L15/historical-tolls15.osql") as vector of integer));
+
+save "lr15.dmp";
+
+writefile("/home/zeitler/lroutput/15/out-single-node", tsrec(lr(cast(lread({"/scratch/zeitler/cardatapoints15.osql"}, 2) as vector of integer))));
+
+lisp; (start-profile) :osql
+
+writefile("/home/zeitler/lroutput/15/fullfras-ts.out", tsrec(lr_t(cast(lreadfast_t({"/scratch/zeitler/cardatapoints15.osql"}, 2) as vector of integer))));
+
+lisp; (profile)
+
+/* L 2.0 */
+clear_function("history");
+
+loadhistory(cast(readfile("/home/zeitler/data/lr/L20/historical-tolls20.osql") as vector of integer));
+
+save "lr20.dmp";
+
+writefile("/home/zeitler/lroutput/2/out-single-node", tsrec(lr(cast(lread(cast(sort("/scratch/zeitler/2/" + dir("/scratch/zeitler/2", "xa*")) as vector of charstring), 2) as vector of integer))));
+
+
+/* L 2.5 */
+
+loadhistory(cast(readfile("/home/zeitler/data/lr/L25/historical-tolls25.osql") as vector of integer));
+
+save "lr25.dmp";
+
+writefile("/home/zeitler/lroutput/25/out-single-node", tsrec(lr(cast(lread({"/scratch/zeitler/cardatapoints25.osql"}, 2) as vector of integer))));
+
+/* 1. See if this lags behind */ 
+
+create function heaviest(integer L, charstring outfile)->boolean as
+select writefiles('/home/zeitler/lroutput/' + stringify(L) + '/out-' + outfile,
+       10000000, 
+       ps(streamof(lread("/scratch/zeitler/5/perftest5",
+                   L)),
+          'lr',
+           vectorof(
+             select stringify(L) + '/bighist' + stringify(i) + '.dmp'
+             from integer i
+             where i = iota(1, L)),
+          'lrdistrib',
+          L)); 
+
+heaviest(5, "heaviest-1-"); 
+
+/* It lagged behind. */
+
+/* 2. See if lread keeps up */
+
+create function lreadheaviest(integer L, charstring outfile)->boolean as
+select writefiles('/home/zeitler/lroutput/' + stringify(L) + '/out-' + outfile,
+       10000000, 
+       lread({"/scratch/zeitler/5/xaf", "/scratch/zeitler/5/xag"}, L)); 
+
+/* lread keeps up. MRT = 0.4 s. */
+
+/* 3. lread in an SP */
+
+create function lrd(integer L, charstring outfile)->boolean as
+select writefiles('/home/zeitler/lroutput/' + stringify(L) + '/out-' + outfile,
+       10000000, 
+       extract(sp(
+       lread({"/scratch/zeitler/5/xaf", "/scratch/zeitler/5/xag"}, L))));  
+
+/* lread in an SP keeps up. 
+
+head out-readonlyd1 | sed s'/[#()]//g'|awk '{print $16-1210937159.84897+9550 - $2}'| sort -u -r -n |less
+
+MRT = 0.4464 s */
+
+/* 4. lread + lrdistrib in an SP */
+
+create function lrdd(integer L, charstring outfile)->boolean as
+select writefiles('/home/zeitler/lroutput/' + stringify(L) + '/out-' + outfile,
+       10000000, 
+       extract(src))
+from sp src
+where src = sp(
+  streamof(lread({"/scratch/zeitler/5/xaf", "/scratch/zeitler/5/xag"}, L)),
+  1, 'tcp', 'lrdistrib2');
+
+/* lread + lrdistrib MRT = 0.28 s */
+
+/* 5. Full query network, CQ layer does nothing. */
+
+create function lrdnd(integer L, charstring outfile) -> boolean as
+select writefiles('/home/zeitler/lroutput/' + stringify(L) + '/out-' + outfile,
+       10000000, 
+       tsrec(cast(uall(proc) as vector)))
+from sp src, vector of sp proc
+where proc = spv(vectorof(
+  select streamof(extract(src))
+  from integer i
+  where i=iota(1,L)))
+and src = sp(
+  streamof(lread({"/scratch/zeitler/5/xaf", "/scratch/zeitler/5/xag"}, L)),
+  L, 'tcp', 'lrdistrib'); 
+
+/* lread + lrdistrib MRT = 1.09 */
+
+
+/* 6. Full query network. All on. */  
+
+create function lrdlrd(integer L, charstring outfile, 
+charstring distrib)->boolean as
+select writefiles('/home/zeitler/lroutput/' + stringify(L) + '/out-' + outfile,
+       10000000, tsrec(cast(uall(proc, 1.0) as vector)))
+from sp src, vector of sp proc
+where proc = spv(
+  vectorof(
+    select streamof(lr(cast(extract(src) as vector of integer)))
+    from integer i
+    where i = iota(1, L)),
+  vectorof(
+    select stringify(L) + '/bighist' + stringify(i) + '.dmp'
+    from integer i
+    where i = iota(1, L)),
+  vectorof(
+    select 'compute-0-' + stringify(i)
+    from integer i
+    where i = iota(1, L)))
+and src = sp(
+  streamof(lread({"/scratch/zeitler/5/perftest5"}, L)),
+  L, 'tcp', distrib, 'compute-0-6'); 
+
+/* per dir //-ization benchmark */
+
+create function t2(integer L, charstring infile, charstring outfile,
+charstring distrib, integer factor, charstring dumpsuffix) -> boolean as
+select writefiles('/home/zeitler/lroutput/' + stringify(L) + '/out-' + outfile,
+       10000000, tsrec(cast(uall(proc, 1.0) as vector)))
+from sp src, vector of sp proc
+where proc = spv(
+  vectorof(
+    select streamof(lr(cast(extract(src) as vector of integer)))
+    from integer i
+    where i = iota(1, L*factor)),
+  vectorof(
+    select stringify(L) + '/bighist' + stringify(i) + dumpsuffix
+    from integer i
+    where i = iota(1, L*factor)),
+  vectorof(
+    select 'compute-0-' + stringify(i)
+    from integer i
+    where i = iota(1, L*factor)))
+and src = sp(
+  streamof(lreadfast({"/scratch/zeitler/" + stringify(L) + "/" + infile}, L)),
+  L*factor, 'tcp', distrib, 'compute-0-6');  
+
+t2(2, "perftest", "last10m", "lrdistrib2", 1, ".dmp"); 
+
+t2(2, "perftest", "last10m-d", "lrdistrib2dir", 2, "d.dmp"); 
+
+
+/* Real time full run */
+
+create function t2rt(integer L, charstring infile, charstring outfile,
+charstring distrib, integer factor, charstring dumpsuffix) -> boolean as
+select writefiles('/home/zeitler/lroutput/' + stringify(L) + '/out-' + outfile,
+       10000000, tsrec(cast(uall(proc, 1.0) as vector)))
+from sp src, vector of sp proc
+where proc = spv(
+  vectorof(
+    select streamof(lr(cast(extract(src) as vector of integer)))
+    from integer i
+    where i = iota(1, L*factor)),
+  vectorof(
+    select stringify(L) + '/bighist' + stringify(i) + dumpsuffix
+    from integer i
+    where i = iota(1, L*factor)),
+  vectorof(
+    select 'compute-0-' + stringify(i)
+    from integer i
+    where i = iota(1, L*factor)))
+and src = sp(
+  streamof(lread({"/scratch/zeitler/" + stringify(L) + "/" + infile}, L)),
+  L*factor, 'tcp', distrib, 'compute-0-6');
+
+create function tfullrt(integer L, charstring outfile,
+charstring distrib, integer factor, charstring dumpsuffix) -> boolean as
+select writefiles('/home/zeitler/lroutput/' + stringify(L) + '/out-' + outfile,
+       10000000, tsrec(accbalfuse(cast(uall(proc, 1.0) as vector))))
+from sp src, vector of sp proc
+where proc = spv(
+  vectorof(
+    select streamof(lr(cast(extract(src) as vector of integer)))
+    from integer i
+    where i = iota(1, L*factor)),
+  vectorof(
+    select stringify(L) + '/bighist' + stringify(i) + dumpsuffix
+    from integer i
+    where i = iota(1, L*factor)),
+  vectorof(
+    select 'compute-0-' + stringify(mod(i, 9))
+    from integer i
+    where i = iota(1, L*factor)))
+and src = sp(
+  streamof(lread(cast(sort("/scratch/zeitler/" + stringify(L) + "/" +
+             dir("/scratch/zeitler/" + stringify(L), "xa*"))
+             as vector of charstring), L)),
+  L*factor, 'tcp', distrib, 'compute-0-0');
+
+/* //-ize per dir. */
+tfullrt(2, "nocont-d-rt", "lrdistrib2dir", 2, "d.dmp"); 
+
+tfullrt(3, "nocont-d-rt", "lrdistrib2dir", 2, "d.dmp"); 
+
+set l()=8;
+tfullrt(4, "nocont-d-rt", "lrdistrib2dir", 2, "d.dmp");  
+
+tfullrt(5, "nocont-d-rt", "lrdistrib2dir", 2, "d.dmp"); 
+
+/* //-ize per xway. */
+tfullrt(5, "nocont-rt", "lrdistrib2", 1, ".dmp");
+
+tfullrt(2, "nocont-rt", "lrdistrib2", 1, ".dmp"); 
+
+tfullrt(3, "nocont-rt", "lrdistrib2", 1, ".dmp"); 
+
+tfullrt(4, "nocont-rt", "lrdistrib2", 1, ".dmp");
+
+create function fullps(integer L, charstring outfile)->boolean as
+select writefiles('/home/zeitler/lroutput/' + stringify(L) + '/out-' + outfile,
+       10000000, 
+       ps(streamof(lread(
+           cast(sort("/scratch/zeitler/" + stringify(L) + "/" +
+             dir("/scratch/zeitler/" + stringify(L), "xa*"))
+             as vector of charstring), L)),
+          'lr',
+           vectorof(
+             select stringify(L) + '/bighist' + stringify(i) + '.dmp'
+             from integer i
+             where i = iota(1, L)),
+          'lrdistrib',
+          L));    
+
+fullps(2, "1M-ps");
+
+fullps(3, "1M-ps"); 
+
+fullps(4, "1M-ps"); 
+
+fullps(5, "1M-ps"); 
+
+create function fullr(integer L, charstring outfile)->boolean as
+select writefiles('/home/zeitler/lroutput/' + stringify(L) + '/out-' + outfile-abf,
+       10000000, tsrec(cast(uall(proc, 1.0) as vector)))
+from sp src, vector of sp proc
+where proc = spv(
+  vectorof(
+    select streamof(lr(cast(extract(src) as vector of integer)))
+    from integer i
+    where i = iota(1, L)),
+  vectorof(
+    select stringify(L) + '/bighist' + stringify(i) + '.dmp'
+    from integer i
+    where i = iota(1, L)))
+and src = sp(streamof(lread(
+             cast(sort("/scratch/zeitler/" + stringify(L) + "/" +
+             dir("/scratch/zeitler/" + stringify(L), "xa*"))
+             as vector of charstring), L)),
+             L, 'tcp', 'lrdistrib2'); 
+
+fullr(2, "10k"); 
+fullr(3, "10k");
+fullr(4, "10k");
+fullr(5, "10k");   

@@ -1,0 +1,759 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: test4.amosql,v $
+ * $Revision: 1.1 $ $Date: 2011/09/20 09:20:29 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: <description>
+ *
+ ****************************************************************************
+ * $Log: test4.amosql,v $
+ * Revision 1.1  2011/09/20 09:20:29  minzh812
+ * *** empty log message ***
+ *
+ * Revision 1.11  2011/08/15 15:03:26  minzh812
+ * *** empty log message ***
+ *
+ * Revision 1.10  2011/04/29 13:33:53  minzh812
+ * *** empty log message ***
+ *
+ * Revision 1.8  2011/04/19 10:13:30  torer
+ * *** empty log message ***
+ *
+ * Revision 1.7  2011/04/19 07:09:54  minzh812
+ * *** empty log message ***
+ *
+ * Revision 1.6  2010/12/22 11:40:36  minzh812
+ * *** empty log message ***
+ *
+ * Revision 1.5  2010/11/11 19:45:21  minzh812
+ * *** empty log message ***
+ *
+ * Revision 1.4  2010/10/20 13:39:40  minzh812
+ * *** empty log message ***
+ *
+ * Revision 1.3  2010/09/27 13:56:49  minzh812
+ * *** empty log message ***
+ *
+ * Revision 1.2  2010/09/03 12:24:22  minzh812
+ * %s -> ?
+ *
+ * Revision 1.1  2010/08/31 07:00:20  minzh812
+ * regress test for bigtable.
+ *
+ * Revision 1.11  2010/08/09 10:43:52  minzh812
+ * *** empty log message ***
+ *
+ * Revision 1.10  2010/06/21 15:16:50  minzh812
+ * *** empty log message ***
+ *
+ * Revision 1.9  2010/06/18 12:39:10  torer
+ * *** empty log message ***
+ *
+ * Revision 1.7  2010/06/18 10:40:38  minzh812
+ * *** empty log message ***
+ *
+ * Revision 1.6  2010/06/18 08:38:24  minzh812
+ * *** empty log message ***
+ *
+ * Revision 1.5  2010/06/15 10:07:05  torer
+ * *** empty log message ***
+ *
+ * Revision 1.4  2010/06/15 09:53:34  torer
+ * *** empty log message ***
+ *
+ ****************************************************************************/
+
+/* populate stored functions by dsn and url */
+/* accessBigtable("ds1", "http://bigwrapper.appspot.com/simpleprotocol"); */
+accessBigtable("ds1", "http://oddse2010.appspot.com/simpleprotocol");
+
+bigTables('ds1');
+
+bigTableAttributes('ds1', 'CITY');
+
+bigTableAttributes('ds1', 'STATE');
+
+/* Find the cities and their states where the population of the city > 50000 */
+/* SQL: select S.FULLNAME, S.SHORTNAME, C.STATE, C.CITYNAME, C.POPULATION
+        from STATE S, CITY C
+        where C.POPULATION > 50000 and
+              S.SHORTNAME = C.STATE */
+
+/* high selectivity */
+count(serverNLJNew("ds1", {"select * from STATE", 
+                           "select * from CITY where POPULATION > 50000"}, 
+                   {{1,0}}));
+
+count(serverHJ("ds1", {"select * from STATE", 
+                       "select * from CITY where POPULATION > 50000"}, 
+               {{1,0}}));
+
+count(serverNLJ('ds1',{"select * from STATE", "select * from CITY where POPULATION > 50000 and STATE = ?"}, {{1}}));
+
+
+/* low selectivity */
+count(serverNLJNew("ds1", {"select * from STATE", 
+                           "select * from CITY where POPULATION > 500000"}, 
+                   {{1,0}}));
+
+count(serverHJ("ds1", {"select * from STATE", 
+                       "select * from CITY where POPULATION > 500000"}, 
+               {{1,0}}));
+
+count(serverNLJ('ds1',{"select * from STATE", "select * from CITY where POPULATION > 500000 and STATE = ?"}, {{1}}));
+
+
+count(sql("select s.FULLNAME, s.SHORTNAME, c.STATE, c.CITYNAME, c.POPULATION
+        from STATE_ds1 s, CITY_ds1 c
+        where c.POPULATION > 50000 and
+              s.SHORTNAME = c.STATE"));
+
+/* Client NLJ */
+create function q0()->(Charstring,Charstring)
+  as select cityname(c), fullname(s)
+     from City_ds1 c, State_ds1 s
+     where population(c)>50000 and
+           state(c) = shortname(s);
+
+count(q0());
+
+/* Client HJ */
+set :a = gql("ds1","select * from STATE");
+
+set :b = gql("ds1","select * from CITY where POPULATION > 50000");
+
+count(fasthashjoin(:a,:b,1,0));
+
+pc("*select*");
+
+
+/* serverLog("on"); */
+
+create function q1()-> Bag of (Charstring, Charstring)
+  as select cityname(c), fullname(s) 
+     from City_ds1 c, State_ds1 s 
+     where population(c)>2500000 and 
+           shortname(s)>"IL" and 
+           state(c) = shortname(s);
+
+pc("q1");
+
+q1();
+
+	
+accessBigtable("ds2", "http://oddse2010.appspot.com/simpleprotocol");
+accessBigtable("ds1", "http://oddse2010.appspot.com/simpleprotocol");
+
+/* absorb first apprearence predicate => constructed gql query could be 
+different and execution plan could be different as well */
+create function q0()->(Charstring,Charstring) as
+select cityname(c), fullname(s)
+         from City_ds1 c, State_ds1 s
+         where population(c)>200000 and
+               state(c) = shortname(s);
+
+pc("q0");
+
+create function q01()->Charstring as
+select fullname(s)
+         from State_ds1 s
+         where shortname(s)>'CA';
+
+create function q23()-> Bag of (Charstring, Charstring)
+  as select cityname(c), fullname(s) 
+     from City_ds1 c, State_ds1 s 
+     where cityname(c)>'Dallas city' and  
+	   shortname(s)<'WY' and
+	   shortname(s)>'TX' and
+	   population(c)>=500000 and population(c)<2500000 and 
+           state(c) = shortname(s);
+
+create function q21()-> Bag of (Charstring, Charstring)
+  as select cityname(c), fullname(s) 
+     from City_ds1 c, State_ds1 s 
+     where cityname(c)>'Z' and  
+	   fullname(s)>'Texas' and
+	   shortname(s)>'TX' and
+	   population(c)>=500000 and population(c)<2500000 and 
+           state(c) = shortname(s);
+
+create function q22_1()-> Bag of (Charstring, Charstring)
+  as select cityname(c), fullname(s) 
+     from City_ds1 c, State_ds1 s 
+     where fullname(s)>'Texas' and
+	   shortname(s)>'TX' and 
+           state(c) = shortname(s);
+
+create function q22()-> Bag of (Charstring, Charstring)
+  as select cityname(c), fullname(s) 
+     from City_ds1 c, State_ds1 s 
+     where cityname(c)>'Z' and  
+	   shortname(s)>'TX' and   
+	   fullname(s)>'Texas' and
+	   population(c)>=500000 and population(c)<2500000 and 
+           state(c) = shortname(s);
+
+create function q20()-> Bag of (Charstring, Charstring)
+  as select cityname(c), fullname(s) 
+     from City_ds1 c, State_ds1 s 
+     where cityname(c)>'Z' and  
+	   shortname(s)='TX' and
+	   fullname(s)>'Dallas city' and
+	   population(c)>=500000 and population(c)<2500000 and 
+           state(c) = shortname(s);
+
+create function qq17()-> Bag of (Charstring, Charstring, Integer)
+  as select cityname(c), fullname(s), population(p)  
+     from City_ds1 c, State_ds1 s, City_ds2 p
+     where shortname(s)>"WA" and
+	   cityname(p)>"Dallas city" and
+	   population(c)>500000 and
+	   cityname(c)>"Chicago city" and 
+           state(c) = shortname(s) and
+	   shortname(s) = state(p);
+
+create function q8()-> Bag of (Charstring, Charstring)
+  as select cityname(c), fullname(s) 
+     from City_ds1 c, State_ds1 s 
+     where population(c)=500000 and 
+           shortname(s)>"WA" and 
+           state(c) = shortname(s);
+
+create function q1()-> Bag of (Charstring, Charstring)
+  as select cityname(c), fullname(s) 
+     from City_ds1 c, State_ds1 s 
+     where population(c)>500000 and 
+           shortname(s)>"WA" and 
+           state(c) = shortname(s);
+
+create function q2()-> Bag of (Charstring, Charstring)
+  as select cityname(c), fullname(s) 
+     from City_ds1 c, State_ds1 s 
+     where population(c)>2500000 and 
+           state(c) = shortname(s);
+
+create function q3()-> Bag of (Charstring, Charstring)
+  as select cityname(c), fullname(s) 
+     from City_ds1 c, State_ds1 s 
+     where fullname(s)>'Utah' and 
+           state(c) = shortname(s);
+
+create function q4()-> Bag of (Charstring, Charstring)
+  as select cityname(c), fullname(s) 
+     from City_ds1 c, State_ds1 s 
+     where population(c)>500000 and cityname(c)>'Z' and
+           shortname(s)>'WA' and 
+           state(c) = shortname(s);
+
+create function q5()-> Bag of (Charstring, Charstring)
+  as select cityname(c), fullname(s) 
+     from City_ds1 c, State_ds1 s 
+     where population(c)>500000 and population(c)<2500000 and
+           shortname(s)>'WA' and 
+           state(c) = shortname(s);
+
+create function q6()-> Bag of (Charstring, Charstring)
+  as select cityname(c), fullname(s) 
+     from City_ds1 c, State_ds1 s 
+     where population(c)>500000 and population(c)<2500000 and 
+           cityname(c)>'Z' and
+           shortname(s)>'WA' and 
+           state(c) = shortname(s);
+
+/* interesting one */
+create function q7()-> Bag of (Charstring, Charstring)
+  as select cityname(c), fullname(s) 
+     from City_ds1 c, State_ds1 s 
+     where population(c)>500000 and population(c)<2500000 and 
+           cityname(c)>'Z' and
+           shortname(s)>'WA' and fullname(s)<'Utah' and
+           state(c) = shortname(s);
+
+create function q9()-> Bag of (Charstring, Charstring)
+  as select cityname(c), fullname(s) 
+     from City_ds1 c, State_ds1 s 
+     where population(c)=500000 and 
+           shortname(s)="WA" and 
+           state(c) = shortname(s);
+
+create function q10()-> Bag of (Charstring, Charstring)
+  as select cityname(c), fullname(s) 
+     from City_ds1 c, State_ds1 s 
+     where population(c)!=500000 and 
+           shortname(s)>"WA" and 
+           state(c) = shortname(s);
+
+create function q12()-> Bag of (Integer, Charstring)
+  as select population(c), fullname(s) 
+     from City_ds1 c, State_ds1 s 
+     where cityname(c)="Dallas city" and 
+           state(c) = shortname(s);
+
+create function q13()-> Bag of (Integer, Charstring)
+  as select population(c), fullname(s) 
+     from City_ds1 c, State_ds1 s 
+     where cityname(c)="Dallas city" and
+	   state(c)= "TX" and 
+           state(c) = shortname(s);
+
+create function q14()-> Bag of (Charstring, Charstring)
+  as select cityname(c), fullname(s) 
+     from City_ds1 c, State_ds1 s 
+     where population(c)>=500000 and population(c)<2500000 and 
+           cityname(c)>'Z' and
+           shortname(s)>'WA' and 
+           state(c) = shortname(s);
+
+create function q15()->charstring 
+  as select cityname(c) from City_ds1 c  where population(c)>2500000;
+
+create function q16()-> Bag of (Charstring, Integer)
+  as select cityname(c), population(p)  
+     from City_ds1 c, City_ds2 p
+     where population(c)>500000 and 
+           cityname(p)>"Dallas city" and 
+           state(c) = state(p);
+
+create function q17()-> Bag of (Charstring, Charstring, Integer)
+  as select cityname(c), fullname(s), population(p)  
+     from City_ds1 c, State_ds1 s, City_ds2 p
+     where population(c)>500000 and 
+           shortname(s)>"WA" and 
+	   cityname(p)>"Dallas city" and
+           state(c) = shortname(s) and
+	   shortname(s) = state(p);
+
+create function q18()-> Bag of (Charstring, Charstring)
+  as select cityname(c), fullname(s) 
+     from City_ds1 c, State_ds1 s 
+     where shortname(s)>'TX' and
+	   population(c)>=500000 and population(c)<2500000 and 
+           cityname(c)>'Dallas city' and       
+           state(c) = shortname(s);
+
+/* compare with q18 */
+create function q19()-> Bag of (Charstring, Charstring)
+  as select cityname(c), fullname(s) 
+     from City_ds1 c, State_ds1 s 
+     where cityname(c)>'Dallas city' and  
+	   shortname(s)>'TX' and
+	   population(c)>=500000 and population(c)<2500000 and 
+           state(c) = shortname(s);
+
+create function q20()-> Bag of (Charstring, Charstring)
+  as select cityname(c), fullname(s) 
+     from City_ds1 c, State_ds1 s 
+     where cityname(c)>'Z' and  
+	   shortname(s)='TX' and
+	   fullname(s)>'Dallas city' and
+	   population(c)>=500000 and population(c)<2500000 and 
+           state(c) = shortname(s);
+
+create function q111()->charstring as 
+  select state(c) from City_ds1 c where state(c)>"p";
+	
+/*
+	bigTableNumOfTuples('ds1','CITY');
+
+	bigTableNumOfTuples('ds1','STATE');
+
+	colCharstringStatistic('ds1', 'CITY', 'STATE');
+
+	colCharstringStatistic('ds1', 'CITY', 'CITYNAME');
+
+	colInt_maxVal('ds1','CITY','POPULATION');
+
+	colInt_minVal('ds1','CITY','POPULATION');
+
+	colCharstringStatistic('ds1', 'STATE', 'SHORTNAME');
+
+	colCharstringStatistic('ds1', 'STATE', 'FULLNAME');
+
+	strColSelectivity("ds1","CITY","STATE");
+
+	strColSelectivity("ds1","CITY","CITYNAME");
+
+	strColSelectivity("ds1","STATE","SHORTNAME");
+
+	strColSelectivity("ds1","STATE","FULLNAME");
+
+	intColSelectivity("ds1","CITY","POPULATION",3605000);
+
+	
+*/
+
+select cityname(c) from City_ds1 c  where population(c)>800000;
+
+select cityname(c), fullname(s) from City_ds1 c, State_ds1 s where population(c)>2000000 and state(c) = shortname(s);
+
+
+select cityname(c), fullname(s) from City_ds1 c, State_ds1 s where population(c)>2000000 and shortname(s)>'CA' and state(c) = shortname(s);
+
+select cityname(c) from City_ds1 c where population(c)>1000000;
+
+create function q10()->(Charstring, Charstring) as 
+select cityname(c), fullname(s) from City_ds1 c, State_ds1 s where population(c)>800000 and shortname(s)>'CA' and state(c) = shortname(s);
+
+pc("q10");
+
+q10();
+
+
+
+serverNLJ('ds1',{"select * from STATE where SHORTNAME > 'CA'", "select * from CITY where POPULATION > 800000 and STATE = ?"}, {{1}});
+
+select s, v from charstring s, vector v where v in gql_results_cache(s);
+
+gql("ds1","select * from STATE where SHORTNAME>? and SHORTNAME=?",{'CA','CA'});
+
+opttrace(true);
+
+/*
+		create function #CITY_ds1()->Bag of <CHARSTRING STATE,CHARSTRING CITYNAME key,INTEGER POPULATION>
+		 as multidirectional ('fff' select STATE,CITYNAME,POPULATION where {STATE,CITYNAME,POPULATION} in gql('ds1', 'select * from CITY',{}) cost {10000,10000});
+
+
+	create function #CITY_ds1()->Bag of <CHARSTRING STATE,CHARSTRING CITYNAME key,INTEGER POPULATION>
+		 as select STATE,CITYNAME,POPULATION where {STATE,CITYNAME,POPULATION} in gql('ds1', 'select * from CITY',{});
+*/
+/* not working correctly with cityname(c)='Z' predicate*/
+/*
+		create function q9()-> Bag of <Charstring, Charstring>
+	as select cityname(c), fullname(s) 
+	   from City_ds1 c, State_ds1 s 
+	   where population(c)>500000 and population(c)<2500000 and cityname(c)='Z' and
+		 shortname(s)>'WA' and fullname(s)<'Utah' and
+		 state(c) = shortname(s);
+*/
+
+
+
+create function qNLJ()-> Bag of Object
+  as select v2[1] from Vector v1, Vector v2 where
+  v1 in gql('ds1',"select * from CITY where POPULATION > ?", {2000000}) and 
+  v2 in gql('ds2',"select * from STATE where SHORTNAME = '"+v1[0]+"'");
+
+pc("qnlj");
+
+
+
+create function qHJ()-> bag of <object, object, object>
+as select v[0], v[1], v[2] from Vector v where 
+v in gqlHJ('ds1',{"select * from STATE", "select * from CITY where POPULATION > 50000"}, {{1,0}});
+
+pc("qHJ");
+
+
+
+create function q6()-> Bag of (Object, Object) as
+	select x, y from object x, object y, vector v1, vector v2 where
+	  v1 in gql('ds1', "select * from STATE where SHORTNAME > ?", {"M"}) and
+	  v2 in gql('ds1', "select * from CITY where POPULATION > ? and STATE = ?", {800000, v1[0]}) and x = v1[1] and y = v2[1];
+
+pc("q6");
+
+create function qNLJ_1()-> bag of (object, object)
+as select v2[1], v1[1] from vector v2, vector v1 where
+          v1 in gql('ds1', "select * from STATE where SHORTNAME > ?", {"M"}) and
+	  v2 in gql('ds1', "select * from CITY where POPULATION > ? and STATE = ?", {800000, v1[0]});
+
+/*
+
+gql('ds1','select * from STATE where SHORTNAME > ?', {"M"});
+
+long, short
+
+
+	create function q6()-> Bag of <Object, Object> as
+	select v1[1], v2[1] from vector v1, vector v2 where
+	  v1 in gql('ds1', "select * from STATE where SHORTNAME > ?", {"M"}) and
+	  v2 in gql('ds1', "select * from CITY where POPULATION > ? and STATE = ?", {800000, v1[0]});
+
+	create function q5()-> Bag of <Object, Object> as
+	select cityname(c), fullname(s)
+		 from City_ds1 c, State_ds1 s
+		 where population(c)>800000 and shortname(s)>'M' and
+		       state(c) = shortname(s);
+
+
+
+	create function q2()-> Bag of Object
+	  as gql('ds1',"select * from CITY 
+			where POPULATION > ? and 
+			      POPULATION < ?", {600000,900000});
+
+	create function q3()-> Bag of Object
+	  as gql('ds1',"select * from CITY 
+			where CITYNAME > ?", {'B'});
+
+	bigTableNumOfTuples('ds1','CITY');
+	bigTableNumOfTuples('ds1','STATE');
+
+	costhint("CHARSTRING.CHARSTRING.VECTOR.gql->VECTOR", "bbbf", {10000,199});
+
+create function q10()->(Charstring, Charstring) as 
+select cityname(c), fullname(s) from City_ds1 c, State_ds1 s where population(c)>800000 and shortname(s)>'CA' and state(c) = shortname(s);
+*/
+
+lisp;
+
+
+(checkequal 
+ "checking populated local meta data table from bigtable"
+ ((osql "bigTableURL('ds1');") 
+  '(("http://oddse2010.appspot.com/simpleprotocol")))
+ ((osql "bigTables('ds1');")
+  '(("STATE") ("CITY")))
+ ((osql "bigTableAttributes('ds1', 'CITY');") 
+  '(("POPULATION" "INTEGER" -1 1) ("CITYNAME" "CHARSTRING" 0 1) ("STATE" "CHARSTRING" -1 1)))
+ ((osql "bigTableKeyAttribute('ds1', 'CITY');") '(("CITYNAME")))
+)
+
+
+
+(checkequal
+ "testing foreign function for querying bigtable part I"
+ ((osql "gql('ds1','select * from CITY');") 
+  '((#("GA" "Atlanta" 538000)) (#("NY" "New York" 8364000)) 
+    (#("CA" "San Francisco" 809000)))) 
+ ((osql "gql('ds1','select * from CITY where CITYNAME > ?', {'Atlanta'});")
+  '((#("NY" "New York" 8364000)) (#("CA" "San Francisco" 809000))))
+ ((osql "gql('ds1', 'select * from CITY where CITYNAME >= ?', {'Atlanta'});")
+  '((#("GA" "Atlanta" 538000)) (#("NY" "New York" 8364000)) (#("CA" "San Francisco" 809000))))
+ ((osql "gql('ds1', 'select * from CITY where CITYNAME > ? 
+                      and CITYNAME < ?', {'Atlanta','San Francisco'});")
+  '((#("NY" "New York" 8364000))))
+ )
+
+
+
+(checkequal
+ "testing foreign function for querying bigtable part II"
+ ((osql "gql('ds1','select * from CITY where POPULATION > ?', {8000000});")
+  '((#("NY" "New York" 8364000))))
+ ((osql "gql('ds1','select * from CITY where POPULATION >= ?', {809000});")
+  '((#("CA" "San Francisco" 809000)) (#("NY" "New York" 8364000))))
+ ((osql "gql('ds1','select * from CITY where POPULATION > ? and 
+                      POPULATION < ?', {600000, 900000});") 
+  '((#("CA" "San Francisco" 809000))))
+ ((osql "gql('ds1', 'select * from CITY where POPULATION > ? and STATE = ?', {800000, 'CA'});")
+  '((#("CA" "San Francisco" 809000))))
+ )
+
+
+(checkequal
+ "inserting a new tuple"
+ ((osql "insertBigTable('ds1','CITY',{'CITYNAME', 'POPULATION', 'STATE'},{'New city XX', 9999999, 'CA'});")
+  nil)
+)
+
+
+(checkequal
+ "testing foreign function for querying bigtable after inserting a new tuple"
+ ((osql "gql('ds1','select * from CITY');")
+  '((#("GA" "Atlanta" 538000)) (#("NY" "New York" 8364000)) (#("CA" "San Francisco" 809000)) (#("CA" "San Jose" 1100000))))
+ ((osql "gql('ds1','select * from CITY where POPULATION > ?', {1000000});")
+  '((#("CA" "San Jose" 1100000)) (#("NY" "New York" 8364000))))
+)
+
+
+
+(checkequal
+ "getting a tuple"
+ ((osql "getBigTable('ds1','CITY',{'New city XX'});")
+  '((#("CA" "San Jose" 1100000))))
+ ((osql "getBigTable('ds1','CITY',{'San Francisco'});")
+  '((#("CA" "San Francisco" 809000))))
+)
+
+
+(checkequal
+ "deleting a new tuple"
+ ((osql "deleteBigTable('ds1','CITY',{'New city XX'});")
+  nil)
+)
+
+
+
+(checkequal
+ "Rewrites of core cluster functions (querying single table)"
+ ((osql "select cityname(c) from City_ds1 c where population(c) > 800000;") 
+  '(("San Francisco") ("New York")))
+ ((osql "select cityname(c) from City_ds1 c;") 
+  '(("Atlanta") ("New York") ("San Francisco"))) 
+ ((osql "select cityname(c) from City_ds1 c 
+         where population(c) > 800000 and
+               population(c) < 2000000;")
+  '(("San Francisco")))
+ ((osql "select cityname(c) from City_ds1 c where population(c)>800000 and
+                                       state(c)='CA';")
+  '(("San Francisco")))
+ ((osql "select cityname(c), fullname(s)
+         from City_ds1 c, State_ds1 s
+         where population(c)>800000 and
+               state(c) = shortname(s);")
+  '(("San Francisco" "California") ("New York" "New York")))
+)
+
+
+(checkequal
+ "Rewrites of core cluster functions (rewriting join)"
+ ((osql "select cityname(c), fullname(s)
+         from City_ds1 c, State_ds1 s
+         where population(c)>1000000 and population(c)<2000000 and
+               state(c) = shortname(s);")
+  '(("San Francisco" "California")))
+ ((osql "select cityname(c), fullname(s)
+         from City_ds1 c, State_ds1 s
+         where population(c)>80000 and shortname(s)>'CA' and
+               state(c) = shortname(s);" )
+  '(("Atlanta" "Georgia") ("New York" "New York")))
+ ((osql "select cityname(c), fullname(s)
+         from City_ds1 c, State_ds1 s
+         where population(c)>500000 and population(c)<2000000 and shortname(s)>'CA' 
+	       and state(c) = shortname(s);" )
+  '(("Atlanta" "Georgia")))
+)
+
+
+
+
+
+:osql
+
+
+/*
+set :a = gql("ds1","select * from STATE");
+
+set :b = gql("ds1","select * from CITY where POPULATION > 2000000");
+
+fasthashjoin(:a,:b,1,0);
+
+fastnestedloopjoin(:a, :b, 1, 0);
+
+set :c = iota(1,10);
+
+set :d = iota(7,11);
+
+fasthashjoin(:c,:d,0,0);
+
+fastnestedloopjoin(:c, :d, 0,0);
+
+pc("*select*");
+
+create function clientNLJ()-> bag of (object, object)
+as select v2[1], v1[1] from vector v2, vector v1 where
+          v1 in gql('ds1', "select * from STATE where SHORTNAME > ?", {"M"}) and
+	  v2 in gql('ds1', "select * from CITY where POPULATION > ? and STATE = ?", {800000, v1[0]});
+
+pc("clientNLJ");
+
+
+create function serverNLJ()-> bag of (object, object, object)
+as select v[0], v[1], v[2] from Vector v where 
+v in gqlNLJ('ds1',{"select * from STATE where SHORTNAME > 'M'", "select * from CITY where POPULATION > 800000 and STATE = ?"}, {{1}});
+
+pc("serverNLJ");
+
+create function qHJ()-> bag of <object, object, object>
+as select v[0], v[1], v[2] from Vector v where 
+v in gqlHJ('ds1',{"select * from STATE", "select * from CITY where POPULATION > 50000"}, {{1,0}});
+
+pc("qHJ");
+
+
+bigTableURL('ds1');
+
+bigTables('ds1');
+
+bigTableAttributes('ds1', 'CITY');
+
+bigTableKeyAttribute('ds1', 'CITY');
+
+select cityname(c) from City_ds1 c  where population(c)>2500000;
+
+create function qtest()->bag of <Charstring,Charstring> as
+select cityname(c),fullname(s) from City_ds1 c, State_ds1 s where population(c)>50000 and state(c) = shortname(s);
+
+pc("qtest");
+
+qtest();
+*/
+
+
+
+/* 
+gql_results_cache("select cityname(c) from City_ds1 c  where population(c)>2500000");
+
+select c, v from Vector v, Charstring c where v in gql_results_cache(c);
+
+*/
+
+
+/*
+gqlNLJNew('ds1',{"select * from STATE", "select * from CITY where POPULATION > 10000"}, {{1,0}});
+
+gqlNLJNew('ds1',{"select * from STATE where SHORTNAME > 'AZ'", "select * from CITY where POPULATION > 800000"}, {{1,0}});
+
+gqlNLJNew('ds1',{"select * from CITY where POPULATION > 800000", "select * from STATE where SHORTNAME > 'AZ'"}, {{0,1}});
+
+gqlHJ('ds1',{"select * from STATE where SHORTNAME > 'AZ'", "select * from CITY where POPULATION > 800000"}, {{1,0}});
+
+gqlHJ('ds1',{"select * from CITY where POPULATION > 800000", "select * from STATE where SHORTNAME > 'AZ'"}, {{0,1}});
+
+gqlSMJ('ds1',{"select * from STATE where SHORTNAME > 'AZ'", "select * from CITY where POPULATION > 800000"}, {{1,0}});
+
+gqlSMJ('ds1',{"select * from CITY where POPULATION > 800000", "select * from STATE where SHORTNAME > 'AZ'"}, {{0,1}});
+
+gqlSMJ('ds1',{"select * from STATE where FULLNAME > 'California'", "select * from CITY where POPULATION > 800000"}, {{1,0}});
+
+gqlNLJ('ds1',{"select * from STATE where SHORTNAME > 'CA'", "select * from CITY where POPULATION > 800000 and STATE = ?"}, {{1}});
+*/
+
+
+/*
+gqlSMJ('ds1',{"select * from STATE where FULLNAME > 'California'", "select * from CITY where POPULATION > 800000 and STATE = ?"}, {{1,0}});
+*/
+
+
+/*
+
+insertBigTable('ds1','CITY',{'CITYNAME', 'POPULATION', 'STATE'},{'New city XX', 9999999, 'CA'});
+
+getBigTable('ds1','CITY',{'New city XX'});
+
+select cityname(c) from City_ds1 c  where population(c)>2500000;
+
+deleteBigTable('ds1','CITY',{'New city XX'});
+
+select cityname(c) from City_ds1 c  where population(c)>2500000;
+*/
+
+/*
+serverNLJNew('ds1',{"select * from STATE", "select * from CITY where POPULATION > 25000"}, {{1,0}});
+
+serverNLJNew('ds1',{"select * from STATE", "select * from CITY where POPULATION > 1500"}, {{1,0}});
+
+serverNLJNew('ds1',{"select * from STATE", "select * from CITY where POPULATION > 50"}, {{1,0}});
+
+serverHJ('ds1',{"select * from STATE", "select * from CITY where POPULATION > 25000"}, {{1,0}});
+
+serverHJ('ds1',{"select * from STATE", "select * from CITY where POPULATION > 1500"}, {{1,0}});
+
+serverHJ('ds1',{"select * from STATE", "select * from CITY where POPULATION > 50"}, {{1,0}});
+*/
+
+/*
+fastnestedloopjoin(:a, :b, 1, 0);
+
+set :c = iota(1,10);
+
+set :d = iota(7,11);
+
+fasthashjoin(:c,:d,0,0);
+
+fastnestedloopjoin(:c, :d, 0,0);
+*/

@@ -1,0 +1,199 @@
+<html>
+    <head>
+        <title>Course registration</title>
+        <script type="text/javascript" src="scripts/SOAPClient.js"></script>
+        <script type="text/javascript" language="javascript">
+            var error,fName,lName,username,password1,password2,email,pNumber,courseName;
+            var oMyObject = window.dialogArguments;
+            var cname = oMyObject.selectedCourse;
+        
+            function registerStudent() {
+                error = null;
+                var soapParams=[fName,lName,username,password1,email,pNumber,cname];
+                SOAPClient.invoke("REGISTERSTUDENT", soapParams, true, registerStudent_callBack, error_callBack);
+            }
+
+            function registerStudent_callBack(o, xmlDoc)
+            {
+                var uname = document.getElementById("txt_name").value;
+                if (o==uname){
+                    document.getElementById("registerDiv").style.display='none';
+                    document.getElementById("resultDiv").innerHTML=
+                        "<h>You are register as:</h><br><br>" +
+                        "<table>" +
+                        "<tr><td>username:</td><td>"+username+"</td></tr>"+
+                        "<tr><td>full name:</td><td>"+fName+" "+lName+"</td></tr>"+
+                        "<tr><td>p number:</td><td>"+ pNumber +"</td></tr>"+
+                        "<tr><td>email:</td><td>"+email+"</td></tr>"+
+                        "<tr><td>course name:</td><td>"+cname+"</td></tr>"+
+                        "</table>";
+                }
+                else if(o!=uname){
+                    document.getElementById("errorDiv").style.display='block';
+                    document.getElementById("txt_name").focus();
+                    document.getElementById("txt_pwd1").value="";
+                    document.getElementById("txt_pwd2").value="";
+                }
+            }
+
+            function error_callBack(e, errorCode){
+                if (e != null){
+                    error = e;
+                    document.getElementById("registerDiv").style.display='none';
+                    document.getElementById("resultDiv").innerHTML="Error callBack:<br>" + error + "<br><br>Error code:<br>" + errorCode;
+                }
+            }
+
+            function btnRegister_onclick(){
+                fName = document.getElementById("txt_fname").value;
+                lName = document.getElementById("txt_lname").value;
+                username = document.getElementById("txt_name").value;
+                password1 = document.getElementById("txt_pwd1").value;
+                password2 = document.getElementById("txt_pwd2").value;
+                email = document.getElementById("txt_email").value;
+                pNumber = document.getElementById("txt_pnumber").value;
+                
+                var v = registerForm();
+                if (v == true){
+                    registerStudent();
+                }
+            }
+
+            function registerForm(){
+                var va = true;
+                document.getElementById("fnameDiv").style.display='none';
+                document.getElementById("lnameDiv").style.display='none';
+                document.getElementById("pnumberDiv").style.display='none';
+                document.getElementById("emailDiv").style.display='none';
+                document.getElementById("unameDiv").style.display='none';
+                document.getElementById("pwd1Div").style.display='none';
+                document.getElementById("pwd2Div").style.display='none';
+                if (fName == null||fName == ""){
+                    document.getElementById("fnameDiv").style.display='block';
+                    va = (va && false);
+                }
+                if (lName == null||lName == ""){
+                    document.getElementById("lnameDiv").style.display='block';
+                    va = (va && false);
+                }
+                if (pNumber == null||pNumber == ""){
+                    document.getElementById("pnumberDiv").style.display='block';
+                    va = (va && false);
+                }
+                if (pNumber != "none" && pNumber.length != 10){
+                    document.getElementById("pnumberDiv").style.display='block';
+                    va = (va && false);
+                }
+                if (email == null||email == ""){
+                    document.getElementById("emailDivFont").innerText = "Email should not be empty.";
+                    document.getElementById("emailDiv").style.display='block';
+                    va = (va && false);
+                }
+                if (email.indexOf("@") == -1){
+                    document.getElementById("emailDivFont").innerText = "Please input valid email.";
+                    document.getElementById("emailDiv").style.display='block';
+                    va = (va && false);
+                }
+                if (username == null||username == ""){
+                    document.getElementById("unameDivFont").innerText = "Unix name should not be empty.";
+                    document.getElementById("unameDiv").style.display='block';
+                    va = (va && false);
+                }
+                if (password1 == null||password1 == ""){
+                    document.getElementById("pwd1DivFont").innerText = "Password should not be empty.";
+                    document.getElementById("pwd1Div").style.display='block';
+                    va = (va && false);
+                }
+                if (password2 == null||password2 == ""){
+                    document.getElementById("pwd2DivFont").innerText = "Confirm Password should not be empty";
+                    document.getElementById("pwd2Div").style.display='block';
+                    va = (va && false);
+                }
+                if (!(password2 == password1)){
+                    document.getElementById("pwd2DivFont").innerText = "Confirm Password not equals to password";
+                    document.getElementById("pwd2Div").style.display='block';
+                    document.getElementById("txt_pwd1").value="";
+                    document.getElementById("txt_pwd2").value="";
+                    va = (va && false);
+                }
+                return va;
+            }
+
+            function reset_onclick(){
+                document.getElementById("txt_fname").value="";
+                document.getElementById("txt_lname").value="";
+                document.getElementById("txt_pnumber").value="";
+                document.getElementById("txt_email").value="";
+                document.getElementById("txt_name").value="";
+                document.getElementById("txt_pwd1").value="";
+                document.getElementById("txt_pwd2").value="";
+            }
+
+            function btnClose_onclick(){
+                window.close();
+            }
+
+            function window_onload(){
+                document.getElementById("txt_fname").onfocus;
+            }
+        </script>
+    </head>
+
+    <body onload="return window_onload();">
+        <h1>Course registration for students.</h1><br>
+        <div id="registerDiv" style="display:block;">
+            <p>Please enter the information necessary to manage and report your results.</p><br>
+            <table width="90%" border="1" cellspacing="0">
+                <tr>
+                    <td>First name:</td>
+                    <td><input type="text" value="" id="txt_fname" size="15">
+                        <div id="fnameDiv" style="display:none;"><font color="red">First name should not be empty.</font></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Last name:</td>
+                    <td><input type="text" value="" id="txt_lname" size="15">
+                        <div id="lnameDiv" style="display:none;"><font color="red">Last name should not be empty.</font></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Personal number:<br>Enter <b>'none'</b> if you don't have one.</td>
+                    <td><input type="text" value="" id="txt_pnumber" size="15">
+                        <div id="pnumberDiv" style="display:none;"><font color="red">Please input valid personal number.</font></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>E-mail:</td>
+                    <td><input type="text" value="" id="txt_email" size="30" >
+                        <div id="emailDiv" style="display:none;"><font id="emailDivFont" color="red"></font></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>UNIX user name (at least three charachters):<br></td>
+                    <td><input type="text" value="" id="txt_name" size="15">
+                        <div id="unameDiv" style="display:none;"><font id="unameDivFont" color="red"></font></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Password (at least three charachters):<br>
+                    </td>
+                    <td><input type="password" value="" id="txt_pwd1" size="15">
+                        <div id="pwd1Div" style="display:none;"><font id="pwd1DivFont" color="red"></font></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Confirm password:</td>
+                    <td><input type="password" value="" id="txt_pwd2" size="15">
+                        <div id="pwd2Div" style="display:none;"><font id="pwd2DivFont" color="red"></font></div>
+                    </td>
+                </tr>
+            </table><br>
+            <div id="errorDiv" style="display:none;"><font color="red"> ** Username already exist. **</font></div><br>
+            <input type="button" value="register" name="btnRegister" onclick="return btnRegister_onclick();">
+            <input type="button" id="reset" value="Reset form" onclick="return btnReset_onclick();">
+        </div>
+        <div align="center" id="resultDiv"></div>
+        <input type="button" id="close" value="Close" onclick="return btnClose_onclick();">
+        <hr>Back to <a href="index.html">home</a>.<hr>
+    </body>
+</html>

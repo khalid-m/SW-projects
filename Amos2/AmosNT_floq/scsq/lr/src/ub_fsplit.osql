@@ -1,0 +1,40 @@
+/*-*-sql-*-*******************************************************************/
+
+create function profilexwayrfn(iarray e, integer fanout) -> integer p as
+select xway(e) - xway(e) where eventtype(e) = 0;
+
+create function fs_res() -> vector;
+
+create function profile_fsplit(charstring file, integer mszexp, integer inl, 
+integer p) -> vector of number as
+select in(zipstreams(premerge))
+from vector of stream premerge, vector of stream of numarray rr,
+vector of stream fsplit, stream src
+where premerge = mapflex(fsplit, #'stcount', {'rem':'extract'})
+and fsplit = unpackfsplit(rr, 1, #'profilexwayrfn', #'q2bfn', 15)
+and rr = rsplit_force_flex(src, p, {'hostnum':0, 'rem':'rsplit'})
+and src = ostream(newspflex(streamof(clrmultiply(in(
+lreadfastbins({file})), inl, 1)), {'hostnum':0, 'rem':'src'}), 0);
+
+create function x_profilefsplit(charstring file, integer mszexp, integer inl,
+integer p) -> vector of number as begin
+reset_ipr();
+set res() = profile_fsplit(file, mszexp, inl, p);
+print(res());
+return {mszexp, p, exectime(res()), countsum(res()), psum(remcpu('src')),
+        psum(remcpu('rsplit')), psum(fscpu()), psum(remcpu('extract'))};
+end;
+
+create function ub_fsplit(charstring file, vector of integer mszs, integer inl,
+vector of integer ps) -> object as begin
+for each integer msz where msz in mszs begin
+for each integer p where p in ps begin
+declare charstring outputfilename;
+set outputfilename = "fsplit-" + "p" + stringify(p) + "msz" + stringify(msz);
+add fs_res() = x_profilefsplit(file + stringify(msz) + ".bin", msz, inl, p);
+print(fs_res());
+writefile("dp-" + outputfilename, {dprofile()});
+end;
+end;
+write_ntuples(fs_res(), "fsplit_" + timestamp());
+end;

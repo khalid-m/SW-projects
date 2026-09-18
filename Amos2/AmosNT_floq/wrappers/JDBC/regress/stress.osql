@@ -1,0 +1,52 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2009 Tore Risch, UDBL
+ * $RCSfile: stress.osql,v $
+ * $Revision: 1.6 $ $Date: 2009/11/17 17:31:23 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Stress testing JDBC interface
+ *
+ ****************************************************************************
+ * $Log: stress.osql,v $
+ * Revision 1.6  2009/11/17 17:31:23  torer
+ * '=' changed to 'in'
+ *
+ ****************************************************************************/
+
+create function testsql (jdbc a, charstring q, integer rpt)->integer
+ as foreign "JAVA:jdbc_interface.JDBCInterface/testExecuteQuery";
+
+create function stresser(jdbc a, Integer n)->integer
+ as select count(testsql(a, "select * from PERSON2", n));
+
+create function stresser2(jdbc a, Integer n)->integer
+ as select count(select sql(a, "select * from PERSON2")
+                 from integer i 
+                 where i in iota(1,n));
+
+create function stresser3(jdbc a, Integer n)->integer
+ as select count(select sql(a, "select * from PERSON2 where salary>?",{0})
+                 from integer i 
+                 where i in iota(1,n));
+logging off;
+print("Stress test ...");
+stresser(:a,1000);
+javagc();
+javagc();
+stresser(:a,1000);
+javagc();
+
+stresser2(:a, 10000);
+
+stresser3(:a, 10000);
+
+lisp;
+
+(checkequal "Asynchronous Java GBC"
+  ((alloccnt 'list '(null (cons))) 0)
+)
+
+:osql
+

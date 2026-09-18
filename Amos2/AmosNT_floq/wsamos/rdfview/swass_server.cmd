@@ -1,0 +1,1 @@
+java -ms64m -mx512m -classpath "%AMOS_HOME%bin\sward.jar;%CLASSPATH%" SWARD "%AMOS_HOME%bin\sward.dmp" C:/AmosNT/wsamos/rdfview/swass.amosql

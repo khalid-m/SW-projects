@@ -1,0 +1,55 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 Erik Zeitler, UDBL
+ * $RCSfile: multitosbig.osql,v $
+ * $Revision: 1.3 $ $Date: 2010/05/12 14:26:24 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Distributed splitstream experiments 
+ *
+ ****************************************************************************
+ * $Log: multitosbig.osql,v $
+ * Revision 1.3  2010/05/12 14:26:24  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.2  2010/03/24 19:58:30  zeitler
+ * TOS with multi arrays
+ *
+ * Revision 1.1  2010/03/04 14:45:21  zeitler
+ * *** empty log message ***
+ *
+ *
+ ****************************************************************************/
+
+< "experiment/dasfaa10_scaleup.osql";
+< "experiment/tos.osql";
+
+/* scale_mtos(rep, minexp, maxexp, bc, msz, rrfo, tosfn) */
+
+add tosresult("multitos") = scale_mtos(1000, 6, 6, 5, 10, 16, #'multitos');
+add tosresult("multitos") = scale_mtos(1000, 6, 6, 5, 20, 16, #'multitos');
+add tosresult("multitos") = scale_mtos(1000, 6, 6, 5, 16, 16, #'multitos');
+
+/*
+add tosresult("multitno") = scale_mtos(1000, 6, 6, 5, 16, 16, #'multitosno');
+*/
+
+write_ntuples(tosreport(), "mt_scaleup_big_" + timestamp());
+
+sleep(2);
+
+clear_function("tosresult");
+select c, tresult(c) from charstring c;
+
+/* robust_mtos(rep, exp, minbc, maxbc, msz, rrfo, tosfn) */
+
+/*
+add tosresult("multitos") = robust_mtos(1000, 6, 0, 100, 16, 16, #'multitos');
+add tosresult("multi_no") = robust_mtos(1000, 6, 0, 100, 16, 16, #'multitosno');
+write_ntuples(tosreport(), "mt_robustness_big_" + timestamp());
+*/
+
+sleep(2);
+
+q();

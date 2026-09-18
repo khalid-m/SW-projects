@@ -1,0 +1,7 @@
+create function cd()-> vector as stored;
+
+create function lr(vector x)->vector as 
+begin
+if x[0] = 0 then add cd() = vectorof(select x[i] from integer i where i=iota(1,8))
+/*else if x[0] = 3 then result "kjsdffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"*/
+end;

@@ -1,0 +1,39 @@
+
+<http://user.it.uu.se/~udbl/sard/person#region/_3> <http://user.it.uu.se/~udbl/sard/person#region/r_name> "USA" .
+<http://user.it.uu.se/~udbl/sard/person#region/_4> <http://user.it.uu.se/~udbl/sard/person#region/r_name> "SE" .
+<http://user.it.uu.se/~udbl/sard/person#region/_3> <http://user.it.uu.se/~udbl/sard/person#region/r_comment> "United States" .
+<http://user.it.uu.se/~udbl/sard/person#region/_4> <http://user.it.uu.se/~udbl/sard/person#region/r_comment> "Sweden" .
+<http://user.it.uu.se/~udbl/sard/person#region/_3> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://user.it.uu.se/~udbl/sard/person#region> .
+<http://user.it.uu.se/~udbl/sard/person#region/_4> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://user.it.uu.se/~udbl/sard/person#region> .
+
+<http://user.it.uu.se/~udbl/sard/person#tel/_1> <http://user.it.uu.se/~udbl/sard/person#tel/telnumber> "422"^^<http://www.w3.org/2001/XMLSchema#int> .
+<http://user.it.uu.se/~udbl/sard/person#tel/_3> <http://user.it.uu.se/~udbl/sard/person#tel/telnumber> "999978"^^<http://www.w3.org/2001/XMLSchema#int> .
+<http://user.it.uu.se/~udbl/sard/person#tel/_4> <http://user.it.uu.se/~udbl/sard/person#tel/telnumber> "90555578"^^<http://www.w3.org/2001/XMLSchema#int> .
+<http://user.it.uu.se/~udbl/sard/person#tel/_7> <http://user.it.uu.se/~udbl/sard/person#tel/telnumber> "88578"^^<http://www.w3.org/2001/XMLSchema#int> .
+
+<http://user.it.uu.se/~udbl/sard/person#tel/_1> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://user.it.uu.se/~udbl/sard/person#tel> .
+<http://user.it.uu.se/~udbl/sard/person#tel/_3> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://user.it.uu.se/~udbl/sard/person#tel> .
+<http://user.it.uu.se/~udbl/sard/person#tel/_5> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://user.it.uu.se/~udbl/sard/person#tel> .
+<http://user.it.uu.se/~udbl/sard/person#tel/_7> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://user.it.uu.se/~udbl/sard/person#tel> .
+
+<http://user.it.uu.se/~udbl/sard/person#tel/_1> <http://user.it.uu.se/~udbl/sard/person#tel_of_person> <http://user.it.uu.se/~udbl/sard/person#person/_1_1000> .
+<http://user.it.uu.se/~udbl/sard/person#tel/_3> <http://user.it.uu.se/~udbl/sard/person#tel_of_person> <http://user.it.uu.se/~udbl/sard/person#person/_4_1004> .
+<http://user.it.uu.se/~udbl/sard/person#tel/_4> <http://user.it.uu.se/~udbl/sard/person#tel_of_person> <http://user.it.uu.se/~udbl/sard/person#person/_10_1010> .
+<http://user.it.uu.se/~udbl/sard/person#tel/_5> <http://user.it.uu.se/~udbl/sard/person#tel_of_person> <http://user.it.uu.se/~udbl/sard/person#person/_7_1007> .
+
+<http://user.it.uu.se/~udbl/sard/person#tel/_1> <http://user.it.uu.se/~udbl/sard/person#tel_of_region> <http://user.it.uu.se/~udbl/sard/person#region/_3> .
+<http://user.it.uu.se/~udbl/sard/person#tel/_3> <http://user.it.uu.se/~udbl/sard/person#tel_of_region> <http://user.it.uu.se/~udbl/sard/person#region/_3> .
+<http://user.it.uu.se/~udbl/sard/person#tel/_5> <http://user.it.uu.se/~udbl/sard/person#tel_of_region> <http://user.it.uu.se/~udbl/sard/person#region/_3> .
+
+<http://user.it.uu.se/~udbl/sard/person#person/_1_1000> <http://user.it.uu.se/~udbl/sard/person#person/name> "Ivan" .
+<http://user.it.uu.se/~udbl/sard/person#person/_3_1003> <http://user.it.uu.se/~udbl/sard/person#person/name> "Peno Katev" .
+<http://user.it.uu.se/~udbl/sard/person#person/_7_1007> <http://user.it.uu.se/~udbl/sard/person#person/name> "Ivana" .
+
+
+<http://user.it.uu.se/~udbl/sard/person#person/_1_1000> <http://user.it.uu.se/~udbl/sard/person#person/age> "30"^^<http://www.w3.org/2001/XMLSchema#int> .
+<http://user.it.uu.se/~udbl/sard/person#person/_3_1003> <http://user.it.uu.se/~udbl/sard/person#person/age> "44"^^<http://www.w3.org/2001/XMLSchema#int> .
+<http://user.it.uu.se/~udbl/sard/person#person/_7_1007> <http://user.it.uu.se/~udbl/sard/person#person/age> "16"^^<http://www.w3.org/2001/XMLSchema#int> .
+
+<http://user.it.uu.se/~udbl/sard/person#person/_1_1000> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://user.it.uu.se/~udbl/sard/person#person> .
+<http://user.it.uu.se/~udbl/sard/person#person/_3_1003> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://user.it.uu.se/~udbl/sard/person#person> .
+<http://user.it.uu.se/~udbl/sard/person#person/_7_1007> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://user.it.uu.se/~udbl/sard/person#person> .

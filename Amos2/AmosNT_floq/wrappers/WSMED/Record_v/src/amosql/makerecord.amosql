@@ -1,0 +1,55 @@
+
+lisp; 
+(createliteraltype 'Record (list(gettypenamed 'collection)) 'Record nil nil)
+
+;(set-printfn (gettypenamed 'record) 'print-record)
+
+;(defun print-record (o str)
+;  (setq J 1)	
+;  (formatl str "record({")
+;  (maphash (function(lambda (key val) (prin1 key str) 
+;		      (princ "," str)
+;		      (prin1 val str)(if(< J 2)(princ "," str))(setq J (1+ J))))
+;	   o)
+;  (princ "})" str)
+;  t)
+
+(defun makerecord(fno v r) 
+  (osql-result v (make-record v)))
+
+(defun put_record(fno v k val r) 
+  (osql-result v k val (record-put v k val)))
+
+(defun vref_bbf(fno H K R) 
+  (let ((R (record-get H K))) 
+    (if R (osql-result H K R))))
+
+(defun vref_bff(fno H K R) 
+  (do ((I 0 (+ 2 I)))
+      ((= I (Length (record-fields H))))
+    (osql-result H (aref (record-fields H) I) 
+		 (aref (record-fields H) (+ 1 I)))))
+
+(defun vref_any_bbf(fno H I R) 
+  (osql-result H I (aref (record-fields H) I)))
+(defun vref_any_bff(fno H K R) 
+  (do ((I 0 (+ 2 I)))
+      ((= I (Length (record-fields H))))
+    (osql-result H I (aref (record-fields H)(+ 1 I)))))
+(defun all_value(fno H R) 
+  (do ((I 0 (+ 1 I)))
+      ((= I (Length (record-fields H))))
+    (osql-result H (aref (record-fields H) I))))
+(defun record-length(fno H R)
+(osql-result H  (Length (record-fields H))))
+
+		       
+:osql
+create function make_record(Vector)->Record as foreign "makerecord"; 
+create function put_record(Record,Charstring,Object)->Record as foreign "put_record"; 
+create function vref(Record,Charstring)->Object as multidirectional ("bbf" foreign "vref_bbf")("bff" foreign "vref_bff");
+create function vref(Record,Integer)-><Object> as multidirectional ("bbf" foreign "vref_any_bbf")("bff" foreign "vref_any_bff");
+
+create function all_value(Record R)-> <Object> as foreign "all_value";
+create function record_length(Record R)->integer  as foreign "record-length";
+					   

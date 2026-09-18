@@ -1,0 +1,105 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Silvia Stefanova, UDBL
+ * $RCSfile: test.amosql,v $
+ * $Revision: 1.16 $ $Date: 2011/01/29 22:57:38 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Tests to query Topic Map RDF view 
+ *
+ ****************************************************************************/
+
+importTopicMap("http://user.it.uu.se/~udbl/software/swatm/hamlet.xtm");
+
+/*
+set :sql_content =
+    "SELECT t1.val 
+    FROM let t1, let t2, let t3, let t4
+    WHERE t1.p='http://udbl2.it.uu.se/swatm#REFERENCE' AND t1.s=t2.val AND t2.p='http://udbl2.it.uu.se/swatm#OCCURRENCEOFTOPIC'
+    AND t2.s=t3.s AND t3.val = t4.s AND t4.p='http://udbl2.it.uu.se/swatm#BASENAMESTRING' AND t4.val = 'Hamlet, Prince of Denmark';";
+
+*/
+
+set :rdql_content  = 
+      "SELECT ?occurrence 
+      FROM <http://user.it.uu.se/~udbl/software/swatm/hamlet.xtm>
+      WHERE (?tm0 , <http://udbl2.it.uu.se/swatm#BASENAMEOFTOPIC>, ?tm1)
+            (?tm1 , <http://udbl2.it.uu.se/swatm#BASENAMESTRING>, 'Hamlet, Prince of Denmark') 
+	    (?tm0 , <http://udbl2.it.uu.se/swatm#OCCURRENCEOFTOPIC>, ?tm2)
+            (?tm2 , <http://udbl2.it.uu.se/swatm#REFERENCE>, ?occurrence)";
+
+ set :rdql_hybrid  = 
+      "SELECT ?iofoc, ?tm3
+      FROM <http://user.it.uu.se/~udbl/software/swatm/hamlet.xtm>
+      WHERE (?tm0 , <http://udbl2.it.uu.se/swatm#BASENAMEOFTOPIC>, ?tm1)
+	    (?tm1 , <http://udbl2.it.uu.se/swatm#BASENAMESTRING>, 'Hamlet, Prince of Denmark') 
+	    (?tm0 , <http://udbl2.it.uu.se/swatm#OCCURRENCEOFTOPIC>, ?tm2)
+            (?tm2 , <http://udbl2.it.uu.se/swatm#REFERENCE>, ?occurrence)
+	    (?tm2 , <http://udbl2.it.uu.se/swatm#INSTANCEOFOCCURRENCE>, ?iofoc)
+	    (<http://udbl2.it.uu.se/swatm#INSTANCEOFOCCURRENCE>, <http://www.w3.org/2000/01/rdf-schema#range>,?tm3)
+      AND ?occurrence  != <http://www.csclub.uwaterloo.ca/u/relander/XML/hamlet.xml>";
+
+set :sparql_schema = 
+	"SELECT ?tp
+	WHERE { ?tp <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property>. 
+	      ?tp  <http://www.w3.org/2000/01/rdf-schema#domain> <http://udbl2.it.uu.se/swatm#TOPIC>.
+	      ?tp  <http://www.w3.org/2000/01/rdf-schema#range>  <http://www.w3.org/2000/01/rdf-schema#Literal>.
+	FILTER  (?tp != <http://udbl2.it.uu.se/swatm#IDTOPIC>).} ";
+
+set :sparql_content  = 
+      "SELECT ?occurrence 
+      FROM <http://user.it.uu.se/~udbl/software/swatm/hamlet.xtm>
+      WHERE{?tm0 <http://udbl2.it.uu.se/swatm#BASENAMEOFTOPIC> ?tm1 .
+	    ?tm1 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> 'Hamlet, Prince of Denmark'. 
+	    ?tm0 <http://udbl2.it.uu.se/swatm#OCCURRENCEOFTOPIC> ?tm2.
+	    ?tm2 <http://udbl2.it.uu.se/swatm#REFERENCE> ?occurrence}";
+
+set :sparql_hybrid  = 
+      "SELECT ?idiofoc ?tm3
+      FROM <http://user.it.uu.se/~udbl/software/swatm/hamlet.xtm>
+      WHERE {?tm0 <http://udbl2.it.uu.se/swatm#BASENAMEOFTOPIC> ?tm1.
+	     ?tm1 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> 'Hamlet, Prince of Denmark'. 
+	     ?tm0 <http://udbl2.it.uu.se/swatm#OCCURRENCEOFTOPIC> ?tm2.
+             ?tm2 <http://udbl2.it.uu.se/swatm#REFERENCE> ?occurrence.
+	     ?tm2 <http://udbl2.it.uu.se/swatm#INSTANCEOFOCCURRENCE> ?iofoc.
+	     ?iofc <http://udbl2.it.uu.se/swatm#IDTOPIC> ?idiofoc.		
+	     <http://udbl2.it.uu.se/swatm#INSTANCEOFOCCURRENCE> <http://www.w3.org/2000/01/rdf-schema#range> ?tm3.
+      FILTER (?occurrence != <http://www.csclub.uwaterloo.ca/u/relander/XML/hamlet.xml>).
+      FILTER REGEX (?idiofoc, '*hamlet*').}";
+
+/* RDQL Parser removed 2011-01-25 
+lisp;
+
+(checkequal "RDQL content query to the RDF view of Topic Maps"
+  ((osql "rdql(:rdql_content);")
+   '((#("http://www.csclub.uwaterloo.ca/u/relander/XML/hamlet.xml")) (#("http://www.enotes.com/hamlet")))
+))
+
+(checkequal "RDQL hybrid query with idTMO to the RDF view of Topic Maps"
+   ((osql "rdql(:rdql_hybrid);")
+   '((#("http://user.it.uu.se/~udbl/software/swatm/hamlet.xtm#6" "http://udbl2.it.uu.se/swatm#TOPIC")))
+))
+*/
+
+lisp;
+
+(checkequal "SPARQL schema query to the RDF view of Topic Maps without FROM clause"
+   ((osql "sparql(:sparql_schema);")
+   '((#("http://udbl2.it.uu.se/swatm#SUBJECTIDENTITY")) (#("http://udbl2.it.uu.se/swatm#SUBJECTADDRESS")))
+))	
+
+(checkequal "SPARQL content query to the RDF view of Topic Maps"
+   ((osql "sparql(:sparql_content);")
+    '((#("http://www.csclub.uwaterloo.ca/u/relander/XML/hamlet.xml")) (#("http://www.enotes.com/hamlet")))
+))	
+
+(checkequal "SPARQL hybrid query to the RDF view of Topic Maps"
+   ((osql "sparql(:sparql_hybrid);")
+    '((#("hamlet" "http://udbl2.it.uu.se/swatm#TOPIC")))
+))	
+
+
+:osql
+
+quit;

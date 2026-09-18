@@ -1,0 +1,44 @@
+defineDS("EGOVBUSDS",
+         "jdbc:microsoft:sqlserver://localhost;DatabaseName=EGOVBUS",
+         "com.microsoft.jdbc.sqlserver.SQLServerDriver",
+         "EGOVBUS",
+         "LIFEEVENT",
+         "egovmgr",
+         "12345");
+
+defineUPV("EGOVBUSDS","eGovBus","http://udbl.it.uu.se/upv/eGovBus/");
+
+assignPropID("LIFEEVENT","LID","eGovBus",
+      "http://purl.org/dc/elements/1.1/identifier");
+assignPropID("LIFEEVENT","NAME","eGovBus",
+      "http://purl.org/dc/elements/1.1/title");
+assignPropID("LIFEEVENT","DESCR","eGovBus",
+      "http://purl.org/dc/elements/1.1/description");
+
+assignPropID("FORM","FID","eGovBus",
+      "http://udbl.it.uu.se/schemas/eGovern#FormID");
+assignPropID("FORM","URL","eGovBus",
+      "http://udbl.it.uu.se/schemas/eGovern#URL");
+assignPropID("FORM","CREATOR","eGovBus",
+      "http://www.egov_project.org/GovMLSchema#Creator");
+assignPropID("FORM","NOFF","eGovBus",
+      "http://udbl.it.uu.se/schemas/eGovern#NumberOfFields");
+assignPropID("FORM","LIFEEVENT","eGovBus",
+      "http://udbl.it.uu.se/schemas/eGovern#LifeEventID");
+
+assignClassID("FORM","eGovBus","http://udbl.it.uu.se/schemas/eGovern#Form"); 
+assignClassID("LIFEEVENT","eGovBus",
+                "http://udbl.it.uu.se/schemas/eGovern#LifeEvent");
+
+DSConnect("eGovBus");		
+
+exportRDB("eGovBus");
+lisp;
+
+;;(defglobal _get-columns-cache_)
+;;(memo '_get-columns-cache_ 'get-columns '(ds table))
+
+:osql
+
+register("SWARD");
+listen();

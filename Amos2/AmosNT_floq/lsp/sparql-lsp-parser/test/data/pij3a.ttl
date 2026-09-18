@@ -1,0 +1,14 @@
+@prefix p:       <http://example.org/> .
+
+p:a p:ax p:x0 .
+p:a p:ax p:x1 .
+p:a p:ax p:x2 .
+p:a p:ax p:x3 .
+p:a p:ax p:x4 .
+p:x1 p:xz "z1" .
+p:x2 p:xz "z2" .
+p:x2 p:xy p:y2 .
+p:y2 p:yz "z2a" .
+p:x3 p:xy p:y3 .
+p:y3 p:yz "z3" .
+p:x4 p:xy p:y4 .

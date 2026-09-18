@@ -1,0 +1,290 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 1997 Vanja Josifovski, EDSLAB
+ * $RCSfile: dt.osql,v $
+ * $Revision: 1.7 $ $Date: 2013/12/30 19:54:19 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Testing derived types (JIIS 1999 publication)
+ ****************************************************************************/
+
+enable_dt(true);
+
+create type person properties ( 
+	key name charstring key,
+	key age  integer nonkey
+	);
+
+create function parentchild (person parent nonkey, person child nonkey) ->
+	boolean as stored;
+
+create function parent ( person c) -> person p
+	as select p where parentchild ( p, c );
+
+
+create type course properties (
+	key coursename charstring key
+	);
+
+create type student under person properties (
+	key graduationyear integer nonkey
+	);
+
+create type instructor under student properties (
+	key salary integer nonkey
+	);
+
+create function assignment (instructor i nonkey, course c nonkey,
+	charstring t nonkey) -> boolean as stored;
+
+create function taught (instructor i) ->  course
+	as select c from course c, charstring t where assignment(i, c, t);
+
+
+		/* instantiation */
+
+create student (name, age, parent, graduationyear)
+instances
+	:mary ('mary', 77, nil, 1930),
+	:joanne ('joanne', 18, nil, 1984),
+	:shirley ('shirley', 22, nil, 1983),
+	:stacee ('stacee', 19, nil, 1983),
+	:john ('john', 81, nil, 1921),
+	:victor('victor', 78, nil, 1924);
+
+create instructor (name, age, parent, salary)
+instances
+	:alice ('alice', 44, bag(:john), 534),
+	:pam ('pam', 25, nil, 378),
+	:henry ('henry', 72, nil, 888),
+	:susan ('susan', 72, nil, 444);
+
+create student (name, age, parent, graduationyear)
+instances
+	:michael ('michael', 45, bag(:susan, :john), 1959);
+
+create person (name, age, parent)
+instances
+	:lisbeth ('lisbeth', 69, nil),
+	:linda ('linda', 81, nil);
+
+create person (name, age, parent)
+instances
+	:kim ('kim', 46, bag(:linda, :henry)),
+	:tim ('tim', 76, nil),
+	:dan ('dan', 48, bag(:lisbeth, :victor)),
+	:arthur ('arthur', 108, nil);
+
+create student (name, age, parent, graduationyear)
+instances
+	:bill ('bill', 50, bag(:mary, :tim), 1953),
+	:barbara ('barbara', 51, bag(:lisbeth, :victor), 1960),
+	:jim ('jim', 52, bag(:linda, :henry), 1948),
+	:helen ('helen', 48, bag(:mary, :tim), 1955),
+	:joe ('joe', 21, bag(:alice, :dan), 1986);
+
+create student (name, age, parent, graduationyear)
+instances
+	:dennis ('dennis', 18, bag(:helen, :jim), 1983);
+
+create instructor (name, age, parent, salary)
+instances
+	:peter ('peter', 25, bag(:kim, :bill), 734);
+
+create person (name, age, parent)
+instances
+	:tom ('tom', 18, bag(:barbara, :michael));
+
+add type instructor (salary)
+to
+	:dennis (289),
+	:michael (222),
+	:helen (222);
+
+set graduationyear(:peter)=1986;
+
+create derived type senior under instructor where age(instructor)>40;
+create function seniorcompoundkey(senior s)->vector
+   as select {name(s)};
+lisp;
+(checkequal "Simple DT select"
+ ( (sorttuples (osql "select name(s) from senior s;"))
+  '(("alice") ("helen") ("henry") ("michael") ("susan"))))
+:osql
+
+create function pension(senior s)-> integer;   
+/*;for each senior s set pension(s) = age(s) * 2;  */
+set pension(s) = age(s) * 2 from senior s;
+/* select s from  senior s; */
+
+
+
+
+lisp;
+(checkequal "Stored DT func. query"
+ ((sorttuples (osql "select pension(s), name(s) from senior s;"))
+  '((88 "alice")  (90 "michael") (96 "helen") (144 "henry")  (144 "susan"))))
+:osql
+
+
+
+create derived type old_senior under senior where age(senior)> 65;
+
+
+
+/* the optimizer should reduce the coerctions to only two from three here */
+/* also removes extent_senior because pension is defined in senior */
+lisp;
+(checkequal "Old senior tests"
+((sorttuples (osql "select pension(o), name(o) from old_senior o;"))
+ '((144 "henry") (144 "susan")))
+
+;/* here the instructor typecheck stays (is needed) */
+((sorttuples (osql "select name(o) from old_senior o;"))
+ '(("henry") ("susan")))
+
+;/* instructor typecheck should be removed here */
+((sorttuples (osql "select name(o), salary(o) from old_senior o;"))
+ '(("henry" 888) ("susan" 444))))
+:osql
+
+
+
+
+create instructor(age, name) instances :tore(200, "tore");
+lisp;
+(checkequal "adding an instance to DT and materialization"
+ ((sorttuples (osql "select name(s), age(s) from old_senior s;"))
+  ' (("henry" 72) ("susan" 72) ("tore" 200)))
+ ((osql "count((select s, name(s) from senior s));")
+  '((6)))
+
+ ; this checks materialization consistency
+ ((osql "select s, name(s) from senior s;")
+  (osql "select s, name(s) from senior s;")))
+:osql
+
+
+
+
+
+/* TWO SUPERTYPES */
+create type fictional properties (quazi integer);
+create type nada properties (kao integer);
+create fictional(quazi) instances :qi1(77),  :qi2(72), :qi(26), :qi3(16);
+create nada(kao) instances :ni1(77),  :ni2(72), :ni(26), :ni3(15);
+create derived type i_f under instructor i, fictional f
+       where age(i) = quazi(f);
+
+
+/* the template of this contains only extent_f_i */
+create derived type ifn under i_f i, nada n 
+	where age(i) = kao(n);
+
+create derived type sub_nada under nada;
+create derived type sub_sub_nada under sub_nada;
+
+/* the template of this contains both extent_f_i and extent_sub_nada */
+create derived type sifn1 under i_f i, sub_sub_nada n
+	where  age(i) = kao(n);
+
+lisp;
+(checkequal "DT with more than one supertype"
+((osql "select age(i) from ifn i;")
+ '((72) (72)))
+((osql "select age(i), quazi(i) from ifn i;")
+ '((72 72) (72 72)))
+((sorttuples (osql "select name(i), kao(i) from sifn1 i;"))
+ '(("henry" 72) ("susan" 72))))
+:osql
+
+/* VALIDATE CLAUSE */
+create function boo(person)-> boolean as stored;
+create derived type ifn2 under i_f  i, nada n
+validate age(i) = kao(n) and boo(i);
+/* this should be extended with more test */
+
+/* DELETION SEMANTICS */
+select o into :oi1 from old_senior o where name(o) = "tore";
+
+/* name(:oi1);  this does not work */
+ 
+delete :tore;
+
+/* name(:oi1); error here */
+lisp;
+(checkequal "DT delete instance 1"
+ ((oid-name amos_tore) '*DELETED*)
+ ((oid-name amos_oi1)  '*DELETED*))
+:osql
+
+create derived type ss1  under person;
+create derived type ss2  under person;
+create derived type ss11 under ss1;
+
+
+select ss1  into :iss1_dan  from ss1      where name(ss1) = "dan";
+select ss11 into :iss11_dan from ss11     where name(ss11)= "dan";
+select ss2  into :iss2_dan  from ss2      where name(ss2) = "dan";
+select p    into :ip_dan    from person p where name(p)   = "dan";
+delete :iss1_dan;
+
+lisp;
+(checkequal "DT delete instance 2"
+ ((oid-name amos_iss11_dan) '*DELETED*)
+ ((oid-name amos_iss2_dan)  NIL)
+ ((progn (osql "delete :ip_dan;") nil) NIL)
+ ((oid-name amos_iss2_dan)  '*DELETED*))
+:osql
+
+
+/* senior is a subtype of instructor, but should delete an object there
+   also when deleting an object from person*/
+select ss2    into :iss2_Michael from ss2      where name(ss2) = "michael";
+select p      into :ip_Michael   from person p where name(p) = "michael";
+select s      into :isen_Michael from senior s where name(s)= "michael";
+delete :iss2_Michael;
+
+lisp;
+(checkequal "DT delete instance 3"
+ ((oid-name amos_isen_Michael) NIL)
+ ((progn (osql "delete :ip_Michael;") nil) nil)  
+ ((oid-name amos_isen_Michael) '*DELETED*))
+
+(checkequal "DTs, OSQL vars and delete"
+ ((osql "create derived type tt1 under person;
+         create derived type pp1 under person;
+         create person(age, name) instances :p1(150, 'who');") nil)
+ ((osql "select tt1 into :s1 from tt1 where tt1=:p1;") nil)
+ ((osql "count((select pp1 from pp1 where pp1=:s1));") '((1)))
+ ((osql "select name(pp1) from pp1 where pp1=:s1;") '(("who")))
+ ((osql "select pp1 into :i1pp1 from pp1 where pp1=:s1;") nil)
+ ((osql "select age(:i1pp1), age(p) 
+         from person p where name(p) = name(:i1pp1);") '((150 150)))
+ ((osql "select age(:i1pp1) where true;") '((150)))
+ ((progn (osql "delete :p1;") nil) nil)
+ ((oid-name amos_i1pp1) '*DELETED*))
+
+(checkequal "Typed rewrite bug test"
+((osql "count((select s,p from senior s,person p where s=p));") '((4)))
+((osql "count((select s,p from senior s,person p where p=s));") '((4))))
+
+(checkequal "Derived meta-type test"
+  ((sorttuples(osql "select name(t) from derivedtype t;"))
+    '(("IFN") ("IFN2") ("I_F") ("OLD_SENIOR") ("PP1") ("SENIOR") ("SIFN1") ("SS1") 
+      ("SS11") ("SS2") ("SUB_NADA") ("SUB_SUB_NADA") ("TT1")))
+)
+
+:osql
+rollback;
+
+
+
+
+
+
+
+
+
+

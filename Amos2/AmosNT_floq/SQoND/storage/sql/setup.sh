@@ -1,0 +1,1 @@
+java -cp $AMOS_HOME/bin/javaamos.jar:$AMOS_HOME/jarlib/mysql-connector-java-5.1.6-bin.jar -Djava.library.path=$AMOS_HOME/bin JavaAMOS ssdm.dmp -o "set :chunksize = $1;" -O "setup.osql" -o "quit;"

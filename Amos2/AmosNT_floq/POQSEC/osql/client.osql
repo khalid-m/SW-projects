@@ -1,0 +1,100 @@
+/*****************************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2005 Ruslan Fomkin, UDBL
+ * $RCSfile: client.osql,v $
+ * $Revision: 1.2 $ $Date: 2005/08/09 14:29:40 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Client component of POQSEC framework corresponding to the paper
+ *  published at VLDB DMG 05. 
+ * Problem: how to provide the name of the coordinator server once and then
+ *  use it? without fix name for all time.
+ *
+ ****************************************************************************/
+load_lisp("../lsp/general.lsp");
+
+/*
+create function connectToCoordinator() -> boolean as
+begin
+	import_types({"cResource","cluster","grid","datafile","eventdata",
+					"job","submission"},"coordinator");
+end;
+
+create function submit(charstring query, vector of charstring files, integer
+	jobs, integer cputime, charstring site) -> object as
+begin
+	declare charstring str;
+	set str = "submit(\""+query+"\",{\""+files[0]+"\"";
+	for each integer i where i=iota(1,cast(count(files)-1 as integer))
+		set str = str+",\""+files[i]+"\"";
+	set str = str+"},"+itoa(jobs)+","+itoa(cputime)+",\""+site+"\");";
+	result ship("coordinator",str);
+end;
+*/
+create function submit(charstring query, vector files, integer
+	jobs, integer cputime, charstring site) -> object as
+begin
+	declare charstring str;
+	set str = "submit(\""+query+"\",{\""+cast(files[0] as charstring)+"\"";
+	for each integer i where i=iota(1,cast(count(files)-1 as integer))
+		set str = str+",\""+cast(files[i] as charstring)+"\"";
+	set str = str+"},"+itoa(jobs)+","+itoa(cputime)+",\""+site+"\");";
+	result ship("coordinator",str);
+end;
+
+create function submit(charstring query, bag files, integer
+		jobs, integer cputime, charstring site) -> object as
+begin
+	declare charstring str, boolean b;
+	set b=TRUE;
+	set str = "submit(\""+query+"\",{";
+	for each charstring file where file=in(files)
+		if (b=TRUE)
+		then begin
+			set str = str+"\""+file+"\"";
+			set b = FALSE
+		end else set str = str+",\""+file+"\"";
+	set str = str+"},"+itoa(jobs)+","+itoa(cputime)+",\""+site+"\");";
+	result ship("coordinator",str);
+end;
+
+create function submit(charstring query, vector files, integer
+	jobs, integer cputime) -> object as
+begin
+	declare charstring str;
+	set str = "submit(\""+query+"\",{\""+cast(files[0] as charstring)+"\"";
+	for each integer i where i=iota(1,cast(count(files)-1 as integer))
+		set str = str+",\""+cast(files[i] as charstring)+"\"";
+	set str = str+"},"+itoa(jobs)+","+itoa(cputime)+",\"swegrid\");";
+	result ship("coordinator",str);
+end;
+
+create function submit(charstring query, bag files, integer
+	jobs, integer cputime) -> object as
+begin
+	declare charstring str, boolean b;
+	set b=TRUE;
+	set str = "submit(\""+query+"\",{";
+	for each charstring file where file=in(files)
+		if (b=TRUE)
+		then begin
+			set str = str+"\""+file+"\"";
+			set b = FALSE
+		end else set str = str+",\""+file+"\"";
+	set str = str+"},"+itoa(jobs)+","+itoa(cputime)+",\"swegrid\");";
+	result ship("coordinator",str);
+end;
+
+create function status(object o) -> charstring as
+begin
+	result ship("coordinator","status(#[OID "+itoa(getidno(o))+"]);");
+end;
+/*
+create function retrieve(object) -> bag of object as
+
+create function wait(object) -> bag of object as
+
+create function cancel(object) -> boolean as
+*/

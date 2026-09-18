@@ -1,0 +1,49 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 thanh, UDBL
+ * $RCSfile: test_manual.amosql,v $
+ * $Revision: 1.4 $ $Date: 2010/06/07 19:22:50 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Xtree index manual testing with a few objects
+ *
+ ****************************************************************************
+ * $Log: test_manual.amosql,v $
+ * Revision 1.4  2010/06/07 19:22:50  thtr1663
+ * create Xtree dynamically (not reading dim from config file)
+ *
+ * Revision 1.3  2010/06/07 19:21:33  thtr1663
+ * modify test
+ *
+ * Revision 1.2  2010/06/04 10:52:45  thtr1663
+ * Remove ^M (ending line)
+ *
+ * Revision 1.1  2010/06/04 07:41:00  thtr1663
+ * Modify Xtree to make it possible to store multiple index. Index hooks are updated accordingly
+ * 
+ *
+ ****************************************************************************/
+
+/*Create an album named as FamilyAlbum :) */
+print("Create family album");
+set :familyAlbum = newAlbum("FamilyAlbum");
+
+print("Add pictures into the album");
+set :pic01 = newPicture(:familyAlbum, "test\\data\\pictures\\Image01.jpg", "Caption01");
+set :pic02 = newPicture(:familyAlbum, "test\\data\\pictures\\Image02.jpg", "Caption02");
+set :pic03 = newPicture(:familyAlbum, "test\\data\\pictures\\Image03.jpg", "Caption03");
+/*Picture 4 has a same feature as picture 1*/
+set :pic04 = newPicture(:familyAlbum, "test\\data\\pictures\\Image01.jpg", "Caption04");
+set :pic05 = newPicture(:familyAlbum, "test\\data\\pictures\\Image05.jpg", "Caption05");
+set :pic06 = newPicture(:familyAlbum, "test\\data\\pictures\\Image06.jpg", "Caption06");
+
+addFeatureIndex(picture_index(), features(:pic01), :pic01);
+addFeatureIndex(picture_index(), features(:pic02), :pic02);
+addFeatureIndex(picture_index(), features(:pic03), :pic03);
+addFeatureIndex(picture_index(), features(:pic04), :pic04);
+addFeatureIndex(picture_index(), features(:pic05), :pic05);
+addFeatureIndex(picture_index(), features(:pic06), :pic06);
+
+/*removeFeatureIndex(picture_index(), features(:pic04), :pic04);*/
+q1("Caption01", 3);

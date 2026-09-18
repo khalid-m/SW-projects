@@ -1,0 +1,22 @@
+<rdf:RDF xml:lang="en"
+   xml:base="http://user.it.uu.se/~udbl/RDFAmos/Schema/schema#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#">
+
+<rdf:Description ID="Book">
+ <rdf:type resource="http://www.w3.org/2000/01/rdf-schema#Class"/>
+ <rdfs:subClassOf rdf:resource="http://www.w3.org/2000/01/rdf-schema#Resource"/>
+</rdf:Description>
+
+<rdf:Description ID="Title">
+ <rdf:type resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#Property"/>
+ <rdfs:domain rdf:resource="#Book"/>
+ <rdfs:range rdf:resource="http://www.w3.org/2000/01/rdf-schema#Literal"/>
+</rdf:Description>
+
+<rdf:Description ID="AI_Book">
+ <rdf:type resource="http://www.w3.org/2000/01/rdf-schema#Class"/>
+ <rdfs:subClassOf rdf:resource="#Book"/>
+</rdf:Description>
+
+</rdf:RDF>

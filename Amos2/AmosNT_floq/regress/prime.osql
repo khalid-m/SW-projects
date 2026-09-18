@@ -1,0 +1,39 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: prime.osql,v $
+ * $Revision: 1.1 $ $Date: 2011/03/05 17:20:04 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Prime number generator
+ *
+ ****************************************************************************
+ * $Log: prime.osql,v $
+ * Revision 1.1  2011/03/05 17:20:04  torer
+ * Test for ObjectLog performance
+ *
+ ****************************************************************************/
+
+create function divisors (Integer n) -> Integer
+ as select x
+    from Integer x
+    where  x in iota(2,sqrt(n)) and
+    0 = mod(n,x);
+
+create function prime (Integer n) -> Integer
+ as select n where notany(divisors(n));
+
+create function primes(Integer n) -> Bag of Integer
+   as prime(iota(1,n));
+
+lisp;
+
+(checkequal "Generating prime numbers"
+   ((time (osql "count(primes(100000));") "9593 prime numbers") '((9593)))
+)
+
+:osql
+
+rollback;
+ 

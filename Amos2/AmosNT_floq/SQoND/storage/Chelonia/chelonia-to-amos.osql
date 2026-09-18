@@ -1,0 +1,122 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Andrej Andrejev, UDBL
+ * $RCSfile: chelonia-to-amos.osql,v $
+ * $Revision: 1.3 $ $Date: 2012/04/14 16:05:25 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Chelonia-to-Amos connectivity functions
+ *
+ ****************************************************************************
+ * $Log: chelonia-to-amos.osql,v $
+ * Revision 1.3  2012/04/14 16:05:25  andan342
+ * Array proxy objects now correctly accumulate STEP information and are completely transparent to array slicing/projection/dereference operations. Added workaraounds for Chelonia step-related bug.
+ *
+ * Revision 1.2  2012/03/19 15:39:26  andan342
+ * Now only retreiving data needed to construct array proxies,
+ * small enough proxies are resolved immediately.
+ *
+ * Revision 1.1  2012/03/18 13:16:07  andan342
+ * Created WRAPPER mode separate from TRIPLE-STORE mode
+ * Added NMA proxies to handle 'too large' arrays
+ *
+ * Revision 1.4  2012/03/17 21:39:37  andan342
+ * - Added debug functionality, including _chelonia_dub_results_ switch
+ *
+ * Revision 1.3  2012/02/23 19:10:32  andan342
+ * Chelonia to SPAQRQL connectivity with updates (except arrays)
+ *
+ * Revision 1.2  2012/02/21 11:03:48  andan342
+ * Amos-to-Chelonia interface with updates (except inserting arrays)
+ *
+ * Revision 1.1  2012/02/18 00:25:21  andan342
+ * Chelonia-to-Amos connectivity: read-only
+ *
+ * Revision 1.1  2012/02/01 19:26:48  andan342
+ * Almost fully-functional Chelonia connectivity
+ *
+ * Revision 1.1  2006/02/12 20:01:08  torer
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+
+/* QUERIES */
+
+create function queryToURL(Charstring dbname, Charstring query) -> Bag of Charstring
+  as foreign "JAVA:CheloniaConnector/queryToURL";
+
+load_lisp('chelonia-output-parsers.lsp');
+load_lisp('chelonia-store.lsp');
+
+create function getAllExperiments(Charstring dbname) -> Bag of Charstring
+  as select Chelonia_parse_strings(queryToURL(dbname,"SELECT expName FROM experiments;"));
+
+create function getTasks(Charstring dbname, Charstring expName) -> Bag of (Charstring, Integer)
+  as select Chelonia_parse_string_ints(queryToURL(dbname,
+        "SELECT taskName, taskId FROM tasks t, experiments e WHERE e.expId = t.expId AND e.expName = '"+expName+"';"));
+
+create function getVars(Charstring dbname, Integer taskId) -> Bag of Charstring
+  as select Chelonia_parse_strings(queryToURL(dbname,
+	"(SELECT vName from iTriples WHERE taskId=" + taskId + 
+	") UNION DISTINCT (SELECT vName FROM fTriples WHERE taskId = " + taskId + 
+	") UNION DISTINCT (SELECT vName FROM sTriples WHERE taskId = " + taskId +
+	") UNION DISTINCT (SELECT vName FROM aTriples WHERE taskId = " + taskId + ");"));
+
+create function getAllVars(Charstring dbname, Charstring tasklist) -> Bag of (Charstring, Integer)
+  as select Chelonia_parse_string_ints(queryToURL(dbname,
+	"(SELECT vName,taskId from iTriples WHERE taskId IN (" + taskList + 
+	")) UNION DISTINCT (SELECT vName,taskId FROM fTriples WHERE taskId IN (" + taskList + 
+	")) UNION DISTINCT (SELECT vName,taskId FROM sTriples WHERE taskId IN (" + taskList +
+	")) UNION DISTINCT (SELECT vName,taskId FROM aTriples WHERE taskId IN (" + taskList + "));"));
+
+create function getValue(Charstring dbname, Integer taskId, Charstring vName) -> Bag of Literal
+  as select Chelonia_str_to_literal(Chelonia_parse_literals(queryToURL(dbname,
+	"(SELECT 'i' AS type, value FROM iTriples WHERE taskId = " + taskId + " AND vName = '" + vName + 
+	"') UNION (SELECT 'f' AS type,  value FROM fTriples WHERE taskId = " + taskId + " AND vName='" + vName + 
+	"') UNION (SELECT 's' AS type, value FROM sTriples WHERE taskId = " + taskId + " AND vName='" + vName + 
+	"') UNION (SELECT concat('p',elementsType) AS type, dimension AS value FROM aTriples a WHERE taskId = " + 
+	taskId + " AND vName='" + vName + "');"), dbname, taskId, vName, ''));
+
+create function getSubArray(Charstring dbname, Integer taskId, Charstring vName, Charstring rangeStr) -> Bag of Literal
+  as select Chelonia_parse_literals(queryToURL(dbname,
+        "SELECT concat('a',elementsType) AS type, read_data('" + rangeStr + "', a.blobId, '1') AS value FROM aTriples a WHERE taskId = " + 
+	taskId + " AND vName='" + vName + "';"), dbname, taskId, vName, rangeStr);
+
+create function printOutput(Charstring dbname, Charstring query, Integer chunks) -> Boolean
+  as select Chelonia_print_output(queryToURL(dbname,query),chunks);
+
+
+/* UPDATES */
+
+create function sendUpdate(Charstring dbname, Charstring query) -> Boolean
+  as foreign "JAVA:CheloniaConnector/update";
+
+create function addExperiment(Charstring dbname, Charstring expName) -> Boolean
+  as select sendUpdate(dbname,"INSERT INTO experiments (expName) VALUES ('" + expName + "');");
+
+create function addTask(Charstring dbname, Charstring expName, Charstring taskName) -> Boolean
+  as select sendUpdate(dbname,
+	"INSERT INTO tasks (expId,taskName) VALUES((SELECT expId FROM experiments WHERE expName = '" + expName + 
+	"'),'" + taskName + "');");
+
+/* DEBUG: typecheck blocker bug
+create function getTaskId(Charstring dbname, Charstring expName, Charstring taskName) -> Bag of Integer
+  as 
+  begin 
+    print('getTaskId(...,'+taskName+')');
+    result cast(unstringify(Chelonia_parse_strings(queryToURL(dbname,
+        "SELECT taskId FROM tasks t, experiments e WHERE t.taskName = '" + taskName + 
+        "' AND e.expId = t.expId AND e.expName = '"+expName+"';"))) as Integer);
+  end; */
+
+create function getTaskId(Charstring dbname, Charstring expName, Charstring taskName) -> Bag of Integer
+  as cast(unstringify(Chelonia_parse_strings(queryToURL(dbname,
+        "SELECT taskId FROM tasks t, experiments e WHERE t.taskName = '" + taskName + 
+        "' AND e.expId = t.expId AND e.expName = '"+expName+"';"))) as Integer);
+
+create function addValue(Charstring dbname, Integer taskId, Charstring vName, Literal value) -> Boolean
+  as foreign 'addValue----';
+
+
+

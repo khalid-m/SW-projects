@@ -1,0 +1,806 @@
+/*-*-sql-*-*******************************************************************/
+
+create function exec(Charstring) -> Charstring
+  as foreign 'execbf';
+
+create function streamfile(Charstring file) -> Stream
+  as streamof(readfile(file));
+
+create function egrep(Charstring pattern, Charstring filelist) -> Charstring
+  as exec("grep " + pattern + " " + filelist);
+
+create function port(Vector of Stream, Vector nsub, Vector nodesel, 
+                     Vector postfilter, Vector dumpfiles, Vector hostnames, 
+		     Vector executables, Vector osql, Vector sargs)
+                   -> Vector of Sp
+  as foreign 'portbf';
+
+/* newspflex allows the user to pass a record to the sp */
+
+create function newspflex(Stream, Record) -> Sp
+  as foreign 'lnewspr';
+
+/* Two standard newsp() functions. These are mentioned in EDBT '08 */
+
+create function newsp(Stream s, Integer fo, Function sfn) -> Sp
+  as newspflex(s, {'nsub': fo, 'sfn': sfn});
+
+create function newsp(Stream s) -> Sp
+  as foreign 'lnewsp';
+
+/* spv() spawns a collection of SPs. spv() starts one SP per stream. 
+   spv(bag of stream) is mentioned in EDBT'08.
+   spv(vector of stream) is mentioned in EDBT'09.
+   spvflex() is the general funtion for starting a collection of SPs. */
+
+create function spv(Vector of Stream) -> Vector of Sp 
+  as foreign 'lnewspv';
+
+create function spvflex(Vector of Stream, Record) -> Vector of Sp 
+  as foreign 'lnewspvr';
+
+create function spv(Bag of Stream s) -> Vector of Sp
+  as spv(vectorof(s));
+
+create function newpsp(Stream) -> Sp
+  as foreign 'newpsp';
+
+create function pextract(Sp) -> Object
+  as foreign 'pextract';
+
+/* vextend() extends the vector v by copying the last element up to dim. */
+
+create function vextend(Vector v, Integer dim) -> Vector
+  as foreign 'vextend';
+
+create function suall(Vector of Sp spv) -> Stream
+  as streamof(uall(spv));
+
+create function suallr(Vector of Sp spv) -> Stream
+  as streamof(uallr(spv));
+
+create function uallv(Vector of Sp v) -> Vector w
+  as uall(v);
+
+create function merge(Vector of sp) -> Vector
+  as foreign 'zip';
+
+create function stract(Sp s) -> Stream
+  as streamof(extract(s));
+
+/* ostream obtains the /i/th output stream of a stream process */
+
+create function ostream(Sp p, Integer i) -> Stream
+  as select s 
+     from Stream s, Sp ap
+     where ap = tagsp(p, i)
+       and s = stract(ap);
+
+create function splitstream(Stream s, Integer fanout, Function sfn)
+                          -> Vector of Stream
+  as vselect ostream(p, i)
+     from Sp p, Integer i
+     where p = newSP(s, fanout, sfn)
+     and i in iota(0, fanout - 1);
+
+create function splitstreams(Vector of Stream si, Integer fanout, 
+                             Function sfn) -> Vector of Stream
+  as vselect so 
+     from Stream s, Stream so
+     where s in si
+     and so in splitstream(s, fanout, sfn);
+
+/* splitstream_rr: distribute input tuples round robin over fanout streams */
+
+create function splitstream_rr(Stream s, Integer fanout) -> Vector of Stream
+  as vselect ostream(p, i)
+     from Sp p, Integer i
+     where p = newSP(streamof(winagg(in(s), fanout, fanout)), fanout, #'rr')
+       and i in iota(0, fanout - 1);
+
+create function splitstreams_rr(Vector of Stream si, Integer fanout)
+                              -> Vector of Stream
+  as vselect so
+     from Stream s, Stream so
+     where s in si
+     and so in splitstream_rr(s, fanout);
+
+/* rsplit: distribute input tuples randomly over fanout streams */
+
+create function rsplit_force(Stream s, Integer fanout) -> Vector of Stream
+  as vselect ostream(p, i)
+     from Sp p, Integer i
+     where p = newspflex(s, {'nsub': fanout, 'randr': 1})
+     and i in iota(0, fanout - 1);
+
+create function rsplit_force_flex(Stream s, Integer fanout, Record opt)
+                                -> Vector of Stream
+  as vselect ostream(p, i)
+     from Sp p, Integer i
+     where p = newspflex(s, merge_records({'nsub': fanout, 'randr': 1}, opt))
+       and i in iota(0, fanout - 1);
+
+create function rsplit_force_flexx(Vector of Stream si, Integer fanout, 
+                                   Record opt) -> Vector of Stream
+  as vselect so
+     from Stream s, Stream so
+     where s in si
+       and so in rsplit_force_flex(s, fanout, opt);
+
+create function rsplit_nonblock_lisp(Stream s, Integer fanout)
+                                   -> Vector of Stream
+  as vselect ostream(p, i)
+     from Sp p, Integer i
+     where p = newspflex(s, {'nsub': fanout, 'nb-randr': 1})
+       and i in iota(0, fanout - 1);
+
+create function rsplit_nonblock_c(Stream s, Integer fanout) -> Vector of Stream
+  as vselect ostream(p, i)
+     from Sp p, Integer i
+     where p = newspflex(s, {'nsub': fanout, 'rs-randr': 1})
+       and i in iota(0, fanout - 1);
+
+/* splitstreams_rr_sep: each input stream is split into a separate vector 
+                        in the output vector */
+
+create function splitstreams_rr_sep(Vector of Stream si, Integer fanout)
+                                  -> Vector of Vector of Stream
+  as vselect so 
+     from Stream s, Vector of Stream so
+     where s in si
+     and so = splitstream_rr(s, fanout);
+
+create function splitstream(Stream s, Integer w, Function rfn, Function bfn)
+                          -> Vector of Stream
+  as vselect ostream(p, i)
+     from Sp p, Integer i
+     where p = newspflex(s, {'nsub': w, 'rfn': rfn, 'bfn': bfn})
+       and i in iota(0, w - 1);
+
+create function splitflex(Stream s, Integer fanout, Function sfn, Record opt)
+                        -> Vector of Stream
+  as vselect ostream(p, i)
+     from Sp p, Integer i, Record o
+     where p = newSPflex(s, o)
+       and o = merge_records({'nsub': fanout, 'sfn': sfn}, opt) 
+       and i in iota(0, fanout - 1);
+
+create function splitflexra(Stream s, Integer fanout, Function sfn,
+                            Object sargs, Record opt) -> Vector of Stream
+  as vselect ostream(p, i)
+     from Sp p, Integer i, Record o
+     where p = newSPflex(s, o)
+       and o = merge_records({'nsub': fanout, 'sfn': sfn, 'sargs': sargs},opt) 
+       and i in iota(0, fanout - 1);
+
+/* start an fsplit on input stream s */
+
+create function splitflex(Stream s, Integer fanout, Function rfn,
+                          Function bfn, Record opt) -> Vector of Stream
+  as vselect ostream(p, i)
+     from Sp p, Integer i, Record o
+     where p = newSPflex(s, o)
+       and o = merge_records({'nsub': fanout, 'rfn': rfn, 'bfn': bfn}, opt)
+       and i in iota(0, fanout - 1);
+
+create function splitflexra(Stream s, Integer fanout, Function rfn,
+                            Function bfn, Object rargs, Record opt)
+                          -> Vector of Stream
+  as vselect ostream(p, i)
+     from Sp p, Integer i, Record o
+     where p = newSPflex(s, o)
+       and o = merge_records({'nsub': fanout, 'rfn': rfn, 'bfn': bfn, 
+                              'rargs': rargs}, opt)
+       and i in iota(0, fanout - 1);
+
+create function splitflexras(Vector of Stream si, Integer fanout,
+                             Function sfn, Object sargs, Record opt)
+                           -> Vector of Stream
+  as vectorize(select i * fanout + j, so[j]
+               from Integer i, Integer j, Vector of Stream so
+               where so = splitflexra(si[i], fanout, sfn, sargs, opt)
+                 and i in iota(0, dim(si) - 1)
+                 and j in iota(0, fanout - 1));
+
+create function splitflexras(Vector of Stream si, Integer fanout, 
+                             Function rfn, Function bfn, Object rargs,
+                             Record opt) -> Vector of Stream
+   as vectorize(select i * fanout + j, so[j]
+                from Integer i, Integer j, Vector of Stream so
+                where so = splitflexra(si[i], fanout, rfn, bfn, rargs, opt)
+                  and i in iota(0, dim(si) - 1)
+                  and j in iota(0, fanout - 1));
+
+/* Do [multi2na|fsplit] on each stream in si. Each fsplit having fanout fo */
+
+create function unpackfsplit(Vector of Stream of numarray si, Integer fo, 
+                             Function rfn, Function bfn, integer nadim)
+                           -> Vector of Stream
+  as vectorize(select i * fo + j, so[j]
+               from integer i, integer j, Vector of Stream so
+               where so = splitstream(streamof(multi2na(in(si[i]), nadim)), 
+                                      fo, rfn, bfn)
+                 and i in iota(0, dim(si) - 1)
+                 and j in iota(0, fo - 1));
+
+create function unpacksplitras(Vector of Stream of numarray si,
+                               Integer fanout, Function rfn, Function bfn, 
+                               Object rargs, Integer nadim)
+                             -> Vector of Stream 
+  as vectorize(select i * fanout + j, so[j]
+               from Integer i, Integer j, Vector of Stream so
+               where so = splitflexra(streamof(multi2na(in(si[i]), nadim)), 
+                                      fanout, rfn, bfn, rargs, make_record({}))
+                 and i in iota(0, dim(si) - 1)
+                 and j in iota(0, fanout - 1));
+
+create function splitstreams(Vector of Stream si, Integer fanout,
+                             Function rfn, Function bfn) -> Vector of Stream
+  as vselect so
+     from Stream s, Stream so
+     where s in si
+     and so in splitstream(s, fanout, rfn, bfn);
+
+create function splitflexx(Vector of Stream si, Integer fanout,
+                           Function routingfn, Record opt)
+                         -> Vector of Stream
+  as vselect so 
+     from Stream s, Stream so
+     where s in si
+       and so in splitflex(s, fanout, routingfn, opt);
+
+create function sapply(Function f, Vector s) -> Stream
+  as select so 
+     from Stream so 
+     where so = apply(f, s)[0];
+
+create function mapv(Vector of Vector vs, Function f) -> Vector of Stream
+  as vselect ostream(p, 0)
+     from Sp p
+     where p in spv(vselect sapply(f, s) 
+                    from Vector s 
+                    where s in vs);
+
+create function mapstreams(Vector of Stream vs, Function f)
+                         -> Vector of Stream
+  as vselect ostream(p, 0)
+     from Sp p
+     where p in spv(vselect sapply(f, {s}) 
+                    from Stream s 
+                    where s in vs);
+
+create function mapflex(Vector of Stream vs, Function f, Record opt)
+                      -> Vector of Stream
+  as vselect ostream(p, i)
+     from Sp p, Integer i, Integer fanout
+     where p in spvflex(vselect sapply(f, {s}) 
+                        from Stream s 
+                        where s in vs, opt)
+       and i in iota(0, fanout - 1)
+       and fanout = default(bagof(opt['nsub']), 1);
+
+create function mapflexv(Vector of Vector vs, Function f, Record opt)
+                       -> Vector of Stream
+  as vselect ostream(p, 0)
+     from Sp p
+     where p in spvflex((vselect sapply(f, s) 
+                         from Vector s 
+                         where s in vs), opt);
+
+/* mergestreams: based on conventional uall */
+
+create function mergestreams(Vector of Stream sv) -> Stream
+  as select suall(v)
+     from Vector of Sp v
+     where v = (vselect spov(s) 
+                from Stream s 
+                where s in sv);
+
+/* mergestreamsr is based on random uall (uallr) */
+
+create function mergestreamsr(Vector of Stream sv) -> Stream
+  as select suallr(v)
+     from Vector of Sp v
+     where v = (vselect spov(s)  
+                from Stream s 
+                where s in sv);
+
+/* comerge: mergestreams using coroutines */
+
+create function comerge(Vector of Stream sv, Real timeout) -> Stream
+  as streamof(select couall(v, timeout)
+              from Vector of Sp v
+              where v = (vselect spov(s) 
+                         from Stream s
+                         where s in sv));
+
+/* bgmerge: mergestreams using bg recv t */
+
+create function bgmerge(Vector of Stream sv, Real timeout) -> Stream
+  as streamof(select bguall(v, timeout)
+              from Vector of Sp v
+              where v = (vselect spov(s) 
+                         from Stream s 
+                         where s in sv));
+
+/* zipstreams */
+
+create function zipstreams(Vector of Stream sv) -> Stream of Vector
+  as select streamof(zip(v))
+     from Vector of Sp v
+     where v = (vselect spov(s) 
+                from Stream s 
+                where s in sv);
+
+create function zipstreamsm(Vector of Stream sv, Integer nasize)
+                          -> Stream of Vector
+  as select streamof(zipmulti(v, nasize))
+     from Vector of Sp v
+     where v = (vselect spov(s) 
+                from Stream s 
+                where s in sv);
+
+/* lzipstreams: Atomic read */
+
+create function lzipstreams(Vector of Stream sv) -> Stream of Vector
+  as select streamof(lzip(v))
+     from Vector of Sp v
+     where v = (vselect spov(s) 
+                from Stream s 
+                where s in sv);
+
+create function lzipstreamsm(Vector of Stream sv, Integer nasize)
+                           -> Stream of Vector
+  as select streamof(lzipmulti(v, nasize))
+     from Vector of Sp v
+     where v = (vselect spov(s) 
+                from Stream s 
+                where s in sv);
+
+/* ziptree: 2-level zipstream tree, root level having fi fan-in */
+
+create function ziptree(Vector of Stream src, Integer fi) -> Stream
+  as select zipstreams(part)
+     from Vector of Vector of Stream chopped,
+          Vector of Stream part
+     where part = vectorize(select i, ostream(newsp(zipstreams(v)), 0)
+                            from Vector of Stream v, Integer i
+                            where v = chopped[i])
+       and chopped = chopvector(src, fi);
+
+/* ziplayer: One level in a zipstream tree. nout = num of output streams */
+
+create function ziplayer(Vector of Stream src, Integer nout)
+                       -> Vector of Stream
+  as select outputs
+     from Vector of Vector of Stream chopped,
+          Vector of Stream outputs
+     where outputs = vectorize(select i, ostream(newsp(zipstreams(v)), 0)
+                               from Vector of Stream v, Integer i
+                               where v = chopped[i])
+       and chopped = chopvector(src, nout);
+
+/* zipmaplayer: Apply function fn on each zipstream in the layer */
+
+create function zipmaplayer(Vector of Stream src, Integer nout, Function fn)
+                          -> Vector of Stream 
+  as select mapstreams(streams, fn)
+     from Vector of Vector of Stream chopped, Vector of Stream streams
+     where streams = vectorize(select i, zipstreams(v)
+                               from Vector of Stream v, Integer i
+                               where v = chopped[i])
+       and chopped = chopvector(src, nout);
+
+/* zipmlayer, zipmmaplayer: unpack multiarrays into numarrays of dim nasize */
+
+create function zipmlayer(Vector of Stream src, Integer nout, Integer nasize)
+                        -> Vector of Stream
+  as select outputs
+     from Vector of Vector of Stream chopped,
+          Vector of Stream outputs
+     where outputs = vectorize(select i, ostream(newsp(zipstreamsm(v, nasize)),
+                                                 0)
+                               from Vector of Stream v, Integer i
+                               where v = chopped[i])
+       and chopped = chopvector(src, nout);
+
+create function zipmmaplayer(Vector of Stream src, Integer nout,
+                             Integer nasize, Function fn) -> Vector of Stream
+  as select mapstreams(streams, fn)
+     from Vector of Vector of Stream chopped, Vector of Stream streams
+     where streams = vectorize(select i, zipstreamsm(v, nasize)
+                               from Vector of Stream v, Integer i
+                               where v = chopped[i])
+       and chopped = chopvector(src, nout);
+
+/* zipmaplayerm, zipmmaplayerm: multiarray output tuples of size masize */
+
+create function zipmaplayerm(Vector of Stream src, Integer nout, Function fn,
+                             Integer masize)
+                           -> Vector of Stream
+  as select mapflex(streams, fn, {'na2m':{'ma-size': masize}})
+     from vector of vector of stream chopped, vector of stream streams
+     where streams = vectorize(select i, zipstreams(v)
+                               from Vector of Stream v, Integer i
+                               where v = chopped[i])
+       and chopped = chopvector(src, nout);
+
+create function zipmmaplayerm(Vector of Stream src, Integer nout,
+                              Integer nasize, Function fn, Integer masize)
+                            -> Vector of Stream
+  as select mapflex(streams, fn, {'na2m': {'ma-size': masize}})
+     from Vector of Vector of Stream chopped, Vector of Stream streams
+     where streams = vectorize(select i, zipstreamsm(v, nasize)
+                               from Vector of Stream v, Integer i
+                               where v = chopped[i])
+       and chopped = chopvector(src, nout);
+
+/* Atomic zipmmaplayer */
+
+create function lzipmmaplayer(Vector of Stream src, Integer nout,
+                              Integer nasize, Function fn) -> Vector of Stream
+  as select mapstreams(streams, fn)
+     from Vector of Vector of Stream chopped, Vector of Stream streams
+     where streams = vectorize(select i, lzipstreamsm(v, nasize)
+                               from Vector of Stream v, Integer i
+                               where v = chopped[i])
+       and chopped = chopvector(src, nout);
+
+create function lzipmmaplayerm(Vector of Stream src, Integer nout,
+                               Integer nasize, Function fn, Integer masize)
+                             -> Vector of Stream
+  as select mapflex(streams, fn, {'na2m': {'ma-size': masize}})
+     from Vector of Vector of Stream chopped, Vector of Stream streams
+     where streams = vectorize(select i, lzipstreamsm(v, nasize)
+                               from Vector of Stream v, Integer i
+                               where v = chopped[i])
+       and chopped = chopvector(src, nout);
+
+create function pzipmmaplayerm(Vector of Vector of Stream src, Integer nout,
+                               Integer nasize, Function fn, Integer masize)
+                             -> Vector of Vector of Stream
+  as vectorize(select i, zipmmaplayerm(src[i], nout, nasize, fn, masize) 
+               from Integer i);
+
+/* pzipmapm: Parallel zipstreams, multiarray output */
+
+create function pzipmapm(Vector of Vector of Stream src, Function fn,
+                         Integer masize) -> Vector of Stream
+as vectorize(select i, z
+             from Integer i, Vector of Vector of Stream vs, Stream z
+             where vs = transpose(src)
+               and i in iota(0, dim(src)-1)
+               and z = zipmaplayerm(vs[i], 1, fn, masize)[0]);
+
+/* pzipmmapm: Parallel zipstreams, multiarray input + output */
+
+create function pzipmmapm(Vector of Vector of Stream src, Integer nasize,
+                          Function fn, Integer masize) -> Vector of Stream
+ as vectorize(select i, z
+              from Integer i, Vector of Vector of Stream vs, Stream z
+              where vs = transpose(src)
+                and i in iota(0, dim(src)-1)
+                and z = zipmmaplayerm(vs[i], 1, nasize, fn, masize)[0]);
+
+/* pxzipmmaplayerm: Parallel zipstream layer
+   (1) Transpose the input vector of vector of stream
+   (2) zipmmaplayerm on the transposed vector of vector of stream */
+
+create function pxzipmmaplayerm(Vector of Vector of Stream src, Integer nout,
+                                Integer nasize, Function fn, Integer masize)
+                              -> Vector of Vector of Stream
+  as vectorize(select i, z
+               from Integer i, Vector of Vector of Stream vs, 
+                    Vector of Stream z
+               where vs = transpose(src)
+                 and i in iota(0, dim(src)-1)
+                 and z = zipmmaplayerm(vs[i], nout, nasize, fn, masize));
+
+/* smjstreamsv: Parallel Sort Merge Join on vectors */
+
+create function smjstreamsv(Vector of Stream sv, Integer attrib)
+                          -> Stream of Vector
+  as select streamof(smj(v, attrib))
+     from Vector of Sp v
+     where v = (vselect spov(s) 
+                from Stream s 
+                where s in sv);
+
+/* smjstreamsna: Parallel Sort Merge Join on numarrays */
+
+create function smjstreamsna(Vector of Stream sv, Integer attrib)
+                           -> Stream of Numarray
+  as select streamof(smjna(v, attrib))
+     from Vector of Sp v
+     where v = (vselect spov(s) 
+                from Stream s 
+                where s in sv);
+
+create function smjstreamsnal(Vector of Stream sv, Integer attrib)
+                            -> Stream of Numarray
+  as select streamof(smjnal(v, attrib))
+     from Vector of Sp v
+     where v = (vselect spov(s) 
+                from Stream s 
+                where s in sv);
+
+
+/* exestreams: execute a vector of streams in a vector of stream processes */
+
+create function exestreams(Vector of Stream sv) -> Vector of Stream
+  as vselect streamof(p)
+     from Vector of Sp proc, Sp p
+     where proc = spv(sv)
+       and p in proc;
+
+
+/* Source and sink */
+
+create function source(Stream s) -> Stream
+  as ostream(newsp(s), 0);
+
+create function sourceflex(Stream s, Record r) -> Stream
+  as ostream(newspflex(s, r), 0);
+
+create function sink(Stream s, Function f, Vector argv) -> Object
+  as in(ostream(newsp(sapply(f, concat(argv, {s}))), 0));
+
+create function writestream(Stream s, Charstring filename) -> Object
+  as sink(s, #'writefile', {filename});
+
+/* The functions below are simple examples of functions returning streams.
+   They are used in the SCSQL regression tests. */
+
+create function addconst() -> Integer;
+set addconst() = 5;
+
+create function saddconst(Stream of Integer a) -> Stream of Integer
+  as streamof(in(a) + addconst());
+
+create function sadd(Stream of Integer a, Integer term) -> Stream of Integer
+  as streamof(in(a) + term);
+
+create function svadd(Stream of Vector a, Number term) -> Stream of Vector
+  as streamof(select w 
+              from Vector w, Vector v
+              where w = (vselect j + term 
+                         from Number j 
+                         where j in v)
+                and v in a);
+
+create function scount(Stream s) -> Stream
+  as streamof(count(in(s)));
+
+create function dummystream(Stream s) -> Boolean
+  as select true
+     from Integer i
+     where i = sink(s, #'stream.scount->stream', {});
+
+create function nmin(Number i, Number j) -> Number
+  as select k 
+     from Number k 
+     where k = min(i,j);
+
+/* proute is a generic routing function used for stream splitting on an
+   attribute. Useful when generating splitstream trees. */
+
+create function proute(Iarray v, Integer fo, Integer attrib, Integer level)
+                     -> (Integer i, Iarray)
+  as select i, v
+     where i = mod(floor(v[attrib] / level), fo);
+
+/* hsplitstream generates a node in a splitstream tree.
+   Two variants, different signatures: rfn+bfn or sfn. */
+
+create function hsplitstream(Stream s, Function rfn, Function bfn, Integer w,
+                             Integer attrib, Integer level)
+                           -> Vector of Stream
+  as splitflexra(s, w, rfn, bfn, {attrib, level}, make_record({}));
+
+create function hsplitstream(Stream s, Function sfn, Integer w,
+                             Integer attrib, Integer level)
+                           -> Vector of Stream
+  as splitflexra(s, w, sfn, {attrib, level}, make_record({}));
+
+/* hprec: Recursively generate a splitstream tree */
+
+create function hprec(Stream s, Function sfn, Integer w, Integer fo,
+                      Integer attrib, Integer div)
+                    -> Vector of Stream
+ as begin
+    if (w <= fo) then return hsplitstream(s, sfn, w, attrib, div)
+    else begin
+         declare vector of stream sv0, real wprime;
+         set wprime = w/fo;
+         set sv0 = hsplitstream(s, sfn, fo, attrib, div);
+         return vselect so 
+                from Stream so, Integer i
+                where so in hprec(sv0[i], sfn, 
+                                  integer(nmin(w - i*wprime, wprime)), fo, 
+                                  attrib, integer(fo*div))
+                  and i in iota(0, fo - 1);
+         end;
+    end;
+
+/* hpartstream: Generate a splitstream tree by calling hprec at root node */
+
+create function hpartstream(Stream s, Function sfn, Integer w, Integer fo,
+                            Integer attrib) -> Vector of Stream
+  as hprec(s, sfn, w, fo, attrib, 1);
+
+/* genwprime: Compute fanout in each hprecv node */
+
+create function genwprime(Integer targetfo, Integer fo) -> Vector of Integer
+  as begin
+     declare Vector of Integer wprime;
+     set wprime = {};
+     for each Integer i 
+         where i in iota(0, fo - 1)
+       set wprime = concat(wprime, 
+                           {ceiling((targetfo - sum(in(wprime)))/(fo-i))});
+     return wprime;
+     end;
+
+/* hprecv: Recursively generate a splitstream tree with user defined fanouts */
+
+create function hprecv(Stream s, Function sfn, Integer w,
+                       Vector of Integer fo, Integer attrib, Integer cufo)
+                     -> Vector of Stream
+  as begin
+     if (w <= fo[0]) then return hsplitstream(s, sfn, w, attrib, cufo)
+     else begin
+          declare Vector of Stream sv0, Vector of Stream res, 
+                  Vector of Integer wprime;
+          set sv0 = hsplitstream(s, sfn, fo[0], attrib, cufo);
+          set wprime = genwprime(w, fo[0]);
+          set res = {};
+          for each Integer i 
+              where i in iota(0, fo[0] - 1)
+            set res = concat(res, hprecv(sv0[i], sfn, wprime[i], 
+                             (vselect fo[i] 
+                              from Integer i 
+                              where i>0), 
+                             attrib, integer(fo[0]*cufo)));
+         return res
+         end;
+     end;
+
+/* hpartstreamv: User defined fanout at each level */
+
+create function hpartstreamv(Stream s, Function sfn, Integer w, 
+                             Vector of Integer fo, Integer attrib)
+                           -> Vector of Stream
+  as hprecv(s, sfn, w, fo, attrib, 1);
+
+/* rbhprecv: like hprecv but with rfn+bfn instead of sfn */
+
+create function rbhprecv(Stream s, Function rfn, Function bfn, Integer w,
+                         Vector of Integer fo, Integer attrib, Integer cufo)
+                       -> Vector of Stream
+  as begin
+     if (w <= fo[0]) then return hsplitstream(s, rfn, bfn, w, attrib, cufo)
+     else begin
+          declare vector of stream sv0, vector of stream res, 
+                  vector of integer wprime;
+          set sv0 = hsplitstream(s, rfn, bfn, fo[0], attrib, cufo);
+          set wprime = genwprime(w, fo[0]);
+          set res = {};
+          for each integer i 
+              where i in iota(0, integer(fo[0] - 1))
+            set res = concat(res, rbhprecv(sv0[i], rfn, bfn, wprime[i], 
+                             (vselect fo[i] 
+                              from Integer i  
+                              where i>0), 
+                             attrib, integer(fo[0]*cufo)));
+          return res
+          end;
+     end;
+
+/* rbhpartstreamv: like hpartstreamv but with rfn+bfn instead of sfn */
+
+create function rbhpartstreamv(Stream s, Function rfn, Function bfn,
+                               Integer w, Vector of Integer fo, Integer attrib)
+                             -> Vector of Stream
+  as rbhprecv(s, rfn, bfn, w, fo, attrib, 1);
+
+/* zipstream trees below */
+
+/* vziprec is for testing of the recursion */
+
+create function vziprec(Vector w, Integer maxfi) -> Vector
+  as begin
+     if (dim(w) <= maxfi) then return(w)
+     else begin
+          declare vector chopped, vector resv, integer chops;
+          set resv = {};
+          set chops = min(ceiling(dim(w)/maxfi), maxfi);
+          print({"chops=", chops});
+          set chopped = chopvector(w, chops);
+          for each vector ch 
+              where ch in chopped
+            set resv = concat(resv, {vziprec(ch, maxfi)});
+          return resv;
+          end;
+     end;
+
+/* Create a set of stream sources for testing */
+
+create function srces(Integer w) -> Vector of Stream
+  as vectorize(select i, 
+                      ostream(newsp(siota(integer(i + 100), 
+                                          integer(i + 105))),
+                                    0)
+               from Integer i 
+               where i in iota(0, w-1));
+
+/* ziprec: Recursively zipstreams tree. No zipstreams has higher fan-in than 
+           maxfi. */
+
+create function ziprec(Vector of Stream w, Integer maxfi) -> Stream
+  as begin
+     if (dim(w) <= maxfi) then return ostream(newsp(zipstreams(w)), 0)
+     else begin
+          declare vector of vector of stream chopped, vector of stream resv,
+                  integer chops;
+          set resv = {};
+          set chops = min(ceiling(dim(w)/maxfi), maxfi);
+          print({"chops=", chops});
+          set chopped = chopvector(w, chops);
+          for each vector ch 
+              where ch in chopped
+            set resv = concat(resv, {ziprec(cast(ch as vector of stream), 
+                                            maxfi)});
+          return ostream(newsp(zipstreams(resv)), 0);
+          end;
+     end;
+
+/* zipmmaprecm: Apply fn at each zipstreams. Multiarrays of masize are
+                transferred inside and outside of the tree. */
+
+create function zipmmaprecm(Vector of Stream w, Integer maxfi, Integer nasize, 
+                            Integer masize, Function fn)
+                          -> Stream of Vector
+  as begin
+     if (dim(w) <= maxfi) 
+       then return ostream(newspflex(sapply(fn, {zipstreamsm(w, nasize)}), 
+                                     {'na2m': {'ma-size': masize}}),
+                           0)
+       else begin
+            declare Vector of Vector of Stream chopped, Vector of Stream resv,
+                    Integer chops;
+            set resv = {};
+            set chops = min(ceiling(dim(w)/maxfi), maxfi);
+            set chopped = chopvector(w, chops);
+            for each vector ch where ch in chopped 
+                set resv = concat(resv, 
+                                  {zipmmaprecm(cast(ch as vector of stream), 
+                                               maxfi, nasize, masize, fn)});
+            return ostream(newspflex(sapply(fn, {zipstreamsm(resv, nasize)}),
+                                     {'na2m': {'ma-size': masize}}),
+                           0);
+           end;
+     end;
+
+/* bcast: Broadcast sfn */
+
+create function bcast(Object o, Integer fanout) -> (Integer output, Object)
+  as select output, o
+      where output in iota(0, fanout - 1);
+
+/* sids(): id() for streams */
+
+create function sids(Stream s) -> Stream as s;
+
+lisp;
+
+(set-resulttypesfn 
+ (getfunctionnamed  'STREAM.INTEGER.FUNCTION.SPLITSTREAM->VECTOR-STREAM)
+ 'newsp-resulttypes)
+
+:osql
+
+create function dribble(Charstring directory)->Charstring 
+  as foreign "dribble-+";
+
+create function scsqProfile(Charstring dir)->Charstring
+  as foreign 'scsq-profile';

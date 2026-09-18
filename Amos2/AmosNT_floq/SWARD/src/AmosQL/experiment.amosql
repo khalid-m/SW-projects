@@ -1,0 +1,42 @@
+ /*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2006 Johan Petrini UDBL
+ * $RCSfile: experiment.amosql,v $
+ * $Revision: 1.14 $ $Date: 2012/05/16 17:31:32 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Definition of fns used for scalability experiments in SWARD system.
+ ****************************************************************************/
+create function mkTblVector(Integer nofTbls)->Charstring v
+as
+ for each Integer i where i in iota(1,nofTbls)
+ begin
+  return "t" + itoa(i);
+ end;
+
+create function genPMap(Vector tns,
+			Charstring upv)->Boolean 
+as
+ begin
+  for each Charstring tn where tn in tns
+  begin
+   for each Charstring cn,Charstring tp 
+    where (tp,cn) in columns(JDBCOfDS(DSOfUPV(upv)),tn)
+   begin
+    eval("assignPropID('" + upper(tn) +"','" + upper(cn) + "',
+          '" + upv + "','http://upv.com/schemas/sq#" + lower(tn) + "." + lower(cn) + "');");
+   end;
+  end;
+ end;
+
+create function genCMap(Vector tns,
+			Charstring upv)->Boolean 
+as
+ begin
+  for each Charstring tn where tn in tns
+  begin
+   eval("assignClassID('" + upper(tn) +"','" + upv + "',
+        	'http://udbl.it.uu.se/schemas/sq#" + tn + "');");
+  end;
+ end;

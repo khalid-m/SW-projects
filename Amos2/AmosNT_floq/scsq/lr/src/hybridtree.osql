@@ -1,0 +1,72 @@
+logging off;
+create function lroutput()->vector;
+create function datafile()->charstring;
+create function timer()->real;
+create function v()->vector of vector of vector;
+create function expected()->vector;
+create function exp_long()->vector;
+create function filecount()->integer;
+
+/*set datafile() = getenv('AMOS_HOME') + '/scsq/lr/data/c10-20k';*/
+set datafile() = getenv('HOME') + '/c10-200k';
+set expected() = {232,20594,20688,20695,20702,20711,20797,20812,20813,20828,
+                  21178};
+set filecount() = 200000;
+set exp_long() ={232,981,981,981,981,981,981,981,981,981,981,981,981,981,981,
+                 20594,20688,20695,20702,20711,20797,20812,20813,20828,21178};
+
+
+set datafile() = getenv('HOME') + '/c10-1M';
+set expected() = {1015,103434,103476,103485,103532,103859,104330,104339,104358,
+                  104382,105190};
+set filecount() = 1000000;
+set exp_long() = {1015,5044,5044,5044,5044,5044,5044,5044,5044,5044,5044,5044,
+                  5044,5044,5044,103434,103476,103485,103532,103859,104330,
+                  104339,104358,104382,105190};
+
+lisp;
+;"
+
+(checkequal "rr(2)"
+((osql "set v() = vselect in(zipstreams(p))
+from integer f, vector of stream t1, vector of stream p, vector of stream part
+where p = mapstreams(part[i], #'tscount')
+and part = splitstreams(t1, 10 + 1, #'dxpartition')
+and t1 = splitstream(streamagg(lreadfast(datafile(), 10), f, f), f, #'rr')
+and f = 2;
+print({'time: ', maxagg(select cast(v()[2][i] as vector of real)[0]
+-cast(v()[0][i] as vector of real)[0] from integer i)});
+sort(in(in(v()[1])));")
+(osql "vselect floor(filecount()/f) from integer i, integer f 
+where i in iota(1,f)
+and f = 2;")))
+
+(checkequal "rr(2)"
+((osql "set v() = vselect in(zipstreams(p))
+from integer f, vector of stream t1, vector of stream p, vector of stream part
+where p = mapstreams(vselect mergestreams({part[i], part[i+1]}) from integer i
+where i in 2*iota(0, dim(part)/2), #'tscount')
+and part = splitstreams(t1, 10 + 1, #'dxpartition')
+and t1 = splitstream(streamagg(lreadfast(datafile(), 10), f, f), f, #'rr')
+and f = 2;
+print({'time: ', maxagg(select cast(v()[2][i] as vector of real)[0]
+-cast(v()[0][i] as vector of real)[0] from integer i)});
+sort(in(in(v()[1])));")
+(osql "vselect floor(filecount()/f) from integer i, integer f 
+where i in iota(1,f)
+and f = 2;")))
+
+(checkequal "rr(2+2)"
+((osql "set v() = vselect in(zipstreams(p))
+from integer f, vector of stream t1, vector of stream t2, vector of stream p
+where p = mapstreams(t2, #'tscount')
+and t1 = splitstream(streamagg(lreadfast(datafile(), 10), f, f), f, #'rr')
+and t2 = (vselect so from stream so, stream s 
+where s in t1 and so in splitstream(streamagg(s, f, f), f, #'rr'))
+and f = 2;
+print({'time: ', maxagg(select cast(v()[2][i] as vector of real)[0]
+                -cast(v()[0][i] as vector of real)[0] from integer i)});
+sort(in(in(v()[1])));")
+(osql "vselect floor(filecount()/f) from integer i, integer f 
+where i in iota(1,f)
+and f = 4;")))

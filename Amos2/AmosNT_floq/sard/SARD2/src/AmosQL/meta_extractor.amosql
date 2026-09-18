@@ -1,0 +1,313 @@
+
+create function schemaq1(Charstring upv)->Boolean
+as 
+ begin
+  eval("create function schemaq1_"+upv+"()->(Charstring, Charstring, Charstring)
+	as
+ select distinct _ss_, _pp_, _oo_
+ from Charstring size1, Charstring a1, Charstring tabclass, Charstring pk, Charstring range, Charstring xml_range1, Charstring size, Charstring ret_prop, Charstring tn, Charstring cn, Charstring _ss_, Charstring _pp_, Charstring _oo_
+ where store_prop(ret_prop )=true and pMap(tn,cn, '"+upv+"')=ret_proptabclass, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/2000/01/rdf-schema#Class') in s"+upv+"()
+ and (tabclass, 'http://user.it.uu.se/~udbl/sard#PRIMARY_KEY', pk) in s"+upv+"()
+ and (pk, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq') in s"+upv+"()
+ and (pk, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#_1', a1) in s"+upv+"()
+ and (a1, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property') in s"+upv+"()
+ and (ret_prop, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property') in 
+	s"+upv+"()
+ and (ret_prop, 'http://www.w3.org/2000/01/rdf-schema#domain', tabclass) in s"+upv+"()
+ and (ret_prop, 'http://www.w3.org/2000/01/rdf-schema#range', range) in s"+upv+"()
+ and (tabclass, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/2000/01/rdf-schema#Class') in s"+upv+"()
+ and (tabclass, 'http://user.it.uu.se/~udbl/sard#PRIMARY_KEY', pk) in s"+upv+"()
+ and (pk, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq') in s"+upv+"()
+ and (pk, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#_1', a1) in s"+upv+"()
+ and (a1, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property') in s"+upv+"()
+ and (a1, 'http://www.w3.org/2000/01/rdf-schema#domain', tabclass) in s"+upv+"()
+ and (a1, 'http://www.w3.org/2000/01/rdf-schema#range', xml_range1) in s"+upv+"()
+ and (a1, 'http://user.it.uu.se/~udbl/sard#size', size1) in s"+upv+"()
+and size=optional0((select size_o
+                     from Charstring size_o
+                     where (ret_prop, 'http://user.it.uu.se/~udbl/sard#size', size_o) in  s"+upv+"() ),'')
+      and ((_ss_ = ret_prop and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and _oo_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property')
+        or (_ss_ = ret_prop and _pp_ = 'http://www.w3.org/2000/01/rdf-schema#domain' and _oo_ = tabclass)
+        or (_ss_ = ret_prop and _pp_ = 'http://www.w3.org/2000/01/rdf-schema#range' and _oo_ = range)
+        or (_ss_ = ret_prop and _pp_ = 'http://user.it.uu.se/~udbl/sard#size' and _oo_ = size )
+ 	or (_ss_ = tabclass and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and _oo_ = 'http://www.w3.org/2000/01/rdf-schema#Class')
+        or (_ss_ = tabclass and _pp_ = 'http://user.it.uu.se/~udbl/sard#PRIMARY_KEY' and _oo_ = pk)
+        or (_ss_ = pk and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and _oo_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq')
+        or (_ss_ = pk and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#_1' and _oo_ = a1)
+        or (_ss_ = a1 and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and _oo_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property')
+        or (_ss_ = a1 and _pp_ = 'http://www.w3.org/2000/01/rdf-schema#domain' and _oo_ = tabclass)
+        or (_ss_ = a1 and _pp_ = 'http://www.w3.org/2000/01/rdf-schema#range' and _oo_ = xml_range1)
+        or (_ss_ = a1 and _pp_ = 'http://user.it.uu.se/~udbl/sard#size' and _oo_ = size1)); ");
+  end;
+
+
+
+create function schemaq2(Charstring upv)->Boolean
+as 
+ begin
+  eval("create function schemaq2_"+upv+"()->(Charstring, Charstring, Charstring)
+	as
+select _ss_, _pp_, _oo_
+  from Charstring xml_range1, Charstring xml_range3, Charstring xml_range2, Charstring ak, Charstring size, Charstring tabclass1, Charstring pk1, Charstring bk, Charstring pk, Charstring tabclass, Charstring a1, Charstring size1, Charstring ret_prop, Charstring tn1, Charstring tn2, Charstring _ss_, Charstring _pp_, Charstring _oo_
+ where  store_prop(ret_prop)=true and rcMap(tn1,tn2,'"+upv+"')=ret_prop
+ and (ret_prop, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property') in s"+upv+"()
+   and (ret_prop, 'http://www.w3.org/2000/01/rdf-schema#domain', tabclass) in s"+upv+"()
+   and (ret_prop, 'http://www.w3.org/2000/01/rdf-schema#range', tabclass1) in s"+upv+"()
+   and (ret_prop, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq') in s"+upv+"()
+   and (ret_prop, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#_1', ak) in s"+upv+"()
+   and (tabclass, 'http://user.it.uu.se/~udbl/sard#FOREIGN_KEY', ret_prop) in s"+upv+"()
+   and (ak, 'http://user.it.uu.se/~udbl/sard#REFERENCES', bk) in s"+upv+"()
+   and (ak, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property') in s"+upv+"()
+   and (ak, 'http://www.w3.org/2000/01/rdf-schema#domain', tabclass) in s"+upv+"()
+   and (ak, 'http://www.w3.org/2000/01/rdf-schema#range', xml_range2) in s"+upv+"()
+   and (ak, 'http://user.it.uu.se/~udbl/sard#size', size) in s"+upv+"()
+   and (bk, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property') in s"+upv+"()
+   and (bk, 'http://www.w3.org/2000/01/rdf-schema#domain', tabclass1) in s"+upv+"()
+   and (bk, 'http://www.w3.org/2000/01/rdf-schema#range', xml_range3) in s"+upv+"()
+   and (bk, 'http://user.it.uu.se/~udbl/sard#size', size) in s"+upv+"()
+   and (tabclass1, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/2000/01/rdf-schema#Class') in s"+upv+"()
+   and (tabclass1, 'http://user.it.uu.se/~udbl/sard#PRIMARY_KEY', pk1) in s"+upv+"()
+   and (pk1, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq') in s"+upv+"()
+   and (pk1, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#_1', bk) in s"+upv+"()
+   and (tabclass, 'http://user.it.uu.se/~udbl/sard#PRIMARY_KEY', pk) in s"+upv+"()
+   and (tabclass, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/2000/01/rdf-schema#Class') in s"+upv+"()
+   and (pk, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq') in s"+upv+"()
+   and (pk, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#_1', a1) in s"+upv+"()
+   and (a1, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property') in s"+upv+"()
+   and (a1, 'http://www.w3.org/2000/01/rdf-schema#domain', tabclass) in s"+upv+"()
+   and (a1, 'http://www.w3.org/2000/01/rdf-schema#range', xml_range1) in s"+upv+"()
+   and (a1, 'http://user.it.uu.se/~udbl/sard#size', size1) in s"+upv+"()
+      and ((_ss_ = ret_prop and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and _oo_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property')
+        or (_ss_ = ret_prop and _pp_ = 'http://www.w3.org/2000/01/rdf-schema#domain' and _oo_ = tabclass)
+        or (_ss_ = ret_prop and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#range' and _oo_ = tabclass1)
+        or (_ss_ = ret_prop and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and _oo_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq')
+        or (_ss_ = ret_prop and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#_1' and _oo_ = ak)
+        or (_ss_ = tabclass and _pp_ = 'http://user.it.uu.se/~udbl/sard#FOREIGN_KEY' and _oo_ = ret_prop)
+        or (_ss_ = ak and _pp_ = 'http://user.it.uu.se/~udbl/sard#REFERENCES' and _oo_ = bk)
+        or (_ss_ = ak and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and _oo_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property')
+        or (_ss_ = ak and _pp_ = 'http://www.w3.org/2000/01/rdf-schema#domain' and _oo_ = tabclass)
+        or (_ss_ = ak and _pp_ = 'http://www.w3.org/2000/01/rdf-schema#range' and _oo_ = xml_range2)
+        or (_ss_ = ak and _pp_ = 'http://user.it.uu.se/~udbl/sard#size' and _oo_ = size)
+        or (_ss_ = bk and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and _oo_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property')
+        or (_ss_ = bk and _pp_ = 'http://www.w3.org/2000/01/rdf-schema#domain' and _oo_ = tabclass1)
+        or (_ss_ = bk and _pp_ = 'http://www.w3.org/2000/01/rdf-schema#range' and _oo_ = xml_range3)
+        or (_ss_ = bk and _pp_ = 'http://user.it.uu.se/~udbl/sard#size' and _oo_ = size)
+        or (_ss_ = tabclass1 and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and _oo_ = 'http://www.w3.org/2000/01/rdf-schema#Class')
+        or (_ss_ = tabclass1 and _pp_ = 'http://user.it.uu.se/~udbl/sard#PRIMARY_KEY' and _oo_ = pk1)
+        or (_ss_ = pk1 and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and _oo_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq')
+        or (_ss_ = pk1 and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#_1' and _oo_ = bk)
+        or (_ss_ = tabclass and _pp_ = 'http://user.it.uu.se/~udbl/sard#PRIMARY_KEY' and _oo_ = pk)
+        or (_ss_ = tabclass and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and _oo_ = 'http://www.w3.org/2000/01/rdf-schema#Class')
+        or (_ss_ = pk and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and _oo_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq')
+        or (_ss_ = pk and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#_1' and _oo_ = a1)
+        or (_ss_ = a1 and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and _oo_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property')
+        or (_ss_ = a1 and _pp_ = 'http://www.w3.org/2000/01/rdf-schema#domain' and _oo_ = tabclass)
+        or (_ss_ = a1 and _pp_ = 'http://www.w3.org/2000/01/rdf-schema#range' and _oo_ = xml_range1)
+        or (_ss_ = a1 and _pp_ = 'http://user.it.uu.se/~udbl/sard#size' and _oo_ = size1)); ");
+   end;
+
+
+create function schemaq3(Charstring upv)->Boolean
+as 
+ begin
+  eval("create function schemaq3_"+upv+"()->(Charstring, Charstring, Charstring)
+  as select _ss_, _pp_, _oo_
+  from Charstring size1, Charstring a1, Charstring tabclass1, Charstring pk1, Charstring tabclass, Charstring pk, Charstring xml_range1, Charstring xml_range2, Charstring b1, Charstring size2, Charstring ret_prop,  Charstring tn,Charstring tn1, Charstring tn2, Vector of Charstring ta1,Vector of Charstring ta2, Charstring _ss_, Charstring _pp_, Charstring _oo_
+ where store_prop(ret_prop)=true and rmmMap(tn,ta1,ta2,tn1,tn2,'"+upv+"')=ret_prop
+ and (ret_prop, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property') in s"+upv+"()
+   and (ret_prop, 'http://www.w3.org/2000/01/rdf-schema#domain', tabclass) in s"+upv+"()
+   and (ret_prop, 'http://www.w3.org/2000/01/rdf-schema#range', tabclass1) in s"+upv+"()
+   and (tabclass, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/2000/01/rdf-schema#Class') in s"+upv+"()
+   and (tabclass, 'http://user.it.uu.se/~udbl/sard#PRIMARY_KEY', pk) in s"+upv+"()
+   and (pk, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq') in s"+upv+"()
+   and (pk, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#_1', a1) in s"+upv+"()
+   and (a1, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property') in s"+upv+"()
+   and (a1, 'http://www.w3.org/2000/01/rdf-schema#domain', tabclass) in s"+upv+"()
+   and (a1, 'http://www.w3.org/2000/01/rdf-schema#range', xml_range1) in s"+upv+"()
+   and (tabclass1, 'http://user.it.uu.se/~udbl/sard#PRIMARY_KEY', pk1) in s"+upv+"()
+   and (pk1, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq') in s"+upv+"()
+   and (pk1, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#_1', b1) in s"+upv+"()
+   and (b1, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property') in s"+upv+"()
+   and (b1, 'http://www.w3.org/2000/01/rdf-schema#domain', tabclass1) in s"+upv+"()
+   and (b1, 'http://www.w3.org/2000/01/rdf-schema#range', xml_range2) in s"+upv+"()
+   and size1=optional0((select size1_o from Charstring size1_o
+                        where (a1, 'http://user.it.uu.se/~udbl/sard#size', size1_o) in s"+upv+"() ),'')
+   and size2=optional0((select size2_o
+                         from Charstring size2_o where (b1, 'http://user.it.uu.se/~udbl/sard#size', size2_o) in s"+upv+"() ),'')
+      and ((_ss_ = ret_prop and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and _oo_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property')
+        or (_ss_ = ret_prop and _pp_ = 'http://www.w3.org/2000/01/rdf-schema#domain' and _oo_ = tabclass)
+        or (_ss_ = ret_prop and _pp_ = 'http://www.w3.org/2000/01/rdf-schema#range' and _oo_ = tabclass1)
+        or (_ss_ = tabclass and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and _oo_ = 'http://www.w3.org/2000/01/rdf-schema#Class')
+        or (_ss_ = tabclass1 and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and _oo_ = 'http://www.w3.org/2000/01/rdf-schema#Class')
+        or (_ss_ = tabclass and _pp_ = 'http://user.it.uu.se/~udbl/sard#PRIMARY_KEY' and _oo_ = pk)
+        or (_ss_ = pk and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and _oo_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq')
+        or (_ss_ = pk and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#_1' and _oo_ = a1)
+        or (_ss_ = a1 and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and _oo_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property')
+        or (_ss_ = a1 and _pp_ = 'http://www.w3.org/2000/01/rdf-schema#domain' and _oo_ = tabclass)
+        or (_ss_ = a1 and _pp_ = 'http://www.w3.org/2000/01/rdf-schema#range' and _oo_ = xml_range1)
+        or (_ss_ = tabclass1 and _pp_ = 'http://user.it.uu.se/~udbl/sard#PRIMARY_KEY' and _oo_ = pk1)
+        or (_ss_ = pk1 and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and _oo_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq')
+        or (_ss_ = pk1 and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#_1' and _oo_ = b1)
+        or (_ss_ = b1 and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and _oo_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property')
+        or (_ss_ = b1 and _pp_ = 'http://www.w3.org/2000/01/rdf-schema#domain' and _oo_ = tabclass1)
+        or (_ss_ = b1 and _pp_ = 'http://www.w3.org/2000/01/rdf-schema#range' and _oo_ = xml_range2)
+        or (_ss_ = a1 and _pp_ = 'http://user.it.uu.se/~udbl/sard#size' and _oo_ = size1 )
+        or (_ss_ = b1 and _pp_ = 'http://user.it.uu.se/~udbl/sard#size' and _oo_ = size2 ));");
+ end ;
+
+
+
+
+create function schemaq3d(Charstring upv)->Charstring
+as 
+"create function schemaq3_"+upv+"()->(Charstring, Charstring, Charstring)
+  as select _ss_, _pp_, _oo_
+  from Charstring size1, Charstring a1, Charstring tabclass1, Charstring pk1, Charstring tabclass, Charstring pk, Charstring xml_range1, Charstring xml_range2, Charstring b1, Charstring size2, Charstring ret_prop,  Charstring tn,Charstring tn1, Charstring tn2, Vector of Charstring a1,Vector of Charstring a2, Charstring _ss_, Charstring _pp_, Charstring _oo_
+ where store_prop(ret_prop)=true and rmmMap(tn,a1,a2,tn1,tn2,'"+upv+"')=ret_prop
+ and (ret_prop, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property') in s"+upv+"()
+   and (ret_prop, 'http://www.w3.org/2000/01/rdf-schema#domain', tabclass) in s"+upv+"()
+   and (ret_prop, 'http://www.w3.org/2000/01/rdf-schema#range', tabclass1) in s"+upv+"()
+   and (tabclass, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/2000/01/rdf-schema#Class') in s"+upv+"()
+   and (tabclass, 'http://user.it.uu.se/~udbl/sard#PRIMARY_KEY', pk) in s"+upv+"()
+   and (pk, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq') in s"+upv+"()
+   and (pk, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#_1', a1) in s"+upv+"()
+   and (a1, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property') in s"+upv+"()
+   and (a1, 'http://www.w3.org/2000/01/rdf-schema#domain', tabclass) in s"+upv+"()
+   and (a1, 'http://www.w3.org/2000/01/rdf-schema#range', xml_range1) in s"+upv+"()
+   and (tabclass1, 'http://user.it.uu.se/~udbl/sard#PRIMARY_KEY', pk1) in s"+upv+"()
+   and (pk1, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq') in s"+upv+"()
+   and (pk1, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#_1', b1) in s"+upv+"()
+   and (b1, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property') in s"+upv+"()
+   and (b1, 'http://www.w3.org/2000/01/rdf-schema#domain', tabclass1) in s"+upv+"()
+   and (b1, 'http://www.w3.org/2000/01/rdf-schema#range', xml_range2) in s"+upv+"()
+   and size1=optional0((select size1_o
+                         from Charstring size1_o
+                        where (a1, 'http://user.it.uu.se/~udbl/sard#size', size1_o) in s"+upv+"() ),'')
+   and size2=optional0((select size2_o
+                         from Charstring size2_o
+                        where (b1, 'http://user.it.uu.se/~udbl/sard#size', size2_o) in s"+upv+"() ),'')
+      and ((_ss_ = ret_prop and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and _oo_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property')
+        or (_ss_ = ret_prop and _pp_ = 'http://www.w3.org/2000/01/rdf-schema#domain' and _oo_ = tabclass)
+        or (_ss_ = ret_prop and _pp_ = 'http://www.w3.org/2000/01/rdf-schema#range' and _oo_ = tabclass1)
+        or (_ss_ = tabclass and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and _oo_ = 'http://www.w3.org/2000/01/rdf-schema#Class')
+        or (_ss_ = tabclass1 and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and _oo_ = 'http://www.w3.org/2000/01/rdf-schema#Class')
+        or (_ss_ = tabclass and _pp_ = 'http://user.it.uu.se/~udbl/sard#PRIMARY_KEY' and _oo_ = pk)
+        or (_ss_ = pk and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and _oo_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq')
+        or (_ss_ = pk and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#_1' and _oo_ = a1)
+        or (_ss_ = a1 and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and _oo_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property')
+        or (_ss_ = a1 and _pp_ = 'http://www.w3.org/2000/01/rdf-schema#domain' and _oo_ = tabclass)
+        or (_ss_ = a1 and _pp_ = 'http://www.w3.org/2000/01/rdf-schema#range' and _oo_ = xml_range1)
+        or (_ss_ = tabclass1 and _pp_ = 'http://user.it.uu.se/~udbl/sard#PRIMARY_KEY' and _oo_ = pk1)
+        or (_ss_ = pk1 and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and _oo_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq')
+        or (_ss_ = pk1 and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#_1' and _oo_ = b1)
+        or (_ss_ = b1 and _pp_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and _oo_ = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property')
+        or (_ss_ = b1 and _pp_ = 'http://www.w3.org/2000/01/rdf-schema#domain' and _oo_ = tabclass1)
+        or (_ss_ = b1 and _pp_ = 'http://www.w3.org/2000/01/rdf-schema#range' and _oo_ = xml_range2)
+        or (_ss_ = a1 and _pp_ = 'http://user.it.uu.se/~udbl/sard#size' and _oo_ = size1 )
+        or (_ss_ = b1 and _pp_ = 'http://user.it.uu.se/~udbl/sard#size' and _oo_ = size2 ));";
+
+
+
+
+
+create function call_schemaq1(Charstring upv)->(Charstring,Charstring,Charstring)
+as 
+	select s, p, o from Charstring s, Charstring p, Charstring o
+	where {s,p,o} = call_function("schemaq1_"+upv,{});
+
+create function call_schemaq2(Charstring upv)->(Charstring, Charstring, Charstring)
+as 
+ select s, p, o from Charstring s, Charstring p, Charstring o
+  where {s,p,o} = call_function("schemaq2_"+upv,{});
+
+create function call_schemaq3(Charstring upv)->(Charstring,Charstring,Charstring)
+as 
+  select s, p, o from Charstring s, Charstring p, Charstring o
+  where {s,p,o} = call_function("schemaq3_"+upv,{});
+
+
+create function execute_schemaQ(Charstring upv)->(Charstring,Charstring,Charstring)
+/*Retrieves meta-data from the SUPV  */
+as
+	select distinct s, p, o from Charstring s, Charstring p, Charstring o
+	where (s,p,o) in call_schemaq1(upv) or
+	       (s,p,o) in call_schemaq2(upv) or
+		(s,p,o) in call_schemaq3(upv);
+
+
+
+create function preserve(Function datafn,Charstring file1,Charstring file2,Charstring upv)->Boolean
+/*Archives the content retrieved by the query 'datafn' in an NT file 'file1' and 
+  the schema concerning the content in an NT file 'file2'
+  Schema is archived by executing one of three SPARQL, s.c property queries */
+as
+ begin
+   clean_store_prop();
+   openwritefile(file1);
+   for each Charstring ss,Charstring pp,Charstring oo where call_function(datafn,{})={ss,pp,oo}
+	begin
+	  printXmll ( printResource(ss)+ " "+ printResource(pp)+ " "+ printResource(oo)+ " ." );
+	  add store_prop(pp)=true;
+	end;
+   closewritefile();
+   write_triples_asNT( call_function(#'execute_schemaQ',{upv}),file2);
+ end;
+  
+
+
+
+/*************************************/
+
+
+create function table_query(Charstring upv)->(Charstring, Charstring, Charstring)
+as 
+  select _ss_, _pp_, _oo_
+ from Charstring ret_prop, Charstring tn, Charstring cn,
+	Charstring _ss_, Charstring _pp_, Charstring _oo_
+ where store_prop(ret_prop )=true and pMap(tn,cn,upv)=ret_prop
+  and ( (_ss_,_pp_,_oo_) in PropertyTA(upv,cn,tn)  or
+      	(_ss_,_pp_,_oo_) in ClassT(upv,tn)  or
+      	(_ss_,_pp_,_oo_) in PKeyT(upv,tn) );
+
+
+
+create function fkey_query(Charstring upv)->(Charstring, Charstring, Charstring)
+as 
+  select _ss_, _pp_, _oo_
+ from Charstring ret_prop, Charstring tn, Charstring tn1,
+	Charstring _ss_, Charstring _pp_, Charstring _oo_
+ where store_prop(ret_prop )=true and rcMap(tn,tn1,upv)=ret_prop
+  and ( (_ss_,_pp_,_oo_) in FKeyF(upv,tn,tn1)  or
+	(_ss_,_pp_,_oo_) in ClassT(upv,tn)  or
+	(_ss_,_pp_,_oo_) in PKeyT(upv,tn) or
+	(_ss_,_pp_,_oo_) in ClassT(upv,tn1)  or
+	(_ss_,_pp_,_oo_) in PKeyT(upv,tn1) );
+     
+
+create function mmkey_query(Charstring upv)->(Charstring, Charstring, Charstring)
+as 
+  select _ss_, _pp_, _oo_
+ from Charstring ret_prop,Vector of Charstring cn1,Vector of Charstring cn2,Charstring tn,
+	Charstring tn1,Charstring tn2,Charstring _ss_, Charstring _pp_, Charstring _oo_
+ where store_prop(ret_prop )=true and rmmMap(tn,cn1,cn2,tn1,tn2,upv)=ret_prop
+  and ( (_ss_,_pp_,_oo_) in LinkP(upv,tn)  or
+	(_ss_,_pp_,_oo_) in ClassT(upv,tn1) or
+	(_ss_,_pp_,_oo_) in PKeyT(upv,tn1) or
+	(_ss_,_pp_,_oo_) in ClassT(upv,tn2) or
+	(_ss_,_pp_,_oo_) in PKeyT(upv,tn2)  );
+
+
+
+create function meta_extract(Charstring upv)->(Charstring,Charstring,Charstring)
+/*Retrieves meta-data from the S-view  */
+as
+	select distinct s, p, o from Charstring s, Charstring p, Charstring o
+	where (s,p,o) in  table_query(upv) or
+	       (s,p,o) in fkey_query(upv) or
+		(s,p,o) in mmkey_query(upv);
+
+
+
+
+
+

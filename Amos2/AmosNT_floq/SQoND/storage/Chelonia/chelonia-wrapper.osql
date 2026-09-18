@@ -1,0 +1,112 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Andrej Andrejev, UDBL
+ * $RCSfile: chelonia-wrapper.osql,v $
+ * $Revision: 1.3 $ $Date: 2012/06/18 16:18:54 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Chelonia wrapper for SciSPARQL access
+ *
+ ****************************************************************************
+ * $Log: chelonia-wrapper.osql,v $
+ * Revision 1.3  2012/06/18 16:18:54  andan342
+ * Changed 'result' to 'return'
+ * Added runnable examples from BISTAB paper.
+ *
+ * Revision 1.2  2012/04/14 16:05:25  andan342
+ * Array proxy objects now correctly accumulate STEP information and are completely transparent to array slicing/projection/dereference operations. Added workaraounds for Chelonia step-related bug.
+ *
+ * Revision 1.1  2012/03/18 13:16:07  andan342
+ * Created WRAPPER mode separate from TRIPLE-STORE mode
+ * Added NMA proxies to handle 'too large' arrays
+ *
+ * Revision 1.4  2012/03/17 21:39:37  andan342
+ * - Added debug functionality, including _chelonia_dub_results_ switch
+ *
+ * Revision 1.3  2012/02/23 19:10:32  andan342
+ * Chelonia to SPAQRQL connectivity with updates (except arrays)
+ *
+ * Revision 1.2  2012/02/21 11:03:48  andan342
+ * Amos-to-Chelonia interface with updates (except inserting arrays)
+ *
+ * Revision 1.1  2012/02/18 00:25:21  andan342
+ * Chelonia-to-Amos connectivity: read-only
+ *
+ * Revision 1.1  2012/02/01 19:26:48  andan342
+ * Almost fully-functional Chelonia connectivity
+ *
+ * Revision 1.1  2006/02/12 20:01:08  torer
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+
+< 'chelonia-to-amos.osql';
+
+load_lisp('chelonia-wrapper.lsp');
+
+/* CHELONIA WRAPPED EXPERIMENT */
+
+create type CWE properties (graph Charstring, namespace Charstring, db Charstring, experiment Charstring);
+
+/* CACHING TASKS AND VARS */
+
+create function ch_tasks(CWE e) -> Bag of Integer tid as stored;
+
+create function ch_vars(CWE e, Integer tid) -> Bag of Charstring v as stored;
+
+create function refresh_tasks(CWE e, Boolean doQuery) -> Boolean as 
+  begin
+    remove ch_tasks(e) = id from Integer id;
+    if doQuery then
+      add ch_tasks(e) = id from Charstring s, Integer id 
+        where (s,id) in getTasks(db(e),experiment(e));
+  end;
+
+create function refresh_vars(CWE e, Boolean doQuery) -> Boolean as
+  begin 
+    declare Charstring tlcb;   
+    remove ch_vars(e,tid) = v from Charstring v, Integer tid;
+    if doQuery then 
+    begin
+      set tlcb = stringify(vectorof(select ch_tasks(e)));
+      add ch_vars(e,tid) = vname from Charstring vname, Integer tid
+        where (vname,tid) in getAllVars(db(e),substring(tlcb,1,char_length(tlcb)-2)); 
+    end;
+  end;
+
+create function refresh_CWE(CWE e, Boolean doQuery) -> Boolean as
+  begin
+    refresh_tasks(e,doQuery);
+    refresh_vars(e,doQuery);
+  end;
+
+/* INITIALIZING */
+
+create function CheloniaExperiment(Charstring graph, Charstring namespace, Charstring db, Charstring experiment) -> CWE as
+  begin
+    declare CWE res;
+    create CWE(graph, namespace, db, experiment) instances res (graph, namespace, db, experiment);
+    add_prefix_if_empty(graph, namespace);
+    refresh_CWE(res,true);
+    return res;
+  end;
+
+create function rdf:CheloniaExperiment(Literal graph, Literal namespace, Literal db, Literal experiment) -> CWE as
+  CheloniaExperiment(rdf_str(graph), rdf_str(namespace), rdf_str(db), rdf_str(experiment));
+
+create function rdf:CheloniaExperiment(Literal namespace, Literal db, Literal experiment) -> CWE as
+  CheloniaExperiment('', rdf_str(namespace), rdf_str(db), rdf_str(experiment));
+
+/* ACCESSING */
+
+create function graphToCWE(Charstring graph) -> CWE as
+  select e from CWE e where graph(e) = graph;
+
+create function CW(CWE e) -> Bag of (Literal, Literal, Literal) as
+  select tid2uri(namespace(e),tid), URI(namespace(e)+p), getValue(db(e), tid, p)
+    from Charstring p, Integer tid
+   where tid in ch_tasks(e)
+     and p in ch_vars(e, tid);
+
+

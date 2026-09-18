@@ -1,0 +1,913 @@
+/*-*-sql-*-*******************************************************************/
+
+lisp;
+;;; Bug i CSS:
+;;; Therefore _default-foreign-fanout_ could not be changed to 0.99
+;;; because the results of some queries are dependent on the cost model
+;;; This indicates that parts of CSS are expressed in a procedural way!
+
+(setq _default-foreign-fanout_ 1.0)
+
+:osql
+
+<  'partition.osql';
+
+create function taxidatapath()->Charstring;
+set taxidatapath() = "/data/taxi/";
+
+set dumpfile() = 'css.dmp';
+
+/* 
+Function that takes a request in a vector format and returns it as a tuple.
+*/
+create function decrequest(vector x)->
+(timeval, integer, real, real, real, real)
+as select x[0],x[1],x[2],x[3],x[4],x[5];
+
+/* 
+Function to reference requests as tuples by a primary key id.
+*/
+create function q(integer id)->(timeval t, real fx, real fy, real tx, real ty);
+	
+/*
+Function that inserts a request provided as a set of values as a tuple in the 
+table q().
+*/
+create function insertq(timeval t, integer id, real fx, real fy, real tx, 
+                        real ty)->boolean as
+add q(id)= (t, fx, fy, tx, ty);
+	
+/*
+Function that removes a request from the table q() if it is of the requests 
+matches the parameter id.
+*/
+create function removeq(integer id)->integer as 
+begin
+   remove q(id) = (t, fx, fy, tx, ty) from
+   timeval t, real fx, real fy, real tx, real ty where 1=1;
+   return true;
+end;
+
+/*
+Function that removes requests from the the table q() whose id is present in 
+ids.
+*/
+create function removeqs(vector of integer ids)->boolean as 
+begin
+   select removeq(i)
+   from integer i, timeval t, real fx, real fy, real tx, real ty 
+   where q(i)=(t,fx, fy, tx, ty) and i in(ids);
+   return true;
+end;
+
+/* 
+Function that returns requests from the table q() that have timevals <= tv.
+*/	
+create function selectOlderThan(timeval tv)->
+	(integer id, timeval t, real fx, real fy, real tx, real ty) 
+	as select i,t,fx,fy,tx,ty 
+	from integer i, timeval t, real fx, real fy, real tx, real ty 
+	where q(i)=(t,fx, fy, tx, ty) and t <= tv;
+
+/* 
+Function that removes requests from the table q() that have timevals <= tv.
+*/	
+create function removeqOlderThan(timeval tv)->boolean as
+begin
+   select removeq(i) 
+   from integer i, timeval t, real fx, real fy, real tx, real ty 
+   where q(i)=(t,fx, fy, tx, ty) 
+   and t <= tv;
+   return true;
+end;
+
+/* 
+Function that returns the main memory table q() as a vector of vectors.
+*/
+create function vectorq()->vector of (integer, timeval, real, real, real, real)
+  as select vectorof(
+	select i,t,fx,fy,tx,ty
+	from integer i, timeval t, real fx, real fy, real tx, real ty 
+	where q(i)=(t,fx, fy, tx, ty));
+
+create function vq()->vector
+ as select {i,q(i)} from integer i;
+
+lisp;
+(foreign-lispfn
+ topkv ((bag b)(integer k)(integer pos)(charstring dir))((vector))
+ (let* (top (order-sym (sortorder-symbol dir))
+            (i 0)
+            (cf (f/l (x y)
+                     (selectq order-sym
+                              (dec (< (compare (aref x pos)
+                                               (aref y pos))
+                                      0))
+                              (> (compare (aref x pos)
+                                          (aref y pos))
+                                 0)))))
+   (mapbag b (f/l (r)
+                  (cond ((< i k)(1++ i)
+                         (setq top (dmerge (list (car r)) top cf)))
+                        ((funcall cf (car top)(car r))
+                         (setq top (dmerge (list (car r))(cdr top) cf))))))
+   (osql-result b k pos dir (listtoarray top))))
+:osql
+
+/* 
+Function that given a request xw and requests table q(), calculates 
+the error function co_e between xw and each request rj in q() and stores
+the results in a vector of vectors which is sorted in increasing order 
+based on the calculated error function. 
+*/
+create function sorted_requests(vector xw)-> vector of vector as
+   select topkv((select distinct({xw[0], rj[0], r})
+   from vector rj, real r 
+   where rj=vq()
+     and r = co_e(xw, rj)
+     and r <= 1), 4, 2, "inc");       
+
+/*
+     and xw[0] != rj[0]*/
+
+create function sorted_requests_old(vector xw)-> vector of vector as
+   select sortbagby((select distinct({xw[0], rj[0], r})
+   from vector rj, real r 
+   where rj in vectorq()
+     and r = co_e(xw, rj)
+     and xw[0] != rj[0]), 3, "inc");
+
+/* 
+Function that returns an l long, subvector of vector v starting from 
+index position f, where 0 is the first possible value for f. 
+*/
+create function subvector(Vector v, Number f, Number l)-> Vector
+  as select vectorof(select v[i] 
+                     from Number i
+                     where i>=f and i < f+l);
+
+/* 
+Function that normalizes the "cummulative" error function co_e by the size of 
+the cabshare. It also adjusts the value to take into account the cost of the 
+original fare (cost = 1).  
+*/ 
+lisp;
+(debugging t)
+:osql
+  
+create function norcumsum(Vector of Vector of Number v)-> Vector of Vector
+  as select vectorize(select i,{x[0], x[1], (x[2]+1)/(i+1)} 
+     from Vector of Number x, Integer i
+     where (i, x) in bagify(v));
+
+/*
+Function that selects vectorS from v that are minimum with respect to 
+the 3rd element in the vectors. Note it can return a set of vectors.
+*/ 
+create function bestmin(Vector of Vector v)-> vector
+  as select {i, v1}
+     from Vector v1, integer i
+     where (i, v1) in bagify(v)
+     and v1[2] = minagg(select x[2] from Vector x where x in v);
+       
+/*
+Function that selects the best cabshare (max k-sized) for input requests xw.
+It returns the results as a vector of vectors each vector refers to a member
+of the cabshare, and the normalized (amortized) cost upto and including that 
+member in the cabshare. Note, that xw is a member of the cabshare, it is only 
+implicitely present in the result as the first element of every member vector.
+*/
+create function bestcabshare(vector xw, integer k)
+                             -> Vector of Vector
+  as select subvector(ncs,0,i)
+     from  Vector of Vector of Number cs, 
+           Vector of Vector ncs, Integer i, 
+           vector of vector sr
+     where cs = cumsum(cast(subvector(sr,0,k-1) as vector of vector),2)
+       and ncs = norcumsum(cs)
+       and i = cast(maxagg(bestmin(ncs))[0] as number) +1
+       and sr=sorted_requests(xw);
+
+/*
+Function that fromats the bestcabshare() function results to only contain
+explicit (not xw's) cabshare member ids and the final amortized cost.
+*/ 
+create function bestcabshareNice(vector xw, integer k)-> vector
+  as select vectorof(select s[i][j] from integer i, integer j 
+                     where  (j = 1) or ((i = dim(s)-1) and (j = 2)))
+  from vector of vector s
+  where s=bestcabshare(xw,k);
+
+/*
+Function that shortcircuits / formats / filters 
+I explain later and I am currently work on it.
+
+NOTES: This is mainly performed to avoid calling the function with the 
+request xw if
+1) the q() is empty
+2) it only containt the requests xw, in which case bestcabshareNice() 
+   returns {} (not appropriate!).
+3) xw is not present in q() because it has already scheduled prior to the call.
+
+Condition 3) could arise because the for-each-statement in the CSS() function 
+is NOT a "sensitive" cursor over the result set, i.e., if the statements in 
+the for-each-block have a side-effect on q() the elements in the cursor do 
+not change. This is guarded against early on in the CSS() function.  
+
+Given that Condition 3) cannot arise at this stage,  if this function was 
+called then the following is true: xw is in q() -> |q()| >= 1. 
+If |q()| > 1 then the function behaves correctly, if |q()| = 1, then the 
+only element in q() is xw, in which case needs to be handled as below.
+*/
+create function bestcabshareSafe(vector xw, integer k)->vector
+  as begin
+           declare vector res;
+           set res = bestcabshareNice(xw,k);
+	   if (res = nil) then
+               return {{xw[0], -1, 1}}
+           else return res;
+/*
+	count(select q(i) from integer i) = 1 then return {{xw[0], -1, 1}}
+	   else return bestcabshareNice(xw,k);
+*/
+  end;      
+
+
+/* 
+Main CSS processor 
+
+For an input (nw, tv, k, maxfc) it 
+1) inserts all the requests in nw into the main memory table q()
+2) retrieves all the requests from q that have a timeval that is greater then tv
+3) for each such requests in 2) it finds the best cabshare with size <= k and
+4) if the fractional cost of the fare is smaller than maxfc then considers the 
+   cabshare to be valid else constracts a singelton cabshare for the request 
+   in question and appends it to the output vector bcss
+*/    
+create function CSS(vector of vector nw, timeval tv, integer k, real maxfc, 
+                    integer wt_sec)->vector of vector as  
+begin
+     declare vector of vector expir, vector of vector bcss, 
+             vector of vector output, vector bcs, vector s, vector members;
+     insertq(decrequest(in(nw)));
+     set expir = vectorof(
+         select i,t,fx,fy,tx,ty 
+         from integer i, timeval t, real fx, real fy, real tx, real ty 
+         where q(i)=(t,fx, fy, tx, ty) and t <= add_duration(tv, -wt_sec));
+     set output = {{add_duration(tv, -wt_sec), real(add_duration(tv, -wt_sec)), 
+                    dim(expir), count(select q(i) from integer i)}};
+     set bcss = {};
+     
+     
+     for each original vector x where x = in(expir)
+     begin
+         /* only try to find a cabshare for x if it has not been scheduled 
+            so far in the process*/
+         if count(q(cast(x[0] as integer))) = 1
+         then
+         begin
+            removeq(cast (x[0] as integer));
+            set s = bestcabshareSafe(x,k);
+
+            if subvector(s,dim(s)-1,1)[0] > maxfc 
+            then
+            begin
+               set bcs = {x[0],-1,1};
+               set members = {cast(x[0] as integer)};
+            end
+            else 
+            begin
+               set bcs = concat({x[0]}, s);
+               set members = subvector(bcs,0,dim(bcs)-1); 
+            end;
+
+            set bcss = concat(bcss, {bcs});
+            removeqs(members);
+         end;
+
+     end;
+     return concat(output, {bcss});
+end;
+
+/* sample calls to the CSS processor*/
+/*
+CSS(vectorof(readfile("vectors300.osql")), mktv(24000), 4, 0.8, 600);
+count(select removeq(i) from integer i, timeval t, real fx, real fy, real tx, 
+      real ty where q(i)=(t,fx, fy, tx, ty) and i=iota(1,300));
+*/
+ 
+/* it also works on empty input {} */
+/*
+CSS(cast({} as vector of (integer, timeval, real, real ,real ,real)), 
+    mktv(0), 3, 0.9, 600);
+*/
+
+/* 
+Function that evaluates the quality of CSS in terms of average estimated 
+savings.
+*/
+create function cssqual(bag of vector of vector cssdata)-> 
+  (vector, integer, real, timeval, real) as
+begin
+   declare real sumsavings, integer numreq, real Tsumsavings, integer Tnumreq, 
+           vector iter;
+   set Tsumsavings = 0.0;
+   set Tnumreq = 0;
+   
+   for each original vector x where x in(cssdata) 
+   begin
+      set iter = x[1];
+      set sumsavings = 0.0;
+      set numreq = 0;
+      for each original vector w where w in(iter)
+
+      if w[1] = -1 then begin
+         set numreq = numreq + 1;
+         set sumsavings = sumsavings + cast(w[2] as real);
+      end else begin
+         set numreq = numreq + dim(w) - 1;
+         set sumsavings = sumsavings + 
+                          cast((dim(w)-1) as real) * cast(w[dim(w)-1] as real);
+      end;
+      if numreq > 0 then begin 
+         set Tnumreq = Tnumreq + numreq;
+         set Tsumsavings = Tsumsavings + sumsavings;        
+         /*return (x[0],numreq, sumsavings/numreq, now(), real(now()));*/
+      end;
+   end;
+   return ({},Tnumreq, Tsumsavings/Tnumreq, now(), real(now()));
+end;
+
+/* 
+Function that checks for double scheduling. Very slow as is it is based on
+cummulation of vector data.
+*/
+create function csscheck(bag of vector of vector cssdata)-> vector as
+begin
+   declare vector of integer uh, vector of integer ch;
+   set uh = {};
+   set ch = {};
+   
+   for each original vector x where x in(cssdata) 
+   begin
+      for each original vector w where w in(x)
+      if w[1] = -1 then begin
+         set uh = vunion(uh, {w[0]});
+         set ch = concat(ch, {w[0]});
+      end else begin
+         set uh = vunion(uh, subvector(w,0,dim(w)-1));
+         set ch = concat(ch, subvector(w,0,dim(w)-1));      
+      end;
+   end;
+   if dim(ch) = dim(uh) then begin
+      return {1, ch};
+   end else begin
+      return {0, ch};
+   end;
+end;
+
+/* 
+Function that checks for double scheduling. Very slow as is it is based on
+cummulation of vector data.
+*/
+create function csscheck_verbose(bag of vector of vector cssdata)-> vector as
+begin
+   declare vector of integer uh, vector of integer ch;
+   set uh = {};
+   set ch = {};
+   
+   for each original vector x where x in(cssdata) 
+   begin
+      for each original vector w where w in(x)
+      if w[1] = -1 then begin
+         set uh = vunion(uh, {w[0]});
+         set ch = concat(ch, {w[0]});
+      end else begin
+         set uh = vunion(uh, subvector(w,0,dim(w)-1));
+         set ch = concat(ch, subvector(w,0,dim(w)-1));      
+      end;
+      if dim(ch) = dim(uh) then begin
+	       return {1, {}};
+      end else begin
+         return {0, ch};
+      end;   
+   end;
+   if dim(ch) = dim(uh) then begin
+      return {1, {}};
+   end else begin
+      return {0, ch};
+   end;   
+end;
+
+
+/*
+NOTE: CSS assumes that the main memory table q() is empty at startup, 
+in particular it should not have future requests in it, as those would 
+be scheduled twice (secont time around sometime after they have been 
+reinserted as "new" incomming requests). 
+*/
+
+/* gyg added */
+
+create function BUFq(integer id) -> 
+(timeval t, real fx, real fy, real tx, real ty);
+	
+/*
+Function that inserts a request provided as a set of values as a tuple in the 
+table BUFq().
+*/	
+create function insertBUFq(timeval t, integer id, real fx, real fy, real tx, 
+                           real ty)->boolean as
+add BUFq(id)= (t, fx, fy, tx, ty);
+
+/*
+Function that removes a request from the table BUFq() if it id of the requests 
+matches the parameter id.
+*/	
+create function removeBUFq(integer id)->integer as 
+begin
+   remove BUFq(id) = (t, fx, fy, tx, ty) from timeval t, real fx, real fy, 
+     real tx, real ty where 1=1;
+   return true;
+end;
+
+/*  
+Function that removes requests from the table BUFq() that have timevals <= tv.  
+*/	
+create function removeBUFqOlderThan(timeval tv)->boolean as
+begin
+   select removeBUFq(i)
+   from integer i, timeval t, real fx, real fy, real tx, real ty
+   where BUFq(i)=(t,fx, fy, tx, ty) and t <= tv;
+   return true;
+end;
+
+/*
+Function that updates the octnode tables according to the supplied parameters.
+*/  
+create function updateOCTnodes(real fxa, real fya, real txa, real tya) -> 
+boolean as
+begin 
+   set octnodes(  0.0,     fxa,   0.0,      fya,   0.0,     txa,   0.0,      tya)=0;
+   set octnodes(fxa, 1000000.0,   0.0,      fya,   0.0,     txa,   0.0,      tya)=1;
+   set octnodes(  0.0,     fxa, fya, 10000000.0,   0.0,     txa,   0.0,      tya)=2;
+   set octnodes(fxa, 1000000.0, fya, 10000000.0,   0.0,     txa,   0.0,      tya)=3;
+   set octnodes(  0.0,     fxa,   0.0,      fya, txa, 1000000.0,   0.0,      tya)=4;
+   set octnodes(fxa, 1000000.0,   0.0,      fya, txa, 1000000.0,   0.0,      tya)=5;
+   set octnodes(  0.0,     fxa, fya, 10000000.0, txa, 1000000.0,   0.0,      tya)=6;
+   set octnodes(fxa, 1000000.0, fya, 10000000.0, txa, 1000000.0,   0.0,      tya)=7;
+   set octnodes(  0.0,     fxa,   0.0,      fya,   0.0,     txa, tya, 10000000.0)=8;
+   set octnodes(fxa, 1000000.0,   0.0,      fya,   0.0,     txa, tya, 10000000.0)=9;
+   set octnodes(  0.0,     fxa, fya, 10000000.0,   0.0,     txa, tya, 10000000.0)=10;
+   set octnodes(fxa, 1000000.0, fya, 10000000.0,   0.0,     txa, tya, 10000000.0)=11;
+   set octnodes(  0.0,     fxa,   0.0,      fya, txa, 1000000.0, tya, 10000000.0)=12;
+   set octnodes(fxa, 1000000.0,   0.0,      fya, txa, 1000000.0, tya, 10000000.0)=13;
+   set octnodes(  0.0,     fxa, fya, 10000000.0, txa, 1000000.0, tya, 10000000.0)=14;
+   set octnodes(fxa, 1000000.0, fya, 10000000.0, txa, 1000000.0, tya, 10000000.0)=15;
+end;
+
+/*
+Function that reads the CSS file and mimics the output of the function 
+readfile(), but at the same time based on a tbuf-seconds long temporal buffer
+of the so far read values updates the octnode table every time a NEW timestamp
+is encountered in the input data (effectively every minute).
+*/  
+
+
+/*
+
+print ({"stat", in(select {a,b,c,d,e,f,g,h,octnodes(a,b,c,d,e,f,g,h)}
+from real a, real b, real c, real d, real e, real f, real g, real h)});
+
+*/
+
+create function fxavg()->real
+  as avg(select fx
+         from integer i, timeval t, real fx, real fy, real tx, real ty
+         where (t, fx, fy, tx, ty) = bufq(i));
+
+create function fyavg()->real
+  as avg(select fy
+         from integer i, timeval t, real fx, real fy, real tx, real ty
+         where (t, fx, fy, tx, ty) = bufq(i));
+
+create function txavg()->real
+  as avg(select tx
+         from integer i, timeval t, real fx, real fy, real tx, real ty
+         where (t, fx, fy, tx, ty) = bufq(i));
+
+create function tyavg()->real
+  as avg(select ty
+         from integer i, timeval t, real fx, real fy, real tx, real ty
+         where (t, fx, fy, tx, ty) = bufq(i));
+
+
+create function readfileoct(charstring file, real tbuf)->vector as
+begin
+  declare stream of vector cssdata, timeval prev_tv, function rf;
+  set cssdata = streamof(readfile(file));
+  set prev_tv = mktv(0);
+  set rf = theresolvent("octnodes");
+
+  /* make sure the BUFq is empty */
+  drop(theresolvent("BUFq"));
+  for each vector x where x in cssdata
+  begin
+    insertBUFq(decrequest(x));
+    if prev_tv < x[0] then /* update statistics if time has moved forward */
+    begin
+      set prev_tv = x[0]; /* delete the old stuff from BUFq */
+      removeBUFqOlderThan(add_duration(cast(x[0] as timeval), -(tbuf-1)));
+      /* clear and re-populate the octnodes table */
+      drop(rf);
+      updateOCTnodes(fxavg(), fyavg() ,txavg() ,tyavg());
+    end;
+    return(x);
+  end;
+end;
+
+
+/* 
+Function that reads the CSS file and mimics the output of the function 
+readfile(), but at the same time based on a tbuf-seconds long temporal buffer 
+of the so far read values updates the octnode table every time a NEW timestamp 
+is encountered in the input data (effectively every minute). WITH LOOK-AHEAD!!!
+*/
+create function readfileoct2(charstring file, real tbuf)->vector as
+begin
+  declare stream of vector cssdata, vector prev_x, real fxa, real fya, 
+    real txa, real tya, function rf, integer i, integer qsize;
+  set cssdata = streamof(readfile(file));
+  set prev_x = {};
+  set i = 0;
+  set qsize = 0;
+  set rf = theresolvent("octnodes"); 
+  /* make sure the BUFq is empty */
+  drop(theresolvent("BUFq"));
+  for each vector x where x in cssdata
+  begin
+    /* from the 2nd css data vector and onwards */ 
+   if i > 0 then
+   begin
+     insertBUFq(decrequest(prev_x));
+     if prev_x[0] < x[0] then
+     begin /* delete the old stuff from BUFq */
+     removeBUFqOlderThan(add_duration(cast(prev_x[0] as timeval), -(tbuf-1)));
+     /* -1 because there seems to be some equality check problems 
+        between timevals */
+    /* calculate new stats */
+    set fxa = median(vectorof(select cast({BUFq(i)}[1] as real)from integer i));
+    set fya = median(vectorof(select cast({BUFq(i)}[2] as real)from integer i));
+    set txa = median(vectorof(select cast({BUFq(i)}[3] as real)from integer i));
+    set tya = median(vectorof(select cast({BUFq(i)}[4] as real)from integer i));
+    /* drop and polulate the octnodes table */
+    drop(rf);
+    updateOCTnodes(fxa,fya,txa,tya);  
+  end;
+  return(prev_x);
+  end;
+  set prev_x = x;
+  set i = i + 1;
+end;
+   
+   insertBUFq(decrequest(prev_x));
+   /* delete the old stuff from BUFq */
+   removeBUFqOlderThan(add_duration(cast(prev_x[0] as timeval), -(tbuf-1))); 
+   /* -1 because there seems to be some equality check problems 
+      between timevals */
+   /* calculate stats */
+   set fxa = median(vectorof(select cast({BUFq(i)}[1] as real)from integer i));
+   set fya = median(vectorof(select cast({BUFq(i)}[2] as real)from integer i));
+   set txa = median(vectorof(select cast({BUFq(i)}[3] as real)from integer i));
+   set tya = median(vectorof(select cast({BUFq(i)}[4] as real)from integer i));
+   /* drop and polulate the octnodes table */
+   drop(rf);
+   updateOCTnodes(fxa,fya,txa,tya); 
+   return(prev_x);
+end;
+    
+   
+/*   
+Function that reads the CSS file and mimics the output of the function 
+readfile(), but at the same time every tbuf-seconds based on a tbuf-seconds 
+long temporal buffer of the so far read values updates the octnode table. 
+Statistics are based on samples of the input stream.
+*/
+create function rfo(charstring file, real tbuf)->vector as begin
+   declare stream of vector ts, function rf, real fxa, real fya, real txa, 
+           real tya;
+   set rf = theresolvent("octnodes");
+   set ts = streamof(twinagg(streamof(readfile(file)),tbuf,tbuf,0,0)[1]);
+   for each vector t where t in ts begin
+      set fxa = median(vectorof(select x[2] from vector of number x 
+	where x = in(t)));
+      set fya = median(vectorof(select x[3] from vector of number x 
+	where x = in(t)));
+      set txa = median(vectorof(select x[4] from vector of number x 
+	where x = in(t)));
+      set tya = median(vectorof(select x[5] from vector of number x 
+	where x = in(t)));
+      drop(rf);
+      updateOCTnodes(fxa,fya,txa,tya);
+      /*  return vectorof(select a,b,c,d,e,f,g,h,i 
+      from real a, real b, real c, real d, real e, real f, real g, real h, 
+      integer i 
+      where i=iota(0,15) and i=octnodes(a,b,c,d,e,f,g,h));*/
+      for each vector e where e in t begin
+         return e;
+      end;
+   end;
+end;
+
+      
+/* input and output are vectors of: {{q}, level , k, node, {means}}*/
+create function getKD_tcf(Vector input) -> Vector
+as 
+begin
+   declare vector q, vector q1, vector q2, integer level, integer k, 
+           integer node, vector means, integer np, real m;
+	 set q = input[0];
+	 set level = input[1];
+	 set k = input[2];
+	 set node = input[3];
+	 set means = input[4];	
+
+   /* calculate the median of the appropriate dimension and construct 
+      partitions */
+   set m = sortbagby(cast(cast(in(q) as vector)[level] as real), 1,
+                     "inc")[round(count(in(q))/2)];
+   /* MEAN: set m = average(select cast(v[level] as real) from integer i, 
+      vector v where bagify(q) = (i, v)); */
+   set q1 = vectorof(select v from integer i, vector v 
+                     where (i,v) in bagify(q) and v[level] < m);
+   set q2 = vectorof(select v from integer i, vector v 
+                     where (i,v) in bagify(q) and v[level] >= m); 
+   /* should really be 2^(k-level-1)*/   
+   if level = 1 then set np = 4; 
+   if level = 2 then set np = 2;
+   if level = 3 then set np = 1; 
+   
+   if level = k then
+   begin 
+      return({{}, level, k, node, concat(means,{m})});
+   end
+   else
+   begin
+      return({q1, level+1, k, node, concat(means,{m})});
+      return({q2, level+1, k, node+np, concat(means,{m})});
+   end;
+   
+end;
+   
+/* input and output are vectors of: {{q}, level , k, node, {means}}
+create function getKD(Vector of Vector input) -> Vector of Vector
+   as select output
+      from integer d, vector of vector output
+      where iterate(theresolvent("getKD_tcf"), input, 4) = (output, d);
+*/
+
+/* input and output are vectors of: 
+   {{q}, level , k, node, {means}, size(q),
+    size(left_child(q)), size(right_child(q))}*/
+create function getKD2(Vector input) -> Vector
+as 
+begin
+   declare vector q, vector q1, vector q2, integer level, integer k, 
+           integer node, vector means, integer np, real m;
+	 set q = input[0];
+	 set level = input[1];
+	 set k = input[2];
+	 set node = input[3];
+	 set means = input[4];	
+
+   /* calculate the median of the appropriate dimension and construct 
+      partitions*/
+   set m = median(vectorof(select d[level+1] from vector d
+                           where d in q));
+   /*MEAN: set m = average(select cast(v[level+1] as real) 
+                         from integer i, vector v where bagify(q) = (i, v)); */
+   set q1 = vectorof(select v from integer i, vector v 
+                     where v = q[i] and v[level+1] < m);
+   set q2 = vectorof(select v from integer i, vector v 
+                     where v = q[i] and v[level+1] >= m); 
+   /*should really be 2^(k-level-1)*/   
+   if level = 1 then set np = 4; 
+   if level = 2 then set np = 2;
+   if level = 3 then set np = 1;   
+
+   if level = k then
+   begin 
+      return({{}, level, k, node, 
+              concat(means,{m}), dim(q), dim(q1), dim(q2)});
+   end
+   else
+   begin
+      return(getKD2({q1, level+1, k, node, concat(means,{m})}));
+      return(getKD2({q2, level+1, k, node+np, concat(means,{m})}));
+   end;
+   
+end; 
+
+/*
+Same as getKD2 but with old median. SLOWER!
+*/
+create function getKD2old(Vector input) -> Vector
+as 
+begin
+   declare vector q, vector q1, vector q2, integer level, integer k, 
+           integer node, vector means, integer np, real m;
+	 set q = input[0];
+	 set level = input[1];
+	 set k = input[2];
+	 set node = input[3];
+	 set means = input[4];	
+
+   /* calculate the median of the appropriate dimension and construct 
+      partitions*/
+   /*  Old median: */
+       set m = sortbagby(cast(cast(in(q) as vector)[level+1] as real), 
+                     1, "inc")[round(dim(q)/2)]; 
+   /*MEAN: set m = average(select cast(v[level+1] as real) 
+                         from integer i, vector v where bagify(q) = (i, v)); */
+   set q1 = vectorof(select v from integer i, vector v 
+                     where v = q[i] and v[level+1] < m);
+   set q2 = vectorof(select v from integer i, vector v 
+                     where v = q[i] and v[level+1] >= m); 
+   /*should really be 2^(k-level-1)*/   
+   if level = 1 then set np = 4; 
+   if level = 2 then set np = 2;
+   if level = 3 then set np = 1;   
+
+   if level = k then
+   begin 
+      return({{}, level, k, node, 
+              concat(means,{m}), dim(q), dim(q1), dim(q2)});
+   end
+   else
+   begin
+      return(getKD2({q1, level+1, k, node, concat(means,{m})}));
+      return(getKD2({q2, level+1, k, node+np, concat(means,{m})}));
+   end;
+   
+end;   
+
+/*
+Function that initializes the kdnodes tables according to the static KD split values.
+*/
+create function initKDnodes()-> boolean as 
+begin
+   drop(theresolvent("kdnodes"));
+   set kdnodes(  0.0,      fx(),    0.0,    fxlfy(),       0.0,fxlfyltx(),          0.0,fxlfyltxlty())=0;
+   set kdnodes(  0.0,      fx(),    0.0,    fxlfy(),       0.0,fxlfyltx(),fxlfyltxlty(),   10000000.0)=1;
+   set kdnodes(  0.0,      fx(),    0.0,    fxlfy(),fxlfyltx(), 1000000.0,          0.0,fxlfyltxuty())=2;
+   set kdnodes(  0.0,      fx(),    0.0,    fxlfy(),fxlfyltx(), 1000000.0,fxlfyltxuty(),   10000000.0)=3;
+   set kdnodes(  0.0,      fx(),fxlfy(), 10000000.0,       0.0,fxlfyutx(),          0.0,fxlfyutxlty())=4;
+   set kdnodes(  0.0,      fx(),fxlfy(), 10000000.0,       0.0,fxlfyutx(),fxlfyutxlty(),   10000000.0)=5;
+   set kdnodes(  0.0,      fx(),fxlfy(), 10000000.0,fxlfyutx(), 1000000.0,          0.0,fxlfyutxuty())=6;
+   set kdnodes(  0.0,      fx(),fxlfy(), 10000000.0,fxlfyutx(), 1000000.0,fxlfyutxuty(),   10000000.0)=7;
+   set kdnodes( fx(), 1000000.0,    0.0,    fxufy(),       0.0,fxufyltx(),          0.0,fxufyltxlty())=8;
+   set kdnodes( fx(), 1000000.0,    0.0,    fxufy(),       0.0,fxufyltx(),fxufyltxlty(),   10000000.0)=9;
+   set kdnodes( fx(), 1000000.0,    0.0,    fxufy(),fxufyltx(), 1000000.0,          0.0,fxufyltxuty())=10;
+   set kdnodes( fx(), 1000000.0,    0.0,    fxufy(),fxufyltx(), 1000000.0,fxufyltxuty(),   10000000.0)=11;
+   set kdnodes( fx(), 1000000.0,fxufy(), 10000000.0,       0.0,fxufyutx(),          0.0,fxufyutxlty())=12;
+   set kdnodes( fx(), 1000000.0,fxufy(), 10000000.0,       0.0,fxufyutx(),fxufyutxlty(),   10000000.0)=13;
+   set kdnodes( fx(), 1000000.0,fxufy(), 10000000.0,fxufyutx(), 1000000.0,          0.0,fxufyutxuty())=14;
+   set kdnodes( fx(), 1000000.0,fxufy(), 10000000.0,fxufyutx(), 1000000.0,fxufyutxuty(),   10000000.0)=15;
+end;
+
+
+
+create function updateKDnodes(integer node, real fxa, real fya, real txa, 
+                              real tya) -> boolean as
+begin 
+   declare real U, real L;
+   set U = 100000000.0;
+   set L = 0.0; 
+   
+   /* take care of NIL values by substituting appropriate STATIC global 
+      OCT means. */
+   if fxa = nil then set fxa = fxa(); 
+   if fya = nil then set fya = fya();
+   if txa = nil then  set txa = txa();
+   if tya = nil then set tya = tya();
+
+   if node = 1 then
+   begin
+      set kdnodes(L, fxa,   L, fya,   L, txa,   L, tya)=(node-1);
+      set kdnodes(L, fxa,   L, fya,   L, txa,   tya, U)=(node-1)+8;
+   end;
+   if node = 2 then
+   begin
+      set kdnodes(L, fxa,   L, fya,   txa, U,   L, tya)=(node-1);
+      set kdnodes(L, fxa,   L, fya,   txa, U,   tya, U)=(node-1)+8;   
+   end;
+   if node = 3 then
+   begin
+      set kdnodes(L, fxa,   fya, U,   L, txa,   L, tya)=(node-1);
+      set kdnodes(L, fxa,   fya, U,   L, txa,   tya, U)=(node-1)+8;
+   end;
+   if node = 4 then
+   begin
+      set kdnodes(L, fxa,   fya, U,   txa, U,   L, tya)=(node-1);
+      set kdnodes(L, fxa,   fya, U,   txa, U,   tya, U)=(node-1)+8;
+   end;
+   if node = 5 then
+   begin
+      set kdnodes(fxa, U,   L, fya,   L, txa,   L, tya)=(node-1);
+      set kdnodes(fxa, U,   L, fya,   L, txa,   tya, U)=(node-1)+8;
+   end;
+   if node = 6 then
+   begin
+      set kdnodes(fxa, U,   L, fya,   txa, U,   L, tya)=(node-1);
+      set kdnodes(fxa, U,   L, fya,   txa, U,   tya, U)=(node-1)+8;   
+   end;
+   if node = 7 then
+   begin
+      set kdnodes(fxa, U,   fya, U,   L, txa,   L, tya)=(node-1);
+      set kdnodes(fxa, U,   fya, U,   L, txa,   tya, U)=(node-1)+8;
+   end;
+   if node = 8 then
+   begin
+      set kdnodes(fxa, U,   fya, U,   txa, U,   L, tya)=(node-1);
+      set kdnodes(fxa, U,   fya, U,   txa, U,   tya, U)=(node-1)+8;
+   end;
+end;
+
+       
+/*   
+Function that reads the CSS file and mimics the output of the function 
+readfile(), but at the same time every tbuf-seconds based on a tbuf-seconds 
+long temporal buffer of the so far read values updates the kdnode table. 
+Statistics are based on samples of the input stream.
+*/
+create function rfkd(charstring file, real tbuf)->vector as begin
+   declare stream of vector ts, function rf;
+   set rf = theresolvent("kdnodes");
+   set ts = streamof(twinagg(streamof(readfile(file)),tbuf,tbuf,0,0)[1]);
+   for each vector t where t in ts 
+    begin
+      drop(rf);
+      select updateKDnodes(v1, v2, v3, v4, v5)
+      from Integer v1, Real v2, Real v3, Real v4, Real v5,
+           Vector of Vector v
+      where v1 = v[3]
+        and v2 = v[4][0]
+        and v3 = v[4][1]
+        and v4 = v[4][2]
+        and v5 = v[4][3]
+        and v = getKD2({t, 1, 4, 1, {}});
+      
+      /*  return vectorof(select a,b,c,d,e,f,g,h,i 
+      from real a, real b, real c, real d, real e, real f, real g, real h, 
+           integer i 
+      where i=iota(0,15) and i=kdnodes(a,b,c,d,e,f,g,h)); */
+      for each vector e where e in t 
+         return e;
+    end;
+end;
+  
+
+create function rfkd2(charstring file, real size, real stride, 
+                      integer samplefreq)->vector as
+begin
+   declare vector of timeval wb, stream of vector ts, timeval fromtv, 
+           function rf, integer counter;
+   set rf = theresolvent("kdnodes");
+   set ts = streamof(twinagg(streamof(readfile(file)),size,stride,0,0));
+   set counter = 0;
+   for each vector t where t in ts
+   begin
+      /* update if it is time :) */
+      if mod(counter, samplefreq) = 0 then
+      begin
+         drop(rf);     
+         select updateKDnodes(v1, v2, v3, v4, v5)
+         from Integer v1, Real v2, Real v3, Real v4, Real v5,
+              Vector of Vector v
+         where v1 = v[3]
+           and v2 = v[4][0]
+           and v3 = v[4][1]
+           and v4 = v[4][2]
+           and v5 = v[4][3]
+           and v = getKD2({t[1], 1, 4, 1, {}});
+      end;
+      /* advance sampling counter */
+      set counter = counter + 1;
+      set fromtv = add_duration(cast(cast(t[0]as vector)[1] as timeval), 
+                                -stride);
+     
+      for each vector e, integer i 
+          where e=cast(t[1] as vector)[i]
+            and fromtv <= e[0]
+         return e;
+   end;
+end;
+
+create function testit()->Integer
+as begin /* swallows first few tupples */
+     rfkd2("/data/taxi/vectors300.osql",600.0,60.0, 10);
+     return count(rfkd2("/data/taxi/vectors300.osql",600.0,60.0, 10));
+     return count(rfkd("/data/taxi/vectors300.osql",600.0));
+     return count(rfkd2("/data/taxi/b16.osql",600.0,60.0, 10));
+     return count(rfkd("/data/taxi/b16.osql",600.0));
+end;

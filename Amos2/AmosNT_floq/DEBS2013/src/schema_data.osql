@@ -1,0 +1,147 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: schema_data.osql,v $
+ * $Revision: 1.5 $ $Date: 2013/04/08 14:04:18 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: populate meta data
+ *
+ ****************************************************************************
+ * $Log: schema_data.osql,v $
+ * Revision 1.5  2013/04/08 14:04:18  torer
+ * Array representation of playerstats(sid)
+ *
+ * Revision 1.4  2013/03/29 16:49:54  thatr500
+ * Added player running statistic
+ *
+ * Revision 1.3  2013/03/26 17:36:10  chexu484
+ * Q3 completed!
+ * Note: if we are going to print the result stream on stout, we should keep
+ * the sp logging off otherwise the result stream is streamed to log file again
+ *
+ * Revision 1.2  2013/02/08 11:11:51  thatr500
+ * - Added input stream from reading data file
+ * - Filtered input stream for Q1A
+ * - Q1A skeleton
+ *
+ * Revision 1.1  2013/01/25 16:33:08  chexu484
+ * debs Grand Challenge starts here
+ *
+ *
+ ****************************************************************************/
+
+/*
+Balls: 
+- 1st Half: 4, 8, 10
+- 2nd Half: 4, 8, 10, 12
+
+Team A:
+
+Nick Gertje (Left Leg: 13, Right Leg: 14, Left Arm: 97, Right Arm: 98)
+Dennis Dotterweich (Left Leg: 47, Right Leg:16)
+Niklas Waelzlein (Left Leg: 49, Right Leg: 88)
+Wili Sommer (Left Leg: 19, Right Leg: 52)
+Philipp Harlass (Left Leg: 53, Right Leg: 54)
+Roman Hartleb (Left Leg: 23, Right Leg: 24)
+Erik Engelhardt (Left Leg: 57, Right Leg: 58)
+Sandro Schneider (Left Leg: 59, Right Leg: 28)
+
+
+Team B:
+
+Leon Krapf (Left Leg: 61, Right Leg: 62, Left Arm: 99, Right Arm: 100)
+Kevin Baer (Left Leg: 63, Right Leg: 64)
+Luca Ziegler (Left Leg: 65, Right Leg: 66)
+Ben Mueller (Left Leg: 67, Right Leg: 68)
+Vale Reitstetter (Left Leg: 69, Right Leg: 38)
+Christopher Lee (Left Leg: 71, Right Leg: 40)
+Leon Heinze (Left Leg: 73, Right Leg: 74)
+Leo Langhans (Left Leg: 75, Right Leg: 44)
+
+
+Referee (Left Leg: 105, Right Leg: 106)
+*/
+
+set ball(1) = 4;
+set ball(2) = 8;
+set ball(3) = 10;
+set ball(4) = 12;
+
+/*Players in team 1*/
+set team(1) = iota(1, 8);
+
+set player(1) = "Nick Gertje"; /*Goalkeeper*/
+set player(2) = "Dennis Dotterweich";
+set player(3) = "Niklas Waelzlein";
+set player(4) = "Wili Sommer";
+set player(5) = "Philipp Harlass";
+set player(6) = "Roman Hartleb";
+set player(7) = "Erik Engelhardt";
+set player(8) = "Sandro Schneider";
+
+/*Players in team 2*/
+set team(2) = iota(9, 16);
+
+set player(9) = "Leon Krapf"; /*Goalkeeper*/
+set player(10) = "Kevin Baer";
+set player(11) = "Luca Ziegler";
+set player(12) = "Ben Mueller";
+set player(13) = "Vale Reitstetter";
+set player(14) = "Christopher Lee";
+set player(15) = "Leon Heinze";
+set player(16) = "Leo Langhans";
+
+set playerSensor(13) = 1;
+set playerSensor(14) = 1;
+set playerSensor(97) = 1;
+set playerSensor(98) = 1;
+
+set playerSensor(47) = 2;
+set playerSensor(16) = 2;
+set playerSensor(49) = 3;
+set playerSensor(88) = 3;
+set playerSensor(19) = 4;
+set playerSensor(52) = 4;
+set playerSensor(53) = 5;
+set playerSensor(54) = 5;
+set playerSensor(23) = 6;
+set playerSensor(24) = 6;
+set playerSensor(57) = 7;
+set playerSensor(58) = 7;
+set playerSensor(59) = 8;
+set playerSensor(28) = 8;
+
+set playerSensor(61) = 9;
+set playerSensor(62) = 9;
+set playerSensor(99) = 9;
+set playerSensor(100) = 9;
+
+set playerSensor(63) = 10;
+set playerSensor(64) = 10;
+set playerSensor(65) = 11;
+set playerSensor(66) = 11;
+set playerSensor(67) = 12;
+set playerSensor(68) = 12;
+set playerSensor(69) = 13;
+set playerSensor(38) = 13;
+set playerSensor(71) = 14;
+set playerSensor(40) = 14;
+set playerSensor(73) = 15;
+set playerSensor(74) = 15;
+set playerSensor(75) = 16;
+set playerSensor(44) = 16;
+
+set referee(1) = (105, 106);
+
+create function personSensors() -> Number
+  /* Total number of sensors on persons */
+  as 106;
+
+lisp;
+(defun ballsensors ()
+  '(4 8 10 12))
+(defun refereesensors ()
+  '(105 106))
+:osql

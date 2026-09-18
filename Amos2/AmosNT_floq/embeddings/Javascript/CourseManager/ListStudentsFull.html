@@ -1,0 +1,53 @@
+<html>
+    <head>
+        <title>List of students</title>
+        <script type="text/javascript" src="scripts/SOAPClient.js"></script>
+        <script type="text/javascript" src="scripts/cookies.js"></script>
+        <script type="text/javascript" src="scripts/utility.js"></script>
+        <script type="text/javascript" language="javascript">
+            var error;
+            var oMyObject = window.dialogArguments;
+            var cname = oMyObject.courseName;
+
+            function listStudentFull() {
+                error = null;
+                SOAPClient.invoke("LISTSTUDENTSFULLASS", [5,"inc",cname], true, listStudentFull_callBack, error_callBack);
+            }
+
+            function listStudentFull_callBack(o, xmlDoc)
+            {
+                var tblHead = "<tr style='background-color:lightgrey'><th>Full Name</th><th>e-mail</th><th>Unix Name</th><th>P Number</th><th>Group No.</th><th>Assignment Status</th></tr>";
+                var table = resultToTable(o,null,tblHead);
+                document.getElementById("listDiv").innerHTML = table;
+            }
+
+            function error_callBack(e, errorCode){
+                if (e != null){
+                    error = e;
+                    document.getElementById("listDiv").style.display='none';
+                    document.getElementById("errorDiv").innerHTML="Error callBack:<br>" + error + "<br><br>Error code:<br>" + errorCode;
+                }
+            }
+
+            function close_onclick(){
+                window.close();
+            }
+
+            function window_onload(){
+                if (getCookie("name")==""||getCookie("name")==null){
+                    alert("You don't have authority to view this page.");
+                    document.all.aLogout.href='index.html';
+                    document.all.aLogout.click();
+                }
+                listStudentFull();
+            }
+        </script>
+    </head>
+
+    <body onload="return window_onload();">
+        <h2>The students currently registered for the course are:</h2>
+        <div id="listDiv" style="display:block;"></div>
+        <div id="errorDiv"></div>
+        <div align="center"><input type="button" value="close" align="center" onclick="return close_onclick();" /><div>
+                </body>
+                </html>

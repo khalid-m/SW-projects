@@ -1,0 +1,213 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2013 Thanh , Sobhan, and Cheng, UDBL
+ * $RCSfile: main.osql,v $
+ * $Revision: 1.20 $ $Date: 2013/04/21 22:38:35 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Main entry of the Grand Challenge
+ *
+ ****************************************************************************
+ * $Log: main.osql,v $
+ * Revision 1.20  2013/04/21 22:38:35  thatr500
+ * removed SAMPLING !!!!
+ *
+ * Revision 1.19  2013/04/08 18:00:05  thatr500
+ * Added some tests for Q2
+ * Added new design for splitting ballhitter stream so that Q4 can re-use
+ *
+ * Revision 1.18  2013/04/08 10:20:18  chexu484
+ * running all fours queries at the same time by a function call
+ *
+ * Revision 1.17  2013/04/03 14:18:18  thatr500
+ * - Renamed misc/twindowize to twindowize3
+ * - Added guards to not compute any result during the half break
+ *
+ * Revision 1.16  2013/03/29 16:49:53  thatr500
+ * Added player running statistic
+ *
+ * Revision 1.15  2013/03/27 17:55:49  thatr500
+ * moved Q2 to Numarray
+ *
+ * Revision 1.14  2013/03/26 17:36:08  chexu484
+ * Q3 completed!
+ * Note: if we are going to print the result stream on stout, we should keep
+ * the sp logging off otherwise the result stream is streamed to log file again
+ *
+ * Revision 1.13  2013/03/26 14:25:14  chexu484
+ * Bug fix
+ *
+ * Revision 1.12  2013/03/25 17:01:13  torer
+ * Logging and profiling
+ *
+ * Revision 1.10  2013/03/24 21:51:33  chexu484
+ * Q2 broadcast done, check main.osql
+ *
+ * Revision 1.9  2013/03/14 13:54:46  chexu484
+ * Q3 bug fix, everything works for Q3 now.
+ * Last thing for Q3: mapping between pos and cellid
+ * Cheers!
+ *
+ * Revision 1.8  2013/03/13 19:09:36  sobso953
+ * A running Q3, validation required
+ *
+ * Revision 1.7  2013/03/12 19:15:26  chexu484
+ * 1. game start time changed
+ *    from 10748401988186756 to 10753295594424116 (schema.osql)
+ * 2. start2ndhalf() -> Number added
+ * 3. 1sthalf and 2ndhalf interrupt stream merged with event stream
+ *
+ * Check main.osql
+ *
+ * Revision 1.6  2013/03/08 15:01:04  chexu484
+ * inputStream(Charstring position, Charstring interrupt)
+ *                                      -> Stream of Vector of Number
+ * TO DO:
+ * add second half of the game into data/interrupt.csv
+ *
+ * Revision 1.5  2013/03/08 13:50:49  thatr500
+ * - file organization changed
+ * - schema changed (startgameinpico added)
+ *
+ * Revision 1.4  2013/03/08 08:20:39  sobso953
+ * time stamp converted to second.
+ *
+ * Revision 1.3  2013/03/06 16:27:28  thatr500
+ * - Added Incremental ball possession calculation
+ * - Incorporated new schema
+ *
+ * Revision 1.2  2013/02/28 12:59:48  thatr500
+ * GC 2013 event schema changed !!
+ *
+ * Revision 1.1  2013/02/26 14:08:03  thatr500
+ * New file organization
+ *
+ * Revision 1.8  2013/02/25 09:06:16  thatr500
+ * - finished distance calculation of palyers Q1A
+ * - changed intensity from Number to Charstring (meaningfull)
+ *
+ * Revision 1.7  2013/02/22 10:10:38  sobso953
+ * Comments added
+ *
+ * Revision 1.6  2013/02/20 16:09:13  sobso953
+ * Q2 skeleton added
+ *
+ * Revision 1.5  2013/02/19 15:25:03  sobso953
+ * 1- Q1a implementation completed
+ * 2- Q1b skeleton added
+ *
+ * Revision 1.4  2013/02/12 11:10:33  thatr500
+ * Draft statistic for Q1A
+ *
+ * Revision 1.3  2013/02/08 16:43:48  thatr500
+ * - added smaller piece of data
+ * - formed a timestamp windows (length 1 / 200)
+ *
+ * Revision 1.2  2013/02/08 11:11:55  thatr500
+ * - Added input stream from reading data file
+ * - Filtered input stream for Q1A
+ * - Q1A skeleton
+ *
+ * Revision 1.1  2013/01/25 16:33:04  chexu484
+ * debs Grand Challenge starts here
+ *
+ *
+ ****************************************************************************/
+logging off;
+
+scsqprofile("logs");
+
+show_sp();
+
+set :test1 = "data/test.csv";
+set :test = "data/head4M.csv";
+set :testbin = "data/head4M.bin";
+set :full = "data/full-game";
+set :fullbin = "data/full-game.bin";
+
+
+/* input test */
+count(in(inputStream(:test1)));
+
+count(in(interruptStream()));
+
+count(in(eventStream(:test1)));
+
+count(in(inputStream(:test1)));
+
+/* Q1 test */
+
+q1a(eventstreamna(:testbin));
+
+q1(inputstreamna(:testbin));
+
+
+/* Q2 test */
+
+/* Only player possession */
+count(ballhitter_bag(inputstreamna('data/head4M.bin')));")
+
+/* 5 results streams*/
+q2(inputstreamna(:testbin));
+
+/* Whole game
+teamposs(playerposs_out(inputstreamna(:fullbin)));
+*/
+
+q2(inputstreamna(:testbin));
+
+
+/* Q3 test */
+
+count(in(eventStreamna(:testbin)));  /* 16.84 second */
+
+count(in(q3input(eventStreamna(:testbin))));  /* 26 second */
+
+count(in(q3input(inputstreamna(:testbin))));  /* 26 second */
+
+count(q3(in(q3input(inputstreamna(:testbin))), 10));  /* 148 second */
+
+
+count(q3(in(q3input(inputstreamna(:fullbin))), 10));
+
+count(in(q3input(inputstreamna(:fullbin))));
+
+count(in(q3input(eventstreamna(:fullbin))));
+
+logging off;
+set :testbin = "data/head4M.bin";
+
+writefile("output/q3result" + 1, q3_0(in(q3input(inputstreamna(:testbin))), 1));
+
+writefile("output/q3Newresult" + 1, q3_0(frontendq3_0(in(q3input(inputstreamna(:testbin)))), 1));
+
+count(q3(inputstreamna(:fullbin)));
+
+
+/* Q4 test */
+
+q4(inputstreamna(:testbin));
+
+/* DEBS test */
+
+count(debs(inputstreamna(:testbin)));
+
+
+create function stdev3(Bag of Number b)-> Real
+  /* Scalable incremental streaming algorithm.
+    See http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance  */
+  as begin declare Number Mi, Number M, Number S, Number N;
+           set M = 0.0;
+           set S = 0.0;
+           set N = 0.0;
+           for each Number Xi where Xi in b
+           begin set N = N + 1;
+                 set Mi = M + (Xi - M)/N;
+                 set S = S + (Xi - M)*(Xi - Mi);
+                 set M = Mi;
+           end;
+           return sqrt(S/(N-1));
+     end;
+
+stdev3(iota(1,100000)); /* Correct! */

@@ -1,0 +1,27 @@
+/*-*-sql-*-*******************************************************************/
+
+create function rfft(numarray x)->numarray
+	as multidirectional
+          ('bf' key foreign 'REALFFTBF' cost {20,1})
+          ('fb' key foreign 'REALFFTFB' cost {20,1});
+
+lisp;
+(set-type-container 'rfft)
+:osql
+
+set bijective_function(functionnamed("RFFT"))=true;
+
+create function irfft(numarray x)->numarray r
+        as select r where rfft(r)=x;
+
+create function fft(numarray x)->numarray
+	as foreign 'FFTBF';
+
+create function fftpart(numarray x, integer)->numarray
+	as foreign 'FFTPARTBF';
+
+create function ifft(numarray x)->numarray
+	as foreign 'IFFTBF';
+
+create function radix2combine(vector of carray)->carray
+	as foreign 'RADIX2COMBINEBF';

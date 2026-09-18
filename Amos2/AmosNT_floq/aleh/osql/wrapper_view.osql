@@ -1,0 +1,194 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2005 Ruslan Fomkin, UDBL
+ * $RCSfile: wrapper_view.osql,v $
+ * $Revision: 1.9 $ $Date: 2008/11/11 07:46:10 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  View of the ROOT wrapper of ROOT files containing events. The view
+ * contains schema of event data and parameters, which fully corresponds to
+ * the schema from the file schema.osql. Thus cuts applicable to the view 
+ * also.
+ * NOTE! This file could be loaded only in executable rootwrap (compiled by 
+ * corresponding script in %AMOSHOME%/wrappers/ROOTWrap/)started with 
+ * image file rootwrap.dmp (created by corresponding script in the same dir).
+ *
+ ****************************************************************************
+ * $Log: wrapper_view.osql,v $
+ * Revision 1.9  2008/11/11 07:46:10  torer
+ * Stricter checking of conformance with result types in function definitions
+ * Can be turned off with
+ *    (setq _strict-resulttypes_ nil)
+ *
+ * Revision 1.8  2006/03/21 11:02:31  ruslan
+ * Updated instruction for compiling and running ALEH. Added scripts for compiling ALEH and for testing projects depending on ROOT library
+ *
+ ****************************************************************************/
+load_lisp("../lsp/wrapper_view.lsp");
+
+lisp;
+(setq *runtime-executability-check* t)
+:osql
+
+latebinding("OR");
+
+create function event_cc() -> <vector v_key key, charstring filename, 
+	real PxMiss, real PyMiss, vector props> as
+select v_key, filename, props[0], props[1], props
+from integer id
+where <{filename,"/ATLFAST","h51;1",id,{"Pxmiss","Pymiss","Nele","Kfele",
+	"Pxele","Pyele","Pzele","Eeele","Nmuo","Kfmuo","Pxmuo","Pymuo",
+	"Pzmuo","Eemuo","Njetb","Kfjetb","Pxjetb","Pyjetb","Pzjetb",
+	"Eejetb"}},props> = 
+	root_access_project(filename,"/ATLFAST","h51;1",{"Pxmiss","Pymiss",
+	"Nele","Kfele","Pxele","Pyele","Pzele","Eeele","Nmuo","Kfmuo",
+	"Pxmuo","Pymuo","Pzmuo",
+	"Eemuo","Njetb","Kfjetb","Pxjetb","Pyjetb","Pzjetb","Eejetb"})
+	and v_key={filename,id};
+
+create_mapped_type("Event",{"v_key"},{"v_key","filename","PxMiss","PyMiss",
+	"props"},"event_cc",FALSE);
+
+create function id(Event ev) -> integer as
+select v_key(ev)[1];
+
+/*
+ * kind 0 means electron, 1 means muon, 2 means jetb
+ */
+
+create function electron_cc() -> <vector v_key key, Event ev, 
+	integer Kf, real Px, real Py, real Pz, real Ee> as
+select v_key, ev, cast(v[3] as vector)[id], cast(v[4] as vector)[id],
+	cast(v[5] as vector)[id], cast(v[6] as vector)[id],
+	cast(v[7] as vector)[id]
+from integer id, vector v, integer n
+where v=props(ev) and
+	n=v[2] and n>0 and id = iota(0,cast((n-1) as integer))
+	and v_key={ev,id,0};
+
+create function muon_cc() -> <vector v_key key, Event ev, integer Kf, 
+	real Px, real Py, real Pz, real Ee> as
+select v_key, ev, cast(v[9] as vector)[id], cast(v[10] as vector)[id],
+	cast(v[11] as vector)[id], cast(v[12] as vector)[id],
+	cast(v[13] as vector)[id]
+from integer id, vector v, integer n
+where v=props(ev) and
+	n=v[8] and n>0 and id = iota(0,cast((n-1) as integer))
+	and v_key={ev,id,1};
+
+create function jetb_cc() -> <vector v_key key, Event ev, integer Kf, 
+	real Px, real Py, real Pz, real Ee> as
+select v_key, ev, cast(v[15] as vector)[id], cast(v[16] as vector)[id],
+	cast(v[17] as vector)[id], cast(v[18] as vector)[id],
+	cast(v[19] as vector)[id]
+from integer id, vector v, integer n
+where v=props(ev) and
+	n=v[14] and n>0 and id = iota(0,cast((n-1) as integer))
+	and v_key={ev,id,2};
+
+
+create function abstractparticle_cc() -> <vector v_key key, Event ev,
+	integer Kf, real Px, real Py, real Pz, real Ee> as
+select v_key,ev,kf,px,py,pz,ee
+where  <v_key,ev,kf,px,py,pz,ee> = electron_cc() or
+	<v_key,ev,kf,px,py,pz,ee> = muon_cc() or
+	<v_key,ev,kf,px,py,pz,ee> = jetb_cc();
+
+create function lepton_cc() -> <vector v_key key, Event ev, 
+	integer Kf, real Px, real Py, real Pz, real Ee> as
+select v_key,ev,kf,px,py,pz,ee
+where  <v_key,ev,kf,px,py,pz,ee> = electron_cc() or
+	<v_key,ev,kf,px,py,pz,ee> = muon_cc();
+
+create_mapped_type("AbstractParticle",{"v_key"},
+	{"v_key","Event","Kf","Px","Py","Pz","Ee"},"abstractparticle_cc",TRUE);
+create function id(AbstractParticle p) -> integer as
+select v_key(p)[1];
+
+create_mapped_type("Lepton",{"ABSTRACTPARTICLE"},{"v_key"},
+	{"v_key","Event","Kf","Px","Py","Pz","Ee"},"LEPTON_CC",TRUE);
+create_mapped_type("Electron",{"LEPTON"},{"v_key"},
+	{"v_key","Event","Kf","Px","Py","Pz","Ee"},"electron_cc",TRUE);
+create_mapped_type("Muon",{"LEPTON"},{"v_key"},
+	{"v_key","Event","Kf","Px","Py","Pz","Ee"},"muon_cc",TRUE);
+create_mapped_type("JetB",{"ABSTRACTPARTICLE"},{"v_key"},
+	{"v_key","Event","Kf","Px","Py","Pz","Ee"},"jetb_cc",TRUE);
+
+create function electrons(Event ev) -> Electron p as
+	select p
+	where event(p)=ev;
+
+create function muons(Event ev) -> Muon p as
+	select p
+	where event(p)=ev;
+
+create function jetbs(Event ev) -> JetB p as
+	select p
+	where event(p)=ev;
+
+create function leptons(Event ev) -> Lepton p as
+	select p
+	where event(p)=ev;
+
+create function particles(Event ev) -> AbstractParticle p as
+	select p
+	where event(p)=ev;
+
+lisp;
+(setq *runtime-executability-check* nil)
+:osql
+
+/***************************************************************/
+create type parameters; /* general parameters, see managment */
+/*
+ * minPtOfAllThreeLeptons: minPtL
+ * minPtOfTheHardestLepton: hardPtL
+ * etaRangeForAllThreeLeptons: etaL
+ */
+create function etaL(parameters) -> real as stored;
+create function minPtL(parameters) -> real as stored;
+create function hardPtL(parameters) -> real as stored;
+/*
+ * m_zMass: zMass
+ * m_minimumZMassDiff: minZMass
+ */
+create function zMass(parameters) -> real as stored;
+create function minZMass(parameters) -> real as stored;
+/*
+ * m_etaRangeForJets: etaJ
+ * m_minPtForJets: minPtJ
+ */
+create function etaJ(parameters) -> real as stored;
+create function minPtJ(parameters) -> real as stored;
+/*
+ * m_theIntegerForBTaggedJet: forBJet
+ */
+create function forBJet(parameters) -> integer as stored;
+/*
+ * m_wMass: wMass
+ * m_allowedWMassDiff: allowedWMass
+ */
+create function wMass(parameters) -> real as stored;
+create function allowedWMass(parameters) -> real as stored;
+/*
+ * m_topMass: tMass
+ * m_allowedTopMassDiff: allowedTMass
+ */
+create function tMass(parameters) -> real as stored;
+create function allowedTMass(parameters) -> real as stored;
+/*
+ * m_maxAllowedPtForOtherJets: ptOJets
+ */
+create function ptOJets(parameters) -> real as stored;
+/* 
+ * m_maxPtForAllThreeIsolatedLeptons: maxPtAll
+ * m_maxPtForTheSoftestIsolatedLepton: maxPtSoft
+ * m_minMissingTransverseEnergy: minTransEe
+ * m_maxAllowedEffectiveMass: maxEfMass
+ */
+create function maxPtAll(parameters) -> real as stored;
+create function maxPtSoft(parameters) -> real as stored;
+create function minTransEe(parameters) -> real as stored;
+create function maxEfMass(parameters) -> real as stored;

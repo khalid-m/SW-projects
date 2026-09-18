@@ -1,0 +1,208 @@
+
+/* importing metadata from WSDL */
+importwsdl("wsdl/TerraService2.wsdl");
+importwsdl("wsdl/PlaceLookup.wsdl");
+importwsdl("wsdl/ZipCodeLookup.wsdl");
+importwsdl("wsdl/zip.wsdl");
+importwsdl("wsdl/Weather.wsdl");
+
+
+importwsdl("wsdl/uszip.wsdl");
+
+importwsdl("wsdl/WeatherForecast.wsdl");
+importwsdl("wsdl/LocalTime.wsdl");
+
+
+/* importing values for soapheaders */
+
+putsoaphvalue( 'GetAllStates','5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q');
+putsoaphvalue( 'GetPlaceDetails','5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q');
+putsoaphvalue( 'GetPlacesWithin', '5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q');
+putsoaphvalue( 'GetPlacesInside', '5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q');
+putsoaphvalue( 'GetZipCodesWithin','5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q');
+putsoaphvalue( 'GetPlacesInside_0', '5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q');
+
+
+
+/* some helping function */
+lisp;
+(defun getzipcode (fno string r)
+  "Returns a list of substrings (zipcode) of string"
+  (let ((zc "") (j 0) tstr)
+    (if (string= string "") (osql-result string nil)
+      (progn 
+	(setq tstr (explode (mksymbol string)))
+	(dolist (i tstr)
+	  (if (integerp i) (progn (if (< j 5)(setq zc ( concat zc (mkstring i)))) (setq j (1+ j)))
+	    (if (not (string= zc "")) (progn (setq j 0)(osql-result string zc) (setq zc "")) ))
+      
+      
+	  )))
+    ))
+
+:osql
+create function sql:getzipcode(charstring zipstr)->charstring zipcode as foreign "getzipcode"; 
+create function sql:substring(charstring str, integer start, integer finish)->charstring substr as select substring(str,start,finish); 
+create function sql:substring1(charstring str)->charstring substr as select substring(str,0,1); 
+
+
+save "wsmed.dmp";
+
+/*query 1*/
+
+create function query1()-> integer as select count(
+                  sql("select gl.City ,  gl.PlaceTypeId
+                       from   GetAllStates gs, GetPlacesWithin gp, GetPlaceList gl
+                       where  gs.State=gp.state and gp.distance=15.0 and gp.placeTypeToFind='City' and gp.place='Atlanta' and gl.placeName=gp.ToPlace+' ,'+gp.ToState and gl.MaxItems=100 and gl.imagePresence='true'"));
+
+
+/* query 2 */
+create function query2()-> integer as select count(
+                 sql("select gp.ToState, gp.zip
+                      From   GetAllStates gs, GetInfoByState gi,getzipcode gc, GetPlacesInside_0 gp
+                      Where gs.State=gi.USState and gi.GetInfoByStateResult=gc.zipstr and gc.zipcode=gp.zip and gp.ToPlace='USAF Academy' "));
+
+
+
+
+create function query3()-> integer as select count(
+                  sql("select gp.ToPlace
+                       from   GetAllStates gs, GetPlacesWithin gp
+                       where  gs.State=gp.state and gp.distance=15.0 and gp.placeTypeToFind='City' and gp.place='Atlanta'"));
+
+/* Find all the places inside the US states starting with the alphabets in {'A','B','C'} and their forecast for a week */
+
+create function q4(charstring chk)->  integer as select count(
+					sql("select gp.ToPlace,gp.ZIP,gp.ToState,zipcode,gz.date, gz.desciption,gz.MorningLow,gz.Daytime
+					     from   GetAllStates gs, GetInfoByState gi,getzipcode gc, GetPlacesInside gp,  GetCityForeCastByZip gz, substring ss
+					     where  ss.str=gs.State and ss.start=0 and ss.finish=0 and ss.substr< 'C' and  ss.str=gi.USState and gi.GetInfoByStateResult=gc.zipstr and gc.zipcode=gp.zip and gz.ZIP=gc.zipcode"));
+
+
+create function q5(charstring chk)-> <  CHARSTRING placeout,  CHARSTRING state1, CHARSTRING zipcode,CHARSTRING date,CHARSTRING description,CHARSTRING low,
+                                      CHARSTRING high> as
+                                       select v[0],v[1],v[2],v[3],v[4],v[5],v[6]
+                                       from vector v
+                                       where sql("select gp.TOPLACE,gp.TOSTATE,gz.zipcode,gc.DATE, gc.DESCIPTION,gc.MORNINGLOW,gc.DAYTIMEHIGH
+				      from   GetAllStates gs,  GetInfoByState gi, GetPlacesInside_0 gp,  substring ss, GetCityForeCastByZip gc ,getzipcode gz
+					where   ss.str=gs.State and ss.substr<'"+chk+"'and ss.start=0 and ss.finish=0 and gi.USState=gs.State and gi.GETINFOBYSTATERESULT=gz.zipstr and gp.zip=gz.zipcode and gc.zip=gz.zipcode")=v;
+
+
+
+
+
+ sql("select * from getdistances g where g.LONGITUDE=32.96 AND g.LATITUDE=-93.99 AND g.DEPARTUREPOINT_LONGITUDE=27.78 AND g.DEPARTUREPOINT_LATITUDE=-97.42 AND g.AUTHENTICATIONPARAMS='50227'"); 
+
+
+
+
+create function query5()-> integer as select count(sql("select gp.TOPLACE,gp.TOSTATE,gz.zipcode,gc.DATE, gc.DESCIPTION,gc.MORNINGLOW,gc.DAYTIMEHIGH from   GetAllStates gs,  GetInfoByState gi, GetPlacesInside_0 gp,  substring ss, GetCityForeCastByZip gc ,getzipcode gz	where   ss.str=gs.State and ss.substr<'AK'and ss.start=0 and ss.finish=0 and gi.USState=gs.State and gi.GETINFOBYSTATERESULT=gz.zipstr and gp.zip=gz.zipcode and gc.zip=gz.zipcode"));
+
+
+
+create function query6()-> integer as select count(sql("select gp.TOPLACE,gp.TOSTATE,gz.zipcode,gc.DATE, gc.DESCIPTION,gc.MORNINGLOW,gc.DAYTIMEHIGH from   GetAllStates gs,  GetPlacesInside_0 gp,  GetCityForeCastByZip gc ,GetZipc gz	where   gs.State<'AL' and gz.State=gs.State and  gp.zip=gz.zipcode and gc.zip=gz.zipcode"));
+
+
+sql("select gp.toplace,count(gp.TOSTATE) from   GetAllStates gs,  GetPlacesInside_0 gp,  GetCityForeCastByZip gc ,GetZipc gz	where   gs.State<'AL' and gz.State=gs.State and  gp.zip=gz.zipcode and gc.zip=gz.zipcode group by gp.toplace");
+  
+sql("select gp.TOSTATE, gp.TOPLACE  from   GetPlacesInside_0 gp  where gp.zip='99501'");
+
+
+/***********************Views*****************************/
+
+create function sql:View()-> <Charstring zip, Charstring dat, Charstring place, Charstring state> as select v[0],v[1],v[2],v[3]
+                                       from vector v where sql("select gz.zipcode,gc.DATE,gp.TOPLACE,gp.TOSTATE from   GetAllStates gs,  GetPlacesInside_0 gp,  GetCityForeCastByZip gc ,GetZipc gz where gs.State<'AL' and gz.State=gs.State and  gp.zip=gz.zipcode and gc.zip=gz.zipcode")=v;
+
+sql("select v.zip,count(v.dat) from View v group by v.zip ");
+
+create function sql:View1()-> <Charstring zip, Charstring place, Charstring state> as select v[0],v[1],v[2]
+                                       from vector v where sql("select gz.zipcode, gp.TOSTATE, gp.TOPLACE  from   GetAllStates gs,  GetPlacesInside_0 gp,  GetZipc gz where gs.State<'AL' and gz.State=gs.State and  gp.zip=gz.zipcode")=v;
+
+sql("select v.zip  from View1 v group by v.zip ");
+
+
+create function sql:View2()-> <Charstring zip, Charstring dat> as select v[0],v[1]
+                                       from vector v where sql("select gz.zipcode,gc.DATE from   GetAllStates gs,  GetCityForeCastByZip gc ,GetZipc gz where gs.State<'AL' and gz.State=gs.State and gc.zip=gz.zipcode")=v;
+
+sql("select v.zip  from View1 v group by v.zip ");
+
+/*******************************************************/
+
+/******Experiment****************************/
+
+
+create function query6()-> integer as select count(sql("select gp.TOPLACE,gp.TOSTATE,gz.OUT0,gc.DATE, gc.DESCIPTION,gc.MORNINGLOW,gc.DAYTIMEHIGH from   GetAllStates gs,  GetPlacesInside_0 gp,  GetCityForeCastByZip gc ,GetZipc gz	where   gs.State<'AL' and gz.State=gs.State and  gp.zip=gz.OUT0 and gc.zip=gz.OUT0"));
+
+
+create function query6()-> integer as select count(sql("select gp.TOPLACE,gp.TOSTATE,gz.OUT0,gc.DATE, gc.DESCIPTION,gc.MORNINGLOW,gc.DAYTIMEHIGH from   GetAllStates gs,  GetPlacesInside_0 gp,  GetCityForeCastByZip gc ,GetZipc gz	where   gs.State<'CO' and gz.State=gs.State and  gp.zip=gz.OUT0 and gc.zip=gz.OUT0"));
+
+create function query6()-> integer as select count(sql("select gp.TOPLACE,gp.TOSTATE,gz.OUT0,gc.DATE, gc.DESCIPTION,gc.MORNINGLOW,gc.DAYTIMEHIGH from   GetAllStates gs,  GetPlacesInside_0 gp,  GetCityForeCastByZip gc ,GetZipc gz	where   gs.State<'FM' and gz.State=gs.State and  gp.zip=gz.OUT0 and gc.zip=gz.OUT0"));
+
+
+create function query6()-> integer as select count(sql("select gp.TOPLACE,gp.TOSTATE,gz.OUT0,gc.DATE, gc.DESCIPTION,gc.MORNINGLOW,gc.DAYTIMEHIGH from   GetAllStates gs,  GetPlacesInside_0 gp,  GetCityForeCastByZip gc ,GetZipc gz	where   gs.State<'MD' and gz.State=gs.State and  gp.zip=gz.OUT0 and gc.zip=gz.OUT0"));
+
+ 
+/* different arguments to independent web service calls */
+
+create function query7()-> integer as select count(sql("select gp.TOPLACE,gp.TOSTATE+', '+gs.TYPE,gz.OUT0,gc.DATE, gc.DESCIPTION,gc.MORNINGLOW,gc.DAYTIMEHIGH from   GetAllStates gs,  GetPlacesInside_0 gp,  GetCityForeCastByZip gc ,GetZipc gz	where   gs.State<'AL' and gz.State=gs.State and  gp.zip=gz.OUT0 and gc.zip=gz.OUT0"));
+
+create function query8()-> integer as select count(sql("select gp.TOPLACE,gp.TOSTATE+', '+gs.TYPE,gz.OUT0,gc.DATE, gc.DESCIPTION,gc.MORNINGLOW,gc.DAYTIMEHIGH from   GetAllStates gs,  GetPlacesInside_0 gp,  GetCityForeCastByZip gc ,GetZipc gz	where   gs.State<'CO' and gz.State=gs.State and  gp.zip=gz.OUT0 and gc.zip=gz.OUT0"));
+
+/* more dependent and independent web service calls */
+
+create function query1()-> integer as select count(
+                  sql("select gl.City ,  gl.PlaceTypeId
+                       from   GetAllStates gs, GetPlacesWithin gp, GetPlaceList gl
+                       where  gs.State=gp.state and gp.distance=15.0 and gp.placeTypeToFind='City' and gp.place='Atlanta' and gl.placeName=gp.ToPlace+' ,'+gp.ToState and gl.MaxItems=100 and gl.imagePresence='true'"));
+
+
+create function query9()-> integer as select count(sql("select gp.TOPLACE,gp.TOSTATE,gz.OUT0,gc.DATE, gc.DESCIPTION,gc.MORNINGLOW,gc.DAYTIMEHIGH,gl.PlaceTypeID from   GetAllStates gs,  GetPlacesInside_0 gp,  GetCityForeCastByZip gc ,GetZipc gz, GetPlaceList gl	where   gs.State<'AL' and gz.State=gs.State and  gp.zip=gz.OUT0 and gc.zip=gz.OUT0 and gl.placeName=gp.ToPlace and gl.MaxItems=100 and gl.imagePresence='true'")
+);
+
+create function query10()-> integer as select count(sql("select gp.TOPLACE,gp.TOSTATE,gz.OUT0,gc.DATE, gc.DESCIPTION,gc.MORNINGLOW,gc.DAYTIMEHIGH,gl.PlaceTypeID from   GetAllStates gs,  GetPlacesInside_0 gp,GetPlaceList gl , GetCityForeCastByZip gc ,GetZipc gz	where   gs.State<'AL' and gz.State=gs.State and  gp.zip=gz.OUT0 and gl.placeName=gp.ToPlace and gl.MaxItems=100 and gl.imagePresence='true'and gc.zip=gz.OUT0 "));
+
+
+create function query11()-> integer as select count(sql("select gl1.PlaceTypeID, gp.TOPLACE,gp.TOSTATE,gz.OUT0,gc.DATE, gc.DESCIPTION,gc.MORNINGLOW,gc.DAYTIMEHIGH,gl.PlaceTypeID from   GetAllStates gs,  GetPlacesInside_0 gp,GetPlaceList gl , GetCityForeCastByZip gc ,GetZipc gz, GetPlaceList gl1	where   gs.State<'AL' and gz.State=gs.State and  gp.zip=gz.OUT0 and gl.placeName=gp.ToPlace and gl.MaxItems=100 and gl.imagePresence='true'and gc.zip=gz.OUT0 and gl1.placeName=gc.City and gl1.MaxItems=100 and gl1.imagePresence='true'"));
+
+create function query12()-> integer as select count(sql("select gp.TOPLACE,gp.TOSTATE,gz.OUT0,gc.DATE, gc.DESCIPTION,gc.MORNINGLOW,gc.DAYTIMEHIGH,gl.PlaceTypeID from   GetAllStates gs,  GetPlacesInside_0 gp,GetPlaceList gl , GetCityForeCastByZip gc ,GetZipc gz	where   gs.State<'AL' and gz.State=gs.State and gc.zip=gz.OUT0 and  gp.zip=gz.OUT0 and gl.placeName=gp.ToPlace and gl.MaxItems=100 and gl.imagePresence='true'"));
+
+
+
+
+sql("select gp.zip, count(gp.ToPlace) from   GetAllStates gs,  GetPlacesInside_0 gp, GetZipc gz where gs.State<'CO' and gz.State=gs.State and  gp.zip=gz.OUT0 group by gp.zip");
+
+
+(sql-query-plan "select gp.TOPLACE,gp.TOSTATE,gz.OUT0,gc.DATE, gc.DESCIPTION,gc.MORNINGLOW,gc.DAYTIMEHIGH,gl.PlaceTypeID from   GetAllStates gs, GetCityForeCastByZip gc ,GetZipc gz, GetPlacesInside_0 gp,GetPlaceList gl	where   gs.State<'AL' and gz.State=gs.State and  gp.zip=gz.OUT0 and gl.placeName=gp.ToPlace and gl.MaxItems=100 and gl.imagePresence='true'and gc.zip=gz.OUT0 ")
+
+
+(sql-query-plan "select gp.TOPLACE,gp.TOSTATE,gz.OUT0,gc.DATE, gc.DESCIPTION,gc.MORNINGLOW,gc.DAYTIMEHIGH,gl.PlaceTypeID from   GetAllStates gs,  GetPlacesInside_0 gp,  GetCityForeCastByZip gc ,GetZipc gz, GetPlaceList gl	where   gs.State<'AL' and gz.State=gs.State and gc.zip=gz.OUT0 and  gp.zip=gz.OUT0  and gl.placeName=gp.ToPlace and gl.MaxItems=100 and gl.imagePresence='true'")
+
+
+"select gl.PlaceTypeID from  GetPlaceList gl 	where  gl.placeName='Atlanta' and gl.MaxItems=100 and gl.imagePresence='true'"
+
+
+
+create function query14()-> integer as select count(sql("select gd.Name,gd.LatDegrees,gd.LonDegrees,gz.OUT0,gc.DATE, gc.DESCIPTION,gc.MORNINGLOW,gc.DAYTIMEHIGH from   GetAllStates gs,  GetPlacesInside_0 gp,  GetCityForeCastByZip gc ,GetZipc gz, GetPlaceDetails gd	where   gs.State<'AL' and gz.State=gs.State and gc.zip=gz.OUT0 and  gp.zip=gz.OUT0 and gd.Place=gp.TOPLACE and gd.State=gp.TOSTATE"));
+
+create function query15()-> integer as select count(sql("select gd.Name,gd.LatDegrees,gd.LonDegrees,gz.OUT0,gc.DATE, gc.DESCIPTION,gc.MORNINGLOW,gc.DAYTIMEHIGH from   GetAllStates gs,  GetPlacesInside_0 gp,  GetCityForeCastByZip gc ,GetZipc gz, GetPlaceDetails gd	where   gs.State<'AL' and gz.State=gs.State and  gp.zip=gz.OUT0  and gd.Place=gp.TOPLACE and gd.State=gp.TOSTATE and gc.zip=gz.OUT0"));
+
+
+create function query16()-> integer as select count(sql("select gd.Name,gd.LatDegrees,gd.LonDegrees,gz.OUT0,gc.DATE, gc.DESCIPTION,gc.MORNINGLOW,gc.DAYTIMEHIGH from   GetAllStates gs,  GetPlacesInside_0 gp,  GetCityForeCastByZip gc ,GetZipc gz, GetPlaceDetails gd	where   gs.State<'AL' and gz.State=gs.State and  gp.zip=gz.OUT0 and gc.zip=gz.OUT0 and gd.place like '[AB]*' and gd.Place=gp.TOPLACE and gd.State=gp.TOSTATE")
+
+sql("select gd.Name,gd.LatDegrees,gp.ToPlace,gd.LonDegrees,gz.OUT0,gc.DATE, gc.DESCIPTION,gc.MORNINGLOW,gc.DAYTIMEHIGH from   GetAllStates gs,  GetPlacesInside_0 gp,  GetCityForeCastByZip gc ,GetZipc gz, GetPlaceDetails gd	where   gs.State<'AL' and gz.State=gs.State and gc.zip=gz.OUT0 and  gp.zip=gz.OUT0 and gd.Place=gp.TOPLACE and gd.State='AL'")
+
+/******************delete****************************************************************************/
+(sql-query-plan "select gp.TOPLACE,gp.TOSTATE,gz.OUT0,gc.DATE, gc.DESCIPTION,gc.MORNINGLOW,gc.DAYTIMEHIGH,gl.PlaceTypeID from   GetAllStates gs, GetCityForeCastByZip gc ,GetZipc gz, GetPlacesInside_0 gp,GetPlaceList gl	where   gs.State<'AL' and gz.State=gs.State and  gp.zip=gz.OUT0 and gl.placeName=gp.ToPlace and gl.MaxItems=100 and gl.imagePresence='true'and gc.zip=gz.OUT0 ")
+
+
+(sql-query-plan "select gp.TOPLACE,gp.TOSTATE,gz.OUT0,gc.DATE, gc.DESCIPTION,gc.MORNINGLOW,gc.DAYTIMEHIGH,gd.Name,gd.LatDegrees from   GetAllStates gs,   GetCityForeCastByZip gc ,GetZipc gz,  GetPlacesInside_0 gp, GetPlaceDetails gd	where   gs.State<'AL' and gz.State=gs.State and  gp.zip=gz.OUT0  and gd.Place=gp.TOPLACE and gd.State=gp.TOSTATE and gc.zip=gz.OUT0")
+
+(sql-query-plan "select gp.TOPLACE,gp.TOSTATE,gz.OUT0,gc.DATE, gc.DESCIPTION,gc.MORNINGLOW,gc.DAYTIMEHIGH,gd.Name,gd.LatDegrees from   GetAllStates gs,   GetPlacesInside_0 gp ,GetCityForeCastByZip gc, GetZipc gz,  GetPlaceDetails gd	where   gs.State<'AL' and gz.State=gs.State and  gp.zip=gz.OUT0  and gd.Place=gp.TOPLACE and gd.State=gp.TOSTATE and gc.zip=gz.OUT0")
+
+create function query1()-> integer as select count(sql("select gd.Name,gd.LatDegrees,gd.LonDegrees,gz.OUT0,gc.DATE, gc.DESCIPTION,gc.MORNINGLOW,gc.DAYTIMEHIGH from   GetAllStates gs,  GetCityForeCastByZip gc ,GetZipc gz, GetPlacesInside_0 gp, GetPlaceDetails gd	where   gs.State<'AL' and gz.State=gs.State  and gc.zip=gz.OUT0 and gd.place like '[A]*' and gd.Place=gp.TOPLACE and gd.State=gp.TOSTATE and  gp.zip=gz.OUT0"));
+
+create function query2()-> integer as select count(sql("select gd.Name,gd.LatDegrees,gd.LonDegrees,gz.OUT0,gc.DATE, gc.DESCIPTION,gc.MORNINGLOW,gc.DAYTIMEHIGH from   GetAllStates gs,  GetPlacesInside_0 gp,  GetCityForeCastByZip gc ,GetZipc gz, GetPlaceDetails gd	where   gs.State<'AL' and gz.State=gs.State  and gc.zip=gz.OUT0 and gd.place like '[A]*' and gd.Place=gp.TOPLACE and gd.State=gp.TOSTATE and  gp.zip=gz.OUT0"));
+
+create function query3()-> integer as select count(sql("select gd.Name,gd.LatDegrees,gd.LonDegrees,gz.OUT0,gc.DATE, gc.DESCIPTION,gc.MORNINGLOW,gc.DAYTIMEHIGH, gl.Population from   GetAllStates gs,  GetPlacesInside_0 gp,  GetCityForeCastByZip gc ,GetZipc gz, GetPlaceDetails gd, GetPlaceList gl	where   gs.State<'AL' and gz.State=gs.State  and gc.zip=gz.OUT0 and gd.place like '[A]*' and gd.Place=gp.TOPLACE and gd.State=gp.TOSTATE and  gp.zip=gz.OUT0 and gl.placeName=gc.City and gl.MaxItems=100 and gl.imagePresence='true'"));
+
+  
+create function foo(integer a)-><integer, integer> as select (j+2),j from integer j where j=a+1;

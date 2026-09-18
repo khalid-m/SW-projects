@@ -1,0 +1,32 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Tore Risch, UDBL
+ * $RCSfile: firebirdtest.osql,v $
+ * $Revision: 1.1 $ $Date: 2008/08/13 10:26:34 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Test of FireBird JDBC wrapper
+ ****************************************************************************
+ * $Log: firebirdtest.osql,v $
+ * Revision 1.1  2008/08/13 10:26:34  torer
+ * *** empty log message ***
+ *
+ ****************************************************************************/
+
+set :a = jdbc("ibds", "interbase.interclient.Driver");
+set :b = jdbc("ibds2", "interbase.interclient.Driver");
+set :dbdir = "jdbc:interbase://localhost/"+pwd()+"/";
+
+connect(:a,:dbdir+"TEST.GDB", "SYSDBA", "masterkey");
+connect(:b,:dbdir+"TEST.GDB", "SYSDBA", "masterkey");
+
+< 'regress1.osql';
+< 'testConstructor.osql';
+< 'regress2.osql';
+< 'stress.osql';
+
+disconnect(:a); 
+disconnect(:b);
+
+quit;

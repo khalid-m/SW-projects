@@ -1,0 +1,1 @@
+copy %AMOS_HOME%\embeddings\wsmos\WEB-INF\wsmos.dmp E:\Courses\dmp\

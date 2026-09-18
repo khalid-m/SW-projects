@@ -1,0 +1,2 @@
+copy *.php "%WHD%\www\"
+

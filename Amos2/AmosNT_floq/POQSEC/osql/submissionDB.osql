@@ -1,0 +1,59 @@
+/*****************************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2005 Ruslan Fomkin, UDBL
+ * $RCSfile: submissionDB.osql,v $
+ * $Revision: 1.1 $ $Date: 2005/08/09 12:56:28 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Schema of submission DB of POQSEC framework corresponding to the paper
+ *  published at VLDB DMG 05. 
+ *
+ ****************************************************************************/
+
+
+/**
+ *  Schema for temporary storing data about submitted jobs.
+ */
+create type job;
+
+create function name(job) -> charstring key as stored;
+create function cluster(job) -> cResource as stored;
+create function xrslfile(job) -> charstring as stored;
+create function queryfile(job) -> charstring as stored;
+create function cputime(job) -> integer as stored;
+create function submittime(job) -> timeval as stored;
+create function data(job) -> bag of vector as stored;
+create function parallel(job) -> integer as stored;
+create function status(job) -> charstring as stored;
+create function lasttime(job) -> timeval as stored;
+create function resultfile(job) -> charstring as stored;
+create function resultdir(job) -> charstring as stored;
+create function resulttime(job) -> timeval as stored;
+create function executiontime(job) -> real as stored;
+create function loadtime(job) -> real as stored;
+
+create type submission;
+
+create function query(submission) -> charstring as stored;
+create function data(submission) -> bag of eventdata as stored;
+create function jobs(submission) -> bag of job as stored;
+create function time(submission) -> timeval as stored;
+create function load_freecpus(submission) -> integer as stored;
+create function load_queuedjobs(submission) -> integer as stored;
+create function cluster(submission) -> cResource as stored;
+create function totaltime(submission) -> integer as stored;
+create function currentload(submission) -> 
+	bag of vector as stored; /*cluster, freecpus, queued jobs*/
+
+/**
+ *  Schema of collected statistics which is neccessary for Decision Maker
+ * to choose a plan for evaluating 
+ */
+
+
+create function cputime(cluster, integer filesNo) -> integer as stored;
+
+create function runoverst(cluster, integer jobsNo, integer CPUtimePjob, integer freeCPUs, integer queuedJobs) -> integer as stored;
+

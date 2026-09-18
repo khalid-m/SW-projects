@@ -1,0 +1,329 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Andrej Andrejev, UDBL
+ * $RCSfile: master.osql,v $
+ * $Revision: 1.31 $ $Date: 2013/07/30 20:35:44 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: SQL-based backend implementation
+ *
+ ****************************************************************************
+ * $Log: master.osql,v $
+ * Revision 1.31  2013/07/30 20:35:44  andan342
+ * Using setAutoCommit() & commit() when inserting arrays
+ *
+ * Revision 1.30  2013/07/28 06:22:35  andan342
+ * Same SQL queries for different kinds of chunks
+ *
+ * Revision 1.29  2013/07/27 18:42:41  andan342
+ * Bulk-loading binary chunks into MS SQL Server,
+ * no longer using isHex parameter to register-proxy-tag,
+ * no longer duplicating :sql_dialect and :isHex variables with stored functions
+ *
+ * Revision 1.28  2013/07/18 15:06:23  andan342
+ * Added bulk-load functionality for MS SQL Server backend (with hexadecimal chunk storage only)
+ *
+ * Revision 1.27  2013/07/14 11:14:03  andan342
+ * Using Integer parameters to nma2chunks function, truly parametrized BINARY/HEX chunk storage
+ *
+ * Revision 1.26  2013/07/13 22:33:46  andan342
+ * Complete hexadecimal storage of chunks, setting up database with parametrized chunk size
+ *
+ * Revision 1.24  2013/06/17 15:29:19  andan342
+ * Added set_enable_rdf_cache() and rdf_cache_enabled() functions, to control the RDF triples cache
+ *
+ * Revision 1.23  2013/04/18 12:30:13  andan342
+ * Case-sensitive SQL
+ *
+ * Revision 1.22  2013/03/23 17:37:28  andan342
+ * Using new sql_setMaxBinarySize() function to allow JDBC wrapper allocate optimal byte arrays
+ *
+ * Revision 1.21  2013/03/22 14:52:18  andan342
+ * MySQL 5.6 compatibility fix - extended type mapping
+ *
+ * Revision 1.20  2013/03/17 16:59:49  andan342
+ * Added MS SQL Server backend option, as described in readme_ms.txt
+ *
+ * Revision 1.19  2013/02/24 20:55:45  andan342
+ * *** empty log message ***
+ *
+ * Revision 1.18  2013/02/24 20:14:59  andan342
+ * Fixed bug when refreshing triples cache on rdf:load()
+ *
+ * Revision 1.17  2013/02/21 23:36:37  andan342
+ * Renamed NMA-PROXY-RESOLVE to APR, using AAPR for aggregated chunk retrieval, caching the triples on startup
+ *
+ * Revision 1.16  2013/02/13 14:52:47  andan342
+ * Fixed bugs in APR
+ *
+ * Revision 1.15  2013/02/12 23:49:44  andan342
+ * Added bag-valued 'combiner' definition of APR
+ *
+ * Revision 1.14  2013/02/08 00:51:44  andan342
+ * Completely removed Lisp implementation of NMA proxies and chunks
+ *
+ * Revision 1.13  2013/02/01 12:04:07  andan342
+ * Using same NMA descriptor objects as proxies
+ *
+ * Revision 1.12  2013/01/28 09:24:21  andan342
+ * added connect_rdf() function, fixed bug in chunk cache
+ *
+ * Revision 1.11  2013/01/21 16:49:20  andan342
+ * Storing chunksize in Parameter table inside RDF store, comes as a parameter to setup.cmd script
+ * Added test script for bulk-loading
+ *
+ * Revision 1.10  2013/01/15 23:56:45  andan342
+ * Added statistics collection and chunk-level cache
+ *
+ * Revision 1.9  2013/01/11 17:30:47  andan342
+ * Added bulk-loading and dumper functionality
+ *
+ * Revision 1.8  2012/12/17 23:27:09  andan342
+ * Enabled starting this storage extension independently of current directory, added optional .MAT integration
+ *
+ * Revision 1.7  2012/12/14 14:02:51  andan342
+ * Implemented storage-specifict rdf:insert
+ *
+ * Revision 1.6  2012/12/12 15:49:11  andan342
+ * DB address is now stored in separate settings file rdfstore.ini
+ *
+ * Revision 1.5  2012/11/19 23:58:10  andan342
+ * - using resolve-nma inside all array-processing functions as part of proxy-allowing polymorphic behavior,
+ * - moved _nma_proxy_threshold_ to core SSDM, setting this value in regression test return NMAs from queries,
+ * - added _nma_limit_ for a max NMA size to be retrieved, printing a warning if exceeded
+ *
+ * Revision 1.4  2012/11/03 22:35:00  andan342
+ * Added GeneralView in SQL and URI cache in Amos
+ *
+ * Revision 1.3  2012/10/29 22:29:28  andan342
+ * Storing NMAs in ArrayChunks table using new BLOB<->BINARY functionality of JDBC interface
+ *
+ * Revision 1.2  2012/09/07 15:34:18  andan342
+ * A more scalable implementation of SDEF() based on imported SQL views
+ *
+ * Revision 1.1  2012/09/06 14:13:51  andan342
+ * Complete SQL-based RDF storage backend, still without array support
+ *
+ * Revision 1.1  2012/02/14 15:09:50  andan342
+ * Added naive SQL-based implementation of RDF store
+ *
+ * Revision 1.1  2006/02/12 20:01:08  torer
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+
+< 'utils.osql';
+
+load_amosql('bulkloader/' + dialect_based({'bulkloader.osql', 'bulkloader_ms.osql'})); /* BUG: doesn't work with logging off! */
+
+logging off;
+
+load_lisp('sql-store.lsp');
+
+/**************** INITIALIZING ****************/
+
+set_nma_proxy_threshold(:nma_proxy_threshold);
+
+create function rdfstore() -> JDBC as stored;
+
+set rdfstore() = jdbc("rdfstore", :driver);
+
+create function arraychunksize() -> Integer as stored;
+
+create function refresh_parameters() -> Boolean as
+begin
+  set arraychunksize() = first(sql(rdfstore(),"SELECT value FROM Parameters WHERE name = 'chunksize'")[0]);
+  set_chunksize(arraychunksize());
+  sql_setMaxBinarySize(rdfstore(), arraychunksize());
+end;
+
+/*************** URI LOOKUP, UPDATE & CACHE FUNCTIONS *****************/
+
+create function URI_cache(Integer id key) -> URI uri key as stored; 
+
+create_index("URI_cache", "id", "mbtree", "unique");
+
+create_index("URI_cache", "uri", "hash", "unique"); /* TODO: Trie index might work better here */
+
+create function refresh_URI_cache(Boolean doQuery) -> Boolean as 
+  begin
+    remove URI_cache(id) = uri from Integer id, URI uri;
+    if doQuery then
+      add URI_cache(id) = URI(uristr) from Integer id, Charstring uristr
+        where {id,uristr} = sql(rdfstore(),"SELECT id, uri FROM URI");
+  end;
+
+create function lookupOrAddURI(URI uri) -> Integer id 
+as begin 
+  declare Bag of Integer ids;
+  set ids = (select id from Integer id where URI_cache(id) = uri); 
+  if notany(ids) then
+  begin
+    if (tlvar('sql_dialect') = 'tsql') then
+    begin
+      set ids = materialize(select sql(rdfstore(), "INSERT INTO URI(uri) OUTPUT INSERTED.id VALUES (?)", {URI_id(uri)})[0]);      
+    end else
+    begin
+      sql(rdfstore(),"INSERT INTO URI(uri) VALUES (?)",{URI_id(uri)});
+      set ids = materialize(select sql(rdfstore(),"SELECT LAST_INSERT_ID()")[0]); 
+    end;
+    add URI_cache(first(ids)) = uri;
+  end;
+  return first(ids);
+end;
+
+
+/************** CONNECTING TO RDF STORE ******************/
+
+connect(rdfstore(), :connection_str, :username, :password);
+
+refresh_parameters();
+
+refresh_URI_cache(true);
+
+/************** MAPPED TYPES FOR SQL VIEWS ***************/
+
+add amos_type_from_generic_relational('TEXT') = typenamed('charstring'); /* TODO: should you table defined in JDBC Wrapper */
+
+import_table(rdfstore(), get_db_name(:connection_str), :username, "GeneralView", "GViewType", true, {}); 
+/* MySQL: import_table(rdfstore(), "GeneralView", true); */
+
+create function GView() -> Bag of (Integer s, Integer p, Charstring o, Integer otype)
+ as select s(gv),p(gv),o(gv),otype(gv) from GViewType gv;
+
+create function DEF() -> Bag of (Literal ss, Literal pp, Literal oo)
+ as select URI_cache(s), URI_cache(p), storeToRDF(o,otype)
+      from Integer s, Integer p, Charstring o, Integer otype
+     where (s,p,o,otype) in GView();
+
+create function SDEF() -> Bag of (Literal ss, Literal pp, Literal oo) as stored;
+
+create function refresh_SDEF(Boolean doQuery) -> Boolean as 
+  begin 
+    if rdf_cache_enabled() then /* Does nothing if cache is disabled */
+    begin
+      remove SDEF() = (s, p, o) from Literal s, Literal p, Literal o;
+      if doQuery then
+        add SDEF() = DEF();
+    end;
+  end;
+
+create function set_enable_rdf_cache(Boolean x) -> Boolean as
+  begin
+    set_enable_rdf_cache_internal(x);
+    refresh_SDEF(true);
+  end;
+
+/******************* UPDATES ********************/
+
+create function RDFToStore(Literal x) -> (Charstring str, Integer xtype)
+ as select str,xtype 
+     where storeToRDF(str,xtype) = x;
+
+create function insertArrayTriple(Vector vs) -> Integer
+as begin
+     declare Integer arrayid;
+     if (tlvar('sql_dialect') = 'tsql') then
+     begin
+       set arrayid = first(sql(rdfstore(),"INSERT INTO ArrayTriples(s,p,type,ndims,size0,size1,size2,size3) OUTPUT INSERTED.arrayid VALUES (?,?,?,?,?,?,?,?)", vs)[0]);
+     end else 
+     begin
+       sql(rdfstore(), "INSERT INTO ArrayTriples(s,p,type,ndims,size0,size1,size2,size3) VALUES (?,?,?,?,?,?,?,?)", vs);
+       set arrayid = first(select sql(rdfstore(), "SELECT LAST_INSERT_ID()")[0]); 
+     end;
+     return arrayid;
+end;
+
+create function storeArray(Literal x, Integer arrayid) -> Boolean
+as begin
+     sql(rdfstore(),"INSERT INTO ArrayChunks(arrayid,chunkid,chunk) VALUES (?,?,?)", concat({arrayid}, {nma2chunks(cast(x as NMA), ArrayChunkSize(), 
+                                                                                                                   cast(tlvar('isHex') as Integer))}));
+end;
+
+create function storeTriple(Literal ss, Literal pp, Literal oo) -> Boolean
+/* store Triple in the backend, but not in cache */
+as begin
+     declare Integer s, Integer p, Integer otype, Charstring ostr, Integer arrayid;
+     set s = lookupOrAddURI(cast(ss as URI));
+     set p = lookupOrAddURI(cast(pp as URI));
+     set (ostr, otype) = RDFToStore(oo);
+     if (otype = 0) then 
+     begin
+       sql(rdfstore(),"INSERT INTO URITriples(s,p,o) VALUES (?,?,?)",{s,p,lookupOrAddURI(cast(oo as URI))});
+     end else if (otype = 7) then
+     begin
+       sql_setAutoCommit(rdfstore(),0);
+       storeArray(oo, insertArrayTriple(concat({s,p}, getNMAMeta(oo))));
+       sql_commit(rdfstore());
+       sql_setAutoCommit(rdfstore(),1);
+     end else 
+     begin
+       if (char_length(ostr) > 32) then 
+       begin
+         sql(rdfstore(),"INSERT INTO LongStrings(str) VALUES(?)",{ostr});
+         sql(rdfstore(),"INSERT INTO LiteralTriples(s,p,o,type,longstr) VALUES (?,?,'',?,LAST_INSERT_ID())",{s,p,otype});
+       end else 
+         sql(rdfstore(),"INSERT INTO LiteralTriples(s,p,o,type) VALUES (?,?,?,?)",{s,p,ostr,otype});
+     end;
+end;
+
+/* delete function rdf:insert; */
+
+create function rdf:insert(Literal s, Literal p, Literal o) -> Boolean
+/* Insert triple both to backend and cache */
+  as begin 
+    storeTriple(s,p,o);
+    if rdf_cache_enabled() then
+    begin
+      add SDEF() = (s, p, o);
+    end;
+  end;
+
+
+/******************* ADDITIONAL ACCESS FUNCTIONS ***************/
+
+create function URI_in_DEF(Charstring x) -> Boolean
+  as some(sql(rdfstore(),"SELECT id FROM URI WHERE uri = ?",{x}));
+
+create function getArrayChunks(Integer arrayid) -> Bag of Vector
+  as sql(rdfstore(),"SELECT chunkid, chunk FROM ArrayChunks WHERE arrayid = ?",{arrayid}); 
+
+create function getArrayChunk(Integer arrayid, Integer Chunkid) -> Bag of Object
+  as sql(rdfstore(),"SELECT chunk FROM ArrayChunks WHERE arrayid = ? AND chunkid = ?",{arrayid,chunkid})[0]; 
+
+create function getArrayChunksByPattern(Integer arrayid, Integer origin, Integer divisor, Charstring modlist) -> Bag of Vector
+  as sql(rdfstore(), "SELECT chunkid, chunk FROM ArrayChunks WHERE arrayid = ? AND chunkid >= ? AND " 
+                     + dialect_based({"", "dbo."}) + "mod(chunkid-?, ?) in (" + modlist + ")", {arrayid, origin, origin, divisor});
+
+InitSQLProxies();
+
+create function reconnect_rdf(Charstring connection_str, Charstring username, Charstring password) -> Boolean as
+begin
+  connect(rdfstore(), connection_str, username, password);
+  refresh_parameters();
+  refresh_URI_cache(true);
+  refresh_SDEF(true);
+end;
+
+refresh_SDEF(true);
+
+
+/******************* BULK LOADER FUNCTION *********************/
+
+/*
+load_amosql('bulkloader/' + dialect_based({'bulkloader.osql', 'bulkloader_ms.osql'}));
+*/
+
+< 'bulkloader/settings.osql';
+
+create function rdf:bulkload(Boolean doClear) -> Boolean as
+begin
+  if doClear then rdf:clear();
+  BulkLoad(rdfstore(), cast(tlvar('dumpfileprefix') as Charstring));
+  refresh_parameters();
+  refresh_URI_cache(true);
+  refresh_SDEF(true);
+end;
+
+

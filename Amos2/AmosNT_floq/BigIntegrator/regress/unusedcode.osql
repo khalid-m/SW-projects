@@ -1,0 +1,184 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: multisql.osql,v $
+ * $Revision: 1.7 $ $Date: 2013/09/10 08:00:12 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: LOcal multi-SQL scenario
+ ****************************************************************************
+ *
+ ****************************************************************************/
+
+create function js_uri(JDBC js)->Charstring uri as
+ select uri where logdburi_js(uri)=js;
+
+
+set jdbcofDS("jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB")=first(:js);
+
+set jdbcofDS("jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB")=last(:js);
+
+/* bag of uri mapping to vector of peers doesn't work */
+multicastreceive2(in(bag(:logdb1url, :logdb2url)), 'sql_my', {{"jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB","select count(*) from measuresA where mv>359",{}},{"jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB","select count(*) from measuresA where mv>359",{}}});
+
+/* problem with synchronized */
+multicastreceive(constructpeervector(), 'sql_my', {{"jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB","select count(*) from measuresA where mv>359",{}},{"jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB","select count(*) from measuresA where mv>359",{}}});
+
+logdburi_peer2(in(bag("jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB", "jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB")));
+
+/* it does call multicastreceive each time for a peer */
+multicastreceive2(in(bag(:logdb1url, :logdb2url)), 'sql_my', {{"jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB","select count(*) from measuresA where mv>359",{}},{"jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB","select count(*) from measuresA where mv>359",{}}});
+
+
+/* try */
+call_function('u','sql', {:u,"select count(*) from measuresA where mv>359", {}}, 100);
+
+call_function('v','sql', {:v,"select count(*) from measuresA where mv>359", {}}, 100);
+
+multicastreceive({'u','v'}, 'sql', {{:u,"select count(*) from measuresA where mv>359",{}},{:v,"select count(*) from measuresA where mv>359",{}}});
+
+multicastreceive2(in(bag(:logdb1url, :logdb2url)), 'sql', {{:u,"select count(*) from measuresA where mv>359",{}},{:v,"select count(*) from measuresA where mv>359",{}}});
+
+multicastreceive({'u','v'}, 'sql', {{:u,"select count(*) from measuresA where mv>359",{}},{:v,"select count(*) from measuresA where mv>359",{}}});
+
+multicastreceive2(in(bag(:logdb1url, :logdb2url)), 'sql', {{:u,"select count(*) from measuresA where mv>359",{}},{:v,"select count(*) from measuresA where mv>359",{}}});
+
+
+/*
+create function multi_sql_union(JDBC js, Charstring query, 
+                                Vector params) -> Vector
+  as select sql(js, query, params);
+*/
+
+/*
+create function multicastreceive2(Object logdburi, Charstring fn, Vector args)
+                                 ->Bag of Object
+  as multicastreceive(vectorof(logdburi_peer(logdburi)), fn, args);
+*/
+
+
+
+
+mappinguri_peer(in(bag("jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB", "jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB")));
+
+create function logdburi_peer(Bag of Charstring uri)->Bag of Charstring as
+  for each Charstring uri,JDBC jd where js_peer(jd)=uri
+	js_peer(logdburi_js(uri));
+
+create function logdburi_peer2(Bag of Charstring uris)->Bag of Charstring as
+  for each Charstring uri where uri in uris 
+	mappinguri_peer(uri);
+
+create function logdburi_peer2(Bag of Charstring uris)->Bag of Charstring as
+  select peer
+  from Charstring peer, Charstring uri
+  where peer=mappinguri_peer(uri) and uri in uris;  
+
+logdburi_peer2(bag("jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB", "jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB"));
+
+
+/* something different */
+create function js_peer(JDBC)->Charstring as stored;
+
+create function logdburi_peer(Object uri)->Charstring as
+js_peer(logdburi_js(uri));
+
+
+set js_peer(first(:js))="u";
+
+set js_peer(last(:js))="v";
+
+logdburi_peer(:logdb1url);
+
+logdburi_peer(:logdb2url);
+
+
+
+/* multicast thing*/
+  
+
+create function vectorBag(Vector v) -> Bag of Charstring
+  as select v[i] 
+     from Integer i;
+
+create function multicastreceive2(Vector uris, Charstring fn, Charstring query, 
+					 Vector args)->Bag of Object
+  as begin
+     declare vector peervec, vector argvec;
+     set peervec={};
+     set argvec={};
+     for each Charstring pe, Charstring logdburi
+       where logdburi in vectorbag(uris) and pe in mappinguri_peer(logdburi) 
+       begin
+       set peervec=concat(peervec, {pe}); 
+       set argvec=concat(argvec, {{logdburi, query, args}});
+       end;
+     return multicastreceive(peervec, fn, argvec);
+     end;
+
+multicastreceive2({:logdb1url, :logdb2url}, "sql_my", "select count(*) from measuresA where mv>359", {});
+
+/* not need to convert vector uris to bag */
+create function multicastreceive2v2(Vector uris, Charstring fn, Charstring query, 
+					 Vector args)->Bag of Object
+  as begin
+     declare vector peervec, vector argvec;
+     set peervec={};
+     set argvec={};
+     for each Charstring pe, Charstring logdburi
+       where logdburi in uris and pe in mappinguri_peer(logdburi) 
+       begin
+       set peervec=concat(peervec, {pe}); 
+       set argvec=concat(argvec, {{logdburi, query, args}});
+       print(111111);
+       end;
+     print(peervec);
+     print(argvec);
+     return multicastreceive(peervec, fn, argvec);
+     end;
+
+multicastreceive2v2({:logdb1url, :logdb2url}, "sql_my", "select count(*) from measuresA where mv>359", {});
+
+/* multicastreceive3 does convert uri to peer and match peer with vector of vector args */ 
+create function multicastreceive3(Vector uris, Charstring fn, Charstring query, 
+                                         Vector args)->Bag of Object
+  as begin
+     declare vector peervec, vector argvec, Charstring pe, Charstring logdburi;
+     set peervec={};
+     set argvec={};
+     for each integer i where i in iota(0, dim(uris)-1)
+       begin
+       set logdburi=uris[i];
+       set pe=mappinguri_peer(logdburi);
+       set peervec=concat(peervec, {pe}); 
+       set argvec=concat(argvec, {{logdburi, query, args[i]}});
+       end;
+     print(peervec);
+     print(argvec);
+     return multicastreceive(peervec, fn, argvec);
+     end;
+
+/* sql_myv2 takes vector of vector as args */
+multicastreceive3({:logdb1url, :logdb2url}, "sql_myv2", "select bt,et,mv from measuresA where (mv-?)>? and m=? and s=?", {{{50.0,10.0,1,1}, {348.0,10.0,6,8}}, {{20.0, 10.0, 2, 2},{20.0, 10.0, 7, 7}}});
+
+
+/* essential multicastreceive call */
+multicastreceive({'u', 'v'}, 'sql_myv2', {{:logdb1url,"select bt,et,mv from measuresA where (mv-?)>? and m=? and s=?", {{50.0,10.0,1,1}, {348.0,10.0,6,8}}}, {:logdb1url,"select bt,et,mv from measuresA where (mv-?)>? and m=? and s=?", {{20.0, 10.0, 2, 2},{20.0, 10.0, 7, 7}}}});
+
+apply multicastreceive3 in low level call.....
+
+select multicastreceive(peervector, fn, args)
+
+
+     
+create function constructPeerVector()->Vector 
+as
+ begin
+   declare vector ve;
+   set ve={};
+   for each Charstring ch, Charstring logdburi
+         where ch in mappinguri_peer(logdburi)
+      set ve=concat(ve,{ch});
+   return ve;
+ end;

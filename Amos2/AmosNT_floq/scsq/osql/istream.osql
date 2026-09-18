@@ -1,0 +1,74 @@
+/*-*-sql-*-*******************************************************************/
+create function wpp(vector v, integer port, integer nports)->object as
+select v[6+port];
+
+create function wa(stream input)->vector of real as
+select winagg(in(input), 10, 1);
+
+create function transform(stream input)->darray as
+select rfft(darray(r))
+from vector of real r
+where r = wa(input);
+
+create function inc(number a)->number
+as select a + 1;
+
+create function rhs(number x, number y)->number
+as select y;
+
+create function one()->number
+as select 1;
+
+create function twice(integer x)->integer as
+select 2*x;
+
+create function indata()->integer as
+select 25 - (i - j)*(i - j)
+from integer j, integer i
+where j = 5 + 10*round((i+1.0)/10-.5) and i in iota(1, 20);
+
+create function threshold(stream s, integer winsize)->vector as
+select v
+from vector v, integer b
+where v in winagg(indata(), winsize, 1)
+and b = count(select i from integer i where i=in(v) and i>20) and b=winsize;
+
+create function ifilter(integer x, integer thres)->integer as
+select x where x>thres;
+
+create function sifilters(stream of integer sx, integer thres)->stream as
+streamof(ifilter(in(sx), thres));
+
+
+
+/*
+
+scumsum(siota(1,5), 100);
+
+scount(siota(3,8), 100);
+
+merge({sp({0, iota(1,10)}), sp({0, iota(1,10)})});
+
+uall({sp({0, iota(1,10)}), sp({0, iota(1,10)})});
+
+smj({sp({0, iota(1,10)}), sp({0, 2*iota(1,10)})}, 1);
+
+scount(streamof(winagg(iota(1,12),3,1)), 100);
+
+
+select 1
+from vector of sp proc, sp src, vector of vector v
+where v = merge(proc)
+and v[0][0] > 10
+and proc = spv({streamof({scumsum(stract(src), 100)}), streamof({scount(stract(src), 100)})})
+and src = sp(siota(1,10), 2, 'tcp');
+
+count(pcc(streamof(readfile("/data/WindPower/wp.out")), 'stringify', 'wpp', 'vector-sp.merge->vector', 3));
+
+create function pscr()->vector;
+clear_function("pscr");
+
+add pscr() = psc(streamof(readfile("/data/WindPower/wp.out")), 'transform', 'wpp', 'vector-sp.merge->vector', 3);
+
+
+*/

@@ -1,0 +1,50 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2013, Andrej Andrejev, UDBL
+ * $RCSfile: kmeans_coordinator.osql,v $
+ * $Revision: 1.1 $ $Date: 2013/06/21 21:01:55 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Example implementation of parallel k-Means clustering: coordinator code
+ *
+ ****************************************************************************
+ * $Log: kmeans_coordinator.osql,v $
+ * Revision 1.1  2013/06/21 21:01:55  andan342
+ * Added example implementation of Parallel k-Means clustering
+ *
+ *
+ ****************************************************************************/
+
+/* Make a vector containing K instances of X */
+create function replicate(Object x, Integer k) -> Vector
+as vectorize(select i, x from Integer i where i in iota(0,k-1));
+
+/* A simplified wrapper around multicastreceive - same function, same args to all other peers */
+create function castreceive(Charstring fn, Object args) -> Bag of Object
+as select multicastreceive(vpeers, fn, replicate(args, dim(vpeers)))
+     from Vector of Charstring vpeers
+    where vpeers = vectorof(other_peers());
+
+/* Two-phase sampling of datapoints */
+load_lisp('../AmosMiner/MiningFunctions/sampling.lsp');
+
+/* Multiply coordinates by weight, assumed argument structure {weight, {coordinate, ...}} */
+create function w_times_v(Vector wv) -> Vector of Number as
+  cast(wv[0] as Number) * cast(wv[1] as Vector of Number);
+
+/* Compute weighted average vector of vectors given in form {weight, {coordinate, ...}} */
+create function weighted_col_means(Bag of Vector bwv) -> Vector of Number as
+  select aggv((select w_times_v(wv) from Vector wv where wv in bwv), #'sum')
+         /sum(select cast(wv[0] as Number) from Vector wv where wv in bwv);
+
+/* Compute average centroids based on new centroids received from peers */
+create function parallel_kmeans_step(Vector of Vector of Number vc) -> Vector of Vector of Number 
+  as vectorize(groupby((select id_count_avg[0], id_count_avg[1] from Vector id_count_avg
+                         where id_count_avg in castreceive("kmeans_node_step", {vc})), 
+                       #'weighted_col_means'));
+
+/* Run iterations until centroids are stable */
+create function parallel_kmeans(Vector of Vector of Number vc0) -> Vector of Vector of Number
+  as last(tclose(#'parallel_kmeans_step', vc0));
+

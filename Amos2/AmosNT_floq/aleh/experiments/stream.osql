@@ -1,0 +1,1187 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2007 Ruslan Fomkin, UDBL
+ * $RCSfile: stream.osql,v $
+ * $Revision: 1.71 $ $Date: 2008/10/25 08:21:35 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  
+ ****************************************************************************
+ * $Log: stream.osql,v $
+ * Revision 1.71  2008/10/25 08:21:35  ruslan
+ * bug
+ *
+ * Revision 1.70  2008/10/25 08:17:43  ruslan
+ * best opt, greedy order for signal 2005
+ *
+ * Revision 1.69  2008/10/24 08:26:58  ruslan
+ * trans random for signal 2005
+ *
+ * Revision 1.68  2008/10/24 08:25:00  ruslan
+ * trans random for signal 2005
+ *
+ * Revision 1.67  2008/09/06 11:29:11  ruslan
+ * with new file layout
+ *
+ * Revision 1.66  2008/08/12 14:20:38  ruslan
+ * randomized in no stat
+ *
+ * Revision 1.65  2008/07/12 10:58:04  ruslan
+ * bug is fixed
+ *
+ * Revision 1.64  2008/06/22 14:40:42  ruslan
+ * printing cost of query plans
+ *
+ * Revision 1.63  2008/06/12 08:24:37  ruslan
+ * print collect. card. stat
+ *
+ * Revision 1.62  2008/06/11 09:27:37  ruslan
+ * correct printing number of profiled events
+ *
+ * Revision 1.61  2008/06/11 08:49:07  ruslan
+ * clean group stat
+ *
+ * Revision 1.60  2008/06/03 13:37:39  ruslan
+ * bug fixed
+ *
+ * Revision 1.59  2008/06/03 12:50:08  ruslan
+ * bugs are fixed
+ *
+ * Revision 1.58  2008/06/03 12:26:13  ruslan
+ * modification. bug fixed
+ *
+ * Revision 1.57  2008/06/03 12:02:47  ruslan
+ * cleaning selectbodies for precise experiemnts
+ *
+ * Revision 1.56  2008/06/03 09:05:17  ruslan
+ * experiments on profiled grouping
+ *
+ * Revision 1.55  2008/06/02 12:54:46  ruslan
+ * updates during crashed time
+ *
+ * Revision 1.54  2008/05/30 15:48:34  ruslan
+ * tuning profiling
+ *
+ * Revision 1.53  2008/05/29 09:26:29  ruslan
+ * factorial experiment on tuning SH for top and nested
+ *
+ * Revision 1.52  2008/05/28 16:05:00  ruslan
+ * more strategies
+ *
+ * Revision 1.51  2008/05/27 12:29:37  ruslan
+ * tune top for Best when nested is best, fast stat full QP
+ *
+ * Revision 1.50  2008/05/26 10:05:12  ruslan
+ * more experiments
+ *
+ * Revision 1.49  2008/05/26 09:07:46  ruslan
+ * more experiments on full QP
+ *
+ * Revision 1.48  2008/05/26 08:45:25  ruslan
+ * full QP fast stat best opt
+ *
+ * Revision 1.47  2008/05/25 08:05:01  ruslan
+ * Dynamic QP with fast stat and best opt
+ *
+ * Revision 1.46  2008/05/20 08:22:44  ruslan
+ * next experiment is under development
+ *
+ * Revision 1.45  2008/05/19 12:31:09  ruslan
+ * wrong change. returned back
+ *
+ * Revision 1.43  2008/05/17 08:20:02  ruslan
+ * init opt are corrected
+ *
+ * Revision 1.42  2008/05/05 11:28:02  ruslan
+ * init opt with measuring impact of grouping opt. reopt is done by fast randomopt
+ *
+ * Revision 1.41  2008/05/05 09:05:17  ruslan
+ * more careful experiment on initial optimization
+ *
+ * Revision 1.40  2008/05/04 12:25:03  ruslan
+ * bug fixing
+ *
+ * Revision 1.39  2008/05/04 12:21:20  ruslan
+ * bug fixing
+ *
+ * Revision 1.38  2008/05/04 12:19:58  ruslan
+ * bug fixing
+ *
+ * Revision 1.37  2008/05/04 12:12:47  ruslan
+ * experiment on initial optimization
+ *
+ * Revision 1.36  2008/05/01 12:54:42  ruslan
+ * experiments with correct meausering time to reoptimize
+ *
+ * Revision 1.35  2008/04/26 13:59:23  ruslan
+ * factorial of II and SH for nested subqueries for best plan
+ *
+ * Revision 1.34  2008/04/22 14:25:23  ruslan
+ * measuring overhead of profile-controller
+ *
+ * Revision 1.33  2008/04/21 10:28:10  ruslan
+ * Tuning optimization methods for top level of analysis subquery and nested subqueries
+ *
+ * Revision 1.32  2008/04/19 09:32:11  ruslan
+ * II and SH tuning compare with ranksort
+ *
+ * Revision 1.31  2008/04/15 10:10:14  ruslan
+ * sh=0 and ii=0 is prevented to be tested.
+ *
+ * Revision 1.30  2008/04/14 15:03:59  ruslan
+ * tuning II and SH for randomopt
+ *
+ * Revision 1.29  2008/04/07 14:24:22  ruslan
+ * generalizing implementation of collecting stat tuning with ability to provide a file. fix a bug in full file collect stat.
+ *
+ * Revision 1.28  2008/03/25 14:50:21  ruslan
+ * reorganization: split experiments, which run without safisticated query optimization, and experiments on advanced system. experiment to tune zAplah and delta are added
+ *
+ * Revision 1.27  2008/03/24 11:29:36  ruslan
+ * tuning zalpha and delta
+ *
+ * Revision 1.26  2008/03/09 11:31:23  ruslan
+ * new line at EOF. comment
+ *
+ * Revision 1.25  2008/03/03 15:26:48  ruslan
+ * using new schema of file database
+ *
+ * Revision 1.24  2008/02/23 11:22:23  ruslan
+ * basic approach, i.e. most naive. experiment over it for bkgs 2003
+ *
+ * Revision 1.23  2008/02/23 09:18:41  ruslan
+ * improving message sending
+ *
+ * Revision 1.22  2008/02/23 09:11:53  ruslan
+ * sending messages from AmosQL
+ *
+ * Revision 1.21  2008/01/29 10:42:30  ruslan
+ * correct execute in MAN signal
+ *
+ * Revision 1.20  2008/01/29 10:16:57  ruslan
+ * better print out in scaling experiments
+ *
+ * Revision 1.19  2008/01/29 09:58:59  ruslan
+ * scaling experiments
+ *
+ * Revision 1.18  2008/01/22 13:01:55  ruslan
+ * added experiments on best effort for every single bkg
+ *
+ * Revision 1.17  2008/01/22 10:22:13  ruslan
+ * experiments over signal file
+ *
+ * Revision 1.16  2008/01/21 12:12:44  ruslan
+ * experiment on best effort manual plan
+ *
+ * Revision 1.15  2008/01/20 13:03:18  ruslan
+ * performance evaluation of exp cut on every single bkg file
+ *
+ * Revision 1.14  2008/01/19 09:25:33  ruslan
+ * small improvements
+ *
+ * Revision 1.13  2008/01/17 16:09:05  ruslan
+ * missing
+ *
+ * Revision 1.12  2008/01/17 16:06:07  ruslan
+ * generalization
+ *
+ * Revision 1.11  2008/01/17 13:16:10  ruslan
+ * bug in a definition
+ *
+ * Revision 1.10  2008/01/17 09:49:50  ruslan
+ * added function for all bks experiments
+ *
+ * Revision 1.9  2007/10/19 07:42:19  ruslan
+ * execute and reopt2 returns standard deviation and sum of squares
+ *
+ * Revision 1.8  2007/10/11 15:11:16  ruslan
+ * UNOPT all bkg files together
+ *
+ * Revision 1.7  2007/10/02 06:22:12  ruslan
+ * unopt single bkgs
+ *
+ * Revision 1.6  2007/10/01 14:01:52  ruslan
+ * unopt single bkgs
+ *
+ * Revision 1.5  2007/10/01 10:13:09  ruslan
+ * unopt for signal
+ *
+ * Revision 1.4  2007/10/01 07:30:11  ruslan
+ * bug fixing with experiment for all bkg files
+ *
+ * Revision 1.3  2007/10/01 07:23:33  ruslan
+ * experiments over all bkgs files together
+ *
+ * Revision 1.2  2007/09/21 15:12:46  ruslan
+ * MAN over signal file
+ *
+ * Revision 1.1  2007/09/20 13:08:18  ruslan
+ * experimental setup to do experiments for MAN cuts 2003 over bkg files
+ *
+ ****************************************************************************/
+<"../experiments/stream.naive.osql";
+load_lisp('../experiments/stream.lsp');
+
+
+create function myprint(integer, real, real, real, real, real, integer, real, 
+			real, real, integer, integer, real, real, real) -> 
+		boolean as foreign 'myprint';
+
+create function myprint(integer, integer, integer, real, real, real, real, 
+			real, real, integer,real,real) -> boolean as 
+		foreign 'myprint';
+
+create function myprint(integer, integer, integer, integer, integer, real, 
+			real, real, real, 
+			real, real, integer,real,real) -> boolean as 
+		foreign 'myprint';
+
+create function myprint(integer, real, real, real, integer) -> boolean as 
+		foreign 'myprint';
+
+create function myprint(integer, integer, integer, integer, integer, integer,
+		integer, integer, integer, real, real, real, real, real, real,
+		real, real, real, integer, real, real, real, integer) -> 
+		boolean as foreign 'myprint';
+
+create function myprint(object, object, object, object, object, object,
+		object, object, object, object, object, object, object,
+		object, object, object) -> boolean as foreign 'myprint';
+
+create function myprint(object, object, object, object, object, object,
+		object, object, object, object, object, object, object,
+		object, object, object, object, object, object, object,
+		object, object, object, object, object, object, object) -> 
+	boolean as foreign 'myprint';
+
+/**************************************************
+ * Tuning experiments
+ *************************************************/
+
+create function factorial(vector v1,vector v2, function f, object arg, integer rptAvg) ->
+	boolean as
+begin
+	for each object o1, object o2 where o1 in v1 and o2 in v2
+		apply(f,{arg,o1,o2,rptAvg});
+end;
+/*
+create function noCardStat(eventfile file, integer rptAvg) -> real as
+begin
+	declare real mean, real sqsum, real stdev, integer passed, real elmean,
+		real mumean, real jbmean, integer fid;
+	set fid = id(file);
+	select a,q,s,p into mean,sqsum,stdev,passed
+	from real a, real q, real s, integer p
+	where <a,q,s,p> = execute("charstring.expcuts->event",filename(file),
+				rptAvg);
+	set elmean = get_default_in_fanout();
+	set mumean = get_default_in_fanout();
+	set jbmean = get_default_in_fanout();
+	myprint(fid,0.0,1.0,mean,stdev,sqsum,passed,mean,stdev,sqsum,passed,0,
+		elmean,mumean,jbmean);
+	result mean;
+end;
+
+create function tuneCardStat(eventfile file, real zalpha, real delta, 
+	integer rptAvg) -> real as
+begin
+	declare charstring fun, real monsum, real monsqsum, real exsum,
+		real exsqsum, real monavgtime, real monstdev, real exavgtime,
+		real exstdev, integer monpassed, integer expassed, 
+		integer size, real elmean, real mumean, real jbmean,
+		charstring fl, integer fid;
+	set fun = "charstring.expcuts->event";
+	set fl = filename(file);
+	set fid = id(file);
+	set monsum = 0;
+	set monsqsum = 0;
+	set exsum = 0;
+	set exsqsum = 0;
+	for each integer i where i = iota(1,rptAvg)
+	begin
+		drop_sobjectstat();
+		tocollectstat(fun,zalpha,delta);
+		select monsum+a, monsqsum+a*a, p 
+			into monsum, monsqsum, monpassed
+			from real a, real q, real s, integer p
+			where <a,q,s,p> = execute(fun,fl,1);
+		select exsum+a, exsqsum+a*a, p into exsum, exsqsum, expassed
+			from real a, real q, real s, integer p
+			where <a,q,s,p> = execute(fun,fl,1);
+	end;
+	set monavgtime = mean(monsum,rptAvg);
+	set monstdev = stdev(monsum,monsqsum,rptAvg);
+	set exavgtime = mean(exsum,rptAvg);
+	set exstdev = stdev(exsum,exsqsum,rptAvg);
+	set size = get_profiled_counter();
+	set elmean = electron_mean();
+	set mumean = muon_mean();
+	set jbmean = jetb_mean();
+	myprint(fid,zalpha,delta,monavgtime,monstdev,monsqsum,monpassed,
+		exavgtime,exstdev,exsqsum,expassed,size,elmean,mumean,jbmean);
+	result exavgtime;
+end;
+
+create function cardStatFullFile(eventfile file, integer rptAvg) -> real as
+begin
+	declare charstring fun, real monsum, real monsqsum, real exsum,
+		real exsqsum, real monavgtime, real monstdev, real exavgtime,
+		real exstdev, integer monpassed, integer expassed, real elmean,
+		real mumean, real jbmean, charstring fl, integer fid;
+	set fun = "charstring.expcuts->event";
+	set fl = filename(file);
+	set fid = id(file);
+	set monsum = 0;
+	set monsqsum = 0;
+	set exsum = 0;
+	set exsqsum = 0;
+	for each integer i where i = iota(1,rptAvg)
+	begin
+		drop_sobjectstat();
+		reoptimize(fun);
+		collectstat();
+		sobjectstat();
+		select monsum+a, monsqsum+a*a, p 
+			into monsum, monsqsum, monpassed
+			from real a, real q, real s, integer p
+			where <a,q,s,p> = execute(fun,fl,1);
+		sobjectstat(false);
+		reoptimize(fun);
+		select exsum+a, exsqsum+a*a, p into exsum, exsqsum, expassed
+			from real a, real q, real s, integer p
+			where <a,q,s,p> = execute(fun,fl,1);
+	end;
+	set monavgtime = mean(monsum,rptAvg);
+	set monstdev = stdev(monsum,monsqsum,rptAvg);
+	set exavgtime = mean(exsum,rptAvg);
+	set exstdev = stdev(exsum,exsqsum,rptAvg);
+	set elmean = electron_mean();
+	set mumean = muon_mean();
+	set jbmean = jetb_mean();
+	myprint(fid,4.0,0.0,monavgtime,monstdev,monsqsum,monpassed,exavgtime,
+		exstdev,exsqsum,expassed,25000,elmean,mumean,jbmean);
+	result exavgtime;
+end;
+*/
+/* Reoptimize subquery under profile controller (only one level) 
+	of expcuts query with randomopt for given II and SH. 
+	Measures optimization and execution (over given file) 
+	with rptAvg runs */
+create function tuneII_SH(eventfile f, integer ii, integer sh, integer rptAvg)
+	-> real as
+begin
+	declare charstring fpath, integer fid, real optavgtime, real optsqsum,
+		real optstdev, real exavgtime, real exsqsum, real exstdev,
+		integer passedevent, real plan_cst, real plan_fnt;
+	set fpath = filename(f);
+	set fid = id(f);
+	/* set II and SH levels */
+	if ((ii!=0)or(sh!=0))
+	then begin
+		group_optmethods("randomopt","ranksort");
+		group_optlevels(ii,sh,10,10);
+	end else begin
+		group_optmethods("ranksort","ranksort");
+	end;
+	/* Perform reoptimization of expcuts rptAvg times */
+	reset_reoptt();
+	for each integer i where i=iota(1,rptAvg)
+	begin
+		set_reoptimize_meas_stop();
+		sixcuts(fpath);
+	end;
+	select mean(su,c),q,stdev(su,q,c) into optavgtime,optsqsum,optstdev
+		from  real q, real su, integer c
+		where <su,q,c> = reset_reoptt();
+	select c,f into plan_cst, plan_fnt
+		from real c, real f
+		where <c,f> = cost_after_reoptimize();
+	/* Measure execution performance rptAvg times */
+	select a,q,s,p into exavgtime,exsqsum,exstdev,passedevent
+		from real a, real q, real s, integer p
+		where <a,q,s,p> = 
+			execute("charstring.sixcuts->event",fpath,rptAvg);
+	/* Print result */
+	myprint(fid,ii,sh,optavgtime,optstdev,optsqsum,exavgtime,exstdev,
+		exsqsum,passedevent,plan_cst,plan_fnt);
+	result exavgtime;
+end;
+
+create function tuneII_SHtopForBest(eventfile f, integer ii, integer sh, 
+	integer rptAvg)	-> real as
+begin
+	declare charstring fpath, integer fid, real optavgtime, real optsqsum,
+		real optstdev, real exavgtime, real exsqsum, real exstdev,
+		integer passedevent, real plan_cst, real plan_fnt;
+	set fpath = filename(f);
+	set fid = id(f);
+	/* set II and SH levels */
+	if ((ii!=0)or(sh!=0))
+	then begin
+		group_optmethods("randomopt","randomopt");
+		group_optlevels(ii,sh,60,300);
+	end else begin
+		group_optmethods("ranksort","randomopt");
+		group_optlevels(ii,sh,60,300);
+	end;
+	/* Perform reoptimization of expcuts rptAvg times */
+	reset_reoptt();
+	for each integer i where i=iota(1,rptAvg)
+	begin
+		set_reoptimize_meas_stop();
+		sixcuts(fpath);
+	end;
+	select mean(su,c),q,stdev(su,q,c) into optavgtime,optsqsum,optstdev
+		from  real q, real su, integer c
+		where <su,q,c> = reset_reoptt();
+	select c,f into plan_cst, plan_fnt
+		from real c, real f
+		where <c,f> = cost_after_reoptimize();
+	/* Measure execution performance rptAvg times */
+	select a,q,s,p into exavgtime,exsqsum,exstdev,passedevent
+		from real a, real q, real s, integer p
+		where <a,q,s,p> = 
+			execute("charstring.sixcuts->event",fpath,rptAvg);
+	/* Print result */
+	myprint(fid,ii,sh,optavgtime,optstdev,optsqsum,exavgtime,exstdev,
+		exsqsum,passedevent,plan_cst,plan_fnt);
+	result exavgtime;
+end;
+
+create function qo2level(eventfile f, vector toplevel, vector level2, 
+			integer rptAvg) -> real as
+begin
+	declare charstring fpath, integer fid, integer topII, integer topSH,
+		integer l2II, integer l2SH, charstring topMethod, 
+		charstring l2Method, real optavgtime, real optsqsum,
+		real optstdev, real exavgtime, real exsqsum, real exstdev,
+		integer passedevent, real plan_cst, real plan_fnt;
+	set fpath = filename(f);
+	set fid = id(f);
+	set topII = toplevel[0];
+	set topSH = toplevel[1];
+	set l2II = level2[0];
+	set l2SH = level2[1];
+	if ((topII = 0) and (topSH = 0))
+		then set topMethod = "ranksort"
+		else set topMethod = "randomopt";
+	if ((l2II = 0) and (l2SH = 0))
+		then set l2Method = "ranksort"
+		else set l2Method = "randomopt";
+	group_optmethods(topMethod,l2Method);
+	group_optlevels(topII,topSH,l2II,l2SH);
+	/* Perform reoptimization of expcuts rptAvg times */
+	reset_reoptt();
+	for each integer i where i=iota(1,rptAvg)
+	begin
+		set_reoptimize_meas_stop();
+		sixcuts(fpath);
+	end;
+	select mean(su,c),q,stdev(su,q,c) into optavgtime,optsqsum,optstdev
+		from  real q, real su, integer c
+		where <su,q,c> = reset_reoptt();
+	select c,f into plan_cst, plan_fnt
+		from real c, real f
+		where <c,f> = cost_after_reoptimize();
+	/* Measure execution performance rptAvg times */
+	select a,q,s,p into exavgtime,exsqsum,exstdev,passedevent
+		from real a, real q, real s, integer p
+		where <a,q,s,p> = 
+			execute("charstring.sixcuts->event",fpath,rptAvg);
+	myprint(fid,topII,topSH,l2II,l2SH,optavgtime,optstdev,optsqsum,
+		exavgtime,exstdev,exsqsum,passedevent,plan_cst,plan_fnt);
+	result exavgtime;
+end;
+/*
+create function measure_overhead(integer nrFiles, integer rptAvg) -> boolean as
+begin
+	declare real avgtimeW, real stdevW, real sqsumW, integer passedeventW,
+		real avgtimeWO, real stdevWO, real sqsumWO, 
+		integer passedeventWO;
+	drop_sobjectstat();
+	tocollectstat("integer.bkgexpcuts->event",1.65,0.15);
+	bkgexpcuts(nrFiles);
+	select a,q,s,p into avgtimeW,sqsumW,stdevW,passedeventW
+	from real a, real q, real s, integer p
+	where <a,q,s,p> = 
+		execute("integer.bkgexpcuts->event",nrFiles,rptAvg);
+	myprint(nrFiles,avgtimeW,stdevW,sqsumW,passedeventW);
+	unprofile("integer.bkgexpcuts->event");
+	select a,q,s,p into avgtimeWO,sqsumWO,stdevWO,passedeventWO
+	from real a, real q, real s, integer p
+	where <a,q,s,p> = 
+		execute("integer.bkgexpcuts->event",nrFiles,rptAvg);
+	myprint(nrFiles,avgtimeWO,stdevWO,sqsumWO,passedeventWO);
+end;
+*/
+create function tuneII_SHnestedForBest(eventfile f, integer ii, integer sh, 
+	integer rptAvg)	-> real as
+begin
+	declare charstring fpath, integer fid, real optavgtime, real optsqsum,
+		real optstdev, real exavgtime, real exsqsum, real exstdev,
+		integer passedevent, real plan_cst, real plan_fnt;
+	set fpath = filename(f);
+	set fid = id(f);
+	/* set II and SH levels */
+	if ((ii!=0)or(sh!=0))
+	then begin
+		group_optmethods("randomopt","randomopt");
+	end else begin
+		group_optmethods("randomopt","ranksort");
+	end;
+	group_optlevels(23,650,ii,sh);
+	/* Perform reoptimization of expcuts rptAvg times */
+	reset_reoptt();
+	for each integer i where i=iota(1,rptAvg)
+	begin
+		set_reoptimize_meas_stop();
+		sixcuts(fpath);
+	end;
+	select mean(su,c),q,stdev(su,q,c) into optavgtime,optsqsum,optstdev
+		from  real q, real su, integer c
+		where <su,q,c> = reset_reoptt();
+	select c,f into plan_cst, plan_fnt
+		from real c, real f
+		where <c,f> = cost_after_reoptimize();
+	/* Measure execution performance rptAvg times */
+	select a,q,s,p into exavgtime,exsqsum,exstdev,passedevent
+		from real a, real q, real s, integer p
+		where <a,q,s,p> = 
+			execute("charstring.sixcuts->event",fpath,rptAvg);
+	/* Print result */
+	myprint(fid,ii,sh,optavgtime,optstdev,optsqsum,exavgtime,exstdev,
+		exsqsum,passedevent,plan_cst,plan_fnt);
+	result exavgtime;
+end;
+
+create function tuneII_SHnestedForVeryBest(eventfile f, integer ii, integer sh, 
+	integer rptAvg)	-> real as
+begin
+	declare charstring fpath, integer fid, real optavgtime, real optsqsum,
+		real optstdev, real exavgtime, real exsqsum, real exstdev,
+		integer passedevent, real plan_cst, real plan_fnt;
+	set fpath = filename(f);
+	set fid = id(f);
+	/* set II and SH levels */
+	if ((ii!=0)or(sh!=0))
+	then begin
+		group_optmethods("randomopt","randomopt");
+	end else begin
+		group_optmethods("randomopt","ranksort");
+	end;
+	group_optlevels(23,5000,ii,sh);
+	/* Perform reoptimization of expcuts rptAvg times */
+	reset_reoptt();
+	for each integer i where i=iota(1,rptAvg)
+	begin
+		set_reoptimize_meas_stop();
+		sixcuts(fpath);
+	end;
+	select mean(su,c),q,stdev(su,q,c) into optavgtime,optsqsum,optstdev
+		from  real q, real su, integer c
+		where <su,q,c> = reset_reoptt();
+	select c,f into plan_cst, plan_fnt
+		from real c, real f
+		where <c,f> = cost_after_reoptimize();
+	/* Measure execution performance rptAvg times */
+	select a,q,s,p into exavgtime,exsqsum,exstdev,passedevent
+		from real a, real q, real s, integer p
+		where <a,q,s,p> = 
+			execute("charstring.sixcuts->event",fpath,rptAvg);
+	/* Print result */
+	myprint(fid,ii,sh,optavgtime,optstdev,optsqsum,exavgtime,exstdev,
+		exsqsum,passedevent,plan_cst,plan_fnt);
+	result exavgtime;
+end;
+
+create function tuneTopNestedSH(eventfile f, integer top_sh, 
+	integer nested_sh, integer rptAvg) -> real as
+begin
+	declare charstring fpath, integer fid, real optavgtime, real optsqsum,
+		real optstdev, real exavgtime, real exsqsum, real exstdev,
+		integer passedevent, real plan_cst, real plan_fnt;
+	set fpath = filename(f);
+	set fid = id(f);
+	group_optmethods("randomopt","randomopt");
+	group_optlevels(23,top_sh,60,nested_sh);
+	/* Perform reoptimization of expcuts rptAvg times */
+	reset_reoptt();
+	for each integer i where i=iota(1,rptAvg)
+	begin
+		set_reoptimize_meas_stop();
+		sixcuts(fpath);
+	end;
+	select mean(su,c),q,stdev(su,q,c) into optavgtime,optsqsum,optstdev
+		from  real q, real su, integer c
+		where <su,q,c> = reset_reoptt();
+	select c,f into plan_cst, plan_fnt
+		from real c, real f
+		where <c,f> = cost_after_reoptimize();
+	/* Measure execution performance rptAvg times */
+	select a,q,s,p into exavgtime,exsqsum,exstdev,passedevent
+		from real a, real q, real s, integer p
+		where <a,q,s,p> = 
+			execute("charstring.sixcuts->event",fpath,rptAvg);
+	/* Print result */
+	myprint(fid,top_sh,nested_sh,optavgtime,optstdev,optsqsum,exavgtime,
+		exstdev,exsqsum,passedevent,plan_cst,plan_fnt);
+	result exavgtime;
+end;
+/*
+create function initOpt(eventfile f, vector init, vector reopt, integer rptAvg)
+			-> real as
+begin
+	declare integer topIIinit, integer topSHinit, integer l2IIinit, 
+		integer l2SHinit, charstring topMethodInit, 
+		charstring l2MethodInit, real initsum, real initavgtime, 
+		real initsqsum, real initstdev,	integer fid, charstring fpath,
+		integer topIIreopt, integer topSHreopt, integer l2IIreopt, 
+		integer l2SHreopt, charstring topMethodReopt, 
+		charstring l2MethodReopt, real reoptsum, real reoptavgtime, 
+		real reoptsqsum, real reoptstdev, real groupsum,
+		real groupavgtime, real groupsqsum, real groupstdev,
+		integer reoptpassed, real execsum, real execavgtime,
+		real execsqsum, real execstdev,	integer execpassed;
+	set fid = id(f);
+	set fpath = filename(f);
+	set initsum = 0;
+	set initsqsum =0;
+	set reoptsum = 0;
+	set reoptsqsum =0;
+	set groupsum = 0;
+	set groupsqsum =0;
+	set execsum = 0;
+	set execsqsum =0;
+	set topIIinit = init[0];
+	set topSHinit = init[1];
+	set l2IIinit = init[2];
+	set l2SHinit = init[3];
+	if ((topIIinit = 0) and (topSHinit = 0))
+		then set topMethodInit = "ranksort"
+		else set topMethodInit = "randomopt";
+	if ((l2IIinit = 0) and (l2SHinit = 0))
+		then set l2MethodInit = "ranksort"
+		else set l2MethodInit = "randomopt";
+	set topIIreopt = reopt[0];
+	set topSHreopt = reopt[1];
+	set l2IIreopt = reopt[2];
+	set l2SHreopt = reopt[3];
+	if ((topIIreopt = 0) and (topSHreopt = 0))
+		then set topMethodReopt = "ranksort"
+		else set topMethodReopt = "randomopt";
+	if ((l2IIreopt = 0) and (l2SHreopt = 0))
+		then set l2MethodReopt = "ranksort"
+		else set l2MethodReopt = "randomopt";
+	for each integer i where i=iota(1,rptAvg) begin
+		drop_sobjectstat();
+		group_optmethods(topMethodInit,l2MethodInit);
+		group_optlevels(topIIinit,topSHinit,l2IIinit,l2SHinit);
+		select a+initsum, q+initsqsum into initsum,initsqsum
+		from real a, real q, real s, integer p
+		where <a,q,s,p> = 
+			execute("charstring.reoptimize2->function",
+				"charstring.expcuts->event",1);
+		group_optmethods("ranksort","ranksort");
+		select a+groupsum,q+groupsqsum into groupsum,groupsqsum
+		from real a, real q, real s, integer p
+		where <a,q,s,p> = 
+			execute("charstring.tocollectstat->boolean",
+				"charstring.expcuts->event",1);
+		group_optmethods(topMethodReopt,l2MethodReopt);
+		group_optlevels(topIIreopt,topSHreopt,l2IIreopt,l2SHreopt);
+		select a+reoptsum,q+reoptsqsum,p into reoptsum,reoptsqsum,
+			reoptpassed
+		from real a, real q, real s, integer p
+		where <a,q,s,p> = 
+			execute("charstring.expcuts->event",fpath,1);
+		select a+execsum,q+execsqsum,p into execsum,execsqsum,
+			execpassed
+		from real a, real q, real s, integer p
+		where <a,q,s,p> = 
+			execute("charstring.expcuts->event",fpath,1);
+	end;
+	set initavgtime = mean(initsum,rptAvg);
+	set initstdev = stdev(initsum,initsqsum,rptAvg);
+	set groupavgtime = mean(groupsum,rptAvg);
+	set groupstdev = stdev(groupsum,groupsqsum,rptAvg);
+	set reoptavgtime = mean(reoptsum,rptAvg);
+	set reoptstdev = stdev(reoptsum,reoptsqsum,rptAvg);
+	set execavgtime = mean(execsum,rptAvg);
+	set execstdev = stdev(execsum,execsqsum,rptAvg);
+
+	myprint(fid,topIIinit,topSHinit,l2IIinit,l2SHinit,topIIreopt,
+		topSHreopt,l2IIreopt,l2SHreopt,initavgtime,initstdev,initsqsum,
+		groupavgtime,groupstdev,groupsqsum,reoptavgtime,reoptstdev,
+		reoptsqsum,reoptpassed,execavgtime,execstdev,execsqsum,
+		execpassed);
+end;
+
+create function initOpt2(eventfile f, vector init, vector group, 
+			integer rptAvg)	-> real as
+begin
+	declare integer topIIinit, integer topSHinit, integer l2IIinit, 
+		integer l2SHinit, charstring topMethodInit, 
+		charstring l2MethodInit, real initsum, real initavgtime, 
+		real initsqsum, real initstdev,	integer fid, charstring fpath,
+		integer topIIgroup, integer topSHgroup, integer l2IIgroup, 
+		integer l2SHgroup, charstring topMethodGroup, 
+		charstring l2MethodGroup, real reoptsum, real reoptavgtime, 
+		real reoptsqsum, real reoptstdev, real groupsum,
+		real groupavgtime, real groupsqsum, real groupstdev,
+		integer reoptpassed, real execsum, real execavgtime,
+		real execsqsum, real execstdev,	integer execpassed;
+	set fid = id(f);
+	set fpath = filename(f);
+	set initsum = 0;
+	set initsqsum =0;
+	set reoptsum = 0;
+	set reoptsqsum =0;
+	set groupsum = 0;
+	set groupsqsum =0;
+	set execsum = 0;
+	set execsqsum =0;
+	set topIIinit = init[0];
+	set topSHinit = init[1];
+	set l2IIinit = init[2];
+	set l2SHinit = init[3];
+	if ((topIIinit = 0) and (topSHinit = 0))
+		then set topMethodInit = "ranksort"
+		else set topMethodInit = "randomopt";
+	if ((l2IIinit = 0) and (l2SHinit = 0))
+		then set l2MethodInit = "ranksort"
+		else set l2MethodInit = "randomopt";
+	set topIIgroup = group[0];
+	set topSHgroup = group[1];
+	set l2IIgroup = group[2];
+	set l2SHgroup = group[3];
+	if ((topIIgroup = 0) and (topSHgroup = 0))
+		then set topMethodGroup = "ranksort"
+		else set topMethodGroup = "randomopt";
+	if ((l2IIgroup = 0) and (l2SHgroup = 0))
+		then set l2MethodGroup = "ranksort"
+		else set l2MethodGroup = "randomopt";
+	for each integer i where i=iota(1,rptAvg) begin
+		drop_sobjectstat();
+		group_optmethods(topMethodInit,l2MethodInit);
+		group_optlevels(topIIinit,topSHinit,l2IIinit,l2SHinit);
+		select a+initsum, q+initsqsum into initsum,initsqsum
+		from real a, real q, real s, integer p
+		where <a,q,s,p> = 
+			execute("charstring.reoptimize2->function",
+				"charstring.expcuts->event",1);
+		group_optmethods(topMethodGroup,l2MethodGroup);
+		group_optlevels(topIIgroup,topSHgroup,l2IIgroup,l2SHgroup);
+		select a+groupsum,q+groupsqsum into groupsum,groupsqsum
+		from real a, real q, real s, integer p
+		where <a,q,s,p> = 
+			execute("charstring.tocollectstat->boolean",
+				"charstring.expcuts->event",1);
+		group_optmethods("randomopt","ranksort");
+		group_optlevels(1,30,0,0);
+		select a+reoptsum,q+reoptsqsum,p into reoptsum,reoptsqsum,
+			reoptpassed
+		from real a, real q, real s, integer p
+		where <a,q,s,p> = 
+			execute("charstring.expcuts->event",fpath,1);
+		select a+execsum,q+execsqsum,p into execsum,execsqsum,
+			execpassed
+		from real a, real q, real s, integer p
+		where <a,q,s,p> = 
+			execute("charstring.expcuts->event",fpath,1);
+	end;
+	set initavgtime = mean(initsum,rptAvg);
+	set initstdev = stdev(initsum,initsqsum,rptAvg);
+	set groupavgtime = mean(groupsum,rptAvg);
+	set groupstdev = stdev(groupsum,groupsqsum,rptAvg);
+	set reoptavgtime = mean(reoptsum,rptAvg);
+	set reoptstdev = stdev(reoptsum,reoptsqsum,rptAvg);
+	set execavgtime = mean(execsum,rptAvg);
+	set execstdev = stdev(execsum,execsqsum,rptAvg);
+
+	myprint(fid,topIIinit,topSHinit,l2IIinit,l2SHinit,topIIgroup,
+		topSHgroup,l2IIgroup,l2SHgroup,initavgtime,initstdev,initsqsum,
+		groupavgtime,groupstdev,groupsqsum,reoptavgtime,reoptstdev,
+		reoptsqsum,reoptpassed,execavgtime,execstdev,execsqsum,
+		execpassed);
+end;
+*/
+create function measureStrategy(charstring fn, integer nrFiles,
+	charstring collectStat, charstring opt, 
+	charstring qp, integer rptAvg) -> 
+	<real initAvg, 
+	real initStdev, real initSqsum, real groupAvg, real groupStdev,
+	real groupSqsum, real monAvg, real monStdev, real monSqsum,
+	real exAvg, real exStdev, real exSqsum, integer passed> as
+begin
+	declare real initSum, real groupSum, real monSum, real exSum;
+	set initSum = 0;
+	set initSqsum = 0;
+	set groupSum = 0;
+	set groupSqsum = 0;
+	set monSum = 0;
+	set monSqsum = 0;
+	set exSum = 0;
+	set exSqsum = 0;
+	for each integer i where i=iota(1,rptAvg)
+	begin
+		drop_sobjectstat();
+		cleansb(fn);
+		/* Init optimization is always done by ranksort */
+		group_optmethods("ranksort","ranksort");
+		group_optlevels(0,0,0,0);
+		optmethod("ranksort");
+		/* except No runtime profiling approach */
+		if (collectStat="NoStat")
+		then begin
+			if (opt="DynBestOpt")
+			then begin
+				group_optmethods("randomopt","randomopt");
+				group_optlevels(25,650,60,300);
+			end;
+			if (opt="FastOpt")
+			then begin
+				group_optmethods("randomopt","ranksort");
+				group_optlevels(1,30,0,0);
+			end;
+		end;
+		/* perform initial optimization */
+		select a+initsum, q+initsqsum into initsum,initsqsum
+		from real a, real q, real s, integer p
+		where <a,q,s,p> = 
+			execute("charstring.reoptimize2->function",
+				fn,1);
+		/* Prepare runtime profiling. */
+		if ((collectStat="FastStat") and (qp="Naive"))
+		then
+			select a+groupsum,q+groupsqsum into groupsum,groupsqsum
+			from real a, real q, real s, integer p
+			where <a,q,s,p> = 
+			execute("charstring.tocollectstatnaive->boolean",
+					fn,1);
+		if ((collectStat="FastStat") and (qp="Mat"))
+		then
+			select a+groupsum,q+groupsqsum into groupsum,groupsqsum
+			from real a, real q, real s, integer p
+			where <a,q,s,p> = 
+			execute("charstring.tocollectstat->boolean",
+					fn,1);
+		if ((collectStat="FullStat") and (qp="Naive"))
+		then begin
+			sobjectstat();
+			slotstat(true);
+			collectstatnaive();
+		end;
+		if ((collectStat="FullStat") and (qp="Mat"))
+		then begin
+			slotstat(false);
+			sobjectstat();
+			collectstat();
+		end;
+		if ((collectStat != "FastStat") and (collectStat != "FullStat")
+			and (collectStat != "NoStat"))
+		then print("Unkonw strategy to collect stat: "+collectStat);
+		if ((qp != "Naive") and (qp != "Mat"))
+		then print("Unknown query processing type: "+qp);
+		/* Executing the query with collecting statistics */
+		if (opt="DynBestOpt")
+		then begin
+			group_optmethods("randomopt","randomopt");
+			group_optlevels(25,650,60,300);
+		end;
+		if (opt="FastOpt")
+		then begin
+			group_optmethods("randomopt","ranksort");
+			group_optlevels(1,30,0,0);
+		end;
+		if (opt="GreedyOpt")
+		then begin
+			group_optmethods("ranksort","ranksort");
+			group_optlevels(0,0,0,0);
+		end;
+		if ((opt!="DynBestOpt") and (opt!="FastOpt") and 
+			(opt!="GreedyOpt"))
+		then print("Unknow strategy for reoptimization: "+opt);
+		select a+monsum,q+monsqsum into monsum,monsqsum
+		from real a, real q, real s, integer p
+		where <a,q,s,p> = 
+			execute(fn,nrFiles,1);
+		/* Cleaning before measuring performance of obtain plan */
+		if (collectStat="FullStat")
+		then begin 
+			sobjectstat(false);
+			slotstat(false);
+			select a+groupsum, q+groupsqsum 
+				into groupsum,groupsqsum
+			from real a, real q, real s, integer p
+			where <a,q,s,p> = 
+				execute("charstring.reoptimize2->function",
+					fn,1);
+		end;
+		if (collectStat="FastStat")
+		then unprofile(fn);
+		/* Measuring performance of obtained plan */
+		select a+exsum,q+exsqsum,p into exsum,exsqsum,passed
+		from real a, real q, real s, integer p
+		where <a,q,s,p> = 
+			execute(fn,nrFiles,1);
+	end;
+	set initAvg = mean(initsum,rptAvg);
+	set initStdev = stdev(initsum,initsqsum,rptAvg);
+	set groupAvg = mean(groupsum,rptAvg);
+	set groupStdev = stdev(groupsum,groupsqsum,rptAvg);
+	set monAvg = mean(monsum,rptAvg);
+	set monStdev = stdev(monsum,monsqsum,rptAvg);
+	set exAvg = mean(exsum,rptAvg);
+	set exStdev = stdev(exsum,exsqsum,rptAvg);
+	result <initAvg,initStdev,initSqsum,groupAvg,groupStdev,groupSqsum,
+		monAvg,monStdev,monSqsum,exAvg,exStdev,exSqsum,passed>;
+end;
+
+create function runReoptExperiment(charstring fn, integer nrFiles, 
+	integer rptAvg, charstring stat, charstring opt, charstring qp) 
+		-> boolean as 
+begin
+	declare vector res;
+	/* initial optimization without measuremnts */
+	optmethod("ranksort");
+	reoptimize(fn);
+	/* warming up */
+	apply(functionnamed(fn),{nrFiles});
+	/* do experiments */
+	select v into res 
+	from vector v
+	where v = measureStrategy(fn,nrFiles,stat,opt,qp,rptAvg);
+	/* print results */
+	myprint(nrFiles,stat,opt,res[0],res[1],res[2],res[3],
+		res[4],res[5],res[6],res[7],res[8],res[9],res[10],res[11],
+		res[12]);
+end;
+
+create function tune_profiling(charstring fn, object arg, charstring stat, 
+	charstring opt,	charstring groupOpt, integer toStop, integer rptAvg) ->
+	<real initAvg, real initStdev, real initSqsum, real initCostAvg,
+	real initCostStdev, real groupAvg, real groupStdev, real groupSqsum, 
+	real groupCostAvg, real groupCostStdev, real monAvg, real monStdev, 
+	real monSqsum, real monCostAvg, real monCostStdev,
+	integer collectStat,
+	real profiledEvents, real profEvStdev, real exAvg, real exStdev, 
+	real exSqsum, integer passed> as
+/* toStop = 0 means entire data set */
+begin
+	declare real initSum, real groupSum, real monSum, real exSum, integer
+		prEvSum, real prEvSqsum, real initCostSum, real initCostSqSum,
+		real groupCostSum, real groupCostSqSum, real monCostSum,
+		real monCostSqSum;
+	set initSum = 0.0;
+	set initSqsum = 0.0;
+	set groupSum = 0.0;
+	set groupSqsum = 0.0;
+	set monSum = 0.0;
+	set monSqsum = 0.0;
+	set prEvSum = 0;
+	set prEvSqsum = 0.0;
+	set exSum = 0.0;
+	set exSqsum = 0.0;
+	set initCostSum = 0.0;
+	set initCostSqSum = 0.0;
+	set groupCostSum = 0.0;
+	set groupCostSqSum = 0.0;
+	set monCostSum = 0.0;
+	set monCostSqSum = 0.0;
+	for each integer i where i=iota(1,rptAvg)
+	begin
+		drop_sobjectstat();
+		clr_aggstat();
+		cleansb(fn);
+		/* Init optimization is always done by ranksort */
+		group_optmethods("ranksort","ranksort");
+		group_optlevels(0,0,0,0);
+		optmethod("ranksort");
+		select a+initsum, q+initsqsum into initsum,initsqsum
+		from real a, real q, real s, integer p
+		where <a,q,s,p> = 
+			execute("charstring.reoptimize2->function",
+				fn,1);
+		select c+initCostSum, c*c+initCostSqSum
+			into initCostSum, initCostSqSum
+		from real c, real f
+		where <c,f> = plan_cost(fn);
+
+		/* Grouping is always done by ranksort. */
+		/* Grouping */
+		grouping(true);
+		select a+groupsum,q+groupsqsum into groupsum,groupsqsum
+		from real a, real q, real s, integer p
+		where <a,q,s,p> = 
+			execute("charstring.reoptimize0->function",
+					fn,1);
+		select c+groupCostSum, c*c+groupCostSqSum
+			into groupCostSum, groupCostSqSum
+		from real c, real f
+		where <c,f> = plan_cost(fn);
+
+		/* Setting monitoring and profiling */
+		if (stat="NoStat")
+		then begin
+			slotstat(false);
+			sobjectstat(false);
+		end
+		else if (stat="MatStat")
+		then begin
+			slotstat(false);
+			sobjectstat();
+			collectstat();
+		end
+		else if (stat="NaiveStat")
+		then begin
+			slotstat(true);
+			sobjectstat();
+			collectstatnaive();
+		end
+		else if (stat="FirstMatStat")
+		then begin
+			slotstat(false);
+			sobjectstat();
+			collectstat();
+		end
+		else if (stat="FirstNaiveStat")
+		then begin
+			sobjectstat();
+			slotstat(true);
+			collectstatnaive();
+		end
+		else print("Unkonw strategy to collect stat: "+stat);
+		if (toStop = 0)
+		then begin
+			profiling(true);
+			if ((opt="GreedyOpt") and (groupOpt="GreedyOrder")
+				and (stat="NoStat"))
+			then stopNfirstEventsReopt0(25000)
+			else stopNfirstEventsReopt2(25000);
+		end
+		else begin
+			profiling(true);
+			if ((stat="FirstMatStat") or (stat="FirstNaiveStat"))
+			then stopCollectProfileNoChanges(1.65,0.15,toStop)
+			else if ((opt="GreedyOpt") and (groupOpt="GreedyOrder")
+				and (stat="NoStat"))
+			then stopNoChanges(toStop)
+			else stopNoChangesReopt(toStop);
+		end;
+
+		/* Setting reoptimization strategy */
+		if ((opt="BestOpt") and (groupOpt="RandomOrder"))
+		then begin
+			group_optmethods("randomopt","randomopt");
+			group_optlevels(10,100,60,300);
+		end
+		else if ((opt="BestOpt") and (groupOpt="GreedyOrder"))
+		then begin
+			group_optmethods("ranksort","randomopt");
+			group_optlevels(0,0,60,300);
+		end
+		else if ((opt="GreedyOpt") and (groupOpt="RandomOrder"))
+		then begin
+			group_optmethods("randomopt","ranksort");
+			group_optlevels(10,100,0,0);
+		end
+		else if ((opt="GreedyOpt") and (groupOpt="GreedyOrder"))
+		then begin
+			group_optmethods("ranksort","ranksort");
+			group_optlevels(0,0,0,0);
+		end
+		else if ((opt="BestOpt") and (groupOpt="DynOrder"))
+		then begin
+			group_optmethods("exhaustive","randomopt");
+			group_optlevels(0,0,60,300);
+		end
+		else if ((opt="GreedyOpt") and (groupOpt="DynOrder"))
+		then begin
+			group_optmethods("exhaustive","ranksort");
+			group_optlevels(0,0,0,0);
+		end
+		else print("Unknow strategy for reoptimization: "+opt+" and "+
+			groupOpt);
+
+		/* Executing the query with collecting statistics */
+		select a+monsum,q+monsqsum into monsum,monsqsum
+		from real a, real q, real s, integer p
+		where <a,q,s,p> = 
+			execute(fn,arg,1);
+		select c+monCostSum, c*c+monCostSqSum
+			into monCostSum, monCostSqSum
+		from real c, real f
+		where <c,f> = cost_after_reoptimize();
+		/* Obtaining number of profiled events */
+		select prEvSum+p, prEvSqsum+p*p into prEvSum,prEvSqsum
+		from integer p
+		where p = getEventCounter();
+		/* Cleaning before measuring performance of obtain plan */
+		unprofile(fn);
+		/* Measuring performance of obtained plan */
+		select a+exsum,q+exsqsum,p into exsum,exsqsum,passed
+		from real a, real q, real s, integer p
+		where <a,q,s,p> = 
+			execute(fn,arg,1);
+	end;
+	set initAvg = mean(initsum,rptAvg);
+	set initStdev = stdev(initsum,initsqsum,rptAvg);
+	set groupAvg = mean(groupsum,rptAvg);
+	set groupStdev = stdev(groupsum,groupsqsum,rptAvg);
+	set monAvg = mean(monsum,rptAvg);
+	set monStdev = stdev(monsum,monsqsum,rptAvg);
+	set collectStat = get_profiled_counter();
+	set profiledEvents = mean(prEvSum,rptAvg);
+	set profEvStdev =stdev(prEvSum,prEvSqsum,rptAvg);
+	set exAvg = mean(exsum,rptAvg);
+	set exStdev = stdev(exsum,exsqsum,rptAvg);
+	set initCostAvg = mean(initCostSum,rptAvg);
+	set initCostStdev = stdev(initCostSum,initCostSqSum,rptAvg);
+	set groupCostAvg = mean(groupCostSum,rptAvg);
+	set groupCostStdev = stdev(groupCostSum,groupCostSqSum,rptAvg);
+	set monCostAvg = mean(monCostSum,rptAvg);
+	set monCostStdev = stdev(monCostSum,monCostSqSum,rptAvg);
+	result <initAvg,initStdev,initSqsum,initCostAvg,initCostStdev,
+		groupAvg,groupStdev,groupSqsum,groupCostAvg,groupStdev,
+		monAvg,monStdev,monSqsum,monCostAvg,monCostStdev,
+		collectStat,profiledEvents,
+		profEvStdev,exAvg,exStdev,exSqsum,passed>;
+end;
+/*
+create function runTuneProfiling (eventfile f, charstring stat, charstring opt,
+	charstring groupOpt, integer toStop, integer rptAvg) -> boolean as
+begin
+	declare vector res;
+	expcuts(filename(f));
+	select v into res 
+	from vector v
+	where v = tune_profiling("charstring.expcuts->event",filename(f),stat,
+		opt,groupOpt,toStop,rptAvg);
+	myprint(id(f),toStop,stat,opt,groupOpt,res[0],res[1],res[2],res[3],
+		res[4],res[5],res[6],res[7],res[8],res[9],res[10],res[11],
+		res[12],res[13],res[14],res[15],res[16],res[17],res[18],
+		res[19],res[20],res[21]);
+end;
+*/
+create function runProfileExperiment(charstring fn, integer nrFiles, 
+	integer rptAvg, charstring stat, charstring opt, charstring groupopt,
+	integer N) -> boolean as 
+begin
+	declare vector res;
+	/* initial optimization without measuremnts */
+	optmethod("ranksort");
+	reoptimize(fn);
+	/* warming up */
+	apply(functionnamed(fn),{nrFiles});
+	/* do experiments */
+	select v into res 
+	from vector v
+	where v = tune_profiling(fn,nrFiles,stat,opt,groupopt,N,rptAvg);
+	/* print results */
+	myprint(nrFiles,N,stat,opt,groupopt,res[0],res[1],res[2],res[3],
+		res[4],res[5],res[6],res[7],res[8],res[9],res[10],res[11],
+		res[12],res[13],res[14],res[15],res[16],res[17],res[18],
+		res[19],res[20],res[21]);
+end;

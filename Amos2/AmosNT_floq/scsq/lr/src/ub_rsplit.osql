@@ -1,0 +1,67 @@
+/*-*-sql-*-*******************************************************************/
+
+/* Reading single tpls from table is slower than reading file multiarrays */
+
+create function ub_table_rsplit(integer rep, integer msz, integer rrfo)
+ -> vector of vector of number as
+select in(zipstreams(mapstreams(rr, #'stcount')))
+from stream src, vector of stream rr
+where rr = rsplit_force(src, rrfo)
+and src = ostream(newsp(i_multihybrid_enumc(64, 0, rep, msz)), 0);
+
+create function x_ub_table_rsplit(integer rep, integer msz, integer rrfo)
+-> (real, integer, real) as
+select exectime(res), countsum(res), rep*1000/exectime(res)/1670
+from vector of vector of number res
+where res = ub_table_rsplit(rep, msz, rrfo);
+
+/* ub file rsplit */
+
+create function rgencpu()-> (charstring, real, integer) as
+select c, roundto(p, 2), r['nsub']
+from charstring c, record r, real p
+where (c, r) in dprofile()
+and like(rgenerator(r), "*READFILE*")
+and p = r['mappertime'];
+
+create function file_rsplit(integer mszexp, integer rrfo)
+ -> vector of vector of number as
+select in(zipstreams(mapflex(rr, #'stcount', {'rem':'extract'})))
+from stream src, vector of stream rr
+where rr = rsplit_force_flex(src, rrfo, {'rem':'rsplit', 'hostnum':0})
+and src = ostream(newspflex(streamof(
+ readfile(getenv("HOME") + "/glob/c64-5M-m" + stringify(mszexp) + ".bin")
+), {'hostnum':0, 'rem':'src'}), 0);
+
+create function remcpu(charstring rem)-> (charstring, real, integer) as
+select c, roundto(p, 2), r['nsub']
+from charstring c, record r, real p
+where (c, r) in dprofile()
+and p = r['mappertime']
+and  r['rem'] = rem;
+
+create function x_file_rsplit(integer mszexp, integer p)
+-> vector of number as begin
+set res() = file_rsplit(mszexp, p);
+print(res());
+return {mszexp, p, exectime(res()), countsum(res()), psum(remcpu('src')),
+        psum(remcpu('rsplit')), psum(remcpu('extract'))};
+end;
+
+create function rsplit_res() -> vector of number;
+
+create function ub_file_rsplit(vector of integer mszs, vector of integer ps)
+ -> object as begin
+for each integer msz where msz in mszs begin
+for each integer p where p in ps begin
+declare charstring outputfilename;
+set outputfilename = "rsplit-" + "p" + stringify(p) + "msz" + stringify(msz);
+add rsplit_res() = x_file_rsplit(msz, p);
+print(rsplit_res());
+writefile("dp-" + outputfilename, {dprofile()});
+end;
+end;
+write_ntuples(rsplit_res(), "rsplit_" + timestamp());
+end;
+
+/* ub_file_rsplit({8}, {1,2,4,8,16,32,64,128}); */

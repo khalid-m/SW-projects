@@ -1,0 +1,128 @@
+/* The script below is going to use a function written in java as a foreign function for amos II. This function is used to cluster on the data 
+ * stream based on Denstream algorithm. The result including snapshot number(or "windowID"), the cluster label(integer), the time(real), 
+ *the coordinators of micro cluster centers and average radius.
+ */
+create function StreamMiner(charstring initialData, charstring inputData, real beta , real u, real epsilon, real lamda, integer dim, 
+real timeInterval,integer initialOrNot, integer overlapping)->bag of <integer windowID, real time, integer macroID, vector microCluster> 
+as foreign "JAVA:Denstream/javaDenstream";
+
+create function sStreamMiner(charstring initialData, charstring inputData, real beta , real u, real epsilon, real lamda, integer dim, 
+real timeInterval,integer initialOrNot, integer overlapping)->Stream of <integer, real , integer , vector >
+as streamof(StreamMiner( initialData,  inputData,  beta ,  u,  epsilon,  lamda,  dim, timeInterval, initialOrNot, overlapping));
+
+/*At stream x, how many clusters at window n*/
+create function numOfclusters(charstring initialData, charstring inputData, real beta , real u, real epsilon, real lamda, integer dim, 
+real timeInterval,integer initialOrNot, integer overlapping, integer winID)->integer i
+as
+   select co
+   from integer co, integer wID, stream of <integer,real,integer,vector> s
+   where
+       s=sStreamMiner(initialData,inputData,beta,u, epsilon,lamda,dim,timeInterval,initialOrNot,overlapping)
+       
+       and wID in (select distinct windowID
+                      from  integer windowID,real time, integer macroID, vector microCluster
+                      where	
+	                       <windowID, time, macroID, microCluster > in s)
+	   and wID=winID
+       and co=count(select distinct  macroID
+         from real time, integer macroID, vector microCluster
+         where 
+		     <wID, time, macroID, microCluster> in s);
+   
+
+/*At stream x, how many microclusters at window n*/		
+create function numOfMicroclusters(charstring initialData, charstring inputData, real beta , real u, real epsilon, real lamda, integer dim, 
+real timeInterval,integer initialOrNot, integer overlapping, integer winID)->integer i
+as
+	select co
+	from integer co, integer wID, stream of <integer,real,integer,vector> s
+	where
+	    s=sStreamMiner(initialData,inputData,beta,u, epsilon,lamda,dim,timeInterval,initialOrNot,overlapping)
+    
+	    and wID in (select distinct windowID
+	                   from  integer windowID,real time, integer macroID, vector microCluster
+	                   where	
+		                       <windowID, time, macroID, microCluster > in s)
+		and wID=winID
+	    and co=count(select wID
+	      from real time, integer macroID, vector microCluster
+	      where 
+			     <wID, time, macroID, microCluster> in s);
+
+/*At stream x, which windows have more than n macroclusters*/
+create function largerNumMacroclus(charstring initialData, charstring inputData, real beta , real u, real epsilon, real lamda, integer dim, 
+real timeInterval,integer initialOrNot, integer overlapping, integer num)->bag of integer
+as
+  select wID
+  from integer wID, stream of <integer,real,integer,vector> s
+  where 
+      s=sStreamMiner(initialData,inputData,beta,u, epsilon,lamda,dim,timeInterval,initialOrNot,overlapping)
+	  and wID in (select distinct windowID
+	              from  integer windowID,real time, integer macroID, vector microCluster
+	              where	
+		            <windowID, time, macroID, microCluster > in s)
+      and maxagg(select distinct macroID
+				 from real time, integer macroID, vector microCluster
+				 where	
+				 <wID, time, macroID, microCluster > in s)>num;
+	
+ 
+/*At stream x which windows point{x1,x2,...} is in*/
+create function locateDatapoint(charstring initialData, charstring inputData, real beta , real u, real epsilon, real lamda, integer dim, 
+real timeInterval,integer initialOrNot, integer overlapping, Vector of number datapoint)->bag of <integer windowID, integer macroID>
+as
+    select windowID, macroID
+    from  vector of number pos, real radius, real time
+     where	
+		   <windowID, time, macroID, {pos,radius}> in sStreamMiner(initialData,inputData,beta,u, epsilon,lamda,dim,timeInterval,initialOrNot,overlapping)
+		and euclid(pos, datapoint)<=radius;
+		
+/*At stream x which windows point{x1,x2,...} is in and number of macroclusters in these windows is larger than n*/
+create function locDatapointFindWindows(charstring initialData, charstring inputData, real beta , real u, real epsilon, real lamda, integer dim, 
+real timeInterval,integer initialOrNot, integer overlapping, integer num,Vector of number datapoint)->bag of integer
+as
+  select wID
+  from integer wID, stream of <integer,real,integer,vector> s
+  where 
+       s=sStreamMiner(initialData,inputData,beta,u, epsilon,lamda,dim,timeInterval,initialOrNot,overlapping)
+       and wID in (select windowID
+	     from  vector of number pos, real radius, real time, integer windowID, integer macroID
+	     where	
+			   <windowID, time, macroID, {pos,radius}> in s
+			and euclid(pos, datapoint)<=radius)
+	   and 
+	     count(select distinct macroID
+         from integer windowID,real time, integer macroID, vector microCluster
+         where 
+		     <windowID, time, macroID, microCluster> in s)>num;
+				 
+ /*At stream x, which windows have maximum number of macro clusters*/		
+create function maxNumCluwindow(charstring initialData, charstring inputData, real beta , real u, real epsilon, real lamda, integer dim, 
+real timeInterval,integer initialOrNot, integer overlapping)->vector of integer
+as
+select wID
+from integer wID, stream of <integer,real,integer,vector> s, integer co
+where 
+    s=sStreamMiner(initialData,inputData,beta,u, epsilon,lamda,dim,timeInterval,initialOrNot,overlapping)
+	  and 
+      co=count(select distinct macroID
+       from integer windowID,real time, integer macroID, vector microCluster
+       where 
+		     <windowID, time, macroID, microCluster> in s)
+	  and wID in (select distinct windowID
+	         from integer windowID,real time, integer macroID, vector microCluster
+	         where 
+			     <windowID, time, macroID, microCluster> in s
+			     and macroID=co-1);
+
+  /*At stream x,  In which widows are there some macrocluster within distance d from point p?*/
+create function findMacroClu(charstring initialData, charstring inputData, real beta , real u, real epsilon, real lamda, integer dim, 
+real timeInterval,integer initialOrNot, integer overlapping,Vector of number datapoint,real dis)->bag of <integer windowID, integer macroID>
+as
+    select windowID, macroID
+    from  vector of number pos, real radius, real time
+     where	
+		   <windowID, time, macroID, {pos,radius}> in sStreamMiner(initialData,inputData,beta,u, epsilon,lamda,dim,timeInterval,initialOrNot,overlapping)
+		and euclid(pos, datapoint)<=dis;
+		
+/*loadMicroClusters('initializing.txt','systhesis_data.txt',0.5,10,16,0.25,2,1,0,1);*/

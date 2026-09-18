@@ -1,0 +1,57 @@
+<html>
+<body>
+<pre>
+<h1>Build Log</h1>
+<h3>
+--------------------Configuration: scsqlib - Win32 Debug--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "C:\Users\minzh812\AppData\Local\Temp\RSP2D6A.tmp" with contents
+[
+/nologo /MD /W3 /GX /O2 /I "C:\AmosNT\\C" /I "C:\AmosNT\\system/include" /I "C:\AmosNT\\scsq/include" /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /FR"Debug/" /Fp"Debug/scsqlib.pch" /YX /Fo"Debug/" /Fd"Debug/" /FD /c 
+"c:\AmosNT\scsq\C\numarray.c"
+]
+Creating command line "cl.exe @C:\Users\minzh812\AppData\Local\Temp\RSP2D6A.tmp" 
+Creating temporary file "C:\Users\minzh812\AppData\Local\Temp\RSP2D6B.tmp" with contents
+[
+/nologo /out:"..\..\bin\scsqlib.lib" 
+.\Debug\a_fft.obj
+.\Debug\bgcommon.obj
+.\Debug\bgextract.obj
+.\Debug\bgsubmit.obj
+.\Debug\bitwise.obj
+.\Debug\extract.obj
+.\Debug\fileaccess.obj
+.\Debug\fourier.obj
+.\Debug\ft.obj
+.\Debug\init_scsq.obj
+.\Debug\lofardata.obj
+.\Debug\lrmultiply.obj
+.\Debug\mathfns.obj
+.\Debug\multiarray.obj
+.\Debug\numarray.obj
+.\Debug\port.obj
+.\Debug\realfft.obj
+.\Debug\sproc.obj
+.\Debug\swin.obj
+.\Debug\twinagg.obj
+.\Debug\udp_src.obj
+.\Debug\udpq.obj
+.\Debug\w.obj
+..\..\bin\amos2.lib
+]
+Creating command line "link.exe -lib @C:\Users\minzh812\AppData\Local\Temp\RSP2D6B.tmp"
+<h3>Output Window</h3>
+Compiling...
+numarray.c
+c:\AmosNT\scsq\C\numarray.c(79) : warning C4273: 'NUMARRAYTYPE' : inconsistent dll linkage.  dllexport assumed.
+c:\AmosNT\scsq\C\numarray.c(1001) : warning C4244: 'initializing' : conversion from 'double ' to 'float ', possible loss of data
+Creating library...
+
+
+
+<h3>Results</h3>
+scsqlib.lib - 0 error(s), 2 warning(s)
+</pre>
+</body>
+</html>

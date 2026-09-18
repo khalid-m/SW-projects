@@ -1,0 +1,69 @@
+
+
+
+/* flat funtions */
+create function st()-> <integer> as stored;
+add st()=1;
+add st()=2;
+add st()=3;
+add st()=4;
+add st()=5;
+add st()=6;
+add st()=7;
+add st()=8;
+add st()=9;
+add st()=10;
+
+
+
+create function ct(integer s)-> < charstring , integer, integer >
+  as select itoa(i),i,i+1 from integer i where i=iota(s,10);
+
+create function ct_n(integer s)-> <integer j, integer i>  as select j,i  from charstring c where ct(s)=<c,i,j>;
+
+create function n(integer s, integer i)-> integer 
+  as select (s+i)*j  from integer j where j=iota(s,10);
+
+/* The unoptimized query */
+
+create function u1()-> <charstring s, integer k, integer l>
+     as         select s,k,l
+                from integer i
+                where i=st() and ct(i)=<s,k,l>;
+
+create function u2()-> integer m
+                       as 
+			select m
+                        from  integer i, charstring s,integer k, integer l
+                        where  i=st() and ct(i)=<s,k,l> and n(l,k)=m;
+
+create function u3()-> integer w
+                       as 
+			select w
+                        from  integer i, charstring s,integer k, integer l, integer m, integer p
+                        where  i=st() and ct(i)=<s,k,l> and n(l,k)=m and p=m+2 and  w=iota(1,p);
+
+
+/*wrapper functions */
+/*create function ct_v(integer s)-> vector as select {ct(s)};
+
+create function ct_n_v(integer s)-> vector as select {j,i}  from integer j, integer i,charstring c where ct_v(s)={c,i,j};
+
+create function n_v(integer s, integer i)-> vector as select {n(s,i)};*/
+
+
+
+/* test queries */
+
+/*create function q13()-> <Charstring, Integer, Integer>
+  as  select rr_receive({"p0","p1","p2","p3"},theresolvent("CT"), st(),3);
+
+create function q14()-> Integer
+  as select rr_receive({"p2","p3"},theresolvent("N"), ve, 1) 
+     from  bag  ve
+     where ve=rr_receive({"p0","p1"},theresolvent("CT_N"),st(),2);
+
+create function q1()->integer as select count(q13());
+
+create function q2()->integer as select count(q14());*/
+

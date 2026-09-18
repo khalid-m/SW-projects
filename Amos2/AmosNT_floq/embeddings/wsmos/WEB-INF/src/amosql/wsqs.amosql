@@ -1,0 +1,96 @@
+register("WSMOS");
+lisp;
+(defglobal userid 0)
+
+(defun get-userid (fno r)
+  (setq userid (1+ userid))
+  (osql-result(1- userid)))
+
+
+(defun start-wsmed (fno uid)
+ (system (concat "start " "userwsmedserver.cmd " uid)))
+
+(defun concat-vector(fno iv oc)
+"Concat all vector elements as comma separated string"
+  (setq oc "")
+  (maparray iv
+	    (f/l (row i)
+		 (if (= oc "") (setq oc (concat oc row))
+		 (setq oc (concat oc " , " row)))))
+  (osql-result iv oc))
+
+(defun replace-str(fno is r)
+  (let ((s (explode is)) (rstr ""))
+     
+    
+    (dolist (x s)
+      (cond   ((equal x "?")(setq rstr (concat rstr "\\\"")))
+              ((equal x "^")(setq rstr (concat rstr "<")))
+	      (t (setq rstr (concat rstr x)))))
+    (osql-result is rstr)))
+
+
+
+
+
+
+:osql
+create function replace_str(charstring is)->charstring os as foreign "replace-str";
+
+create function concatvector(vector i)->charstring c as foreign "concat-vector";
+
+create function getuserid()->integer r as foreign "get-userid";
+create function start_wsmed(integer id)->boolean r as foreign "start-wsmed";
+
+                                  
+
+create function init()->integer r as for each integer i where i=getuserid()
+				begin
+                                  start_wsmed(i);
+                                  result i;
+                               end;
+
+
+create function importWSDL(integer userid,charstring wsdlurl)-> Bag of charstring viewstr  as select a+","+b+","+c+","+d from vector v, charstring a, charstring b, charstring c, charstring d where a=v[0] and b=v[1] and  c=v[2] and  d=v[3] and v=ship("P"+userid,"importwsdl('"+wsdlurl+"');") ;
+                              
+
+
+
+create function tableInfo(integer userid, charstring tname)-> charstring viewstr as select a+";"+b+";"+c+";"+d  from vector v, charstring a, charstring b, charstring c, charstring d where a=v[0] and b=v[1] and  c=v[2] and  d=v[3] and v=ship("P"+userid,"tableInfo('"+tname+"');") ;
+                              
+
+
+
+create function authentication(integer userid, charstring tname, charstring authenticationstr)-> charstring status as select v[0]  from vector v where v=ship("P"+userid,"putsoaphvalue('"+tname+"','"+authenticationstr+"');");
+			      
+
+
+create function query (integer userid, charstring sqlq)-> Bag of charstring vo as 
+					begin
+                                         print(sqlq);
+                                         result concatvector((cast (ship("P"+userid,"sql(\" "+replace_str(sqlq)+" \");")[0] as Vector)));
+					end;
+
+
+
+
+
+
+create function exit_s(integer userid)->charstring c as
+                              begin
+                               kill_peer("P"+userid);
+			       result "true";
+                              end;
+
+
+
+
+set deploy_dir()= getenv('AMOS_HOME')+'/wsmed/wsdl/';
+deploy_wsdl({'init','importWSDL','tableInfo','authentication','query','exit_s'},'wsmed.wsdl','wsmed');
+
+<'../../../wsmed/WSBench/src/amosql/WSBench_wsop_wsmed.amosql';
+
+listen();
+
+
+

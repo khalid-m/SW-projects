@@ -1,0 +1,25 @@
+/**-*-sql-*-***********************************************
+ * AMOS2
+ *
+ * Author: Tim
+ * Description: Load AmosGSL ALisp and AmosGSL AmosQL 
+ * system here.
+ *
+ **/
+
+/* AmosGSL system */
+
+load_lisp("agsl-vector.lsp");
+load_lisp("agsl-matrix.lsp");
+load_lisp("agsl-blas1.lsp");
+load_lisp("agsl-blas2.lsp");
+load_lisp("agsl-blas3.lsp");
+load_lisp("agsl-linalg.lsp");
+
+/* AmosQL bindings */
+
+load_amosql("agsl-matrix.amosql");
+load_amosql("agsl-blas3.amosql");
+load_amosql("agsl-linalg.amosql");
+
+load_amosql("agsl-multiplication.amosql");

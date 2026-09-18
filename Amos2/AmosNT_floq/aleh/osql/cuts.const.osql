@@ -1,0 +1,389 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2006 Ruslan Fomkin, UDBL
+ * $RCSfile: cuts.const.osql,v $
+ * $Revision: 1.4 $ $Date: 2007/12/11 12:48:43 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Implementation of cuts function, which is used as examples with static
+ * and cost model for the paper.
+ *  Cuts are taken from Christian's original implementation of cuts in C++,
+ * which is efficient implementation of cuts from the paper 
+ * by M.Bisset, et al (2003).
+ ****************************************************************************
+ * $Log: cuts.const.osql,v $
+ * Revision 1.4  2007/12/11 12:48:43  ruslan
+ * rearranging cost hints between files
+ *
+ * Revision 1.3  2007/07/16 07:54:03  ruslan
+ * comments about article source are added
+ *
+ * Revision 1.2  2007/01/23 12:59:22  ruslan
+ * topcut with check of 3 ok jets. with this version static greedy produce better plan
+ *
+ * Revision 1.1  2006/12/02 12:48:03  ruslan
+ * missing file
+ *
+ ****************************************************************************/
+
+<'formulas.osql';
+<'cost_model.udfs.osql';
+/********************************************************************/
+/**
+ * Event should have exactly three isolated leptons with pt above
+ * minPtOfAllThreeLeptons (7 GeV), one of them should have pt above
+ * minPtOfTheHardestLepton (20 GeV), at the same time all of them
+ * should have eta within etaRangeForAllThreeLeptons (2.4).
+ */
+
+/*
+ * TTreeCut::ThreeLeptonCut, m_isolatedLeptons, allLeptonsWithinEtaRange
+ * m_minPtOfAllThreeLeptons: minPtL
+ * m_etaRangeForAllThreeLeptons: etaL
+ */
+create function isolatedLeptons(Event ev) -> Lepton as
+	select l from Lepton l
+	where l=leptons(ev) and pt(l) > 7.0 and abs(eta(l)) < 2.4;
+
+/**
+ * minPtOfAllThreeLeptons: minPtL
+ * minPtOfTheHardestLepton: hardPtL
+ * etaRangeForAllThreeLeptons: etaL
+ */
+create function threeLeptonCut (Event ev) -> Boolean as
+	select count(isolatedLeptons(ev))=3 and
+		some(select r from real r 
+			where r=Pt(isolatedLeptons(ev)) and r>20.0);
+
+/*
+create function threeLeptonCut (parameters g) -> Event as
+	select threeLeptonCut(ev, g) from Event ev;
+*/
+
+/**********************************************************************/
+/**
+ * the event which has two opposite charged leptons with invariant
+ * mass closed to the Z mass should be cutted away.
+ * Differences between invariant mass of any two opposite charged
+ * leptons and m_zMass should be bigger or equal to m_minimumZMassDiff.
+ * we should look to pairs electron - positron and muon - antimuon.
+ */
+
+create function oppositeLeptons(Event ev) -> vector of Lepton as
+	select {l1, l2} from Lepton l1, Lepton l2
+	where l1 = particles(ev) and l2 = particles(ev) and Kf(l1)=-Kf(l2);
+
+/*
+ * m_zMass: zMass
+ * m_minimumZMassDiff: minZMass
+ */
+/**rewrite, removed disjunction*/
+create function EvInvMass(Event ev) -> real r as
+	select r
+	from vector lept, real inv
+	where lept = oppositeLeptons(ev) and
+		inv = invMass(lept) and
+		r=abs(inv-91.1882) and	r < 10.0;
+
+create function zVetoCut(Event ev) -> Boolean as
+	select notany(EvInvMass(ev));
+
+/** old version with disjunction
+create function zVetoCut(Event ev, parameters g) -> Event e as
+	select ev
+	where notany(oppositeLeptons(ev)) or
+		abs(invMass(oppositeLeptons(ev))-zMass(g)) < minZMass(g);
+*/
+
+/*
+create function zVetoCut(parameters g) -> Event as
+	select zVetoCut(ev,g) from Event ev;
+*/
+
+/************ HadronicTopCut ********************************************/
+/**
+ * Events must have at least three jets with pt > 20 GeV and eta within 4.5.
+ * Three of them most likely to form the three-jet system and to come 
+ * from the top quark, which means that invariant mass of the three-jet
+ * system is close to 174.3 within 35. Two jets from the three-jet system
+ * most likely to come from the W boson, which means that invariant mass 
+ * of the two jets is close to 80.419 within 15. The third jet from the 
+ * three-jet system has to be tagged as a b-jet.
+ */
+
+/*
+ * TTreeCut::SelectOkJets, m_okJets
+ * Selects jets (with AtlfastB to) which are ok
+ * m_etaRangeForJets: etaJ
+ * m_minPtForJets: minPtJ
+ */
+create function okJetsHelpfunc(Event ev) -> JetB as
+	select j from JetB j where event(j)=ev and abs(eta(j))<4.5 and
+		pt(j)>20.0;
+create function okJets(Event ev) -> JetB as
+	select j from JetB j where j=okJetsHelpfunc(ev) and
+                          atleast(3,okJetsHelpfunc(ev));
+
+/*
+ * TTreeCut::SeperateBJets, m_okBJets
+ * Select b jets from jets (with AtlfastB to) of event
+ * function getPdg is Kfjetb from TTreeClass here
+ * m_theIntegerForBTaggedJet: forBJet
+ */
+create function bJets(Event ev) -> JetB as
+	select j from JetB j where j=okJets(ev) and
+		kf(j)=5;
+
+/*
+ * TTreeCut::SeperateBJets, m_okWJets
+ * Select wJets from jets (with AtlfastB to) of event. 
+ * They are ok and not bJets.
+ */
+create function wJets(Event ev) -> JetB as
+	select j from JetB j where j=okJets(ev) and
+		kf(j)!=5;
+
+/*
+ * TTreeCut::Select2WCombinations, m_okWComb
+ * select 2W combinations
+ * returns vectors of two wJets which satisfy invariant mass condition
+ * m_wMass: wMass
+ * m_allowedWMassDiff: allowedWMass
+ */
+create function wPairs(Event ev) -> vector v as
+	select v from JetB j1, JetB j2
+	where j1=wJets(ev) and j2=wJets(ev)
+		and j1>j2 and v={j1,j2} and 
+		absInvMass(v,80.419)<15.0; 
+
+/*
+ * TTreeCut::SelectTopCombination, m_okTopComb
+ * m_topMass: tMass
+ * m_allowedTopMassDiff: allowedTMass
+ */
+create function topComb(Event ev) -> vector v as
+	select v from JetB j1, JetB j2, Jetb bj
+	where v={j1,j2,bj} and {j1,j2}=wPairs(ev) and bj=bJets(ev) and
+		absInvMass(v,174.3)<35.0;
+
+/**
+ * Hardronic Top Cut 2 (see management file)
+ *** OBS!do not forget that it should be at least 3 ok jets
+ */
+create function topCut(Event ev) -> Boolean as
+	select some(topComb(ev));
+
+/*
+create function topCut(parameters g) -> Event as
+	select topCut(ev,g) from Event ev;
+*/
+/**********************************************************************/
+/* Jet Veto Cut 2
+ * leftJets jetbs should have Pt not bigger then maxAllowedPtForOtherJets
+ * see Hadronic Top Cut 2
+ * m_maxAllowedPtForOtherJets: ptOJets
+ */
+/*
+ * TTreeCut::SelectTopCombination, m_theTopComb
+ * min of m_okTopComb
+ */
+create function mTopComb(Event ev) -> vector v as
+	select v
+	where v=topComb(ev) and absInvMass(v,174.3)=
+		minagg(absInvMass(topComb(ev),174.3));
+
+/*
+ * TTreeCut::SelectTopCombination, m_theLeftOverJets
+ * select m_okJets which are not contained in m_theTopComb
+ */
+create function leftJets(Event ev) -> JetB as
+	select j from JetB j
+	where j=okJets(ev) and
+		notany(select j 
+				where j=in(mTopComb(ev)));
+
+create function jetVetoCut(Event ev) -> Boolean as
+	select notany(select j from JetB j 
+			where j=leftJets(ev) and Pt(j)>70.0);
+/*
+create function jetVetoCut(parameters g) -> Event as
+	select jetVetoCut(ev,g) from Event ev;
+*/
+/**********************************************************************/
+/*
+ * Other cuts
+ * 1. All isolated leptons should has Pt not bigger then maxPtAll
+ * 2. Isolated lepton which has smallest Pt should have Pt not bigger
+ *    then maxPtSoft
+ * m_isolatedLeptons: isolatedLeptons(event,parameters)->leptons
+ * m_maxPtForAllThreeIsolatedLeptons: maxPtAll
+ * m_maxPtForTheSoftestIsolatedLepton: maxPtSoft
+ */
+create function leptonCuts(Event ev) -> Boolean as
+	select notany(select l from Lepton l 
+			where l=isolatedLeptons(ev) and Pt(l)>150.0)
+		and some(select r from real r 
+			where r=Pt(isolatedLeptons(ev)) and r<=40.0);
+/*
+create function leptonCuts(parameters g) -> Event as
+	select leptonCuts(ev,g) from Event ev;
+*/
+/*
+ * Other cuts, continue*
+ * 1. Missing traverse energy (mod(PtMiss)) should be not smaller
+ *    then minTransEe
+ * 2. Effective mass should be not bigger then maxEfMass
+ * m_minMissingTransverseEnergy: minTransEe
+ * m_maxAllowedEffectiveMass: maxEfMass
+ * ptMiss={PxMiss,PyMiss}
+ * pt31=sum(Px(isolated lepton),Py(isolated lepton))
+ */
+create function missEeCuts(Event ev) -> Boolean as
+	select ptMiss={PxMiss(ev),PyMiss(ev)} and mod(ptMiss)>=40.0
+		and pt31={sum(select Px(isolatedLeptons(ev))),
+				sum(select Py(isolatedLeptons(ev)))}
+		and effectiveMass(ptMiss,pt31)<=150.0
+	from vector ptMiss, vector pt31;
+/*
+create function missEeCuts(parameters g) -> Event as
+	select missEeCuts(ev,g) from Event ev;
+*/
+/*******************************************************************/
+/**
+ * All cuts together!
+ */
+create function allCuts() -> Event ev as
+	select ev
+	where threeLeptonCut(ev) and zVetoCut(ev)
+		and topCut(ev) and jetVetoCut(ev) and 
+		leptonCuts(ev) and missEeCuts(ev);
+/*
+create function allCuts(parameters g) -> Event as
+	select allCuts(ev,g) from Event ev;
+*/
+/**
+ * This order of applying cuts forces the opimizer to produce more 
+ * optimal order of calling transient objects in the execution plan 
+ * than previous function allCuts.
+ */
+create function optAllCuts() -> Event ev as
+	select ev
+	where threeleptoncut(ev) and leptoncuts(ev) and 
+		misseecuts(ev) and zvetocut(ev) and 
+		topcut(ev) and jetvetocut(ev);
+
+create function expcuts() -> Event ev as
+select ev
+where topcut(ev) and jetvetocut(ev) and 
+	misseecuts(ev) and zvetocut(ev) and 
+	threeleptoncut(ev) and leptoncuts(ev);
+
+
+
+
+
+
+
+
+
+/***********************NOT USED****************************/
+/*
+ * Help functions for Hadronic Top Cut 1
+ * Only Hadronic Top Cut 2 will be used as testbed
+ */
+
+/* Used in topCombJets.
+ * select all possible triples of jetbs which are ok
+ */
+/*
+create function all3CombJets(Event ev, parameters g) -> vector as
+	select v from vector v, JetB j1, JetB j2, JetB j3
+	where j1=okJets(ev,g) and j2=okJets(ev,g) and j3=okJets(ev,g) 
+		and j1>j2 and j2>j3 and v={j1,j2,j3};
+*/
+/* TTreeCut::Select3TopJets, m_theTopComb
+ * select three ok jetbs which has lowest absinvmass and the value is lower
+ * then allowed.
+ * m_okJets: Event.Parameters.okJets->JetB
+ * m_topMass: tMass
+ * m_allowedTopMassDiff: allowedTMass
+ */
+/*
+create function topCombJets(Event ev, parameters g) -> vector as
+	select v from vector v, real r
+	where v=all3CombJets(ev,g) and r=absInvMass(v,tMass(g)) 
+		and r<allowedTMass(g) and 
+		r=minagg(absInvMass(all3CombJets(ev,g),tMass(g)));
+*/
+/* TTreeCut::Select3TopJets, m_theLeftOverJets
+ * select all ok jetbs which are not in topCombJets.
+ */
+/*
+create function leftOverJets(Event ev, parameters g) -> JetB as
+	select j from JetB j
+	where j=okJets(ev,g) and 
+		notany(select j1 from JetB j1 
+				where j1=in(topCombJets(ev,g)) and j1=j);
+*/
+/* select all possible pairs of jetbs from topCombJets */
+/*
+create function allWComb(Event ev, parameters g) -> vector as
+	select v from vector v, JetB j1, JetB j2, real r
+	where j1=in(topCombJets(ev,g)) and j2=in(topCombJets(ev,g)) and j1>j2 and
+		v={j1,j2};
+*/
+/* TTreeCut::Select2WJets, m_theWComb
+ * select those 2 jetbs from topCombJets, which absinvmass is lowest, and 
+ * left jetb could be bjet
+ * m_wMass: wMass
+ * m_allowedWMassDiff: allowedWMass
+ */
+/*
+create function wComb(Event ev, parameters g) -> vector as
+	select v from vector v, real r
+	where v=allWComb(ev,g) and r=absInvMass(v,wMass(g)) and r<allowedWMass(g)
+		and r=minagg(allWComb(ev,g));
+*/
+/* TTreeCut::Select2WJets, m)thBJet
+ * select left jetb from topCombJets which is not in wComb
+ * and checked that it is b-tagged.
+ * m_theIntegerForBTaggedJet: forBJet
+ */
+/*
+create function bJetWComb(Event ev, parameters g) -> JetB as
+	select j from JetB j
+	where j=in(topCombJets(ev,g)) and 
+		notany(select j1 from JetB j1 where j1=j and j1=in(wComb(ev,g))) and
+		Kf(j)=forBJet(g);
+*/
+/*
+ * Hadronic Top Cut 1 (see management file)
+ * Includes ***BTagCut
+ *** OBS! do not forget that it should be at least 3 ok jets
+ */
+/*
+create function topCut1(bag of Event evs, parameters g) -> Event as
+	select ev from Event ev
+	where ev=in(evs) and some(wComb(ev,g)) and some(bJetWComb(ev,g));
+
+create function topCut1(parameters g) -> Event as
+	select topCut1(ev,g) from Event ev;
+*/
+/**********************************************************************/
+/*
+ * The Jet Veto Cut
+ */
+
+/* Jet Veto Cut 1
+ * leftOverJets jetbs should have Pt not bigger then maxAllowedPtForOtherJets
+ * see Hadronic Top Cut 1
+ * m_maxAllowedPtForOtherJets: ptOJets
+ */
+/*
+create function jetVetoCut1(parameters g) -> Event as
+	select ev from Event ev
+	where notany(select j from JetB j 
+				where j=leftOverJets(ev,g) and Pt(j)>ptOJets(g));
+*/

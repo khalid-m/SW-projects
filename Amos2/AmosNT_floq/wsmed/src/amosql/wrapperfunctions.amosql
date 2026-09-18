@@ -1,0 +1,115 @@
+create function findservice(charstring wsdluri)->service as select s from service s where wsdluri(s)=wsdluri;
+create function findservicename(charstring wsdluri)->charstring as select name(s) from service s where wsdluri(s)=wsdluri;
+create function  vectorele(vector r)->element as select in(r);
+create function  countvectorele(vector  r)->integer as select count(in(r));
+create function wrapperfunction(charstring cs)-> charstring as foreign  "JAVA:wrapperFunctions/initiate";
+create function populatesoapheader(charstring wsdlurl)->boolean as 
+				begin
+                                for each  Service s, Operation op where wsdluri(s)=wsdlurl and op in port(s)
+				 begin
+				  if ( authentication(op)={}) then
+				    putsoaphvalue(op,{});
+				 end;
+				end;
+/****** extract  values from the sequence and aggregate them as vector**********/				
+create type recordvec properties(value vector, name charstring);
+create recordvec instances :rv;
+set value(:rv)={};
+set name(:rv)='recordvec';
+
+create function return_recordvec()
+                ->vector e as select value(rv) from recordvec  rv where name(rv)="recordvec";
+/*
+create function Record2Vec(sequence r,charstring name)->vector resv as 
+						begin
+						  for each recordvec rv, integer i, record sr where name(rv)="recordvec" and sr=r[i]
+					           begin
+						    set value(rv)= concat(value(rv),{sr[name]});
+						   end;	
+						  set resv= return_recordvec(); 
+						  return resv;
+		  				 set value(re)={} from recordvec re where name(re)="recordvec";		
+						end;
+*/
+
+create function Record2Vec(sequence r,charstring name)->object resv as 
+						begin 
+					                                              
+					          if (count(in(r))=0) then
+                                                           return (cast(r as record))[name]
+                                                  else
+		                                   begin
+						    for each recordvec rv, integer i, record sr where name(rv)="recordvec" and sr=r[i]
+					             begin
+						      set value(rv)= concat(value(rv),{sr[name]});
+                                                     end;	
+						    return return_recordvec();
+						    set value(re)={} from recordvec re where name(re)="recordvec";	
+	                                           end;
+		  				end;
+
+/*******************************************************************/
+
+
+/****************************************************/
+/* Generic Functions*/
+/****************************************************/
+create function generate_wsdl_metadata(charstring wsdlurl)-> boolean  as foreign  "JAVA:intiateSchema/initoperation"; 
+
+create function checkWSDLexist(charstring wsdluri)-> boolean as select (wsdluri(s)=wsdluri) from Service s ;
+
+ /*populatesoapheader(wsdlurl);*/
+
+create function checkstatus(charstring austr)->charstring status as
+                                           begin
+					     if ((austr!='none') and (austr!='required')) then
+                                                return 'builtin'
+                                             else
+                                                return austr;
+                                           end;
+
+create function checkauthentication(charstring tname)-> charstring status as select checkstatus(authenticationstr(op)) from Operation op where tablename(op)=tname;
+
+create function assign_austr(charstring wsdlurl)-> Charstring str as 
+                             begin
+			      for each  Service s, Operation op where wsdluri(s)=wsdlurl and op in port(s)
+                                begin
+                                  set str= (getsoaphvalue(op))[0];
+	                          if (((str !="NIL") and (authenticationstr(op)="required")) and (authenticationstr(op)!="none")) then
+                                                    set authenticationstr(op)='builtin';
+                                  end;
+                              return str;
+                             end;
+
+create function importwsdl(charstring wsdlurl) ->  (charstring tname, charstring authenticationstr,charstring servicename, charstring existwsdl) as
+begin
+  if (notany(checkWSDLexist(wsdlurl))) then
+   begin
+     generate_wsdl_metadata(wsdlurl);
+     load_amosql("src/amosql/populatewsdl.amosql");
+     assign_austr(wsdlurl);
+     load_amosql("src/amosql/"+wrapperfunction(wsdlurl));
+     
+     set existwsdl='false';
+   end
+  else
+   begin
+    set existwsdl='true';
+   end;
+
+   for each vector v  where v=availableTables(wsdlurl)
+    begin
+      if ((v[1]!='required') and  (v[1]!='none')) then
+        begin
+         set authenticationstr='builtin';
+       end
+     else
+       begin
+         set authenticationstr=v[1];
+       end;
+      return (v[0],authenticationstr,v[2],existwsdl);
+    end;
+end;
+
+
+

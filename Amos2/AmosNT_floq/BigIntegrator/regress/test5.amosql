@@ -1,0 +1,110 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> 2012 <author>Minpeng Zhu, UDBL
+ * $RCSfile: test5.amosql,v $
+ * $Revision: 1.1 $ $Date: 2012/12/26 16:38:03 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: regression test of integrating data from different kind of
+ *              data sources. 
+ ****************************************************************************/
+
+/* load database image from Bigtable */
+lisp;
+
+(with-directory "../Bigtable/src/Lisp/"
+	        (load "master.lsp"))
+
+
+:osql
+
+/* Import meta-data and populate stored functions by ds and url for Bigtable */
+set :a = Bigtableds("A");
+
+accessBigtable(:a,  "http://bigintegratordemo.appspot.com/simpleprotocol");
+
+setServerLog("on"); 
+
+/* what sensor does ABB produce */
+create function q0()->Charstring as
+select name(s)
+from Sensor@A s
+where Manufacturer(s)='ABB';
+	
+
+set :b = jdbc("B", "com.mysql.jdbc.Driver");
+
+connect(:b, "jdbc:mysql://localhost:3306/" + "regress", "regress", "regress");
+
+import_table(:b, 'measured');
+
+/* what are the measured value for logdb 1 during last month */
+create function q1()->(Integer, Number) as
+select sid(m), mv(m)
+from measured@B m
+where logdb(m)=1 and
+      date()-30<tid(m);
+
+/* what are the locations for machine named MoriSeiki 5000 */
+create function q2()->Charstring as
+select name(l)
+from machine@A m, machineinstallation@A mi, location@A l
+where name(m)='MoriSeiki 5000' and
+      model(m)=machinemodel(mi) and
+      locateat(mi)=locationid(l);
+
+/* what machine in Uppsala has failed */
+create function q3()->Integer as
+select distinct mid(si)
+from sensorinstallation@A si, sensor@A s, measured@B m, location@A l
+where mv(m)>maxv(s) and
+      name(l)='Uppsala' and
+      sid(m)=sid(si) and
+      smodel(si)=smodel(s) and
+      logdb(m)=logdbID(l);
+
+/* what machine in Uppsala has failed during last month*/
+create function q4()->Integer as
+select distinct mid(si)
+from sensorinstallation@A si, sensor@A s, measured@B m, location@A l
+where mv(m)>maxv(s) and
+      name(l)='Uppsala' and
+      date()-30<tid(m) and	
+      sid(m)=sid(si) and
+      smodel(si)=smodel(s) and
+      logdb(m)=logdbID(l);
+
+
+
+/* establish another connnection to another logdb through different port */
+set :c = jdbc("C", "com.mysql.jdbc.Driver");
+
+connect(:c, "jdbc:mysql://localhost:3306/" + "regress", "regress", "regress");
+
+import_table(:c, 'measured');
+
+
+/* question: how to do specify the query when there are a large number of 
+   sources the queries cannot explicitly list them in from clause???? */ 
+
+/* create new type Measures */
+create type Measures;
+
+create Measures instances :measured1, :measured2;
+
+create function measure_rdb(Measures)->Jdbc as stored;
+
+add measure_rdb(:measured1)=:b;
+
+add measure_rdb(:measured2)=:c;
+
+/* what machine in Uppsala has failed */
+create function q5()->Integer as
+select distinct mid(si)
+from sensorinstallation@A si, sensor@A s, Measures ms, location@A l
+where ...
+
+
+
+

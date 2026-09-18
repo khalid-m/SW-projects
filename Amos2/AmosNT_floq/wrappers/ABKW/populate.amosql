@@ -1,0 +1,41 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2004 Maryam Ladjvardi, UDBL
+ * $RCSfile: populate.amosql,v $
+ * $Revision: 1.3 $ $Date: 2005/03/13 19:53:00 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Population of BerkeleyDB through ABKW
+ *
+ ****************************************************************************/
+
+bk_create("DB1", "Person", {{"ssn", "integer", 0}}, {{"name", "string", 15},
+                            {"length", "real", 0}}, 1); 
+
+
+set :h=bk_handle("DB1","Person");
+
+bk_set(:h,{1026},{"sara",1.72});
+bk_set(:h,{8234},{"dana",1.40});
+bk_set(:h,{2048},{"adam",1.80});
+bk_set(:h,{1456},{"lena",1.42});
+bk_set(:h,{8762},{"sam",1.85});
+bk_set(:h,{4325},{"eva",1.78});
+bk_set(:h,{1674},{"per",1.52});
+bk_set(:h,{2387},{"elsa",1.69});
+bk_set(:h,{1974},{"malin",1.72});
+bk_set(:h,{1979},{"maria",1.59});
+bk_set(:h,{2307},{"david",1.90});
+bk_set(:h,{2389},{"frank",1.64});
+bk_set(:h,{2674},{"lisa",1.43});
+bk_set(:h,{4387},{"tanja",1.54});
+bk_set(:h,{6887},{"joe",1.87});
+bk_set(:h,{2397},{"ylva",1.59});
+bk_set(:h,{6962},{"jan",1.75});
+bk_set(:h,{2887},{"john",1.70});
+bk_set(:h,{6762},{"olle",1.85});
+bk_set(:h,{6907},{"dan",1.69});
+bk_set(:h,{2487},{"ulf",1.79});
+
+quit;

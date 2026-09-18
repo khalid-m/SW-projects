@@ -1,0 +1,54 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2013, Andrej Andrejev, UDBL
+ * $RCSfile: kmeans.osql,v $
+ * $Revision: 1.1 $ $Date: 2013/06/21 21:01:55 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Example implementation of parallel k-Means clustering: demo script
+ *
+ ****************************************************************************
+ * $Log: kmeans.osql,v $
+ * Revision 1.1  2013/06/21 21:01:55  andan342
+ * Added example implementation of Parallel k-Means clustering
+ *
+ *
+ ****************************************************************************/
+
+start amos2 -n
+
+start amos2 -s p1
+start amos2 -s p2
+start amos2 -s p3
+start amos2 -s p4
+
+amos2
+
+register("coordinator");
+
+< 'kmeans_coordinator.osql';
+
+broadcast("< 'kmeans_node.osql';");
+
+/* Initialize peer random number generators differently */
+broadcast("random_init_by_hash(this_amosid());");
+
+/* Generate 12 spherical clusters, 3 on each node */
+broadcast("add partition() = GenSpherical(100, 3, 0.05, 0.1, 0.5);");
+
+set :k = 3; /* number of clusters to look for */
+
+/* Two-phase sampling of datapoints, selecting k on each node, then selecting k from them */
+set :centroids = vectorof(select sample(castreceive("sample_partition",{:k}),:k));
+
+/* Run the algorithm */
+set :solution = parallel_kmeans(:centroids);
+
+/* Show the results */
+scatter2p(cast((select castreceive("classify_partition_node",{:solution})) as Vector));
+
+/* Remove the data on nodes */
+broadcast("remove partition() = v from Vector v;");
+
+

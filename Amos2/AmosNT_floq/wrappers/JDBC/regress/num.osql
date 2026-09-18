@@ -1,0 +1,127 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Thanh Truong, Minpeng Zhu UDBL
+ * $RCSfile: num.osql,v $
+ * $Revision: 1.17 $ $Date: 2013/05/01 15:31:09 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *
+ ****************************************************************************/
+
+set :a = jdbc("nw", "com.mysql.jdbc.Driver");
+
+set :dburl = "jdbc:mysql://localhost:"+getenv("PORTDB")+"/";
+
+connect(:a, :dburl + "regress", "regress", "regress");
+
+import_table(:a, 'EMPLOYEE');
+
+import_table(:a, 'DEPARTMENT');
+
+debugging(true);
+
+
+
+create function qn1()->Bag of Charstring
+  as select first_name(e)            
+     from employee_nw e 
+     where salary(e) > 15000 and 
+     salary(e) + 1000  < 30000 and 
+     like(first_name(e),'A*');
+
+create function qn2()->Bag of Charstring
+  as select first_name(e)            
+     from employee_nw e 
+     where salary(e) > 15000 and 
+     salary(e) + salary(e) = 44000 and 
+     like(first_name(e),'A*');
+
+
+/*More indirectly computed expression*/
+create function qn3()->Bag of Charstring
+  as select first_name(e)            
+     from employee_nw e 
+     where salary(e) > 15000 and 
+     salary(e) + 1000  + 12 < 30000 and 
+     like(first_name(e),'A*');
+
+create function qn4()->Bag of Charstring
+  as select first_name(e)            
+     from employee_nw e 
+     where salary(e) > 15000 and 
+     salary(e) < 30000  +  emp_no(e) and 
+     like(first_name(e),'A*');
+
+/*With minus and plus together*/
+create function qn5()->Bag of Charstring
+  as select first_name(e)            
+     from employee_nw e 
+     where salary(e) > 15000 and 
+     salary(e) - 1000 + 89  < 30000 and 
+     like(first_name(e),'A*');
+
+
+/*Combination of  minus, plus, times, and divide together*/
+create function qn6()->Bag of Charstring
+  as select first_name(e)            
+     from employee_nw e 
+     where salary(e) > 15000 and 
+     (salary(e) - 100)/2 + 50   < 30000 and
+     like(first_name(e),'A*');
+
+
+create function qn7()->Bag of Charstring
+  as select first_name(e)            
+     from employee_nw e 
+     where salary(e)*2 > 15000;
+
+create function qn8()->Bag of (Charstring, Charstring) 
+  as select first_name(e), department(d) 
+     from employee_nw e, department_nw d 
+     where dept_no(e)=dept_no(d) and 
+           salary(e) + 3000>60000 and 
+           budget(d)-30000>50000;
+
+create function qn8b()->Bag of (Charstring, Charstring) 
+  as select first_name(e), department(d) 
+     from employee_nw e, department_nw d, Number x 
+     where dept_no(e)=dept_no(d) and 
+           3000 + salary(e) = x and x>59999 and 
+           budget(d)-30000>50000-x;
+
+create function qn9(integer x)->Bag of Charstring
+  as select first_name(e)
+     from employee_nw e
+     where salary(e) > 15000 and
+     salary(e) < 30000 - x and
+     like(first_name(e),'A*'); 
+
+create function qn10()->Bag of Charstring
+  as select first_name(e)            
+     from employee_nw e
+     where  first_name(e) in ("Robert","Bruce","Kim");
+
+
+create function qn11()->Bag of Number
+ as select greater(1, salary(e)) 
+    from employee_nw e
+    where first_name(e) in ("Robert", "Bruce", "Kim");
+
+create function qn12()->Bag of Charstring
+ as select first_name(e)
+    from employee_nw e
+    where abs(salary(e)) > 800000;
+
+create function qn13()->Bag of Charstring
+ as select first_name(e)
+    from employee_nw e
+    where sin(salary(e)) > 800000;
+
+
+
+lisp;
+
+(osql "load_lisp('num.lsp');")
+:osql

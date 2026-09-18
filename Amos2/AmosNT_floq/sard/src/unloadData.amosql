@@ -1,0 +1,209 @@
+
+/* TO GET THE HEADER OF XML FILE*/
+create function dataxml_header()->charstring as stored;
+create function generate_dataxml_header(charstring dbname,charstring ont)->charstring as begin
+set dataxml_header()= "<rdf:RDF xml:lang='en'
+   xmlns:dbs='"+db_ontology()+db_name()+"#'
+   xmlns:rdf='http://www.w3.org/1999/02/22-rdf-syntax-ns#'
+   xmlns:rdfs='http://www.w3.org/2000/01/rdf-schema#'>";
+end;
+
+
+
+/* TO GET THE FOOTER OF XML FILE*/
+
+create function dataxml_footer()->charstring as stored;
+set dataxml_footer()="</rdf:RDF>";
+
+create function cdata()-> <charstring, charstring, charstring> 
+as 
+ select s,p,o 
+	from charstring s, charstring p,charstring o
+	where {s,p,o} = call_function(functionnamed("cmyUPV"),{});
+
+create function get_sub() -> charstring 
+/*Extracts the URIs of all subjects  from the triplles amount*/
+as 
+	select s 
+	from charstring s, charstring p,charstring o
+	where cdata()=<s,p,o> ;
+
+create function get_pred(charstring classuri) -> charstring 
+/*Extracts the URIs of all properties (columns) from the triplles amount*/
+as 
+	select p 
+	from charstring s, charstring p,charstring o
+	where cdata()=<s,p,o> and like(s,classuri)  ;
+
+create function get_obj() -> charstring 
+/*Extracts the URIs of all objects from the triplles amount*/
+as 
+	select o 
+	from charstring s, charstring p,charstring o
+	where cdata()=<s,p,o> ;
+
+create function get_classpredURI(Charstring classuri) -> charstring propxml
+/*Extracts the URIs of all properties that have as a domain classuri*/
+as 
+	select p 
+	from charstring s, charstring p,charstring o 
+	where cdata()=<s,p,o> and like(s, classuri) and p != "http://www.w3.org/1999/02/22-rdf-syntax-ns#type";
+
+
+create function get_basictable(Charstring classuri)->Charstring
+/*Gets backe the name of the table from the classuri*/
+as select substring(v, char_length(db_ontology()+db_name())+1,char_length(v)) from Charstring v where <classuri, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", v> = cdata();
+
+
+/* TO GET THE START OF THE TABLE IN XML*/
+
+
+
+create function xml_class(charstring classuri) -> charstring as stored;
+
+create function generate_xml_class(charstring classuri) -> charstring
+as for each Charstring t_name where t_name=get_basictable(classuri)
+	set xml_class(classuri) = "<dbs:" +t_name+ " about="+"'"+classuri+ "'" + ">"; 
+
+/*
+create function generate_xml_class(jdbc jd,charstring classuri) -> charstring
+as begin 
+ for each charstring t_name where t_name=table_name_down(jd)
+  if like(classuri,"*"+t_name+"*") then 
+	set xml_class(classuri) = "<dbs:" +t_name+ " about="+"'"+classuri+ "'" + ">"; 
+ end;
+*/
+
+ /* TO GET THE CLOSE OF THE TABLE IN XML*/
+
+
+
+create function close_xml_class(charstring classuri)->charstring as stored;
+
+create function generate_close_xml_class(charstring classuri) -> charstring
+as for each Charstring t_name where t_name=get_basictable(classuri)
+	set close_xml_class(classuri) = "</dbs:" +t_name+ ">"; 
+
+/*
+create function generate_close_xml_class(jdbc jd,charstring classuri) -> charstring
+as begin 
+ for each charstring t_name where t_name=table_name_down(jd)
+  if like(classuri,"*"+t_name+"*") then 
+	set close_xml_class(classuri) = "</dbs:" +t_name+ ">"; 
+ end;
+*/
+
+/* TO GET THE START OF THE COLUMN IN XML*/
+  
+
+create function xml_prop(charstring propuri) -> charstring as stored;
+
+
+create function get_propnot(Charstring classuri, charstring propuri) -> charstring
+/*Gets back the name of the column or the foreign key*/
+as select substring(propuri,char_length(db_ontology()+db_name()+ get_basictable(classuri) )+2,char_length(propuri) ) 
+	from Charstring val where <classuri, propuri, val> = cdata();
+
+
+create function generate_xml_prop(Charstring classuri, charstring propuri) -> charstring
+as for each Charstring value where value= get_propnot(classuri, propuri)
+	set xml_prop(propuri) = "<dbs:"+value+ ">";
+
+
+
+/*
+create function generate_xml_prop(jdbc jd, charstring propuri) -> charstring
+as begin
+for each charstring typ, charstring col, charstring t_name where column_info_down(jd) = <typ, col,t_name> and 
+like(propuri,"*"+t_name+"*") and like(propuri,"*"+col) 
+   set xml_prop(propuri) = "<dbs:"+col+ ">";
+end;
+*/
+
+/* TO GET THE CLOSE OF THE COLUMN IN XML*/
+
+create function close_xml_prop(charstring propuri) -> charstring as stored;
+
+
+
+create function generate_close_xml_prop(Charstring classuri, charstring propuri) -> charstring
+as for each Charstring value where value= get_propnot(classuri, propuri)
+	set close_xml_prop(propuri) = "</dbs:"+value+ ">";
+
+
+/*
+create function generate_close_xml_prop(jdbc jd, charstring propuri) -> charstring
+as begin
+for each charstring typ, charstring col, charstring t_name where column_info_down(jd) = <typ, col,t_name> and 
+like(propuri,"*"+t_name+"*") and like(propuri,"*"+col) 
+   set close_xml_prop(propuri) = "</dbs:"+col+ ">";
+end;
+*/
+
+/* TO GET THE VALUE FOR SPECIFIC CLASS AND PROPERTY*/
+
+create function get_value(charstring classuri, charstring propuri) -> charstring 
+as 
+select o from charstring s, charstring p,charstring o
+	where cdata()=<s,p,o> and  like(s,classuri) and like(p,propuri);
+
+create function printxmll(bag x)->boolean
+as begin 
+     for each object o where o in x print(o);
+ end; 
+
+/* TO GENERATE ALL CLASSES*/
+/*
+create function generate_allXMLclass(jdbc jd)->Charstring
+as begin
+  for each charstring classuri,charstring propuri where classuri=unique(get_sub()) and propuri=get_pred(classuri)
+    begin
+      generate_xml_class(jd,classuri);
+      generate_close_xml_class(jd,classuri);
+	generate_xml_prop(jd,propuri);
+      generate_close_xml_prop(jd,propuri);
+    end;
+end;
+*/
+create function printxmll(bag x)->boolean
+as begin 
+     for each object o where o in x print(o);
+ end; 
+
+/* TO GET THE DATA FOR EACH CLASSURI*/
+create function generate_XMLclass(charstring classuri)->Charstring
+as select c from charstring c where c=xml_class(classuri) ;
+
+create function generate_close_XMLclass(charstring classuri)->Charstring
+as select c from charstring c where c=close_xml_class(classuri) ;
+
+
+create function generate_XML(charstring classuri, charstring propuri)->Charstring
+as select c from charstring c where  c=xml_prop(propuri) or c=get_value(classuri,propuri) or c=close_xml_prop(propuri);
+
+/* TO GET THE DATA IN XML FORMAT IN A FILE*/
+
+create function allXMLclass(charstring file) -> Bag of charstring
+as begin 
+  set file = file + "_data.rdf";
+  openwritefile(file);
+  generate_dataxml_header(db_name(),db_ontology());
+  printxmll(dataxml_header());
+  for each Charstring classuri where classuri=unique(get_sub()) 
+   begin 
+	generate_xml_class(classuri);
+	generate_close_xml_class(classuri);
+	printxmll(generate_XMLclass(classuri)); 
+      for each charstring propuri where propuri=get_classpredURI(classuri)
+	begin
+	   generate_xml_prop(classuri,propuri);
+           generate_close_xml_prop(classuri,propuri);
+	   printxmll(concatagg(generate_XML(classuri,propuri)));
+       end;
+       printxmll(generate_close_XMLclass(classuri)); 
+      
+  end;
+   printxmll(dataxml_footer());
+   closewritefile();
+  end;
+

@@ -1,0 +1,75 @@
+load('talk.ttl');
+
+#URI prefix used during session
+prefix : <http://udbl.uu.se/pop#>;
+
+#Select array element:
+SELECT (?a[1,1] AS ?res)
+ WHERE { ?g :pop ?a .
+         ?g :species "A" };
+
+#Select array element using SPARQL collections:
+SELECT ?elt11
+ WHERE { ?g :pop ?a .
+         ?g :species "A" .
+         ?a rdf:rest ?t1 .
+         ?t1 rdf:first ?t2 .
+         ?t2 rdf:rest ?t3 .
+         ?t3 rdf:first ?elt11 };
+
+#Select array slice:
+SELECT (?a[:,1:3] AS ?res)
+ WHERE { ?g :pop ?a .
+         ?g :species "A" };
+
+#Select first row in matrix:
+SELECT ?res
+ WHERE { ?g :pop ?a .
+         ?g :species "A" .
+         ?a rdf:first ?res };
+
+#Select rows in matrix excluding the first one:
+SELECT ?res
+ WHERE { ?g :pop ?a .
+         ?g :species "A" .
+         ?a rdf:rest ?res };
+
+#Select transposed matrix:
+SELECT (permute(?a,1,0) AS ?res)
+ WHERE { ?g :pop ?a .
+         ?g :species "A" };
+
+#Select average value of every second column, together with column index:
+SELECT (?i*2 AS ?idx)
+       (mean(?a[:,::2][:,?i]) AS ?avg)
+ WHERE { ?g :pop ?a .
+         ?g :species "A" };
+
+#Select average value of the array:
+SELECT (mean(?a) AS ?res)
+ WHERE { ?g :pop ?a .
+         ?g :species "A" };
+
+#Select array of average values (aggregation across several arrays):
+SELECT (meanAgg(?a) AS ?res)
+ WHERE { ?g :pop ?a };
+
+#Define foreign function:
+DEFINE FUNCTION plus(?a ?b) 
+ AS PYTHON 'plus';
+
+#Define foreign aggregate function:
+DEFINE AGGREGATE sum(?b) 
+ AS PYTHON 'mysum';
+
+#Define functional view
+#(total population per species type)
+DEFINE FUNCTION totalPop(?species) AS
+SELECT (array_sum(?a) AS ?res)
+WHERE { ?g :pop ?a .
+        ?g :species ?species };
+
+
+
+
+

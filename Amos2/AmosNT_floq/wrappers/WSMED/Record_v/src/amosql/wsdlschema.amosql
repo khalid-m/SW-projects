@@ -1,0 +1,44 @@
+/****************************************************/
+/* Global Schema */
+/****************************************************/
+create type Service properties (name charstring, 
+                                namespaceuri charstring, wsdluri charstring);
+create type Operation properties(name charstring, soapactionuri charstring, 
+                                style charstring, encodingstyle charstring, 
+                                targeturl charstring);
+
+create function port(Service)-> bag of Operation;
+
+create type Element properties(name charstring,wsdltype charstring,wsmedtype charstring,minoccurs charstring, maxoccurs charstring);
+
+create function input( Operation)-> vector of element;
+create function output( Operation)-> vector of element;
+create function soapheader( Operation)-> vector of element;
+
+
+/*** SOAPHeader *****************/
+create type SHValue properties(oper Operation, value vector);
+create function putsoaphvalue(Operation op,vector sv)->SHValue s as 
+							begin
+							   create SHValue instances s;
+							   set oper(s)=op;
+							   set value(s)=sv;
+							end;
+
+
+
+
+create function getsoaphvalue(Operation op)->vector sv as select value(sh) from SHValue sh where oper(sh)=op;
+
+
+
+
+create function subelements(Element)->vector of element;
+
+create type WSMEDView properties (name charstring);
+create function view_of(WSMEDView)->bag of Operation;
+create type Attribute properties (name charstring,type charstring,is_key boolean);
+create function attributes(WSMEDView)->bag of Attribute;
+create type Template properties (name charstring,co Integer,fanout Integer,searchdef charstring,bindingpattern charstring);
+create function templates(WSMEDView)->bag of Template;
+

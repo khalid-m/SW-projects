@@ -1,0 +1,171 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Erik Zeitler, UDBL
+ * $RCSfile: test_setup.osql,v $
+ * $Revision: 1.6 $ $Date: 2010/11/27 11:22:36 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Help functions for testing Linear Road
+ *
+ ****************************************************************************
+ * $Log: test_setup.osql,v $
+ * Revision 1.6  2010/11/27 11:22:36  zeitler
+ * readfile warning messages eliminated
+ *
+ * Revision 1.5  2010/06/15 14:35:00  zeitler
+ * setup fns moved to test_setup
+ *
+ * Revision 1.4  2009/03/06 15:51:00  gyogi445
+ * bag.integer.integer.section->bag ==> stream.integer.integer.section->stream
+ *
+ * Revision 1.3  2009/02/17 12:35:51  zeitler
+ * Binary all the way sir!
+ *
+ * Revision 1.2  2008/11/09 21:21:27  torer
+ * Corrections for strict checking of result types of functions
+ *
+ * Revision 1.1  2008/07/11 13:24:09  zeitler
+ * setup of lr regression test
+ *
+ * Revision 1.30  2008/07/10 18:24:28  zeitler
+ * Removing obsolete things
+ ****************************************************************************/
+
+create function duration(real start)->real as
+roundto(rnow() - start, 2);
+
+/* Tables for the full tests */
+create function last_clock() -> real;    
+create function lroutput()->vector;
+create function lroutputbin()->numarray;
+
+create function actual0(integer xway, integer carid, integer time)
+ -> <number, number>;
+create_index("actual0", "carid", "hash", "multiple");
+create_index("actual0", "time", "hash", "multiple");
+create function actual1()->vector;
+create function actual2()->vector;
+create function actual3()->vector;
+create function expected0(integer xway, integer carid, integer time)
+ -> <number, number>;
+create function expected1()->vector;
+create function expected2()->vector;
+create function expected3()->vector;
+
+add expected0(v[0], v[1], v[2]) = <v[4], v[5]>
+from vector of number v
+where v in readfile('data/o15-0-expected.out');
+create_index("expected0", "carid", "hash", "multiple");
+create_index("expected0", "time", "hash", "multiple");
+add expected1() = {v[0], v[1], v[3], v[4]}
+  from vector v
+  where v in readfile('data/o15-1-expected.out');
+add expected2() = {v[0],v[3],v[5]}
+  from vector v
+  where v in readfile('data/o15-2-expected.out');
+add expected3() = {v[0],v[1],v[3],v[4]}
+  from vector v
+  where v in readfile('data/o15-3-expected.out');
+
+create function test_alert(Charstring file, Integer fr, Integer t)->
+   <Integer acc, Integer timestamp, Integer vehicleid, Integer roadSegment>
+  as select r[0], r[1], r[3], r[4]
+     from Vector r
+     where r = cast(in(section(streamof(readfile(file)),fr,t)) as vector);
+create function test_t2(Charstring file, Integer fr, Integer t)->
+   <Integer tp, Integer timestamp, Integer qid, Real balance>
+  as select r[0], r[1], r[3], r[5]
+     from Vector r
+     where r = cast(in(section(streamof(readfile(file)),fr,t)) as vector);
+create function test_t3(Charstring file, Integer fr, Integer t)->
+   <Integer tp, Integer timestamp, Integer qid, Real toll>
+  as select r[0], r[1], r[3], r[4]
+     from Vector r
+     where r = cast(in(section(streamof(readfile(file)),fr,t)) as vector);
+create function test_tollalert(Charstring file, Integer fr, Integer t)->
+   <Integer tp, Integer vehicle, Integer timestamp, Real speed, Real toll>
+  as select r[0], r[1], r[2], r[4], R[5]
+     from Vector r
+     where r = cast(in(section(streamof(readfile(file)),fr,t)) as vector);
+create function test_sorted_tollalert(charstring file, integer second)->vector 
+as select sort(
+  select {v[0], v[1], v[2], v[4], v[5]}
+  from vector v
+  where v in readfile(file)
+  and v[2]=second);
+
+lisp;
+(defglobal expected-o0-count
+             '((20734)))
+(defglobal expected-o0-260-count
+             '((65)))
+(defglobal expected-o1-count
+             '((103)))
+(defglobal expected-o2-count
+             '((292)))
+(defglobal expected-o3-count
+             '((40)))
+(defglobal expected-o1
+             '((1 360 1236 69) (1 360 1238 69) (1 360 1847 69)
+               (1 360 2125 69) (1 362 869 69) (1 362 1261 69) (1 362 2431 69)
+               (1 363 134 69) (1 363 504 69) (1 363 3751 69)))
+(defglobal expected-o2
+             '((2 4 1 0.0) (2 5 1 0.0) (2 6 2 0.0) (2 7 3 0.0) (2 31 5 0.0) (2 31 4 0.0)
+               (2 37 8 0.0) (2 43 7 0.0) (2 43 8 0.0) (2 50 9 0.0) (2 51 11 0.0)
+               (2 52 11 0.0) (2 62 15 0.0) (2 63 13 0.0) (2 64 14 0.0) (2 65 16 0.0)
+               (2 66 17 0.0) (2 66 17 0.0) (2 67 18 0.0) (2 72 20 0.0)))
+(defglobal expected-o3
+             '((3 92 119764 12) (3 98 28 90) (3 111 119769 45) (3 114 33 34)
+               (3 119 119770 2) (3 126 39 9) (3 127 119777 34) (3 133 42 32)
+               (3 136 119791 6) (3 142 46 32) (3 151 50 5) (3 170 119811 67)
+               (3 184 119820 4) (3 185 119823 34) (3 191 119827 12)
+               (3 204 82 32) (3 204 119840 7) (3 223 97 14) (3 228 102 26)
+               (3 246 115 14)))
+
+(defglobal expected-sorted-o0
+             '((#(#(0 356 260 42.4054487179487 0.0)
+		#(0 707 260 42.5395833333333 0.0)
+		#(0 711 260 47.2272485080989 0.0)
+		#(0 717 260 44.1908764367816 0.0)
+		#(0 1112 260 41.9729965915311 0.0)
+		#(0 1120 260 41.4736111111111 0.0)
+		#(0 1447 260 43.3732638888889 0.0)
+		#(0 1743 260 41.6142113095238 0.0)
+		#(0 2021 260 40.4349747474747 0.0)
+		#(0 2022 260 41.0034722222222 0.0) #(0 2023 260 45.4002976190476 0.0) #(0 2024 260 43.5875 0.0) #(0 2026 260 40.8414750957854 0.0) #(0 2027 260 41.6142113095238 0.0) #(0 2857 260 40.675 0.0) #(0 2858 260 44.6688596491228 0.0) #(0 2859 260 43.8850223850224 0.0) #(0 2861 260 41.4736111111111 0.0) #(0 2862 260 41.5455447635135 0.0) #(0 137646 260 43.2313003663004 0.0) #(0 137647 260 41.5296052631579 0.0) #(0 137648 260 46.5567833667558 0.0) #(0 137650 260 42.3958333333333 0.0) #(0 137654 260 41.6247628083491 0.0) #(0 137655 260 42.3389423076923 0.0) #(0 137658 260 41.4943501759678 0.0) #(0 138019 260 46.3511513157895 0.0) #(0 138041 260 46.5567833667558 0.0) #(0 138042 260 49.8564699792961 0.0) #(0 138047 260 42.1218049719888 0.0) #(0 138050 260 43.7481694132772 0.0) #(0 138057 260 47.625 0.0) #(0 138058 260 45.2649711343423 0.0) #(0 138061 260 38.6289054083172 0.0) #(0 138388 260 46.7901388888889 0.0) #(0 138390 260 42.6715097402597 0.0) #(0 138391 260 38.6289054083172 0.0) #(0 138392 260 43.7440861344538 0.0) #(0 138393 260 44.0456945532915 0.0) #(0 138394 260 45.2649711343423 0.0) #(0 138711 260 42.9607142857143 0.0) #(0 138712 260 43.2839798850575 0.0) #(0 138715 260 44.4868259803922 0.0) #(0 138716 260 47.9145833333333 0.0) #(0 139028 260 43.9145222832723 0.0) #(0 139031 260 44.5270074828649 0.0) #(0 139034 260 44.4771099744246 0.0) #(0 139308 260 44.4771099744246 0.0) #(0 139310 260 43.0888095238095 0.0) #(0 139311 260 41.7967562623135 0.0) #(0 139312 260 43.1661706349206 0.0) #(0 139313 260 46.0609898325359 0.0) #(0 139314 260 43.7440861344538 0.0) #(0 139316 260 39.9948717948718 0.0) #(0 139317 260 43.319947002924 0.0) #(0 139594 260 47.7916666666667 0.0) #(0 140142 260 46.7901388888889 0.0) #(0 140143 260 44.4224358974359 0.0) #(0 140144 260 48.4263392857143 0.0) #(0 140145 260 43.7481694132772 0.0) #(0 140146 260 43.9145222832723 0.0) #(0 140147 260 46.9693813131313 0.0) #(0 140148 260 43.6856845238095 0.0) #(0 140149 260 42.7081925675676 0.0) #(0 140150 260 42.0755555555556 0.0)))))
+
+(defglobal expected-o0
+	     '((0 2859 260 43.8850223850224 0.0)
+               (0 2861 260 41.4736111111111 0.0)
+               (0 2862 260 41.5455447635135 0.0)
+               (0 137646 260 43.2313003663004 0.0)
+               (0 137647 260 41.5296052631579 0.0)
+               (0 137648 260 46.5567833667558 0.0)
+               (0 137650 260 42.3958333333333 0.0)
+               (0 137654 260 41.6247628083491 0.0)
+               (0 137655 260 42.3389423076923 0.0)
+               (0 137658 260 41.4943501759678 0.0)
+               (0 138019 260 46.3511513157895 0.0)
+               (0 138041 260 46.5567833667558 0.0)
+               (0 138042 260 49.8564699792961 0.0)
+               (0 138047 260 42.1218049719888 0.0)
+               (0 138050 260 43.7481694132772 0.0)
+               (0 138057 260 47.625 0.0)
+               (0 138058 260 45.2649711343423 0.0)
+               (0 138061 260 38.6289054083172 0.0)
+               (0 138388 260 46.7901388888889 0.0)
+               (0 138390 260 42.6715097402597 0.0)
+               (0 138391 260 38.6289054083172 0.0)
+               (0 138392 260 43.7440861344538 0.0)
+               (0 138393 260 44.0456945532915 0.0)
+               (0 138394 260 45.2649711343423 0.0)
+               (0 138711 260 42.9607142857143 0.0)
+               (0 138712 260 43.2839798850575 0.0)
+               (0 138715 260 44.4868259803922 0.0)
+               (0 138716 260 47.9145833333333 0.0)
+               (0 139028 260 43.9145222832723 0.0)
+               (0 139031 260 44.5270074828649 0.0)
+               (0 139034 260 44.4771099744246 0.0)))
+
+:osql

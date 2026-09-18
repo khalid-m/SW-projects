@@ -1,0 +1,130 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Cheng Xu, UDBL
+ * $RCSfile: LearningValidator.osql,v $
+ * $Revision: 1.6 $ $Date: 2013/11/20 21:01:44 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: The learning validator for Sandvik
+ *
+ ****************************************************************************
+ * $Log: LearningValidator.osql,v $
+ * Revision 1.6  2013/11/20 21:01:44  chexu484
+ * *** empty log message ***
+ *
+ * Revision 1.5  2013/11/16 17:02:39  chexu484
+ * returning stream of tuples
+ *
+ * Revision 1.4  2013/09/29 15:39:40  chexu484
+ * validation stream change to stream of vector instead of stream of tuple
+ *
+ * Revision 1.3  2013/04/29 11:42:53  chexu484
+ * code refactor, consistent with the paper
+ *
+ * Revision 1.2  2012/11/13 15:06:36  chexu484
+ * 1. averaging power instead of sum
+ * 2. change threshold to 1.15 instead of 220 for learning model
+ *
+ * Revision 1.1  2012/11/13 10:06:57  chexu484
+ * 1. Learning validator seperated from learning model, similar as milling
+ * 2. Alert messages are time stamped as well
+ *
+ *
+ ****************************************************************************/
+
+create function power_vector(Window w) -> Vector of Number
+  /* extract 1d vector of power consumptions for one complete processing */
+  as vselect powerConsumptionOther(r) from Record r where r in w;
+
+/* flag in the raw stream defines when the machine process starts and stops */
+create function process_started(Record curr) -> Boolean
+  as flag(curr) = 1;
+
+create function process_stopped(Record start, Record curr) -> Boolean
+  as select flag(start) = 1 and flag(curr) = 0;
+
+create function learnCycle(Vector of Window sample) -> Vector of Number
+  /* the first cycle might be incomplete depending on when the
+     FDMS is hooked up to the corenet server, so the first sampled cycle
+     is ommited */
+  as select sumvectors(fv) / vcount
+     from Bag of Vector of Number fv, Integer vcount
+     where fv = (select power_vector(sample[i])
+                 from Integer i
+                 where i in iota(1, vcount - 1))
+     and vcount = dim(sample);
+
+create function nonZeroCount(Vector of Number v) -> Integer
+  as count(select n from Number n where n in v and n != 0);
+
+create function validateCycle(Window this, Vector of Number refv)
+				   -> (Number ts, Window)
+  /* the function to validate cycle based on the sampled power vector */
+  as select rnow(), this
+     from Number d, Number count, Vector of Number measured
+     where d = euclid(refv, measured)
+       and count = nonZeroCount(refv)
+       and measured = power_vector(this)
+       and d / count > th("B");
+
+
+
+create function validateOther(OtherStream s)
+		-> Stream of (Number, Number, Number)
+  /* Extracts a validation stream of numeric values from the
+     measured stream window and the learned vector of expected power
+     consumption */
+  as streamof(select timestamp, measuredPower, expectedPower
+	      from Number timestamp, Number measuredPower, Number expectedPower
+	      where {timestamp, measuredPower, expectedPower} in
+                      playback(streamof(select {timestampOther(measured[i]), power, e[i]}
+	                                from Number ts, Window m, Vector of Number e, Number power, 
+                                        Vector of Record measured, Integer i
+	            			where {ts, m, e} in
+					  learn_n_validate(pwindowize(rawStreamTuples(s), #'process_started',
+                        		 			                          #'process_stopped'),
+       					 		   #'learnCycle', 2, #'validateCycle')
+                      			  and power = powerConsumptionOther(measured[i])
+	              			  and power > 0
+	              			  and measured = window2vector(m))));
+
+
+
+/* this function takes one element from the validation stream and flatten it */
+create function cycleToTuple(Number ts, Window m, Vector of Number e) -> Bag of Vector of Number
+  as select {timestampOther(measured[i]), power, e[i]}
+	from Number power, Vector of Record measured, Integer i
+	where power = powerConsumptionOther(measured[i])
+	  and power > 0 and measured = window2vector(m);
+
+
+create function sandvikOtherAlertMsg(Vector invalidTuple, CorenetStream s)
+                       						-> Bag of (Number, Charstring)
+  as select ts, alertString(s) + ". Threshold: " + th(s) +
+	        ". Measured: " + measured + ". Expected: "+ expected
+     from Number ts, Number measured, Number expected
+     where {ts, measured, expected} in playback(streamof(select cycleToTuple(timestamp, m, e)
+							 from Number timestamp, Window m, Vector of Number e
+							   where {timestamp, m, e} = invalidTuple));
+
+/* learn and validate returns validation stream where "nil"s are included where it is normal */
+create function otherStreamAlerts_b(OtherStream s) -> Bag of (Number, Charstring)
+  as select alertMsg(validationStream, #'sandvikOtherAlertMsg', {s})
+     from Stream validationStream
+     where validationStream = learn_n_validate(pwindowize(rawStreamTuples(s), #'process_started',
+									      #'process_stopped'),
+       					       #'learnCycle', 2, #'validateCycle');
+
+create function otherStreamAlerts(OtherStream s) -> Stream of (Number, Charstring)
+  as streamof(otherStreamAlerts_b(s));
+
+
+/*** Conveniance functions ***/
+
+create function validateOther(Charstring coreid) 
+                -> Stream of (Number, Number, Number)
+  as validateOther(theOtherStream(coreid));
+
+create function otherStreamAlerts(Charstring coreid) -> Stream of (Number, Charstring)
+  as otherStreamAlerts(theOtherStream(coreid));

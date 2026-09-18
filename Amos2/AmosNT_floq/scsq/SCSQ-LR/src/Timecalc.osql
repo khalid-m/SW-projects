@@ -1,0 +1,7 @@
+/*Function for timecalculus*/
+create function tdiff(timeval t1, timeval t2)->real as
+select real(t1) - real(t2);
+
+create function current_second()->integer; /* simulation time */
+create function current_minute()->integer; /* simulation time */
+create function rtime()->timeval as stored; /* wall clock */

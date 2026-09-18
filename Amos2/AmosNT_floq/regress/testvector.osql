@@ -1,0 +1,503 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 1993 Tore Risch, EDSLAB
+ * $RCSfile: testvector.osql,v $
+ * $Revision: 1.45 $ $Date: 2013/11/20 21:01:01 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ ****************************************************************************
+ * $Log: testvector.osql,v $
+ * Revision 1.45  2013/11/20 21:01:01  torer
+ * More testing of aggv()
+ *
+ * Revision 1.44  2012/05/15 18:39:42  torer
+ * Wrong priority for ^
+ *
+ * Revision 1.43  2012/05/12 13:16:04  torer
+ * average() -> avg()
+ *
+ * Revision 1.42  2011/01/27 11:26:16  torer
+ * Changed from <...> to SQL's (...) notation for tuples (much nicer)
+ *
+ * Revision 1.41  2010/09/19 17:06:26  zeitler
+ * Fixed PCA on empty set crash
+ *
+ * Revision 1.40  2009/11/20 15:00:02  zeitler
+ * power(Number, Number)->Number infix operator ^
+ * elempower(Vector of Number, Number)->Vector of Number infix operator .^
+ *
+ * Revision 1.39  2009/11/17 15:47:13  zeitler
+ * lpcascore(Bag of <Vector of Number, object> b, Integer d)
+ *  -> <Vector of Number, object label>
+ * include a label for each projected vector
+ *
+ * Revision 1.38  2009/11/11 15:05:10  zeitler
+ * plus(Vector of Number, Number) and minus(Vector of Number, Number)
+ *
+ * Revision 1.37  2009/11/03 21:05:26  zeitler
+ * Minor changes
+ *
+ * Revision 1.36  2009/11/03 16:42:22  zeitler
+ * Robust Minkowski
+ *
+ * Revision 1.35  2009/11/03 10:18:30  zeitler
+ * Improved precision of Euclid testing
+ *
+ * Revision 1.34  2009/11/02 17:26:39  zeitler
+ * testing high precision euclid
+ *
+ * Revision 1.33  2009/10/23 15:27:18  zeitler
+ * PCA tests
+ *
+ * Revision 1.32  2009/10/22 14:42:09  zeitler
+ * Vector roundto
+ *
+ * Revision 1.31  2009/10/16 09:28:48  zeitler
+ * Generic vector aggregation
+ * aggv(Bag of Vector, Function) -> Vector
+ *
+ * Primitive vector generation
+ * zeros(Integer) -> Vector of Number
+ * ones(Integer) -> Vector of Number
+ *
+ * Revision 1.30  2009/10/03 08:22:43  torer
+ * Complete testing of vector addition
+ *
+ * Revision 1.29  2009/10/02 20:24:14  zeitler
+ * Name change avgstdev - vavgstdev
+ * New avgstdev
+ *
+ * Revision 1.28  2009/10/02 17:36:38  torer
+ * Different error messages
+ *
+ * Revision 1.27  2009/09/30 15:21:14  zeitler
+ * error message correction
+ *
+ * Revision 1.26  2009/09/30 15:17:01  zeitler
+ * vector arithmetic tests
+ * minkowski and euclid tests
+ *
+ * Revision 1.25  2008/11/30 11:07:33  torer
+ * in(vector) did not filter out nil
+ *
+ * Revision 1.24  2008/10/25 10:24:07  torer
+ * Invertible vector concatenation
+ *
+ * Revision 1.23  2008/09/27 15:36:05  torer
+ * New syntax for 'vector selection' as in SCSQ:
+ *
+ * vselect iota(2,10); <=> vectorof(select iota(2,20));
+ *
+ * Revision 1.22  2008/02/07 13:17:55  torer
+ * Coersion of tuple valued functions to vectors
+ *
+ * Revision 1.21  2008/02/07 10:49:06  torer
+ * Possibility to assign variable to tuple if variable is of type vector: v = <1,2,3>
+ *
+ * Revision 1.20  2007/09/17 04:22:48  torer
+ * Correct handling of NIL in median (failure) so that subsequent arithmetics
+ * never breaks + regression
+ *
+ * Revision 1.19  2007/05/31 13:55:00  torer
+ * Removed tuple to vector conversion. Introduces error source.
+ *
+ * Revision 1.18  2007/05/29 21:11:22  torer
+ * Equivalence between tuples and vectors
+ *
+ * Revision 1.17  2007/01/07 00:26:43  torer
+ * Use of inferred vector types instead of casting
+ *
+ * Revision 1.16  2006/12/14 16:43:56  torer
+ * 1. Basic functions on type VECTOR into file lsp/vector.lsp
+ * 2. Comparisons on vectors element by element
+ *
+ * Revision 1.15  2006/11/30 20:24:48  torer
+ * count(vector) -> dim(vector) to make count(bag) unambigous
+ *
+ * Revision 1.14  2006/09/08 17:47:58  torer
+ * sort functions cleaned up, generalized, and documented
+ *
+ * Revision 1.13  2006/05/03 20:20:16  torer
+ * Tests of infix 'in'
+ *
+ ****************************************************************************/
+
+set :v =  {1,2,3};
+
+declare bag of number :b;
+set :b = bag(2,3,4);
+
+set :v1 = {1,true,2,nil,true};
+
+create function tuple1() -> (Integer, Integer, Integer) 
+  as select 1, 2, 3;
+
+lisp;
+(checkequal "vector operations"
+	    ((osql ":v[1];") '((2)))
+	    ((osql "{1}[0];") '((1)))
+	    ((osql "{1,2}[1];") '((2)))
+	    ((osql "{9*9}[0];") '((81)))
+	    ((osql "{3*3,9*9}[1];") '((81)))
+	    ((osql "select v from object v,integer i where :v[i]=v;")
+	     '((1) (2) (3)))
+	    ((osql "concat(12,13);") '((1213)))
+	    ((osql "concat('ab','cd');") '(("abcd")))
+            ((osql "concat({1,2},{3,4});") '((#(1 2 3 4))))
+            ((osql "select v from Vector v where concat(v,{1})={2,1};")
+                                           '((#(2))))
+            ((osql "select v from Vector v where concat(v,{1})={2,1,3};")
+                                           nil)
+            ((osql "select v from Vector v where concat({1},v)={1,2};")
+                                           '((#(2))))
+            ((osql "select v from Vector v where concat({1},v)={2,2};")
+                                           nil)
+	    ((osql "in(:v);") '((1) (2) (3)))
+	    ((osql "in(:b);") '((2) (3) (4)))
+	    ((osql "select i from integer i where i + 1 in :v;")
+	     '((0) (1) (2)))
+	    ((osql "select i from integer i where i + 1 in :b;")
+	     '((1) (2) (3)))
+	    ((osql "{1,2} < {1,2,3};") '((true)))
+	    ((osql "{1,2,3} <= {1,2,4};") '((true)))
+	    ((osql "{1,2} > {1,2};") nil)
+	    ((osql "{1,2} >= {1,2};") '((true)))
+	    ((osql "vselect iota(1,4);") '((#(1 2 3 4))))
+	    ((osql "dim(vselect resolvents(functionnamed('concat')));")
+	     '((3)))
+	    ((osql "{1,2}={1,2};") '((true)))
+            ((osql "select x,y from Integer x,Integer y where {1,y} ={x,2};")
+             '((1 2)))
+            ((osql "select x,y from Integer x,Integer y where {x,y} ={1,2,3};")
+             nil)
+	    )
+
+(checkequal 
+ "Element-wise operations"
+ ((osql "{1.0, 2.0, 3, 4} + {4, 5.0, 6.0, 7};")
+  '((#(5.0 7.0 9.0 11))))
+ ((osql "{1.0, 2.0, 3, 4} - {4, 5.0, 6.0, 7};")
+  '((#(-3.0 -3.0 -3.0 -3))))
+ ((errstring (osql "{1, 2, 3, 4} + {4, 5, 6};"))
+  "Array index out of bounds")
+ ((errstring (osql "{1, 2, '4'} + {4, 5, 6};"))
+  "Not a number")
+ ((errstring (osql "{1, 2, 3, 4} - {4, 5, 6};"))
+  "Array index out of bounds")
+ ((errstring (osql "{1, 2, '4'} - {4, 5, 6};"))
+  "Not a number")
+ ((errstring (osql "{1, 2, 3, 4} - nil;"))
+  "Cannot resolve function call")
+ ((osql "{1, 2, 3} .* {4, 5, 6};")
+  '((#(4 10 18))))
+ ((osql "{1, 2, 3} ./ {4, 5, 6};")
+  '((#(0.25 0.4 0.5)))))
+
+(checkequal 
+ "Vector-scalar operations"
+ ((osql "{1, 2, 3} * 4;")
+  '((#(4 8 12))))
+ ((osql "4 * {1, 2, 3};")
+  '((#(4 8 12))))
+ ((osql "{1, 2, 3} * 4.0;")
+  '((#(4.0 8.0 12.0))))
+ ((osql "{1, 2.0, 3} * 4;")
+  '((#(4 8.0 12))))
+ ((osql "{1, 2.0, 3} / 4;")
+  '((#(0.25 0.5 0.75))))
+ ((osql "{4, 8, 12} / 4;")
+  '((#(1 2 3))))
+ ((osql "{4, 8, 12.0} / 4;")
+  '((#(1 2 3.0)))))
+
+(checkequal
+ "Vector plus scalar"
+ ((osql "{7, 8} + 1;")
+  '((#(8 9))))
+ ((osql "{7, 8.0} + 1;")
+  '((#(8 9.0))))
+ ((osql "{7, 8.0} + 1.0;")
+  '((#(8.0 9.0))))
+ ((osql "1.0 + {7, 8.0};")
+  '((#(8.0 9.0))))
+ ((osql "1 - {7, 8.0};")
+  '((#(-6 -7.0))))
+ ((osql "{7, 8.0} - 1;")
+  '((#(6 7.0))))
+ ((osql "select x from vector of number x where x + 9 = {11, 12};")
+  '((#(2 3))))
+ ((osql "select x from vector of number x where x + 9.0 = {11, 12};")
+  '((#(2.0 3.0))))
+ ((osql "select x from vector of number x where x + 9 = {11.0, 12};")
+  '((#(2.0 3))))
+ ((osql "select lambda from number lambda where {1, 2} + lambda = {11, 12};")
+  '((10)))
+ ((osql "select lambda from number lambda where {1, 2} - lambda = {11, 12};")
+  '((-10)))
+ ((osql "select lambda from number lambda where {1, 2.0} - lambda = {11, 12};")
+  '((-10.0)))
+ ((osql "select lambda from number lambda where {1, 2} + lambda = {11, 10};")
+  nil))
+
+
+(checkequal 
+ "Boolean vectors"
+ ((osql "vectorof(iota(1,10)<5);") '((#(TRUE TRUE TRUE TRUE))))
+ ((osql "in(:v1);") '((1) (TRUE) (2) (TRUE)))
+ ((osql "select o from Object o,Integer i where :v1[i]=o;")
+  '((1) (TRUE) (2) (TRUE)))
+ )
+
+(checkequal "Coercing tuples to vectors"
+	    ((osql "select dim(v) from vector v where v = (1,2,3);") '((3)))
+	    ((osql "select dim(v) from vector v where (1,2) = v;") '((2)))
+	    ((osql "select dim(v) from vector v where v = tuple1();") '((3)))
+	    )
+
+:osql
+
+create function tx(Integer)-> Vector of Integer;
+
+set tx(10) = {};
+set tx(20) = {8000};
+set tx(30) = {7000,6000,5000};
+set tx(40) = {4000,3000,2000,1000};
+
+create function ty()->vector of vector of integer;
+
+set ty()= {{0},{1},{2,2,3},{4,4,5,6}};
+lisp;
+(checkequal 
+ "Nested vector operations"
+ ((osql "select (vselect x+y from Integer y 
+                         where y in v) 
+         from Integer x, Vector of Integer v 
+         where tx(x)=v;") 
+  '((#()) (#(8020)) (#(7030 6030 5030)) (#(4040 3040 2040 1040))))
+ 
+ ((osql "vselect (vselect y from integer y 
+                                  where y in x and y>=dim(x))
+                  from vector x 
+                  where x in ty();") 
+  '((#(#() #(1) #(3) #(4 4 5 6))))
+  ))
+
+(checkequal "Euclid"
+	    ((osql "roundto(euclid({0, 0}, {0, 0}), 6);")
+	     '((0.0)))
+	    ((osql "roundto(euclid({1, 1}, {2, 2}), 6);")
+	     '((1.414214)))
+	    ((osql "roundto(euclid({1.0, 1.0}, {2.0, 2.0}), 6);")
+	     '((1.414214)))
+	    ((errstring (osql "euclid({1, 1}, {2, 2, 2});"))
+	     "Vector dimensionality must agree")
+	    ((errstring (osql "euclid({0}, nil);"))
+	     "Cannot resolve function call"))
+
+(checkequal "Euclid at overflow"
+((osql "euclid({3.e150, 4.e150},{0,0});")
+ '((5E+150)))
+((osql "euclid({3.e-320, 4.e-320},{0,0});")
+ '((5E-320)))
+((osql "roundto(euclid({3.e306, 4.e306},{0.0, 0.0})/5.e306, 6);")
+ '((1.0))))
+
+(checkequal "Minkowski"
+	    ((osql "roundto(minkowski({0, 0}, {0, 0}, 1), 6);")
+	     '((0.0)))
+	    ((osql "roundto(minkowski({1, 1}, {2, 2}, 2), 6);")
+	     '((1.414214)))
+	    ((osql "roundto(minkowski({1, 1}, {2, 2}, 3), 6);")
+	     '((1.259921)))
+	    ((osql "roundto(minkowski({1.0, 1.0}, {2.0, 2.0}, 3), 6);")
+	     '((1.259921)))
+	    ((osql "roundto(minkowski({1, 1}, {2, 2}, 1), 6);")
+	     '((2.0)))
+            ((osql "roundto(minkowski({1, 1}, {2, 3}, 20), 6);")
+	     '((2.0)))
+            ((osql "roundto(minkowski({0, 0}, {2, 3}, 1), 1);")
+	     '((5.0)))
+	    ((errstring (osql "minkowski({1, 1}, {2, 2, 2}, 1);"))
+	     "Vector dimensionality must agree")
+	    ((errstring (osql "minkowski({0}, nil, 1);"))
+	     "Cannot resolve function call"))
+
+(checkequal "lim r->0 Minkowski(x, y, r)->dim^(1/r), |x|, |y| > 0"
+((osql "select roundto(minkowski({x, x, x, x, x}, {0, 0, 0, 0, 0}, 0.5), 3)
+        from real x where x = iota(0, 10) / 10;")
+ '((0.0) (2.5) (5.0) (7.5) (10.0) (12.5) (15.0) (17.5) (20.0) (22.5) (25.0)))
+((osql "sort((select roundto(x, 3), roundto(minkowski({1, 1}, {0, 0}, x), 3)
+        from real x
+        where x = 1 - iota(0, 9) / 10), 'dec');")
+ '((#(#(1.0 2.0) #(0.9 2.16) #(0.8 2.378) #(0.7 2.692) #(0.6 3.175) #(0.5 4.0) #(0.4 5.657) #(0.3 10.079) #(0.2 32.0) #(0.1 1024.0))))))
+
+(checkequal "Minkowski(x, y, r) = x, |y| = 0"
+((osql "sort((select x, roundto(minkowski({5, 0}, {0, 0}, x), 3)
+        from real x
+        where x = roundto(1 - iota(0, 9) / 10, 3)), 'dec');")
+'((#(#(1.0 5.0) #(0.9 5.0) #(0.8 5.0) #(0.7 5.0) #(0.6 5.0) #(0.5 5.0) #(0.4 5.0) #(0.3 5.0) #(0.2 5.0) #(0.1 5.0))))))
+
+(checkequal "Minkowski at overflow"
+((osql "minkowski({3.e150, 4.e150}, {0,0}, 2);")
+ '((5E+150)))
+((osql "minkowski({3.e-320, 4.e-320}, {0,0}, 2);")
+ '((5E-320)))
+((osql "roundto(minkowski({3.e306, 4.e306}, {0, 0}, 2)/5.e306, 6);")
+ '((1.0)))
+((osql "roundto(minkowski({3.e150, 4.e150}, {0, 0}, 4)/5.e150, 6);")
+ '((0.856914)))
+((osql "roundto(minkowski({3.e150, 4.e150}, {0, 0}, 40)/4.e150, 6);")
+ '((1.0)))
+((osql "roundto(minkowski({1, 4}, {0, 0}, real(iota(1, 11))), 6);")
+ '((5.0) (4.123106) (4.020726) (4.003901) (4.000781) (4.000163) (4.000035)
+   (4.000008) (4.000002) (4.0) (4.0))))
+
+(checkequal "Maxnorm"
+  ((osql "roundto(maxnorm({0, 0}, {0, 0}), 6);")
+   '((0.0)))
+  ((osql "roundto(maxnorm({1, 1}, {2, 3}), 6);")
+   '((2.0)))
+  ((osql "roundto(maxnorm({1, 1}, {3.3, 2.2}), 6);")
+   '((2.3)))
+  ((osql "roundto(maxnorm({1.0, 0.5}, {2.5, 2.0}), 6);")
+   '((1.5)))
+  ((osql "roundto(maxnorm({-1, -21.5}, {200, 200}), 6);")
+   '((221.5)))
+  ((errcond-msg (catch-error
+     (osql "maxnorm({1, 1}, {2, 2, 2});")))
+   '"Vector dimensionality must agree")
+  ((errcond-msg (catch-error
+     (osql "maxnorm({0}, nil);")))
+   '"Cannot resolve function call"))
+
+(checkequal "median"
+	    ((osql "median({1,2,3});") '((2.0)))
+	    ((osql "median({2,2,3});") '((2.0)))
+	    ((osql "median({1,2,3,4});") '((2.0)))
+	    ((osql "1+median({});") nil)
+	    )
+
+(checkequal "zeros and ones"
+ ((osql "zeros(3);")
+  '((#(0 0 0))))
+ ((osql "ones(4);")
+  '((#(1 1 1 1)))))
+
+(osql "create function hetero()->vector of number;
+add hetero() = {1,2,3};
+add hetero() = {1,2,3,4};
+add hetero() = {1,2};
+create function av()->vector;")
+
+(checkequal "Vectorize"
+ ((osql "set av() = vectorize
+        (select i, i+10 from integer i where i in iota(0, 4));")
+  nil)
+ ((osql "av();")
+  '((#(10 11 12 13 14)))))
+
+(checkequal "power using ^"
+ ((osql "2^2;")
+ '((4)))
+ ((osql "2^-1;")
+ '((0.5)))
+ ((osql "0^-0;")
+ '((1.0)))
+ ((osql "1+2*2^3;") '((17)))
+ ((errstring (osql "0^-1;"))
+  "Illegal argument")
+ ((osql "vectorize(select i + 1, 2^i from integer i where i in iota(-1, 1));")
+ '((#(0.5 1.0 2))))
+ ((osql "vectorize(select i, num^i
+                   from integer i, number num
+                   where i in iota(0, 3)
+                   and num = 17);")
+ '((#(1.0 17 289 4913)))))
+
+(checkequal "elempower using .^"
+ ((osql "{2}.^2;")
+ '((#(4))))
+ ((errstring (osql "{0}.^-1;"))
+  "Illegal argument")
+ ((osql "roundto({2, 3, 4}.^-1, 3);")
+ '((#(0.5 0.333 0.25))))
+ ((osql "vectorize(select i, roundto({2, 3}.^(i - 2), 3)
+                   from integer i
+                   where i in iota(0, 5));")
+ '((#(#(0.25 0.111) #(0.5 0.333) #(1.0 1.0) #(2.0 3.0) #(4.0 9.0)
+      #(8.0 27.0)))))
+ ((osql "vectorize(select i, roundto(v.^(i-2), 3)
+        from integer i, vector of number v
+        where i in iota(0, 5)
+        and v = {1, 2, 3, 4, 5});")
+ '((#(#(1.0 0.25 0.111 0.062 0.04) #(1.0 0.5 0.333 0.25 0.2) 
+      #(1.0 1.0 1.0 1.0 1.0) #(1.0 2.0 3.0 4.0 5.0) #(1.0 4.0 9.0 16.0 25.0) 
+      #(1.0 8.0 27.0 64.0 125.0))))))
+
+(checkequal "aggv on vectors of different dimensionality"
+ ((errstring (osql "aggv(hetero(), #'avg');"))
+ "Dimension mismatch for aggv"))
+
+(checkequal "aggv"
+ ((osql "aggv((select {i,i+10} from integer i where i in iota(1, 10)),
+              #'avg');")
+ '((#(5.5 15.5))))
+ ((osql "aggv((select v from vector v where v = zeros(5) or v = ones(5)),
+              #'avg');")
+  '((#(0.5 0.5 0.5 0.5 0.5))))
+ ((osql "aggv(bag({1,2},{2,3}),#'count')+{1,2};") '((#(3 4))))
+ ((osql "aggv(bag({1,nil},{2,3}),#'sum');") '((#(3 3))))
+)
+
+(checkequal "vector roundto"
+ ((osql "roundto({3.141593, 2.71828}, 2);")
+  '((#(3.14 2.72)))))
+
+(checkequal "PCA on empty set"
+((osql "create function empty()->vector of number;
+pcascore(empty(), 2);") nil))
+
+(checkequal "PCA with extreme covariance"
+((osql "select roundto(val, 3), rvecs
+from vector of real val, vector of vector of real vec, vector rvecs
+where (val, vec) = pca((select {i, i} from integer i 
+                              where i in iota(1, 5)))
+and rvecs = vectorize(select j, roundto(vec[j], 3) from Integer j);")
+'((#(0.0 110.0) #(#(0.707 -0.707) #(0.707 0.707))))))
+
+(checkequal "sortpca"
+ ((osql "sortpca({0, 110}, {{0.707, -0.707}, {0.707, 0-707}});")
+ '((#(#(110 #(0.707 -707)) #(0 #(0.707 -0.707)))))))
+
+(checkequal "PCA projection with extreme covariance"
+((osql "select roundto(pcascore((select {i, i} from integer i 
+                                 where i in iota(1, 5)), 2), 3);")
+'((#(1.414 0.0)) (#(2.828 0.0)) (#(4.243 0.0)) (#(5.657 0.0)) (#(7.071 0.0)))))
+
+(checkequal "PCA projection with extreme covariance and labels"
+((osql "create function vl()-> (Vector of Number, Object);
+remove vl() = (v,o) from vector of number v, object o;
+add vl() = ({i, i}, 'ab' + stringify(i)) from number i where i in iota(1, 5);
+select roundto(v, 3), o
+from vector of number v, object o
+where (v, o) = lpcascore(vl(), 2);")
+'((#(1.414 0.0) "ab1") (#(2.828 0.0) "ab2") (#(4.243 0.0) "ab3")
+  (#(5.657 0.0) "ab4") (#(7.071 0.0) "ab5"))))
+
+(checkequal "Full PCA projection of a moderately sized data set"
+ ((osql "in(section(streamof((
+            select roundto(pcascore(zscore(b), 3), 3)
+            from bag of vector of number b
+            where b = read_ntuples('td'))),
+          1, 5));")
+ '((#(2.737 -0.964 -0.083)) (#(0.773 -0.4 -0.658)) (#(2.538 -0.601 -0.061))
+   (#(0.452 -0.217 -0.733)) (#(2.509 -0.563 -0.051)))))
+
+(catch-error (osql "< 'sig10.osql';")); crashed earlier
+:osql
+create function mysignal()->Vector as stored;
+<'sig10.osql';
+
+rollback;

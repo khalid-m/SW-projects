@@ -1,0 +1,94 @@
+
+lisp;
+(defglobal peerl (list))
+(defglobal initpeerl (list))
+
+
+(defun setpeerl (pl)
+  "initial state"
+  (dolist (i pl)
+    (setq peerl (adjoin (mkstring (concat "P" i))  peerl)))
+  (setq initpeerl peerl)
+  )
+(defun addpeerl (pl)
+  "during the execution"
+  (dolist (i pl)
+    (setq peerl (adjoin (mkstring i)  peerl)))
+  )
+(defun setintial ()
+   (setq peerl initpeerl)
+  )
+(defun getpeer (n)
+  (let* (pl)
+    (if (<= n (length peerl))
+	(setq pl (firstn n peerl))
+      (setq pl peerl))
+    (setq peerl (nthcdr n peerl))
+    pl)
+  )
+
+(defun getlastpeer ()
+  (if peerl 
+      (car (last peerl))
+    0)
+  )
+(defun nopeers()
+	(setq peerl (list)))
+
+(defun get_no_of_peers()
+ (length peerl))
+
+
+(defun removepeerl (pl)
+  (dolist (x pl)
+    (setq peerl (adjoin x peerl)))
+  (setq peerl (sort peerl '<))
+)
+
+(defun putwscf (wu ws opn ops obj)
+   (mapfunctionres 'putwsc (list wu ws opn ops obj) nil
+	(f/l (row))))
+		      
+
+(defun getwscf (wu ws opn ops)
+  (let (val)
+    (mapfunctionres 'getwsc (list wu ws opn ops) nil
+		    (f/l (row)
+			 (setq val (nth 0 row) 0)))
+    val))
+
+
+:osql
+
+
+
+
+create type Wscalls properties(wsdluri charstring, wsname charstring, opname charstring, opsignature charstring, results object );
+
+create function putwsc(  charstring iwsdluri, charstring iwsname, charstring iopname, charstring iopsignature,object iresults)-> Wscalls ws as
+	begin
+	  create Wscalls instances ws;
+	 set wsdluri(ws)=iwsdluri;
+	 set wsname(ws)=iwsname;
+	 set opname(ws)=iopname;
+	 set opsignature(ws)=iopsignature;
+	 set results(ws)=iresults;
+       end;
+
+create function getwsc( charstring iwsdluri, charstring iwsname, charstring iopname, charstring iopsignature)-> Object as
+								select results(ws)
+								from Wscalls ws
+								where wsdluri(ws)=iwsdluri and wsname(ws)=iwsname and opname(ws)=iopname and opsignature(ws)=iopsignature;
+
+create function clearwsc()->boolean as
+		      begin
+			for each Wscalls ws 
+			 begin
+			  delete ws;
+			 end;
+		      end;										
+
+
+
+
+								

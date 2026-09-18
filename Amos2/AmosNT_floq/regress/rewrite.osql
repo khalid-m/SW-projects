@@ -1,0 +1,107 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2006 Tore Risch, UDBL
+ * $RCSfile: rewrite.osql,v $
+ * $Revision: 1.6 $ $Date: 2010/02/17 19:01:36 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Testing rewrite rules and partial evaluation
+ ****************************************************************************
+ * $Log: rewrite.osql,v $
+ * Revision 1.6  2010/02/17 19:01:36  torer
+ * Changed variable number
+ *
+ * Revision 1.5  2007/11/20 10:13:58  torer
+ * Testing partial evaluation of vector construction
+ *
+ * Revision 1.4  2007/11/16 13:55:39  torer
+ * Testing vector access inference
+ *
+ * Revision 1.3  2007/10/31 15:42:10  torer
+ * Another name collision
+ *
+ * Revision 1.2  2007/10/31 15:31:45  torer
+ * Name collision
+ *
+ * Revision 1.1  2006/03/27 09:41:45  torer
+ * Regression test with partial evaluation and TR rewrite rules
+ *
+ ****************************************************************************/
+
+create function myapply (Function fn, Object arg)->Object 
+  as foreign "apply-impl";
+
+create function add1(Number x) -> Number as select x + 1;
+
+parteval("FUNCTIONNAMED");
+parteval("PLUS");
+
+lisp;
+(defun apply-impl (fno fn args r)
+   (mapfunction fn (list args)
+        (f/l (row)
+          (osql-result fn args (car row)))))
+
+(define-tr-rewriter 'FUNCTION.OBJECT.MYAPPLY->OBJECT
+  'apply-test 'apply-transform)
+
+(defun apply-test (pred rest)
+  (oid-p (cadr pred)))
+
+(defun apply-transform (pred rest test)
+  (expand-predicate (list (second pred) 
+			  (third pred)
+			  (fourth pred)) nil))
+
+(checkequal "TR rewrite rules"
+	    ((osql "myapply(functionnamed('NUMBER.ADD1->NUMBER'), 1);") '((2)))
+	    ((osql "select myapply(f,myapply(f,myapply(f,1))) from function f
+  where f = functionnamed('NUMBER.ADD1->NUMBER');") '((4)))
+	    ((externalize (selectbody-pred (getselectbody _select_))) 
+	     '(OBJECT.OBJECT.=->BOOLEAN _V4 4))
+	    )
+
+:osql
+create type particle;
+
+create function px(particle)->number;
+
+create function py(particle)->number;
+
+create function pz(particle)->number;
+
+create function test()->Real
+   as select r 
+      from real r, particle p, vector of number v 
+      where v={px(p),py(p),pz(p)} 
+        and r=v[0]+v[1]+v[2];
+lisp;
+(checkequal "Inferencing vector access"
+  ((length (selectbody-optpred(getselectbody (theresolvent 'test))))
+   6)
+)
+:osql
+
+parteval("plus");
+parteval("minus");
+parteval("concat");
+parteval("vector");
+
+create function testv()->Vector
+  as select{1+2,3-4,"a"+"b"};
+
+lisp;
+
+(checkequal "Partial evaluation of vector construction"
+	    ((osql "testv();") '((#(3 -1 "ab"))))
+	    ((length (argsof 'and 
+			     (selectbody-optpred
+			      (getselectbody
+			       (theresolvent 'testv))))) 1)
+	    )
+
+:osql
+
+rollback;
+

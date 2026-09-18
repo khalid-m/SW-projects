@@ -1,0 +1,18 @@
+ /*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2005 Johan Petrini, UDBL
+ * $RCSfile: mkdmp.amosql,v $
+ * $Revision: 1.29 $ $Date: 2010/04/28 14:46:27 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Save SWARD generating extended UPVs for
+ * class membership views and class relationship views as sward.dmp.
+ * Handling of complete UPVs (including ) are not part of SWARD system but 
+ * loaded as a patch (key constructor fn has to be invertible).
+ ****************************************************************************/
+<'src/AmosQL/master.amosql';
+
+save_database("../bin/sward.dmp");
+
+quit;

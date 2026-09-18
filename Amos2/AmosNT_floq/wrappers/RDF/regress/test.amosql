@@ -1,0 +1,27 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2005 Johan Petrini, UDBL
+ * $RCSfile: test.amosql,v $
+ * $Revision: 1.2 $ $Date: 2005/05/18 13:29:16 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Test RDFAmos
+ ****************************************************************************/
+loadRDFSchema("file:/" + getenv("AMOS_HOME") + "/wrappers/RDF/regress/bookschema.xml");
+loadRDFSchema("file:/" + getenv("AMOS_HOME") + "/wrappers/RDF/regress/bookdata.xml");
+
+
+lisp;
+(checkequal "OO queries"
+ ((osql "sort(select id(b) from rdf_book b);")
+  '((#("http://www.xyz.com/ai.html" "http://www.xyz.com/pl.html" 
+       "http://www.xyz.com/sw.html"))))
+ ((osql "sort(select id(rdf_title(b)) from rdf_ai_book a,rdf_book b
+              where id(rdf_title(b))='Artificial Intelligence' or b=a);")
+  '((#("Artificial Intelligence" "Prolog"))))  
+)
+:osql
+
+quit;
+

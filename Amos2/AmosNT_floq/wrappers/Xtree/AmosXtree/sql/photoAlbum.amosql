@@ -1,0 +1,167 @@
+/*-*-sql-*-*******************************************************************
+* AMOS2
+*
+* Author: (c) 2010 thanh, UDBL
+* $RCSfile: photoAlbum.amosql,v $
+* $Revision: 1.2 $ $Date: 2010/06/19 06:26:54 $
+* $State: Exp $ $Locker:  $
+*
+* Description: <description>
+*
+****************************************************************************
+* $Log: photoAlbum.amosql,v $
+* Revision 1.2  2010/06/19 06:26:54  thtr1663
+* re-arrange scripts + remove hardcode index for picture application
+*
+* Revision 1.1  2010/06/07 19:15:27  thtr1663
+* seperate code for systemand code for application(photo)
+*
+*
+*
+****************************************************************************/
+
+/*----------------------------------------------------------------------------
+PICTURE DATABASE
+-----------------------------------------------------------------------------*/
+create type Album;
+
+create function title(Album al)->Charstring as stored;
+
+create function newAlbum(Charstring t) -> Album al
+as begin
+create Album(title) instances al (t);
+result al;	
+end;
+
+
+create type Picture;
+
+/* feature vector of a picture stored in database*/
+create function features(Picture p)->Vector of Number fv as stored;
+/* create Xtree index*/
+create_index("PICTURE.FEATURES->VECTOR-NUMBER","fv", "Xtree", "multiple");
+
+/* assume each image has a filename to disk location*/
+create function filename(Picture p)->Charstring fn as stored;
+
+/* assume each image has a caption*/
+create function caption(Picture p)->Charstring cap key as stored;
+
+
+/* each picture belongs to an album*/
+create function album(Picture p)->Album a as stored;
+
+
+
+/*--------------------------------------------------------------------------
+INDEXING FEATURE VECTORS OF PICTURES
+-----------------------------------------------------------------------------*/
+
+create function colorHistogramExtractor(Charstring) ->Vector of Number
+as foreign "colorHistogramExtractor";
+
+/*Foregin function in Java to show pictures*/
+create function show_pictures_fn(Charstring) ->Boolean 
+as foreign "show_pictures_fn";
+
+/*Implementation of show_pictures*/
+create function show_pictures(Bag of Picture pics) ->Boolean 
+as 
+begin
+declare Charstring params;	
+set params = "";
+
+for each original Picture p where p = in(pics)  
+begin
+set params = params + filename(p) + "|" + caption(p) + "|";
+end;
+
+show_Pictures_fn(params);
+end;
+
+/*Creates a new picture*/
+create function newPicture(Album al, Vector im)-> Picture p 
+as begin
+create Picture(filename,  caption , album) instances p (
+im [0], im[2], al );
+
+add features(p) = colorHistogramExtractor(filename(p));
+
+/*addFeatureIndex(1, colorHistogramExtractor(filename(p)), p);
+*/
+result p;
+end;
+
+create function readnumfile(Charstring f) -> Vector of Integer w
+as read_ntuples(f);
+
+create function add_pictures(Album al, Charstring f) -> Boolean  
+as 
+begin
+newPicture(al, readnumfile(f));	
+result TRUE;
+end;
+
+
+/*---------------------------------------------------------------------------
+SEARCH FUNCTIONS WITH INDEX
+----------------------------------------------------------------------------*/
+
+/*optmethod("exhaustive");*/
+print("Test KNN");
+create function q1(Charstring caption, Integer k) -> Bag of Charstring
+as 
+select caption(p)
+from Picture p, Picture q
+where p in knn(#'features', features(q),k) and
+caption(q)= caption;
+
+create function q2(Charstring caption, Real difference) -> Bag of Charstring
+as 
+select caption(p)
+from Picture p, Picture q
+where euclid(features(p), features(q))< difference and
+caption(q)= caption;
+
+
+create function q3(Charstring caption, Integer k) -> Bag of Charstring
+as 
+select distinct title(album(p))
+from Picture p, Picture q
+where p in knn(#'features', features(q), k) and caption(q)= caption;
+
+
+/*----------------------------------------------------------------------------
+SEARCH FUNCTIONS WITHOUT INDEX
+-----------------------------------------------------------------------------*/
+create function kct() -> <Vector of Number x, Picture pic>
+as select cc, p
+from Picture p, vector of real cc
+where cc = features(p);
+
+
+/* Basic functions for kNN */
+create function distances(Vector of Number x,
+Bag of <Vector of Number, Picture > P)
+-> Bag of <Real distance, Picture pic>
+as select euclid(x, v), pi
+from Vector of Number v, Picture pi
+where <v, pi> in P;
+
+
+create function q4(Charstring caption, Integer k) -> Bag of Charstring
+as 
+select caption(p1) from Picture p1, Picture p2, Real dis where 
+caption(p2) = caption
+and <dis, p1> in
+leastk(
+distances(features(p2), 
+/*(select cc, p
+from Picture p, vector of real cc
+where cc = features(p)
+)*/
+kct()
+), k);
+
+
+

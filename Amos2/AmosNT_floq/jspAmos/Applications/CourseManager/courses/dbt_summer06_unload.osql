@@ -1,0 +1,371 @@
+logging off;
+set :i3 = new_object(1214,'ASSISTANT');
+set :i2 = new_object(1208,'ASSIGNMENT');
+set :i1 = new_object(1269,'STUDENT');
+add STUDENT.ASSIGNMENT.RESPASSISTANT->ASSISTANT(:i1,:i2)=<:i3>;
+
+set :i3 = new_object(1214,'ASSISTANT');
+set :i2 = new_object(1210,'ASSIGNMENT');
+set :i1 = new_object(1217,'STUDENT');
+add STUDENT.ASSIGNMENT.RESPASSISTANT->ASSISTANT(:i1,:i2)=<:i3>;
+
+set :i3 = new_object(1214,'ASSISTANT');
+set :i2 = new_object(1209,'ASSIGNMENT');
+set :i1 = new_object(1217,'STUDENT');
+add STUDENT.ASSIGNMENT.RESPASSISTANT->ASSISTANT(:i1,:i2)=<:i3>;
+
+set :i3 = new_object(1214,'ASSISTANT');
+set :i2 = new_object(1208,'ASSIGNMENT');
+set :i1 = new_object(1217,'STUDENT');
+add STUDENT.ASSIGNMENT.RESPASSISTANT->ASSISTANT(:i1,:i2)=<:i3>;
+
+set :i3 = new_object(1214,'ASSISTANT');
+set :i2 = new_object(1211,'ASSIGNMENT');
+set :i1 = new_object(1217,'STUDENT');
+add STUDENT.ASSIGNMENT.RESPASSISTANT->ASSISTANT(:i1,:i2)=<:i3>;
+
+set :i3 = new_object(1214,'ASSISTANT');
+set :i2 = new_object(1208,'ASSIGNMENT');
+set :i1 = new_object(1272,'STUDENT');
+add STUDENT.ASSIGNMENT.RESPASSISTANT->ASSISTANT(:i1,:i2)=<:i3>;
+
+set :i3 = new_object(1214,'ASSISTANT');
+set :i2 = new_object(1209,'ASSIGNMENT');
+set :i1 = new_object(1272,'STUDENT');
+add STUDENT.ASSIGNMENT.RESPASSISTANT->ASSISTANT(:i1,:i2)=<:i3>;
+
+set :i3 = new_object(1214,'ASSISTANT');
+set :i2 = new_object(1210,'ASSIGNMENT');
+set :i1 = new_object(1272,'STUDENT');
+add STUDENT.ASSIGNMENT.RESPASSISTANT->ASSISTANT(:i1,:i2)=<:i3>;
+
+set :i3 = new_object(1214,'ASSISTANT');
+set :i2 = new_object(1211,'ASSIGNMENT');
+set :i1 = new_object(1272,'STUDENT');
+add STUDENT.ASSIGNMENT.RESPASSISTANT->ASSISTANT(:i1,:i2)=<:i3>;
+
+set :i3 = new_object(1214,'ASSISTANT');
+set :i2 = new_object(1208,'ASSIGNMENT');
+set :i1 = new_object(1270,'STUDENT');
+add STUDENT.ASSIGNMENT.RESPASSISTANT->ASSISTANT(:i1,:i2)=<:i3>;
+
+set :i3 = new_object(1214,'ASSISTANT');
+set :i2 = new_object(1209,'ASSIGNMENT');
+set :i1 = new_object(1270,'STUDENT');
+add STUDENT.ASSIGNMENT.RESPASSISTANT->ASSISTANT(:i1,:i2)=<:i3>;
+
+set :i3 = new_object(1214,'ASSISTANT');
+set :i2 = new_object(1210,'ASSIGNMENT');
+set :i1 = new_object(1270,'STUDENT');
+add STUDENT.ASSIGNMENT.RESPASSISTANT->ASSISTANT(:i1,:i2)=<:i3>;
+
+set :i3 = new_object(1214,'ASSISTANT');
+set :i2 = new_object(1211,'ASSIGNMENT');
+set :i1 = new_object(1270,'STUDENT');
+add STUDENT.ASSIGNMENT.RESPASSISTANT->ASSISTANT(:i1,:i2)=<:i3>;
+
+set :i2 = new_object(1208,'ASSIGNMENT');
+set :i1 = new_object(1271,'STUDENT');
+add STUDENT.ASSIGNMENT.WORKSON->CHARSTRING(:i1,:i2)=<"UNKNOWN">;
+
+set :i2 = new_object(1209,'ASSIGNMENT');
+set :i1 = new_object(1271,'STUDENT');
+add STUDENT.ASSIGNMENT.WORKSON->CHARSTRING(:i1,:i2)=<"UNKNOWN">;
+
+set :i2 = new_object(1210,'ASSIGNMENT');
+set :i1 = new_object(1271,'STUDENT');
+add STUDENT.ASSIGNMENT.WORKSON->CHARSTRING(:i1,:i2)=<"UNKNOWN">;
+
+set :i2 = new_object(1211,'ASSIGNMENT');
+set :i1 = new_object(1271,'STUDENT');
+add STUDENT.ASSIGNMENT.WORKSON->CHARSTRING(:i1,:i2)=<"UNKNOWN">;
+
+set :i2 = new_object(1208,'ASSIGNMENT');
+set :i1 = new_object(1269,'STUDENT');
+add STUDENT.ASSIGNMENT.WORKSON->CHARSTRING(:i1,:i2)=<"PASSED">;
+
+set :i2 = new_object(1209,'ASSIGNMENT');
+set :i1 = new_object(1269,'STUDENT');
+add STUDENT.ASSIGNMENT.WORKSON->CHARSTRING(:i1,:i2)=<"UNKNOWN">;
+
+set :i2 = new_object(1210,'ASSIGNMENT');
+set :i1 = new_object(1269,'STUDENT');
+add STUDENT.ASSIGNMENT.WORKSON->CHARSTRING(:i1,:i2)=<"UNKNOWN">;
+
+set :i2 = new_object(1211,'ASSIGNMENT');
+set :i1 = new_object(1269,'STUDENT');
+add STUDENT.ASSIGNMENT.WORKSON->CHARSTRING(:i1,:i2)=<"UNKNOWN">;
+
+set :i2 = new_object(1210,'ASSIGNMENT');
+set :i1 = new_object(1217,'STUDENT');
+add STUDENT.ASSIGNMENT.WORKSON->CHARSTRING(:i1,:i2)=<"PASSED">;
+
+set :i2 = new_object(1209,'ASSIGNMENT');
+set :i1 = new_object(1217,'STUDENT');
+add STUDENT.ASSIGNMENT.WORKSON->CHARSTRING(:i1,:i2)=<"PASSED">;
+
+set :i2 = new_object(1208,'ASSIGNMENT');
+set :i1 = new_object(1217,'STUDENT');
+add STUDENT.ASSIGNMENT.WORKSON->CHARSTRING(:i1,:i2)=<"PASSED">;
+
+set :i2 = new_object(1211,'ASSIGNMENT');
+set :i1 = new_object(1217,'STUDENT');
+add STUDENT.ASSIGNMENT.WORKSON->CHARSTRING(:i1,:i2)=<"UNKNOWN">;
+
+set :i2 = new_object(1208,'ASSIGNMENT');
+set :i1 = new_object(1272,'STUDENT');
+add STUDENT.ASSIGNMENT.WORKSON->CHARSTRING(:i1,:i2)=<"PASSED">;
+
+set :i2 = new_object(1209,'ASSIGNMENT');
+set :i1 = new_object(1272,'STUDENT');
+add STUDENT.ASSIGNMENT.WORKSON->CHARSTRING(:i1,:i2)=<"FAILED">;
+
+set :i2 = new_object(1210,'ASSIGNMENT');
+set :i1 = new_object(1272,'STUDENT');
+add STUDENT.ASSIGNMENT.WORKSON->CHARSTRING(:i1,:i2)=<"UNKNOWN">;
+
+set :i2 = new_object(1211,'ASSIGNMENT');
+set :i1 = new_object(1272,'STUDENT');
+add STUDENT.ASSIGNMENT.WORKSON->CHARSTRING(:i1,:i2)=<"UNKNOWN">;
+
+set :i2 = new_object(1208,'ASSIGNMENT');
+set :i1 = new_object(1270,'STUDENT');
+add STUDENT.ASSIGNMENT.WORKSON->CHARSTRING(:i1,:i2)=<"FAILED">;
+
+set :i2 = new_object(1209,'ASSIGNMENT');
+set :i1 = new_object(1270,'STUDENT');
+add STUDENT.ASSIGNMENT.WORKSON->CHARSTRING(:i1,:i2)=<"FAILED">;
+
+set :i2 = new_object(1210,'ASSIGNMENT');
+set :i1 = new_object(1270,'STUDENT');
+add STUDENT.ASSIGNMENT.WORKSON->CHARSTRING(:i1,:i2)=<"UNKNOWN">;
+
+set :i2 = new_object(1211,'ASSIGNMENT');
+set :i1 = new_object(1270,'STUDENT');
+add STUDENT.ASSIGNMENT.WORKSON->CHARSTRING(:i1,:i2)=<"UNKNOWN">;
+
+set :i1 = new_object(1271,'STUDENT');
+add STUDENT.PN->CHARSTRING(:i1)=<"7708196998">;
+
+set :i1 = new_object(1269,'STUDENT');
+add STUDENT.PN->CHARSTRING(:i1)=<"8202031434">;
+
+set :i1 = new_object(1217,'STUDENT');
+add STUDENT.PN->CHARSTRING(:i1)=<"8306160618">;
+
+set :i1 = new_object(1272,'STUDENT');
+add STUDENT.PN->CHARSTRING(:i1)=<"8208278195">;
+
+set :i1 = new_object(1270,'STUDENT');
+add STUDENT.PN->CHARSTRING(:i1)=<"8604274988">;
+
+set :i1 = new_object(1271,'STUDENT');
+add STUDENT.GROUP->INTEGER(:i1)=<-1>;
+
+set :i1 = new_object(1269,'STUDENT');
+add STUDENT.GROUP->INTEGER(:i1)=<-1>;
+
+set :i1 = new_object(1217,'STUDENT');
+add STUDENT.GROUP->INTEGER(:i1)=<0>;
+
+set :i1 = new_object(1272,'STUDENT');
+add STUDENT.GROUP->INTEGER(:i1)=<2>;
+
+set :i1 = new_object(1270,'STUDENT');
+add STUDENT.GROUP->INTEGER(:i1)=<1>;
+
+set :i1 = new_object(1215,'COURSE');
+add CURRCOURSE->COURSE()=<:i1>;
+
+set :i2 = new_object(1208,'ASSIGNMENT');
+set :i1 = new_object(1215,'COURSE');
+add COURSE.ASSIGNMENTS->ASSIGNMENT(:i1)=<:i2>;
+
+set :i2 = new_object(1209,'ASSIGNMENT');
+set :i1 = new_object(1215,'COURSE');
+add COURSE.ASSIGNMENTS->ASSIGNMENT(:i1)=<:i2>;
+
+set :i2 = new_object(1210,'ASSIGNMENT');
+set :i1 = new_object(1215,'COURSE');
+add COURSE.ASSIGNMENTS->ASSIGNMENT(:i1)=<:i2>;
+
+set :i2 = new_object(1211,'ASSIGNMENT');
+set :i1 = new_object(1215,'COURSE');
+add COURSE.ASSIGNMENTS->ASSIGNMENT(:i1)=<:i2>;
+
+set :i2 = new_object(1214,'ASSISTANT');
+set :i1 = new_object(1215,'COURSE');
+add COURSE.ASSISTANTS->ASSISTANT(:i1)=<:i2>;
+
+set :i2 = new_object(1213,'LECTURER');
+set :i1 = new_object(1215,'COURSE');
+add COURSE.RESPONSIBLE->LECTURER(:i1)=<:i2>;
+
+set :i2 = new_object(1212,'LECTURER');
+set :i1 = new_object(1215,'COURSE');
+add COURSE.RESPONSIBLE->LECTURER(:i1)=<:i2>;
+
+set :i1 = new_object(1215,'COURSE');
+add COURSE.NAME->CHARSTRING(:i1)=<"DBT-ST2006">;
+
+set :i1 = new_object(1214,'ASSISTANT');
+add ASSISTANT.SHARE->REAL(:i1)=<1.0>;
+
+set :i1 = new_object(1271,'STUDENT');
+add USER.NAME->CHARSTRING(:i1)=<"rima8989">;
+
+set :i1 = new_object(1269,'STUDENT');
+add USER.NAME->CHARSTRING(:i1)=<"erha0053">;
+
+set :i1 = new_object(1213,'LECTURER');
+add USER.NAME->CHARSTRING(:i1)=<"torer">;
+
+set :i1 = new_object(1217,'STUDENT');
+add USER.NAME->CHARSTRING(:i1)=<"arma8071">;
+
+set :i1 = new_object(1214,'ASSISTANT');
+add USER.NAME->CHARSTRING(:i1)=<"ruslan">;
+
+set :i1 = new_object(1212,'LECTURER');
+add USER.NAME->CHARSTRING(:i1)=<"kjello">;
+
+set :i1 = new_object(1272,'STUDENT');
+add USER.NAME->CHARSTRING(:i1)=<"mabo7619">;
+
+set :i1 = new_object(1270,'STUDENT');
+add USER.NAME->CHARSTRING(:i1)=<"cero4268">;
+
+set :i1 = new_object(1271,'STUDENT');
+add USER.EMAIL->CHARSTRING(:i1)=<"Rikard.Marklund.8989@student.uu.se">;
+
+set :i1 = new_object(1269,'STUDENT');
+add USER.EMAIL->CHARSTRING(:i1)=<"erha0053@student.uu.se">;
+
+set :i1 = new_object(1213,'LECTURER');
+add USER.EMAIL->CHARSTRING(:i1)=<"Tore.Risch@it.uu.se">;
+
+set :i1 = new_object(1217,'STUDENT');
+add USER.EMAIL->CHARSTRING(:i1)=<"maccer@bredband.net">;
+
+set :i1 = new_object(1214,'ASSISTANT');
+add USER.EMAIL->CHARSTRING(:i1)=<"Ruslan.Fomkin@it.uu.se">;
+
+set :i1 = new_object(1212,'LECTURER');
+add USER.EMAIL->CHARSTRING(:i1)=<"Kjell.Orsborn@it.uu.se">;
+
+set :i1 = new_object(1272,'STUDENT');
+add USER.EMAIL->CHARSTRING(:i1)=<"mabo7619@student.uu.se">;
+
+set :i1 = new_object(1270,'STUDENT');
+add USER.EMAIL->CHARSTRING(:i1)=<"cecilia.roes@gmail.com">;
+
+set :i1 = new_object(1271,'STUDENT');
+add USER.PASSWORD->CHARSTRING(:i1)=<"dilthey97">;
+
+set :i1 = new_object(1269,'STUDENT');
+add USER.PASSWORD->CHARSTRING(:i1)=<"habladb">;
+
+set :i1 = new_object(1213,'LECTURER');
+add USER.PASSWORD->CHARSTRING(:i1)=<".tr?">;
+
+set :i1 = new_object(1217,'STUDENT');
+add USER.PASSWORD->CHARSTRING(:i1)=<"sit614">;
+
+set :i1 = new_object(1214,'ASSISTANT');
+add USER.PASSWORD->CHARSTRING(:i1)=<".rf?">;
+
+set :i1 = new_object(1212,'LECTURER');
+add USER.PASSWORD->CHARSTRING(:i1)=<".ko?">;
+
+set :i1 = new_object(1272,'STUDENT');
+add USER.PASSWORD->CHARSTRING(:i1)=<"toxic">;
+
+set :i1 = new_object(1270,'STUDENT');
+add USER.PASSWORD->CHARSTRING(:i1)=<"l1ll4syst3r">;
+
+set :i1 = new_object(1271,'STUDENT');
+add USER.LASTNAME->CHARSTRING(:i1)=<"Marklund">;
+
+set :i1 = new_object(1269,'STUDENT');
+add USER.LASTNAME->CHARSTRING(:i1)=<"Hansander">;
+
+set :i1 = new_object(1213,'LECTURER');
+add USER.LASTNAME->CHARSTRING(:i1)=<"Risch">;
+
+set :i1 = new_object(1217,'STUDENT');
+add USER.LASTNAME->CHARSTRING(:i1)=<"Mäkivierikko">;
+
+set :i1 = new_object(1214,'ASSISTANT');
+add USER.LASTNAME->CHARSTRING(:i1)=<"Fomkin">;
+
+set :i1 = new_object(1212,'LECTURER');
+add USER.LASTNAME->CHARSTRING(:i1)=<"Orsborn">;
+
+set :i1 = new_object(1272,'STUDENT');
+add USER.LASTNAME->CHARSTRING(:i1)=<"Borysiuk">;
+
+set :i1 = new_object(1270,'STUDENT');
+add USER.LASTNAME->CHARSTRING(:i1)=<"Roes">;
+
+set :i1 = new_object(1271,'STUDENT');
+add USER.FIRSTNAME->CHARSTRING(:i1)=<"Rikard">;
+
+set :i1 = new_object(1269,'STUDENT');
+add USER.FIRSTNAME->CHARSTRING(:i1)=<"Eric">;
+
+set :i1 = new_object(1213,'LECTURER');
+add USER.FIRSTNAME->CHARSTRING(:i1)=<"Tore">;
+
+set :i1 = new_object(1217,'STUDENT');
+add USER.FIRSTNAME->CHARSTRING(:i1)=<"Aram">;
+
+set :i1 = new_object(1214,'ASSISTANT');
+add USER.FIRSTNAME->CHARSTRING(:i1)=<"Ruslan">;
+
+set :i1 = new_object(1212,'LECTURER');
+add USER.FIRSTNAME->CHARSTRING(:i1)=<"Kjell">;
+
+set :i1 = new_object(1272,'STUDENT');
+add USER.FIRSTNAME->CHARSTRING(:i1)=<"Maciek">;
+
+set :i1 = new_object(1270,'STUDENT');
+add USER.FIRSTNAME->CHARSTRING(:i1)=<"Cecilia">;
+
+set :i1 = new_object(1210,'ASSIGNMENT');
+add ASSIGNMENT.ASSNO->INTEGER(:i1)=<3>;
+
+set :i1 = new_object(1208,'ASSIGNMENT');
+add ASSIGNMENT.ASSNO->INTEGER(:i1)=<1>;
+
+set :i1 = new_object(1211,'ASSIGNMENT');
+add ASSIGNMENT.ASSNO->INTEGER(:i1)=<4>;
+
+set :i1 = new_object(1209,'ASSIGNMENT');
+add ASSIGNMENT.ASSNO->INTEGER(:i1)=<2>;
+
+set :i1 = new_object(1210,'ASSIGNMENT');
+add ASSIGNMENT.DEADLINE->DATE(:i1)=<|2006-08-18|>;
+
+set :i1 = new_object(1208,'ASSIGNMENT');
+add ASSIGNMENT.DEADLINE->DATE(:i1)=<|2006-06-30|>;
+
+set :i1 = new_object(1211,'ASSIGNMENT');
+add ASSIGNMENT.DEADLINE->DATE(:i1)=<|2006-08-30|>;
+
+set :i1 = new_object(1209,'ASSIGNMENT');
+add ASSIGNMENT.DEADLINE->DATE(:i1)=<|2006-08-04|>;
+
+set :i1 = new_object(1210,'ASSIGNMENT');
+add ASSIGNMENT.TITLE->CHARSTRING(:i1)=<"SQL">;
+
+set :i1 = new_object(1208,'ASSIGNMENT');
+add ASSIGNMENT.TITLE->CHARSTRING(:i1)=<"Normalization">;
+
+set :i1 = new_object(1211,'ASSIGNMENT');
+add ASSIGNMENT.TITLE->CHARSTRING(:i1)=<"Amos II project">;
+
+set :i1 = new_object(1209,'ASSIGNMENT');
+add ASSIGNMENT.TITLE->CHARSTRING(:i1)=<"DB design and EER modeling">;
+
+clear_oid_mappings();
+logging on;

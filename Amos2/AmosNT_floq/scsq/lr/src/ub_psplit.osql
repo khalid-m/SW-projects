@@ -1,0 +1,219 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 Erik Zeitler, UDBL
+ * $RCSfile: ub_psplit.osql,v $
+ * $Revision: 1.10 $ $Date: 2012/05/15 21:32:17 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: multitos = parallel fsplit over multiarrays
+ *              This file contains all functions neeeded to benchmark 
+ *              multitos on synthetic LR-like data.
+ *              w (inl*mult), b (promille), rep, multiarray size (msz), rrfo
+ *
+ ****************************************************************************
+ * $Log: ub_psplit.osql,v $
+ * Revision 1.10  2012/05/15 21:32:17  torer
+ * result -> return
+ *
+ * Revision 1.9  2011/04/06 12:10:27  zeitler
+ * Changed type of stored functions from tuple to vector of number
+ *
+ * Revision 1.8  2011/02/21 16:27:11  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.7  2011/02/20 22:22:23  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.6  2011/01/19 19:32:34  torer
+ * Type error
+ *
+ * Revision 1.5  2010/10/27 12:42:15  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.4  2010/09/09 13:04:11  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.3  2010/09/09 11:40:47  zeitler
+ * Comments
+ *
+ * Revision 1.2  2010/08/16 09:05:45  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.1  2010/07/22 19:22:18  zeitler
+ * Parallel splitstream benchmarking
+ *
+ ****************************************************************************/
+
+/* CPU profiling of all nodes doing either split or merge */
+
+create function mergecpu()-> (charstring, real, integer) as
+select c, roundto(p, 2), r['nsub']
+from charstring c, record r, real p
+where (c, r) in dprofile()
+and notany(like(rgenerator(r), "*CLRMULTIPLY*"))
+and notany(like(rgenerator(r), "*EXTRACT*"))
+and p = r['mappertime']
+and notany(r['rfn'])
+and r['nsub'] = 1;
+
+create function gencpu()-> (charstring, real, integer) as
+select c, roundto(p, 2), r['nsub']
+from charstring c, record r, real p
+where (c, r) in dprofile()
+and like(rgenerator(r), "*CLRMULTIPLY*")
+and p = r['mappertime'];
+
+create function rcpu()-> (charstring, real, integer) as
+select c, roundto(p, 2), r['nsub']
+from charstring c, record r, real p
+where (c, r) in dprofile()
+and p = r['mappertime']
+and like(rgenerator(r), "*EXTRACT*")
+and notany(r['rfn']);
+
+create function fscpu()-> (charstring, real, integer) as
+select c, roundto(p, 2), r['nsub']
+from charstring c, record r, real p, charstring rfn
+where (c, r) in dprofile()
+and like(rfn, "*XWAYRFN*")
+and rfn = r['rfn']
+and p = r['mappertime'];
+
+/* ub_parasplit: u-Benchmark parallel splitstream using synthetic input data */
+
+create function ub_parasplit(integer inl, integer mult, integer promille,
+                             integer rep, integer msz, integer rrfo)
+-> vector of number as
+select in(zipstreams(premerge))
+from vector of stream premerge, vector of stream of numarray rr,
+vector of stream fsplit, stream src, integer w
+where premerge = mapstreams(premerge(fsplit, rrfo, w), #'stcount')
+and fsplit = unpackfsplit(rr, w, #'xwayrfn', #'q2bfn', 15)
+and rr = rsplit_force_flex(src, rrfo, make_record({}))
+and src = ostream(newsp(streamof(clrmultiply(in(
+i_multihybrid_enumc(inl, promille, rep, msz)), inl, mult))), 0)
+and w = inl*mult;
+
+create function ub_file_parasplit(integer inl, integer mult, integer promille,
+                                  integer rep, integer msz, integer rrfo)
+-> vector of number as
+select in(zipstreams(premerge))
+from vector of stream premerge, vector of stream of numarray rr,
+vector of stream fsplit, stream src, integer w
+where premerge = mapstreams(premerge(fsplit, rrfo, w), #'stcount')
+and fsplit = unpackfsplit(rr, w, #'xwayrfn', #'q2bfn', 15)
+and rr = rsplit_force_flex(src, rrfo, {'hostnum':0, 'rem':'rsplit'})
+and src = ostream(newspflex(streamof(clrmultiply(in(
+lreadfastbins({getenv('HOME') + "/glob/c10-1M-multi" + stringify(msz) +".bin"})
+), inl, mult)), {'hostnum':0, 'rem':'src'}), 0)
+and w = inl*mult;
+
+/* x_ub_parasplit procedure measures throughput and cpu usage */
+
+create function res()->vector of vector of number;
+
+create function x_ub_parasplit(integer inl, integer mult, integer promille,
+                       integer rep, integer msz, integer rrfo)
+-> (integer, integer, integer, integer, integer, real exetime,
+  integer countsum, real gencpu, real rcpu, real fscpu, real mcpu, real sumcpu)
+as begin
+reset_ipr();
+set res() = ub_file_parasplit(inl, mult, promille, rep, msz, rrfo);
+set gencpu = psum(gencpu());
+set rcpu = psum(rcpu());
+set fscpu = psum(fscpu());
+set mcpu = psum(mergecpu());
+set sumcpu = gencpu + rcpu + fscpu + mcpu;
+print({inl*mult, promille, msz, rrfo, res(), gencpu, rcpu, fscpu, mcpu, 
+       sumcpu});
+set exetime = exectime(res());
+set countsum = countsum(res());
+return(select inl*mult, promille, msz, rrfo, rep, exetime, countsum, gencpu,
+       rcpu, fscpu, mcpu, sumcpu);
+sleep(0.1);
+end;
+
+/* Result storage */
+
+create function ub_para_res() -> vector of number;
+/*(integer, integer, integer, integer, integer, real exetime,
+  integer countsum, real gencpu, real rcpu, real fscpu, real mcpu, real sumcpu);*/
+
+/* Experiment script to be called from top level */
+
+create function parasplit(integer inl, vector of integer mults,
+                          vector of integer promilles, integer rep,
+                          integer msz, vector of integer rrfos)
+-> object as begin
+for each integer mult where mult in mults begin
+for each integer promille where promille in promilles begin
+for each integer rrfo where rrfo in rrfos begin
+declare charstring outputfilename;
+set outputfilename = "psplit-" + stringify(inl*mult) + 
+                     "_promille" + stringify(promille) +
+                     "_rrfo" + stringify(rrfo) +
+                     "_r" + stringify(rep);
+add ub_para_res() = {x_ub_parasplit(inl, mult, promille, rep, msz, rrfo)};
+print(ub_para_res());
+writefile("dp-" + outputfilename, {dprofile()});
+end;
+end;
+end;
+write_ntuples({ub_para_res()}, "psplit_" + timestamp());
+end;
+
+create function f_parasplit(charstring file, integer inl, integer mult,
+                            integer p) -> vector of number as
+select in(zipstreams(premerge))
+from vector of stream premerge, vector of stream of numarray rr,
+vector of stream fsplit, stream src, integer w
+where premerge = mapstreams(premerge(fsplit, p, w), #'stcount')
+and fsplit = unpackfsplit(rr, w, #'xwayrfn', #'q2bfn', 15)
+and rr = rsplit_force_flex(src, p, {'hostnum':0, 'rem':'rsplit'})
+and src = ostream(newspflex(streamof(clrmultiply(in(
+lreadfastbins({file})), inl, mult)), {'hostnum':0, 'rem':'src'}), 0)
+and w = inl*mult;
+
+create function x_file_parasplit(charstring file, integer inl, integer mult,
+                                 integer p)
+-> (integer, charstring, integer, real exetime, integer countsum, real gencpu,
+    real rcpu, real fscpu, real mcpu, real sumcpu)
+as begin
+reset_ipr();
+set res() = f_parasplit(file, inl, mult, p);
+set gencpu = psum(gencpu());
+set rcpu = psum(rcpu());
+set fscpu = psum(fscpu());
+set mcpu = psum(mergecpu());
+set sumcpu = gencpu + rcpu + fscpu + mcpu;
+print({inl*mult, file, p, res(), gencpu, rcpu, fscpu, mcpu, 
+       sumcpu});
+set exetime = exectime(res());
+set countsum = countsum(res());
+return(select inl*mult, file, p, exetime, countsum, gencpu,
+       rcpu, fscpu, mcpu, sumcpu);
+sleep(0.1);
+end;
+
+/* Result storage */
+
+create function file_para_res() -> vector of number;
+
+/* Experiment script to be called from top level */
+
+create function file_parasplit(charstring file, integer inl,
+                               vector of integer mults, vector of integer ps)
+-> object as begin
+for each integer mult where mult in mults begin
+for each integer p where p in ps begin
+declare charstring outputfilename;
+set outputfilename = "psplit-" + stringify(inl*mult) + 
+                     "_p" + stringify(p);
+add file_para_res() = {x_file_parasplit(file, inl, mult, p)};
+print(file_para_res());
+writefile("dp-" + outputfilename, {dprofile()});
+end;
+end;
+write_ntuples(file_para_res(), "psplit_" + timestamp());
+end;

@@ -1,0 +1,23 @@
+<'src/Mysql-lr.osql';
+
+lisp;
+(register-init-form '(delay-emit nil))
+:osql
+
+/*  Decomment this for running SCSQ-MySQL parallelized
+
+set lrdumpfiledir() = getenv("AMOS_HOME") + 'scsq/lr/dexp';*/
+set dumpfile() = 'lrdexp.dmp';
+
+clear_function("dexp_jdbc");
+add dexp_jdbc(0)=jdbc("lrdb1", "com.mysql.jdbc.Driver");
+add dexp_jdbc(1)=jdbc("lrdb2", "com.mysql.jdbc.Driver");
+
+clear_function("mysql_nodes");
+
+add mysql_nodes(0)=<"localhost","LR100","root","",13306>;
+add mysql_nodes(1)=<"localhost","LR101","root","",13307>;
+
+save "../../../bin/lrdexp.dmp";
+
+quit;

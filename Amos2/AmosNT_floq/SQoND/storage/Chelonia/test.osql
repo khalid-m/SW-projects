@@ -1,0 +1,62 @@
+/*-*-sql-*-*******************************************************************/
+
+/* Use compile.cmd & run.cmd in this directory */
+
+getAllExperiments("/exp/bistab");
+
+getTasks("/Test/huang_1","Huang-Experiment");
+
+getVars("/Test/huang_1",1);
+
+getValue("/Test/huang_1",1,"occurance");
+
+getValue("/Test/huang_1",1,"realization");
+
+getSubArray("/Test/huang_1",1,"U_1","1:50,1:10");
+
+printOutput("/Test/huang_1","SELECT concat('a',elementsType) AS type, read_data('1:50,1:10', a.blobId, '1') AS value FROM aTriples a WHERE taskId = 1 AND vName='U_1';",10);
+
+getValue("/Test/huang_1",1,"U_1"); /* Heap overflow! */
+
+
+getAllExperiments("/Test/multiVar");
+
+getTasks("/Test/multiVar","Huang-Experiment");
+
+getVars("/Test/multiVar",1);
+
+printOutput("/Test/multiVar","SELECT 'a' AS type, read_data('1:5,1:5', a.blobId, '1') AS value FROM aTriples a WHERE taskId = 1 AND vName='p_2_ff';",10);
+
+getValue("/Test/multiVar",1,"p_2_ff");
+
+/* UPDATES */
+
+addExperiment("/Test/huang_1","Andej_experiment");
+
+printOutput("/Test/huang_1","select * from experiments;",1);
+
+addTask("/Test/huang_1","Andej_experiment","Andrej_task");
+
+printOutput("/Test/huang_1","select * from tasks;",1);
+
+addValue("/Test/huang_1",2,"newStringVar",now());
+
+printOutput("/Test/huang_1","select * from sTriples;",1);
+
+getValue("/Test/huang_1",2,"newStringVar");
+
+
+/* SPARQL intarface test */
+
+
+load_triples('def','../../test/data/booleans.ttl');
+
+
+
+
+
+
+
+
+
+

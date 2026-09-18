@@ -1,0 +1,96 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2007 Ruslan Fomkin, UDBL
+ * $RCSfile: cost_model.udfs.stream.hagrid.osql,v $
+ * $Revision: 1.13 $ $Date: 2008/08/20 11:47:58 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Cost hints for numerical udfs. For the streamed approach. On Hagrid.
+ ****************************************************************************
+ * $Log: cost_model.udfs.stream.hagrid.osql,v $
+ * Revision 1.13  2008/08/20 11:47:58  ruslan
+ * rename specialized version of transpose to avoid confusion
+ *
+ * Revision 1.12  2008/04/03 13:51:28  ruslan
+ * *** empty log message ***
+ *
+ * Revision 1.11  2008/03/19 13:18:04  ruslan
+ * cost models
+ *
+ * Revision 1.10  2008/03/16 12:56:22  ruslan
+ * bugs in cost hints are fixed
+ *
+ * Revision 1.9  2008/03/16 11:58:08  ruslan
+ * bug in cost hint definition is fixed
+ *
+ * Revision 1.8  2008/03/10 15:59:01  ruslan
+ * type containers defined. this removes some type check, but not all of them, while they still can be removed somehow. missing cost models
+ *
+ * Revision 1.7  2008/03/05 14:22:19  ruslan
+ * cost model for vref is implemented as cost function with using bindings for vector varibles, which are set to statistics collected for sobject slots containing vectors
+ *
+ * Revision 1.6  2008/03/01 15:59:44  ruslan
+ * collecting cardinality statistics on slots and using in query optimization
+ *
+ * Revision 1.5  2008/02/28 13:14:13  ruslan
+ * using sobject
+ *
+ * Revision 1.4  2008/02/01 15:03:06  ruslan
+ * plus is over vectors not vector of numbers
+ *
+ * Revision 1.3  2008/01/09 13:59:54  ruslan
+ * wrong name of unimportant function in cost hint is fixed
+ *
+ * Revision 1.2  2007/12/17 16:57:17  ruslan
+ * using specific transpose
+ *
+ * Revision 1.1  2007/12/14 11:25:29  ruslan
+ * cost models revisited. For Hagrid it is based on current measurements
+ *
+ ****************************************************************************/
+
+<"sobject.stat.osql";
+
+/* Cost model is defined in cost_model.structs.lsp
+costhint("VECTOR.INTEGER.VREF->OBJECT","bbf",{1.0,1.0});*/
+costhint("NUMBER.ABS->NUMBER","bf",{1.0,1.0});
+costhint("NUMBER.SQRT_POS->REAL","bf",{1.1,1.0});
+costhint("SOBJECT.INTEGER.OBJECT.SET_SLOT->BOOLEAN","bbb",{1.1,1.0});
+costhint("SOBJECT.INTEGER.VECTOR.SET_SLOTVECTOR->BOOLEAN","bbb",{1.1,1.0});
+costhint("SOBJECT.INTEGER.VECTOR.FUNCTION.SET_SLOTVECTOR->BOOLEAN","bbbb",
+	{1.1,1.0});
+costhint("NUMBER.CEILING->INTEGER","bf",{1.1,1.0});
+costhint("NUMBER.COS->REAL","bf",{1.1,1.0});
+costhint("NUMBER.NUMBER.PLUS->NUMBER","bbf",{1.1,1.0});
+costhint("NUMBER.NUMBER.PLUS->NUMBER","bfb",{1.1,1.0});
+costhint("NUMBER.NUMBER.NUMBER.PLUS->NUMBER","bbbf",{1.2,1.0});
+costhint("NUMBER.NUMBER.TIMES->NUMBER","bbf",{1.1,1.0});
+costhint("NUMBER.NUMBER.TIMES->NUMBER","bfb",{1.1,1.0});
+/*costhint("VECTOR.MOD->REAL","bf",{1.0,1.0});*/
+costhint("NUMBER.NUMBER.MODULO->REAL","bbf",{1.1,1.0});
+costhint("NUMBER.NUMBER.PT->REAL","bbf",{1.1,1.0});
+costhint("NUMBER.LOG->REAL","bf",{1.1,1.0});
+costhint("NUMBER.NUMBER.NUMBER.MAGNITUDE->REAL","bbbf",{1.2,1.0});
+costhint("NUMBER.NUMBER.ATAN2->REAL","bbf",{1.2,1.0});
+costhint("TYPE.OBJECT.VECTOR.NEW_SOBJECT->SOBJECT","bbbf",
+		{1.3,1.0});
+costhint("TYPE.OBJECT.OBJECT.VECTOR.NEW_SOBJECT->SOBJECT","bbbbf",
+		{1.3,1.0});
+costhint("VECTOR.VECTOR.TIMES->NUMBER","bbf",{1.2,1.0});
+/*costhint("SOBJECT.INTEGER.GET_SLOT->OBJECT","bbf",{1.0,1.0}); moved to fn
+costhint("SOBJECT.INTEGER.GET_SLOT->OBJECT","bff",{20.0,10.0});*/
+costhint("NUMBER.NUMBER.NUMBER.ETA->REAL","bbbf",{1.2,1.0});
+costhint("VECTOR.VECTOR.EFFECTIVEMASS->REAL","bbf",{1.3,1.0});
+costhint("NUMBER.NUMBER.NUMBER.NUMBER.EFFECTIVEMASS->REAL","bbbbf",
+		{1.3,1.0});
+costhint("VECTOR.VECTOR.PLUS->VECTOR","bbf",{1.4,1.0});
+costhint("VECTOR.VECTOR.VECTOR.PLUS->VECTOR","bbbf",{1.5,1.0});
+costhint("VECTOR.TRANSPOSE->VECTOR","bf",{1.4,1.0});
+costhint("VECTOR.SOBJECT.TYPE.INTEGER.MAT_SOBJECT_TRANSPOSE->BOOLEAN","bbbb",{1.6,1.0});
+costhint("OBJECT.VECTOR.NOT_IN->BOOLEAN","bb",{1.1,0.3});
+costhint("OBJECT.OBJECT.OBJECT.NOT_IN->BOOLEAN","bbb",{1.2,0.3});
+costhint("OBJECT.OBJECT.OBJECT.OBJECT.NOT_IN->BOOLEAN","bbbb",{1.2,0.3});
+costhint("OBJECT.TYPESOF->TYPE","bb",{1.1,1.0});
+costhint("CHARSTRING.UPPER->CHARSTRING","bf",{1.2,1.0});

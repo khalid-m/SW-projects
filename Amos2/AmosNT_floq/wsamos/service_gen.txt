@@ -1,0 +1,26 @@
+javac -g wsamos\Webamos.java
+
+java org.apache.axis.wsdl.Java2WSDL -o webamos.wsdl -l"http://130.238.11.125:8080/axis/services/Webamos" -n "urn:WSAmos" -p"wsamos" "urn:WSAmos" wsamos.Webamos
+
+java org.apache.axis.wsdl.WSDL2Java -o . -d application -s -S true -Nurn:WSAmos wsamos webamos.wsdl
+
+Fill the implementation:
+
+compile
+
+
+Deploy:
+deploy
+start tomcat
+
+cd wsamos
+java org.apache.axis.client.AdminClient deploy.wsdd
+OR restart Tomcat after initial deployment
+
+Check the service is deployed
+
+start Amos servers:
+startws
+
+Test:
+run

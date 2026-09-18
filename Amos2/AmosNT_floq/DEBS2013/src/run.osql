@@ -1,0 +1,67 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: run.osql,v $
+ * $Revision: 1.6 $ $Date: 2013/04/21 22:38:37 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *
+ ****************************************************************************
+ * $Log: run.osql,v $
+ * Revision 1.6  2013/04/21 22:38:37  thatr500
+ * removed SAMPLING !!!!
+ *
+ * Revision 1.5  2013/04/21 22:08:48  torer
+ * *** empty log message ***
+ *
+ * Revision 1.4  2013/04/21 11:24:06  thatr500
+ * *** empty log message ***
+ *
+ * Revision 1.3  2013/04/21 11:06:58  thatr500
+ * *** empty log message ***
+ *
+ * Revision 1.2  2013/04/20 16:49:24  thatr500
+ * *** empty log message ***
+ *
+ * Revision 1.1  2013/04/20 15:39:54  thatr500
+ * Added scripts to run experiment
+ *
+
+  ****************************************************************************/
+lisp;
+
+(osql "
+set :fullgame= 'data/full-game';")
+
+(checkequal
+ "Query 1 Alone"
+ ((time (osql "count(q1alone(:fullgame));"))
+  '((0)))
+ )
+(checkequal
+ "Query 2 Alone"
+ ((time (osql "count(q2alone(:fullgame));"))
+  '((0)))
+ )
+
+(checkequal
+ "Query 4 Alone"
+ ((time (osql "count(q4alone(:fullgame));"))
+  '((0)))
+ )
+
+(checkequal
+ "Query 3 Alone"
+ ((time (osql "count(q3alone(:fullgame));"))
+  '((0)))
+ )
+
+(checkequal
+ "Whole system"
+ ((time (osql "count(full(:fullgame));"))
+  '((0)))
+ )
+
+:osql

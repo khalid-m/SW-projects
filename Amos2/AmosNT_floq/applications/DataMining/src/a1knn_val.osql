@@ -1,0 +1,33 @@
+/*-*-sql-*-*******************************************************************/
+
+/* Validate (Never give away true.nt!) */
+
+create function trueclasses(vector of Number) -> number as stored;
+
+create function add_tc(Vector of Number w) -> Boolean
+  as add trueclasses({w[0], w[1], w[2], w[3], w[4], w[5], w[6], w[7], w[8]})
+          = w[9];
+
+add_tc(readnumfile("../data/truth.nt"));
+
+lisp;
+
+(checkequal "sanity: count(k), count(testclasses)"
+	    ((osql "count(k());")
+	     '((1)))
+	    ((osql "count(select testclasses(v) from vector of number v);")
+	     '((30))))			;'
+
+:osql
+
+create function knnvalidate()-> (Charstring, Integer)
+  as begin return ("k", k());
+           return ("testclasses(v) correctness  ", 
+                   count(select truec, testc
+                         from Vector of Number v, Number truec, Number testc
+                         where truec = trueclasses(v) 
+                           and testc = testclasses(v)
+                           and truec = testc));
+     end;
+
+knnvalidate();

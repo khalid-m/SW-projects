@@ -1,0 +1,130 @@
+lisp;
+(checkequal "Create foreign function from python (builtin) function."
+            ((typename (osql "create function pyabs(Real a) -> Real x 
+                            as foreign 'py:bf:abs';"))
+             'OID))
+
+(checkequal "Create foreign function from python (math) function."
+            ((typename (osql "create function pyfloor(Real a) -> Real x 
+                            as foreign 'py:bf:math.floor';"))
+             'OID))
+
+(checkequal "Create foreign function from python function (user defined)."
+            ((typename (osql "create function pyplus(Integer a, Integer b) -> Integer x
+                            as foreign 'py:bbf:regress.callout.plus';"))
+             'OID))
+
+(checkequal "Create multidirectional foreign function from python function (user defined)."
+            ((typename (osql "create function pyplusm(Number x, Number y) -> Number r 
+                            as multidirectional
+                              ('bbf' key foreign 'py:bbf:regress.callout.plus_bbf')
+                              ('bfb' key foreign 'py:bfb:regress.callout.plus_bfb') 
+                              ('fbb' key foreign 'py:fbb:regress.callout.plus_fbb');"))
+             'OID))
+
+(checkequal "Integer input and integer output."
+            ((caar 
+              (osql "create function pyminus(Integer a, Integer b) -> Integer x
+                       as foreign 'py:bbf:regress.callout.minus';
+                     pyminus(5,1);"))
+             4))
+
+(checkequal "Real input and real output."
+            ((round 
+              (caar 
+               (osql "create function pyminus(Real a, Real b) -> Real x
+                        as foreign 'py:bbf:regress.callout.minus';
+                      pyminus(5.1,1.2);")))
+             (round 3.9)))
+
+(checkequal "String input and string output."
+            ((caar 
+              (osql "create function pyplus(Charstring a, Charstring b) -> Charstring x
+                       as foreign 'py:bbf:regress.callout.plus';
+                     pyplus('Hello ', 'World!');"))
+             "Hello World!"))
+
+(checkequal "Bag output (extracted from generator)."
+            ((osql "create function pyiota(Integer start, Integer stop) -> Bag items
+                      as foreign 'py:bbf:regress.callout.iota';
+                    pyiota(1,8);")
+             (osql "iota(1,8);")))
+
+(checkequal "List output."
+            ((osql "create function pyiota_list(Integer start, Integer stop) -> Vector items
+                      as foreign 'py:bbf:regress.callout.iota_list';
+                    pyiota_list(1,8);")
+             (osql "vectorof(iota(1,8));")))
+
+(checkequal "Tuple output."
+            ((osql "create function pyiota_tuple(Integer start, Integer stop) -> Vector items
+                      as foreign 'py:bbf:regress.callout.iota_tuple';
+                    pyiota_tuple(1,8);")
+             (osql "vectorof(iota(1,8));")))
+
+(checkequal "Dict output."
+            ((record-fields 
+              (caar 
+               (osql "create function pyiota_dict(Integer start, Integer stop) -> Record items
+                        as foreign 'py:bbf:regress.callout.iota_dict';
+                      pyiota_dict(1,8);")))
+             (record-fields 
+              (tuplelist-to-record 
+               (zip 
+                (mapcar #'car (osql "iota(1,8);"))
+                (mapcar #'car (osql "iota(1,8);")))))))
+
+(checkequal "Array output (treated as sequence)."
+            ((osql "create function pyiota_array(Integer start, Integer stop) -> Bag items
+                      as foreign 'py:bbf:regress.callout.iota_array';
+                    pyiota_array(1,8);")
+             (osql "iota(1,8);")))
+
+(checkequal "Bag output (yielded values)."
+            ((osql "create function pyiota_pow(Integer start, Integer stop, Real exp) -> Bag items 
+                      as foreign 'py:bbbf:regress.callout.iota_pow'; 
+                    pyiota_pow(1,8,3.1415);")
+             (osql "iota(1,8)^3.1415;")))
+
+(checkequal "Oidtype input and oidtype output."
+            ((caar (osql "create function pybounce(Function oid) -> Function oid2
+                            as foreign 'py:bf:regress.callout.bounce';
+                          pybounce(functionnamed('typeof'));"))
+             (caar (osql "functionnamed('typeof');"))))
+
+(checkequal "Call foreign function based on builtin (__builtin__) python function."
+            ((caar (osql "pyabs(-5);"))
+             5))
+
+(checkequal "Call foreign function based on builtin library (math) function."
+            ((caar (osql "pyfloor(4.9);"))
+             4))
+
+;; using py:bbf:regress.reload.pow
+(checkequal "Reload foreign function."
+            ((caar                
+              (let* 
+                  ((file (openstream "regress\\reload.py" "w")))
+                (formatl file 
+                         "import math" T            
+                         "def pow(base, exp):" T
+                         "  return math.pow(base*2, exp)" T) 
+                (flush file)
+                (closestream file)
+                (osql "create function pypow(Real base, Real exp) -> Real r 
+                        as foreign 'py:bbf:regress.reload.pow';")
+                (osql "pypow(2,7);")))
+             16384)
+            ((caar                
+              (let* 
+                  ((file (openstream "regress\\reload.py" "w")))
+                (delete-file "regress\\reload.pyc")
+                (formatl file 
+                         "import math" T            
+                         "def pow(base, exp):" T
+                         "  return math.pow(base, exp)" T) 
+                (flush file)
+                (closestream file)
+                (osql "py_reload('py:bbf:regress.reload.pow');")
+                (osql "pypow(2,7);")))
+             128))

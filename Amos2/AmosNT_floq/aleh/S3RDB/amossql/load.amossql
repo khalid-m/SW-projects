@@ -1,0 +1,232 @@
+
+/*Loading schemas and data to javaamos
+****************************************/
+cd("..");
+cd("aleh");
+cd("osql");
+<"schema.osql";
+<"parameters.schema.osql";
+load_lisp("../lsp/cost_model.populated.lsp");
+load_lisp('../lsp/grouping.lsp');
+load_lisp('../lsp/dyngroups.lsp');
+commit;
+<"cuts.const.osql";
+ 
+cd("../regress");
+<"test_data.osql";
+
+
+/*Function to import events from amosql to sql server schemas
+***************************************************************/
+create function fillEvent(jdbc ds)->boolean 
+                as for each event e
+		sqlu(ds," Insert into events (PxMiss,PYMiss,filenames,Id) Values( ?,?,?,?);",{Pxmiss(e),PyMiss(e),filename(e),id(e)});
+
+
+create function fillEvent(jdbc ds)->boolean 
+                as for each event e
+		sqlu(ds," Insert into events (PxMiss,PYMiss,filenames,Id) Values( ?,?,?,?);",{Pxmiss(e),PyMiss(e),filename(e),eventid(e)});
+
+
+
+
+/*Function to import jetbs from amosql to sql server duplicatedata
+***************************************************************/
+create function filljetb3(jdbc ds)->boolean 
+                as for each jetb j
+		
+		sqlu(ds," 
+		
+		declare @q as int;
+		set @q = (select max(idevent) from events where id = ?);
+		Insert into particle(id,eventid,px,py,pz,kf,ee) Values(?,@q,?,?,?,?,?);
+
+		Insert into jet(idap,id,eventid,px,py,pz,kf,ee) VALUES (SCOPE_IDENTITY(),?,@q,?,?,?,?,?);",
+		{id(event(j)),id(j),px(j),py(j),pz(j),kf(j),Ee(j),id(j),px(j),py(j),pz(j),kf(j),Ee(j)});
+
+
+
+
+/*Function to import muons from amosql to sql server duplicatedata
+***************************************************************/
+create function fillmuon3(jdbc ds)->boolean 
+		as for each muon j
+		sqlu(ds,"
+		declare @q as int;
+		set @q = (select max(idevent) from events where id = ?);
+		Insert into particle (id,eventid,px,py,pz,kf,ee) VALUES(?,@q,?,?,?,?,?);
+
+		Declare @ID as int; Set @ID=SCOPE_IDENTITY();
+
+		Insert into lepton(idap,id,eventid,px,py,pz,kf,ee) VALUES (@ID,?,@q,?,?,?,?,?);
+
+		Insert into muon(idap,id,eventid,px,py,pz,kf,ee) VALUES (@ID,?,@q,?,?,?,?,?);",
+		{id(event(j)),id(j),px(j),py(j),pz(j),kf(j),Ee(j),id(j),px(j),py(j),pz(j),kf(j),Ee(j),id(j),
+		px(j),py(j),pz(j),kf(j),Ee(j)});
+
+
+
+
+/*Function to import electrons from amosql to sql server duplicatedata
+***************************************************************/
+create function fillelectron3(jdbc ds)->boolean 
+		as for each electron j
+		sqlu(ds,"
+		declare @q as int;
+		set @q = (select max(idevent) from events where id = ?);
+		Insert into particle (id,eventid,px,py,pz,kf,ee) VALUES(?,@q,?,?,?,?,?);
+
+		Declare @ID as int; Set @ID=SCOPE_IDENTITY();
+
+		Insert into lepton(idap,id,eventid,px,py,pz,kf,ee) VALUES (@ID,?,@q,?,?,?,?,?);
+
+		Insert into electron(idap,id,eventid,px,py,pz,kf,ee) VALUES (@ID,?,@q,?,?,?,?,?);",
+		{id(event(j)),id(j),px(j),py(j),pz(j),kf(j),Ee(j),id(j),px(j),py(j),pz(j),kf(j),Ee(j),id(j),
+		px(j),py(j),pz(j),kf(j),Ee(j)});
+
+
+
+
+/*Function to import jetbs from amosql to sql server repeatid
+***************************************************************/
+create function filljetb1(jdbc ds)->boolean 
+                as for each jetb j
+
+		
+		sqlu(ds," 
+
+		declare @q as int;
+		set @q = (select max(idevent) from events where id = ?);
+
+		Insert into particle(id,eventid,px,py,pz,kf,ee) Values(?,@q,?,?,?,?,?);
+
+		Insert into jetaux(id) VALUES (SCOPE_IDENTITY());",
+		{id(event(j)),id(j),px(j),py(j),pz(j),kf(j),Ee(j)});
+
+
+create function filljetb1(jdbc ds)->boolean 
+                as for each jetb j
+		
+		sqlu(ds," 
+
+		declare @q as int;
+		set @q = (select max(idevent) from events where id = ?);
+
+		Insert into particle(id,eventid,px,py,pz,kf,ee) Values(?,@q,?,?,?,?,?);
+
+		Insert into jetaux(id) VALUES (SCOPE_IDENTITY());",
+		{eventid(event(j)),pid(j),px(j),py(j),pz(j),kf(j),Ee(j)});
+
+
+
+
+
+/*Function to import muons from amosql to sql server repeatid
+***************************************************************/
+create function fillmuon1(jdbc ds)->boolean 
+		as for each muon j
+		sqlu(ds,"
+		declare @q as int;
+		set @q = (select max(idevent) from events where id = ?);
+		Insert into particle (id,eventid,px,py,pz,kf,ee) VALUES(?,@q,?,?,?,?,?);
+
+		Declare @ID as int; Set @ID=SCOPE_IDENTITY();
+
+		Insert into leptonaux(id) VALUES (@ID);
+
+		Insert into muonaux(id) VALUES (@ID);",
+		{id(event(j)),id(j),px(j),py(j),pz(j),kf(j),Ee(j)});
+
+create function fillmuon1(jdbc ds)->boolean 
+		as for each muon j
+		sqlu(ds,"
+		declare @q as int;
+		set @q = (select max(idevent) from events where id = ?);
+		Insert into particle (id,eventid,px,py,pz,kf,ee) VALUES(?,@q,?,?,?,?,?);
+
+		Declare @ID as int; Set @ID=SCOPE_IDENTITY();
+
+		Insert into leptonaux(id) VALUES (@ID);
+
+		Insert into muonaux(id) VALUES (@ID);",
+		{eventid(event(j)),pid(j),px(j),py(j),pz(j),kf(j),Ee(j)});
+
+
+
+
+/*Function to import electrons from amosql to sql server repeatid
+***************************************************************/
+create function fillelectron1(jdbc ds)->boolean 
+		as for each electron j
+		sqlu(ds,"
+		declare @q as int;
+		set @q = (select max(idevent) from events where id = ?);
+		Insert into particle (id,eventid,px,py,pz,kf,ee) VALUES(?,@q,?,?,?,?,?);
+
+		Declare @ID as int; Set @ID=SCOPE_IDENTITY();
+
+		Insert into leptonaux(id) VALUES (@ID);
+
+		Insert into electronaux(id) VALUES (@ID);",
+		{id(event(j)),id(j),px(j),py(j),pz(j),kf(j),Ee(j)});
+
+create function fillelectron1(jdbc ds)->boolean 
+		as for each electron j
+		sqlu(ds,"
+		declare @q as int;
+		set @q = (select max(idevent) from events where id = ?);
+		Insert into particle (id,eventid,px,py,pz,kf,ee) VALUES(?,@q,?,?,?,?,?);
+
+		Declare @ID as int; Set @ID=SCOPE_IDENTITY();
+
+		Insert into leptonaux(id) VALUES (@ID);
+
+		Insert into electronaux(id) VALUES (@ID);",
+		{eventid(event(j)),pid(j),px(j),py(j),pz(j),kf(j),Ee(j)});
+
+
+/*Function to import jetbs from amosql to sql server bigtable
+***************************************************************/
+create function filljetb4(jdbc ds)->boolean 
+                as for each jetb j
+		
+		sqlu(ds," 
+		
+		declare @q as int;
+		set @q = (select max(idevent) from events where id = ?);
+		Insert into particle(id,eventid,px,py,pz,kf,ee,typ) Values(?,@q,?,?,?,?,?,1);",
+		{id(event(j)),id(j),px(j),py(j),pz(j),kf(j),Ee(j)});
+
+
+
+
+/*Function to import muons from amosql to sql server bigtable
+***************************************************************/
+create function fillmuon4(jdbc ds)->boolean 
+		as for each muon j
+		sqlu(ds," 
+		
+		declare @q as int;
+		set @q = (select max(idevent) from events where id = ?);
+		Insert into particle(id,eventid,px,py,pz,kf,ee,typ) Values(?,@q,?,?,?,?,?,2);",
+		{id(event(j)),id(j),px(j),py(j),pz(j),kf(j),Ee(j)});
+
+
+
+
+/*Function to import electrons from amosql to sql server bigtable
+***************************************************************/
+create function fillelectron4(jdbc ds)->boolean 
+		as for each electron j
+		sqlu(ds," 
+		
+		declare @q as int;
+		set @q = (select max(idevent) from events where id = ?);
+		Insert into particle(id,eventid,px,py,pz,kf,ee,typ) Values(?,@q,?,?,?,?,?,3);",
+		{id(event(j)),id(j),px(j),py(j),pz(j),kf(j),Ee(j)});
+
+
+
+
+
+

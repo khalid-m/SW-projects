@@ -1,0 +1,142 @@
+/*-*-sql-*-*******************************************************************/
+
+create function peakdetect(vector v, number threshold) -> vector
+as vselect i, n
+from integer i, number n
+where n > threshold and
+v[i]=n;
+
+create function speakdetect(stream of vector s, number threshold) -> stream of vector
+as streamof(peakdetect(in(s), threshold));
+
+/*
+
+in(speakdetect(streamagg(streamof(readfile("data/signals.dat")[0]),256,256),2000));
+
+extract(newsp(speakdetect(streamagg(streamof(readfile("data/signals.dat")[0]),256,256),2000)));
+
+in(mergestreams(
+mapv({{streamagg(streamof(readfile("data/signals.dat")[0]),256,256), 2000}},
+#'speakdetect')));
+
+in(zipstreams(
+mapv({{streamagg(streamof(readfile("data/signals.dat")[0]),512,512), 2000},
+      {streamagg(streamof(readfile("data/signals.dat")[1]),512,512), 2000}},
+#'speakdetect')));
+
+in(zipstreams(
+mapv(vselect {streamagg(streamof(readfile("data/signals.dat")[i]),512,512), 2000}
+      from integer i where i in iota(0,1),
+#'speakdetect')));
+
+select v[0], v[1]
+from vector of vector v
+where v in 
+zipstreams(
+mapv(vselect {streamagg(streamof(readfile("data/signals.dat")[i]),512,512), 2000}
+      from integer i where i in iota(0,1),
+#'speakdetect'))
+and v[0];
+
+
+create function pd(vector v) ->vector
+as vselect i, v[i]
+from integer i
+where v[i] > 1000;
+
+pd(winagg(readfile("data/signals.dat")[0], 256, 256));
+
+vselect i, v[i]
+from integer i, vector v
+where v[i] > 1000
+and v = winagg(readfile("data/signals.dat")[0], 256, 256);
+
+select av, dev from vector of number v
+where v = in(s)
+and dev = vstdev(v)
+and dev > threshold
+and av = vavg(v);
+
+
+select vavg(v), vstdev(v) from vector v, real a, real s
+where v = winagg(readfile("data/signals.dat")[0], 256, 256);
+
+create function devalert(real threshold) -> <number av, number dev> as
+select av, dev from vector of number v
+where v = winagg(readfile("data/signals.dat")[0], 256, 10)
+and dev = vstdev(v)
+and dev > threshold
+and av = vavg(v);
+
+create function devalert(stream of vector s, real threshold)
+-> vector as
+vselect curr
+from vector of number v, number curr, number dev, number av
+where v = in(s)
+and curr = v[dim(v)-1]
+and dev = vstdev(v)
+and av = vavg(v)
+and curr  > av + threshold*dev;
+
+devalert(streamagg(streamof(readfile("data/signals.dat")[0]), 256, 1), 10.0);
+
+
+select v
+from vector of number v, number curr, number dev, number av, number threshold
+where v = winagg(readfile("data/signals.dat")[0], 256, 1)
+and curr = v[dim(v)-1]
+and dev = vstdev(v)
+and av = vavg(v)
+and curr  > av + threshold*dev
+and threshold = 10.0;
+
+select v
+from vector of number v, number latest, number threshold
+where v = winagg(readfile("data/signals.dat")[0], 256, 1)
+and latest = v[dim(v)-1]
+and (latest - vavg(v)) / vstdev(v) > threshold
+and threshold = 10.0;
+
+select v
+from vector of number v, number latest, number threshold
+where v = winagg(readfile("data/pump.dat"), 20, 1)
+and latest = v[dim(v)-1]
+and abs((latest - vavg(v)) / vstdev(v)) > threshold
+and threshold = 3.0;
+
+select vstdev(v)
+from vector of number v
+where v = winagg(readfile("data/pump.dat"), 20, 1);
+
+select abs((latest - vavg(v)) / vstdev(v))
+from vector of number v, number latest
+where v = winagg(readfile("data/pump.dat"), 20, 1)
+and latest = v[dim(v)-1];
+
+select i, v[i]
+from integer i, vector v, number threshold
+where v = winagg(readfile("data/signals.dat")[0], 256, 256)
+  and v[i] > threshold
+  and threshold = 2000.0;
+
+create function iadiff(iarray ia, vector of number v)->real as
+sum(select abs(ia[i] - v[i]) from integer i where i in iota(0,dim(ia)-1));
+
+select m[0], m[1], iadiff(i, v)
+from iarray i, vector of integer v, vector m
+where m = merge({newsp(streamof(section(vreadfile(getenv("AMOS_HOME") + "scsq/lr/data/cdp_mid15.out"), 1, 7))),newsp(streamof(section(readfile(getenv("AMOS_HOME") + "scsq/lr/i"), 1, 7)))})
+and v = m[0]
+and i = m[1];
+
+sum(select iadiff(i, v)
+from iarray i, vector of integer v, vector m
+where m = merge({newsp(streamof(vreadfile(getenv("AMOS_HOME") + "scsq/lr/data/cdp_mid15.out"))),newsp(streamof(readfile(getenv("AMOS_HOME") + "scsq/lr/i")))})
+and v = m[0]
+and i = m[1]);
+
+select iadiff(i,v)
+from iarray i, vector of integer v, vector m
+where m = merge({newsp(streamof(vreadfile(getenv("AMOS_HOME") + "scsq/lr/data/cdp_mid15.out"))),newsp(streamof(readfile(getenv("AMOS_HOME") + "scsq/lr/i")))})
+and v = m[0]
+and i = m[1];
+*/

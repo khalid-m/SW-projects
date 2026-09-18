@@ -1,0 +1,128 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Tore Risch, UDBL
+ * $RCSfile: unloadschema.osql,v $
+ * $Revision: 1.9 $ $Date: 2012/05/15 19:27:51 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Unloading user schema
+ *
+ ****************************************************************************
+ * $Log: unloadschema.osql,v $
+ * Revision 1.9  2012/05/15 19:27:51  torer
+ * result -> return
+ *
+ * Revision 1.8  2012/04/13 12:30:05  torer
+ * = -> in
+ *
+ * Revision 1.7  2012/01/13 16:45:44  torer
+ * RECORD and unloadschema in released version
+ *
+ * Revision 1.6  2011/05/02 12:59:01  torer
+ * Changed name to
+ *   archiveDatabase(Charstring filename) -> Charstring
+ *
+ * Revision 1.5  2011/05/02 12:54:10  torer
+ * New function to unload both schema and data:
+ *   unloadDatabase(Charstring file)-> Charstring
+ *
+ * Revision 1.4  2011/01/29 11:04:39  torer
+ * Base system uses (...) tuple notation, 'return' statement, and systematic indentation
+ *
+ * Revision 1.3  2009/11/16 20:06:33  torer
+ * Strict use of 'in'
+ *
+ * Revision 1.2  2008/10/10 14:18:18  zeitler
+ * Streamed [type|function]definitions
+ *
+ * Revision 1.1  2008/10/10 09:44:48  torer
+ * Unloader of user schema
+ *
+ ****************************************************************************/
+
+load_lisp("unloadschema.lsp");
+
+create function usertype(Type t) -> Boolean
+  /* Is type t a user defined type? */
+  as select where t = usertypes();
+
+create function typeabove(Type x, Type y) -> Boolean
+  /* Is type x above y in the type hierarchy? */
+  as select where x = allsupertypes(y);                          
+                               
+create function userFunction(Function f) -> Boolean
+  /* Is function f a user defined function? */
+  as select where f = userfunctions();
+
+create function callsFunctions(Function f) -> Bag of Function g
+  /* Find the user defined functions called by function f */
+  as select g where g = functionsIn(f) and
+                    kindoffunction(g) != "generic" and
+                    userfunction(g) and
+                    g != f;
+
+create function callsSomehow(Function f) -> Function g
+  /* Find the user defined functions called by function f 
+     somehow, directly or indirectly */ 
+  as select g where g in tclose(#'callsFunctions',f) and
+                    g != f; 
+
+create function functionPrecedes(Function f, Function g) -> Boolean
+  as select where notany(select where g = callsSomehow(f)); 
+
+create function usersupertypes (Type t) -> Type s
+  /* Find the user defined types above type t in type hierarchy */
+  as select s where s in supertypes(t) and usertype(s);
+
+create function sourcecode(Type t) -> Charstring
+  /* Get source code to define user defined type t */
+  as if(usertype(t)) then
+     begin if(some(usersupertypes(t)))
+           then return("create type " + name(t) + " under " + 
+                       concatagg(inject(name(usersupertypes(t)),",")) + ";")
+           else return("create type " + name(t) + ";");
+     end;
+
+create function functiondefinitions0() -> Charstring
+ as begin
+    for each original Function f
+    where f in sortbag(userfunctions(),#'functionPrecedes')
+       return sourcecode(f);
+    end;
+
+create function functiondefinitions() -> Stream of Charstring
+  as begin
+     clearFunctionsInCache();
+     return streamof(functiondefinitions0()); 
+     end;
+
+create function typedefinitions0() -> Charstring
+  as for each original Type t
+     where t in sortbag(usertypes(),#'typeabove')
+       return sourcecode(t);
+
+create function typedefinitions() -> Stream of Charstring
+  as streamof(typedefinitions0());
+
+create function unloadSchema1(Charstring file)-> Charstring
+  as begin for each Charstring s
+           where s in typedefinitions()
+              print(s);
+           for each Charstring s
+           where s in functiondefinitions()
+              print(s);
+           return file;
+     end;
+
+create function unloadSchema(Charstring file) -> Charstring
+  as withWritefile(file, #'unloadSchema1');
+
+create function archiveDatabase1(Charstring file) -> Charstring
+  as begin unloadSchema1(file);
+           unloadData1(file);
+           return file;
+     end;
+
+create function archiveDatabase(Charstring file) -> Charstring
+  as withWritefile(file, #'archiveDatabase1');

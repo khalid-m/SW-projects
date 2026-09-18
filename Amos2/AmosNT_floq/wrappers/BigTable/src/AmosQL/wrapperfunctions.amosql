@@ -1,0 +1,65 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> 2012 <author> Minpeng Zhu, UDBL
+ * $RCSfile: wrapperfunctions.amosql,v $
+ * $Revision: 1.3 $ $Date: 2012/07/24 10:11:39 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: wrapper functions for bigtable wrapper
+ *
+ ****************************************************************************/
+
+/* generate bpat. e.g fff */
+create function generateBpat(number x)->Charstring 
+	as foreign 'generateBpat-+';
+
+/* => attribute name by dsn and tbn as bag of charstring */
+create function bigtableCols(Charstring dsn, Charstring tbn)
+   -> Bag of Charstring dc1
+  as select aname
+     from integer pos, Charstring aname
+     where (pos, aname) in bagify(bigTableAttributeVectorAname(dsn, tbn));
+
+/* canned function to compute binding pattern */
+create function genBpat(Charstring dsn, Charstring tbn)->Charstring
+  as generateBpat(count(bigtableCols(dsn,tbn)));
+
+/* => STATE,CITYNAME,POPULATION */
+create function commaList(Bag b)->Charstring
+  as concatagg(inject(b,","));
+
+/* => "POPULATION','CITYNAME','STATE" */
+create function quoteList(Bag b)->Charstring
+  as concatagg(inject(inject(b,","),"'"));
+
+/*
+create function generateBigtableCC(Charstring dsn, Charstring tbn)
+                                  ->Charstring fnd
+  as "create function #"+tbn+"_"+dsn+"()->("+
+     commalist(bigTableAttributesR(dsn,tbn))+")
+"+
+     " as select "+ commalist(bigtableCols(dsn,tbn))+
+     " where {"+commalist(bigtableCols(dsn,tbn))+
+     "} in gql('"+dsn+ "', 'select * from "+tbn+"',{});";
+*/
+
+
+create function generateBigtableCC(Charstring dsn, Charstring tbn)
+                                  ->Charstring fnd
+  as "create function #"+tbn+"_"+dsn+"()->("+
+     commalist(bigTableAttributesR(dsn,tbn))+")
+"+
+     " as multidirectional ('"+genBpat(dsn,tbn)+"' select "+ 
+                             commalist(bigtableCols(dsn,tbn))+
+     " where {"+commalist(bigtableCols(dsn,tbn))+
+     "} in gql('"+dsn+ "', 'select * from "+tbn+"',{}));";
+
+
+/* auto string creation of mapped type with corresponding ccfn */
+create function genCCfnMappedtype(Charstring dsn, Charstring tbn)
+                                 ->Charstring fnd
+  as "create_mapped_type('"+tbn+"_"+dsn+"', {'"+
+                  bigTableKeyAttribute(dsn,tbn)+"'}, {'"+
+                  quoteList(bigtableCols(dsn,tbn)) +
+                  "'}, '#"+tbn+"_"+dsn+"');";

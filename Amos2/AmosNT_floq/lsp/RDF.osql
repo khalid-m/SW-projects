@@ -1,0 +1,26 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2013 Tore Risch, UDBL
+ * $RCSfile: RDF.osql,v $
+ * $Revision: 1.2 $ $Date: 2013/02/06 07:48:24 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: RDF utility functions
+ *
+ ****************************************************************************
+ * $Log: RDF.osql,v $
+ * Revision 1.2  2013/02/06 07:48:24  torer
+ * New name:
+ * csvrdfstring(Vector v, Charstring d)->Charstring
+ *
+ * Revision 1.1  2013/02/06 07:40:55  torer
+ * new function
+ *   csvstring(Vector v, Charstring d)->Charstring
+ *
+ ****************************************************************************/
+
+create function csvrdfstring(Vector v, Charstring d) -> Charstring
+  /* Convert the vector of strings in v into a CSV string with d as delimiter.
+     Type tags are removed from typed literals */
+  as foreign 'csvrdfstring--+';

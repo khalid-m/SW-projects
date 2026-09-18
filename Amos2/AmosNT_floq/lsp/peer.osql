@@ -1,0 +1,167 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Tore Risch, Silvia Stefanova, UDBL
+ * $RCSfile: peer.osql,v $
+ * $Revision: 1.11 $ $Date: 2013/10/27 15:15:01 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Peer utility functions
+ *
+ ****************************************************************************
+ * $Log: peer.osql,v $
+ * Revision 1.11  2013/10/27 15:15:01  torer
+ * All peer foreign functions here
+ *
+ * Revision 1.10  2012/06/27 19:53:45  torer
+ * wait_for(peers) function introduced
+ *
+ * Revision 1.9  2012/04/13 12:30:04  torer
+ * = -> in
+ *
+ * Revision 1.8  2012/02/21 07:02:24  torer
+ * Documentation of amos-functions
+ *
+ * Revision 1.7  2011/01/29 11:04:39  torer
+ * Base system uses (...) tuple notation, 'return' statement, and systematic indentation
+ *
+ * Revision 1.6  2009/10/22 20:23:45  zeitler
+ * Simplified problematic query that generated in() errors
+ *
+ * Revision 1.5  2008/10/02 08:33:16  torer
+ * Correct definition of other_peers
+ *
+ * Revision 1.4  2008/09/17 20:06:43  torer
+ * Some more peer management functions, not least kill_the_federation(); to gracefully kill every peer and the name server.
+ *
+ * Revision 1.3  2008/04/11 12:13:08  silvias
+ * Wait-for in Lisp
+ *
+ * Revision 1.2  2008/04/10 08:48:02  silvias
+ * Peers synchronization added
+ *
+ ****************************************************************************/
+
+create function nameserver(Charstring name) -> Charstring
+  /* Make this Amos a name server when running as server by calling listen()
+     If name is non-empty the server will also be a named peer */
+  as foreign 'nameserver-+';
+
+create function register(Charstring name) -> Charstring
+  /* Register this Amos in the name server */
+  as foreign 'register-+';
+
+create function nameserverhost(Charstring namehost) -> Charstring
+  /* Set IP host name of name server */
+  as foreign 'nameserverhost-+';
+
+create function nameserverport(Integer no) -> Integer
+  /* Set port number used by name server */
+  as foreign 'nameserverport-+';
+
+create function hostname() -> Charstring
+  /* Get local host name of this computer */
+  as foreign 'hostname+';
+
+create function register(Charstring name, Charstring namehost)->Charstring
+  /* Register this database as peer NAME on nameserver in host NAMEHOST */
+  as  begin nameserverhost(namehost); 
+            if name != '' then register(name);
+            return name;
+      end;
+
+create function porttimeout(Real timeout) -> Real
+  /* Set timout for opening a port to a peer */
+  as foreign 'porttimeout-+';
+
+create function reregister(Charstring name, Charstring host)
+                         -> Charstring
+  /* Register this peer by NAME in namserver at HOST */
+  as foreign 'reregister--+';
+
+create function reregister (Charstring name) -> Charstring
+  /* Re-register this peer as NAME in local name server */
+  as reregister(name,hostname());
+
+create function listen() -> Boolean
+  /* Start running this peer as a server */
+  as foreign 'run-server';
+
+create function ship(Charstring peer, Charstring query) -> Bag of Vector result
+  /* Ship QUERY string to PEER for evaluation and ship back RESULT */
+  as foreign 'ship--+';
+
+create function send(Charstring peer, Charstring query) -> Charstring 
+  /* Send QUERY to PEER for evaluation without receiving result */
+  as foreign 'send--+';
+
+create function amos_servers()->Bag of Amos
+  /* Get all Amos servers registered as peers in nameserver */
+  as foreign 'amos-servers+';
+
+create function this_amosid () -> Charstring
+  /* Get the name of this Amos peer */
+  as foreign 'this-amosid+';
+
+create function kill_peer(Charstring peer) -> Charstring
+  /* Kill PEER unless it is a nameserver */
+  as foreign 'kill-peer-+';
+
+create function kill_the_federation () -> Boolean
+  /* Terminate all peers in federation and quit */
+  as foreign 'kill-the-federation';
+
+create function other_peers() -> Bag of Charstring nm
+  /* Return all other peers in federation */
+  as ship("NAMESERVER", "peers_at_nameserver(\"" + this_amosid() + "\");")[0];
+
+create function peers_at_nameserver(Charstring except) -> Bag of Charstring
+  /* Compute peers of federation in nameserver */
+  as select nm from Amos a, Charstring nm, Charstring host, Integer portno
+     where amosinfo(a)=(nm,host,portno) and
+           portno != -1 and 
+           nm != "NAMESERVER" and
+           nm != except; 
+
+create function amos_named(Charstring peer) -> Amos
+  /* Get the object representing PEER */
+  as foreign 'amos-named-+';
+
+create function broadcast(Charstring msg) -> Bag of Charstring peer
+  /* Broadcast to all peers in federation */
+  as for each Charstring p
+     where p in other_peers() 
+       begin send(p,msg);
+             return p;
+       end;
+
+create function kill_all_peers() -> Bag of Charstring
+  /* Kill all peers in federation including the name server */
+  as for each Charstring p
+     where p in other_peers()
+       return kill_peer(p); 
+
+create function is_running(Charstring peer)-> Boolean
+  /* Is a peer running? */
+  as select true where peer in other_peers();
+
+create function wait_for(Charstring peer)->Boolean
+  /* Wait for peer to start listening */
+  as foreign 'wait-for-+';
+
+create function wait_for(Vector of Charstring peers)->Boolean
+  /* Wait for peer to start listening */
+  as foreign 'wait-for-+';
+
+create function get_my_ip() -> Charstring
+  /* Get the IP address of the computer */
+  as foreign 'get-my-ip+';
+
+create function register_me(Charstring name, Charstring host, Number port)
+                         -> Charstring
+  /* Register this peer as server NAME in the nameserver on HOST 
+     listening on PORT */
+  as begin nameserverport(port);
+           return reregister(name, get_my_ip());
+     end; 
+

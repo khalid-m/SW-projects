@@ -1,0 +1,227 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2009 Silvia Stefanova, UDBL
+ * $RCSfile: RDBschema.amosql,v $
+ * $Revision: 1.1 $ $Date: 2013/08/09 14:18:17 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Common schema for all RDB
+ *
+ ****************************************************************************/
+
+
+create type RDBtype;
+create type table under RDBtype;
+create function tname(table key)->Charstring key as stored;
+create type column under RDBtype;
+create function cname(column)->Charstring as stored;
+create function datatype(column)->Charstring as stored;
+create function size(column)->integer as stored;
+create function nullable(column)->charstring as stored;
+create function tableOf(column)->table as stored;
+
+
+create type rel_key under RDBtype;
+
+create function key_columns(rel_key) -> Vector as stored;
+
+create type LocalK under rel_key;
+
+create type ForeignK under rel_key;
+
+create function origin(ForeignK)->LocalK as stored;
+
+create function is_primary(LocalK)->Charstring as stored;
+
+create function key_table(rel_key nonkey)->table as stored;
+
+create function db_name()->Charstring as stored;
+
+create function db_schema()->Charstring as stored;
+
+create function db_catalog()->Charstring as stored;
+
+create function ontology()->charstring 
+  /* Namespace for the RDB */
+  as stored;
+set ontology()="http://user.it.uu.se/~udbl/sard/";
+
+create function RDB_URI(RDBType o)->Charstring as stored;
+
+create function setURI(RDBType o, Charstring dbname,Charstring db_elem_name) -> Charstring
+/*Provides an URI for ecah of the RDB schema objects */
+as
+	set RDB_URI(o) = ontology()+ dbname + "#"+ db_elem_name; 
+
+
+create function isPrimaryK(Jdbc j, Charstring tname, Charstring catalog, Charstring schema)->Boolean
+/*Checks whether there are primary keys in the table*/
+as
+ select true where some(primary_keys(j, catalog,schema , tname))=TRUE;
+
+
+create function isForeignK(Jdbc j, Charstring catalog, Charstring schema,Charstring tname)->Boolean
+/*Checks whether there are foreign keys in the table*/
+as
+ select true where some(imported_keys(j,catalog, schema,tname))= TRUE ;
+
+create function isForKOf(Jdbc jd,Charstring cat, Charstring sch, Charstring tname,Charstring cname)->Boolean
+/*Checks whether the column cname is a foreign key in tname*/
+as
+	select true 
+	from Charstring tno, Charstring cno, Charstring cn 
+	where (tno,cno,cn) in imported_keys(jd,cat, sch,tname) and 
+              like_i(cname,cn);
+
+create function isPrKOf(Jdbc jd,Charstring cat, Charstring sch, Charstring tname,Charstring cname)->Boolean
+/*Checks whether the column cname is a primary key in tname*/
+as
+	select true 
+	from Charstring cn,Charstring pkname  
+	where (cn, pkname) in primary_keys(jd,cat,sch,tname) and 
+              like_i(cname,cn);
+
+
+
+create function  referForeignK(Jdbc j, Charstring tname, Charstring schema, Charstring catalog)->Charstring
+/*Counts the number of FKs*/
+as
+ select distinct ftable 
+ from Charstring ftable, Charstring fcolumn, Charstring column 
+ where (ftable,fcolumn,column) in imported_keys(j,catalog,schema, tname); 
+
+
+
+
+create function ret_columnO(Charstring tname, Charstring name)->column
+as
+	select c from column c where cname(c)=name and tname(tableOf(c))=tname;
+
+declare_key(theresolvent('CHARSTRING.CHARSTRING.RET_COLUMNO->COLUMN'),{'tname','name'});
+
+
+create function ret_tableO(Charstring tabname)->table
+as
+	select t from table t where tname(t)=tabname;
+
+
+create function ret_originCols(Jdbc j, Charstring tabname, Vector list_fk)->Column
+as
+/*Returns the columns that are referenced by the list of FK in the table tabname*/ 
+ for each Charstring colname where colname=in(list_fk)
+	begin
+	 declare column ch;
+	  select ret_columnO(or_tabname,c) into ch 
+          from Charstring c, Charstring or_tabname 
+          where (or_tabname,c,colname) in imported_keys(j,tabname);	
+	  return ch;
+       end;
+
+
+create function ret_localK(charstring tname, Vector cols)->LocalK
+as
+	select l from LOcalK l, table t where key_columns(l)=cols and key_table(l)=t and tname(t)=tname;
+
+
+
+
+create function primaryRDB(Jdbc j, Charstring dbname,Charstring tname, Charstring catalog, Charstring schema)->Vector
+/*Create an object LocalK and sets all its needed functions*/
+as
+ if ( some(primary_keys(j, catalog,schema , tname))) then
+  begin
+	declare LocalK r, Vector vec;
+	set vec= {};
+	create LOcalK(key_columns, key_table, is_primary) instances r({}, ret_tableO(tname),"TRUE");
+	for each Charstring col, Charstring st 
+        where (col,st) in primary_keys(j,catalog,schema,tname)
+	  begin
+	 	set vec= concat(vec,{unique(ret_columnO(tname,col))} );
+	  end;
+	set key_columns(r)= vec;
+	setURI(r, dbname,tname + "_" + "localK");
+ end;
+
+
+
+create function foreignRDB(Jdbc j, Charstring dbname,Charstring tname, Charstring schema, Charstring catalog)->Vector
+as
+/*Create an object Foreignk and sets all its needed properties*/
+for each Charstring ftab where referForeignK(j, tname, schema, catalog)=ftab
+  begin
+	declare ForeignK r, Vector vc, Charstring fftab, Vector vect;
+	set fftab=ftab;
+	set vc={};
+	set vect={};
+	create ForeignK(key_columns, key_table) instances r({},ret_tableO(tname) );
+	for each Charstring fcol,Charstring col where unique(imported_keys(j,catalog,schema,tname))=(ftab,fcol,col)
+	   begin
+	 	set vect= concat(vect,unique({ret_columnO(tname,col)}) );
+		set vc = concat(vc,{unique(ret_columnO(ftab,fcol))});
+	   end;
+	setURI(r, dbname,tname + "_"+ftab+ "_" + "foreignK");
+	set key_columns(r)= vect;
+	set origin(r) = ret_localK(ftab, vc);
+ end;
+
+
+create function ret_foreignKO(Charstring tab, Charstring reftab, Charstring refcol)->ForeignK
+as
+	select f from ForeignK f where key_table(f)=ret_tableO(tab) and key_columns;
+
+
+/*
+create function wrapRDB(Jdbc j,Charstring dbname, Charstring catalog, Charstring schema)->Boolean
+as
+ begin
+  declare integer tonum;
+  set tonum=0;
+  for each Charstring tabname 
+  where (tabname,dbname, schema, "TABLE") in tables(j)
+		begin
+			declare table tt;
+			create table(tname) instances tt(tabname);
+			setURI(tt,dbname, tabname);
+		
+         		for each Charstring typ,Charstring colname, Integer size, Charstring anull where columns4(j,tabname)=(typ,colname, size, anull)
+	        	   begin
+				 declare column cc;
+				 create column(tableOf,datatype,cname,size,nullable) instances cc (tt,typ,colname,size,anull);
+				 setURI(cc,dbname+"/",colname);
+										
+		           end;
+			primaryRDB(j, dbname,tabname,catalog, schema);
+			foreignRDB(j, dbname,tabname,schema,catalog);
+		end;
+    end;
+*/
+
+create function wrapRDB(Jdbc j,Charstring dbname, Charstring catalog, Charstring schema)->Boolean
+/*Populates the database schema*/
+as
+ begin
+  declare integer tonum;
+  set tonum=0;
+  for each Charstring tabname 
+  where (tabname, catalog, schema, "TABLE") in tables(j)
+		begin
+			declare table tt;
+			create table(tname) instances tt(tabname);
+			setURI(tt,dbname, tabname);
+		
+         		for each Charstring typ,Charstring colname, Integer size, Charstring anull where columns4(j,tabname)=(typ,colname, size, anull)
+	        	   begin
+				 declare column cc;
+				 create column(tableOf,datatype,cname,size,nullable) instances cc (tt,typ,colname,size,anull);
+				/* setURI(cc,dbname, tabname + "_" +colname);*/
+
+				 setURI(cc,dbname,tabname+"/"+colname);
+										
+		           end;
+			primaryRDB(j, dbname,tabname,catalog, schema);
+			foreignRDB(j, dbname,tabname,schema,catalog);
+		end;
+    end;
+
+

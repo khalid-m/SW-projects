@@ -1,0 +1,405 @@
+/*-*-sql-*-*******************************************************************/
+
+logging off;
+
+/* Configuration schema */
+
+create function prepcoordhost() -> Charstring;
+create function sp_username(Charstring) -> Charstring;
+create function sp_start(Charstring) -> Charstring;
+create function prepstartcmd(Charstring) -> Charstring;
+create function dumpfile() -> Charstring;
+create function sprocstart() -> Charstring;
+create function prephosts() -> Vector of Charstring;
+create function cpus_per_host()->Integer;
+create function spstdout() -> Charstring;
+create function sppostfix() -> Charstring;
+
+create function preprsh() -> Charstring;
+create function prephome() -> Charstring;
+
+/* Coord schema */
+
+create function peername(charstring hostname) -> charstring peername
+  as select pn
+     from Charstring pn, Amos o, Integer portno
+     where <pn, hostname, portno> = amosinfo(o);
+
+create function alldaemons() -> Charstring
+  as select p
+     from Charstring host, Charstring p
+     where p = peername(host)
+     and like(p, "SCSQD*");
+
+create function uniqueprephosts() -> Charstring
+  as select distinct s
+     from Charstring s
+     where s in prephosts();
+
+create function listend() -> <Charstring, Integer>
+  as select host, port
+     from Amos o, Charstring pn, Charstring host, Integer port
+     where host in uniqueprephosts()
+     and <pn, host, port> = Amosinfo(o)
+     and like(pn, "SCSQD*")
+     and port > 0;
+
+create function coopd() -> Vector of Integer as
+ship("s", "select count(select s 
+      from Charstring s
+      where s in uniqueprephosts()
+      and s != gethostname()), count(listend());");
+
+create function cooready() -> Boolean as
+  select 
+  from Vector of Integer pd
+  where pd = coopd()
+  and pd[0] = pd[1];
+
+create function delay(integer src, integer dest, real st)->real;
+create function cdelay()->vector of number
+/* Obtain delay data from coord */
+as ship('s', 'select i,j,r, delay(i,j,r) from integer i, integer j, real r;');
+
+create function killdaemons() -> Charstring
+  as select send(server, "quit;")
+     from charstring server, vector of charstring sres
+     where server in sres
+     and sres = ship("nameserver", "alldaemons();")[0];
+
+/* Utility functions for reading streams of vectors of numbers */
+
+create function vreadfile(Charstring file)->Vector of Integer as
+readfile(file);
+
+create function readintstream(Charstring file)->Stream of Vector of Integer as
+select streamof(readfile(file));
+
+create function readintstreams(vector files)->Stream of Vector of Integer as
+select streamof(readfiles(files));
+
+create function readnumstream(Charstring file)->Stream of Vector of Number as
+select streamof(readfile(file));
+
+/* The cheapest random function */
+create function modrand(integer)->integer as foreign 'modrandbf';
+
+/* grep stream content */
+create function sgrep(charstring pattern, stream s)->charstring as
+select c from charstring c where c=in(s) and like(c, pattern);
+
+/* Group windows over streams */
+
+create function groupAgg(Number stride, Bag stream)
+                        -> <Number k, Vector of Number aggv>
+  /* Form groups of pairs <k, v> in stream sream */
+  as foreign 'groupAgg-impl';
+
+create function groupAgg2(integer size, integer stride, integer attrib,
+                          bag of vector inp) -> vector as 
+       foreign 'groupagg2-impl';
+
+create function groupAgg2e(integer size, integer stride, integer attrib,
+                           bag of vector inp) -> vector as 
+       foreign 'groupagg2e-impl';
+
+create function skipfirst(integer size, integer attrib, bag of vector inp)
+                      -> vector as
+	foreign 'skipfirst-impl';
+
+create function vmax(Vector v)-> <Integer i, Object o>
+   as select i, o
+      where o = maxagg(in(v)) and
+            v[i]=o;
+
+/* file operations */
+create function readtextvectorfile(charstring filename)->vector of number
+	as foreign 'readtextvectorfile';
+
+create function readbinaryvectorfile(charstring filename)->vector of number
+	as foreign 'readbinaryvectorfile';
+
+create function lofardata(charstring filename)->numarray
+	as foreign 'readlofardata';
+
+/* Blobfile is used to test communication performance. */
+create function blobfile(integer id)->bag of binary as stored;
+
+create function populate_blobfile(integer id, integer size, integer num)
+  ->boolean as
+begin
+        add blobfile(id) = byteblobs(size, num);
+end;
+
+/* In DEPSA'07, a blobfile of size 3M was used.
+   This (smaller) blobfile is used in the regression tests. */
+populate_blobfile(1, 5000, 1);
+
+populate_blobfile(2, 72, 1); /* Linear Road test vector */
+
+create function blobs(integer filenum, integer num_arrays)->binary as
+select blobfile(filenum) from integer i where i in iota(1, num_arrays);
+
+create function slblobs(Number filenum, Number num_arrays, Number sl)
+                      -> Bag of Binary
+  as select blobfile(filenum) 
+     from Number i 
+     where i in diota(sl, 1, num_arrays);
+
+create function gen_array(integer filenum, integer num_arrays)->stream as 
+select streamof(blobs(filenum, num_arrays));
+
+create function slgen_array(Number filenum, Number num_arrays, Number sl)
+                          -> Stream of Binary
+  as select streamof(slblobs(filenum, num_arrays, sl));
+
+create function countbag(bag of object b)->integer
+      as select count(b);
+
+create function randbag(Integer k)-> Bag of Integer
+   as for each Integer i where i in iota(1,k) return rand(10);
+
+create function randstream(Integer k) -> Stream of Integer
+   as streamof(randbag(k));
+
+/* expv, two_maxv, binv: generate fanout vectors (flatv is trivial). */
+
+create function expv_rec(number prev_fo, number target_fo)
+-> vector of integer as
+begin
+if target_fo < 2*prev_fo then begin
+  if target_fo = 1 then 
+    if prev_fo = 1 then
+      return {1}
+    else
+      return {}
+  else
+    return {ceiling(target_fo)};
+end else begin
+  declare vector of integer res;
+  set res = concat({2*prev_fo}, expv_rec(2*prev_fo, target_fo/(2*prev_fo)));
+  return res;
+end;
+end;
+
+create function expv(integer target_fo) -> vector of integer as
+select expv_rec(1, real(target_fo));
+
+create function two_maxv(integer target_fo) -> vector of integer v as
+select v
+where (v = {2} and target_fo = 2)
+or (v = {2, target_fo/2} and target_fo > 2);
+
+create function binv(integer depth) -> vector of integer as 
+vselect 2 from integer i where i in iota(1, depth);
+
+create function optv(integer target_fo, real a, integer b)
+ -> vector of integer as foreign 'opt-fanout+++-';
+
+
+/* viota(lo,hi) generates a vector {lo, lo+1, ..., hi} */
+
+create function viota(integer lo, integer hi) -> vector of integer as
+vectorize(select i-lo, i
+from integer i
+where i in iota(lo, hi));
+
+/* Chopvector partitions a vector into p partitions */
+
+create function chopvector(vector v, integer p)->vector of vector as
+vectorize(select vsize, w
+from vector w, integer vsize
+where vsize in iota(0, p - 1)
+and w = vectorize(select i, v[i * p + vsize]
+  from integer i
+  where i in iota(0, dim(v))));
+
+/* Transpose transposes a matrix (vector of vector) */
+
+create function transpose(vector of vector ww)-> vector of vector as
+vectorize(select j, vectorize(select i, ww[i][j] from integer i)
+from integer j
+where j in iota(0, dim(ww[0]) - 1));
+
+create function delaystat(charstring filename)->
+<real average, real stdev, real maxx> as
+begin
+declare integer width;
+set width = maxagg(select dim(v) from vector v where v in readfile(filename));
+return (select a, s, x from real s, real a, real x
+where <a, s> = vavgstdev(vselect w[width-1] from vector w
+where w in readfile(filename) and dim(w) = width)
+and x = maxagg(select w[width-1] from vector w
+where w in readfile(filename) and dim(w) = width));
+end;
+
+create function qhosts()->Boolean as begin
+set prephosts() = 
+  vselect read_ntuples(getenv("TMPDIR") + "/machines")[0];
+set prepcoordhost() = hostname();
+set sp_username(h) = getenv("USER")
+  from charstring h
+  where h in prephosts() or h = "localhost"; 
+
+set preprsh() = getenv("TMPDIR") + "/rsh";
+set prepstartcmd(h) = getenv("AMOS_HOME") + "/bin/scsq.exe"
+  from charstring h
+  where h in prephosts() or h = "localhost";
+set sp_start(h) = ""
+  from charstring h
+  where h in prephosts() or h = "localhost";
+end;
+
+create function timestamp()->charstring as
+select substring(stringify(date(n)), 1, 10) +
+"_" + stringify(hour(n)) + stringify(minute(n)) + stringify(second(n))
+from timeval n
+where n = now();
+
+/* tcount helper functions */
+
+create function setuptime(vector of vector of number x, real inittime)->real as
+maxagg(select y[0] from vector of number y where y in x) - inittime;
+
+create function exectime(vector of vector of number x)->real as
+maxagg(select y[2] from vector of number y where y in x);
+
+create function countsum(vector of vector of number x)->integer as
+sum(select y[3] from vector of number y where y in x);
+
+create function multitcount(stream s, integer nasize)->vector as 
+tcount(streamof(
+select multi2na(b, nasize)
+from numarray b
+where b in s));
+
+create function multistcount(stream s, integer nasize)->stream as
+streamof(multitcount(s, nasize));
+
+create function lrstcount(stream s)->stream as
+multistcount(s, 15);
+
+/* profiler reports */
+
+create function cpusage(bag of <charstring, record> b)
+-> <real, integer, charstring> as
+select r['mappertime'], r['nsub'], c
+from charstring c, record r where <c,r> in b;
+
+create function cpuprof(bag of <charstring, record> b)
+-> <real, integer, charstring, record> as
+select r['mappertime'], r['nsub'], c, r['profile']
+from charstring c, record r where <c,r> in b;
+
+create function outputbw(bag of <charstring, record> b) ->
+<charstring sp, charstring hostname, vector socket, real realtime, real> as
+select sp, r['hostname'], socket, realtime, sent[0]/realtime
+from record r, record cs, vector of number sent
+where <sp, r> in b
+and cs = r['commstat']
+and sent = cs[socket]
+and realtime = r['exetime']; 
+
+create function hrbw(charstring sp, charstring hostname, vector socket, real realtime, real bw)->
+<real, charstring, charstring, vector> as select roundto(bw/1e6, 2), sp, hostname, socket;
+
+create function profilefile(charstring fname)->bag of <charstring c, record r>
+as
+select c, r
+from vector v
+where c=v[0] and r=v[1] and v in readfile(fname);
+
+create function outputbwp(bag of <charstring, record> b) ->
+<charstring sp, charstring hostname, vector socket, real realtime, real, real, integer> as
+select sp, r['hostname'], socket, realtime, sent[0]/realtime, r['mappertime'], r['nsub']
+from record r, record cs, vector of number sent
+where <sp, r> in b
+and cs = r['commstat']
+and sent = cs[socket]
+and realtime = r['exetime'];
+
+create function hrbwp(charstring sp, charstring hostname, vector socket, real realtime, real bw, real cpu, integer nsub)->
+<integer, integer, real, real, charstring, vector> as 
+select id, nsub, cpu, roundto(bw/1e6, 2),  hostname, socket
+from charstring spid, integer id
+where "sp-" + spid = sp
+and spid = stringify(id);
+
+create function ibcomm(bag of <charstring, record> b) -> <charstring, number sentbytes> as
+select socket[0], sent[0]
+from record r, record cs, vector of number sent, vector socket, charstring sp
+where <sp, r> in b and cs = r['commstat'] and sent = cs[socket];
+
+create function aggcs(charstring infile)-><vector, vector of vector of number> as
+select h, cs from vector h, vector of vector of number cs
+where <h, cs> in groupby_pos(ibcomm(profilefile(infile)), 1);
+
+create function ibc(vector host, vector of vector of number commstat)-><number, charstring> as
+select sum(in(commstat)[0]+0.0)/1e6, host[0];
+
+create function splitstream_cpu_breakdown(bag of <charstring, record> b)
+-> <real, charstring, number> as
+select r['mappertime'], k, p[k]
+from charstring c, record r, record p, charstring k
+where <c, r> in b
+and (some(r['sfn']) or some(r['rfn']))
+and p = r['profile'];
+
+/* mergestream analysis */
+
+create function mrgprof(bag of <charstring, record> b)
+-> <charstring, charstring, number> as
+select c, k, profile[k]
+from charstring k, charstring c, record r, record profile
+where <c, r> in b
+and profile = r['profile'];
+
+create function prof(record p, charstring pattern)->boolean as
+some(select
+from charstring k, number n
+where n = p[k]
+and like(k, pattern));
+
+create function profilenode(charstring pattern, bag of <charstring, record> b)
+-> <charstring, record, number> as
+select c, profile, r['proctime']
+from charstring c, record r, record profile
+where <c, r> in b
+and profile = r['profile']
+and prof(profile, pattern);
+
+/* mining merge profiles */
+
+create function processes(charstring) -> <record, number>;
+
+create function fcnnames()->charstring;
+
+/* percentage of the function spent (zero if function not in profile) */
+
+create function percorzero(charstring fcnname, record p)
+-><number n> as
+select n
+where ((prof(p, fcnname) and n=p[fcnname])
+        or (n=0 and notany(prof(p, fcnname))));
+
+/*
+add processes(file) = <profile, proctime>
+from charstring file, record profile, charstring process, number proctime
+where file in dir("profiles", "dp*")
+and <process, profile, proctime> in profilenode("*SMJ*", profilefile(file));
+
+add fcnnames() = (select distinct k
+from number pt, charstring f, record p, number v, charstring k
+where <p, pt> = processes(f)
+and v = p[k]
+and k!="samples");
+
+fcnnames();
+
+write_ntuples((select v from vector v
+where v in sort(select file, fcnname, proctime*percentage
+from charstring file, number proctime, number percentage, record profile, charstring fcnname
+where <profile, proctime> in processes(file)
+and percentage = percorzero(fcnname, profile)
+and fcnname in fcnnames())), "profileproctime");
+*/

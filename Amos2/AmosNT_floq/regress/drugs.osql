@@ -1,0 +1,77 @@
+/*****************************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 1993 Tore Risch, EDSLAB
+ * $RCSfile: drugs.osql,v $
+ * $Revision: 1.2 $ $Date: 2011/01/27 11:26:14 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ ****************************************************************************/
+
+create type Drug properties (
+        DrugClass Charstring
+);
+
+create function  MeshTerms (Drug m nonkey)  ->  Charstring as stored;
+create function  TherapEffects (Drug m nonkey)  ->  Charstring as stored;
+create function  ModelEffects (Drug m nonkey)  ->  Charstring as stored;
+create function  ResponsiveParam (Drug m nonkey)  ->  Charstring as stored;
+
+create type LocalDrug subtype of Drug properties (
+        StartDose Literal,
+        Units Literal
+);
+create function  NormDose (Drug m nonkey)  ->  Literal as stored;
+create function  DoseDelta (Drug m nonkey)  ->  Literal as stored;
+
+/*
+ * the function DrugNames() stores the alternative names of a drug
+ * it defines a unique index on the name field to prevent two different
+ * medicines from having the same name
+ */
+create function DrugNames(LocalDrug m nonkey) ->
+                            (Charstring key, Charstring ) as stored;
+
+create function  DrugNamed (Charstring n)  ->  LocalDrug as
+        select  m from LocalDrug m, Charstring k where DrugNames(m) = (n,k);
+
+
+create function  NormDoseOfDrugNamed1(Charstring n)  ->  Literal as
+     select  NormDose(m) from LocalDrug m, Charstring k
+                        where DrugNames(m) = (n,k);
+
+
+/*
+ * the next 5 functions define alternative names for a drug
+ */
+create function  nameOfDrug (LocalDrug m nonkey)  ->  Charstring as
+        select  n from Charstring n where DrugNames(m) = (n,'Generic');
+create function  Trade (LocalDrug m nonkey)  ->  Charstring as
+        select  n from Charstring n where DrugNames(m) = (n,'Trade');
+create function  Abbreviation (LocalDrug m nonkey)  ->  Charstring as
+        select  n from Charstring n where DrugNames(m) = (n,'Abbrev');
+create function  Synonyms (LocalDrug m nonkey)  ->  Charstring as
+        select  n from Charstring n where DrugNames(m) = (n,'Synonym');
+create function  UpperCaseName (LocalDrug m nonkey)  ->  Charstring as
+        select  n from Charstring n where DrugNames(m) = (n,'UC');
+
+create function RouteDoseForm(LocalDrug m nonkey) -> (Charstring ,
+        Charstring , Charstring )  as stored;
+
+
+
+create LocalDrug (DrugNames, DoseDelta, NormDose, StartDose, 
+	          MeshTerms, ModelEffects, RouteDoseForm, DrugClass)
+instances
+:glipzide
+(bag(('Glipizide','Generic'),('Glucotrol','Trade')) /* DrugNames */,
+2.5 /* DoseDelta */,
+10.0 /* NormDose */,
+'5 mg po qd' /* StartDose */,
+bag('Glipizide') /* MeshTerms */,
+bag(' ') /* ModelEffects */,
+bag(('po','5mg','tab'), ('po','10mg','tab')) /* RouteDoseForm */,
+'Oral_Hypoglycemic' /* DrugClass */);
+rollback;
+

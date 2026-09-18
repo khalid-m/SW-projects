@@ -1,0 +1,119 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: pca_shred.osql,v $
+ * $Revision: 1.2 $ $Date: 2013/09/10 12:54:03 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: HAGGLUNDS PCA SHRED
+ *
+ ****************************************************************************
+ * $Log: pca_shred.osql,v $
+ * Revision 1.2  2013/09/10 12:54:03  chexu484
+ * working now
+ *
+ * Revision 1.1  2013/09/10 12:19:47  chexu484
+ * pca shredder abnomal detection
+ * 
+ ****************************************************************************/
+
+
+/* define logdirectory where the data is stored */
+
+create logdirectory (name,folder,timeout,startseq)
+       instances ('d1b', pwd()+'/data/COOLER/',10,0);
+set variables(dirnamed("d1b")) =
+  {"REG402","REG403", "REG408", "REG410", "DIN01"};
+
+create HagglundsStream (hlundid, logdirname)
+       instances ('hsd1b', 'd1b');
+
+/* mean, std, COEFF, LATENTinv, and T2 statistic from training data */
+
+create function mu() -> Vector of Number as stored;
+create function sigma() -> Vector of Number as stored;
+
+create function COEFF1() -> Vector of Number as stored;
+create function COEFF2() -> Vector of Number as stored;
+create function COEFF3() -> Vector of Number as stored;
+create function LATENTinv() -> Vector of Number as stored;
+
+create function T2knbeta() -> Number as stored;
+
+
+/* set values */
+/* eventually, the statistics should be calculated on the fly */
+
+set mu() = {16.5098, 35.8721, 26.8503};
+set sigma() = {1.4772, 3.0905, 2.2305};
+
+
+set COEFF1() = {-0.1045, 0.7175, 0.6887};
+set COEFF2() = {0.9393, -0.1563, 0.3054};
+set COEFF3() = {0.3267, 0.6788, -0.6576};
+
+set LATENTinv() = {0.5391, 0.9045, 25.4392};
+
+set T2knbeta() = 9.9142;
+
+    
+/* calculate T2_s for new datapoint */
+
+
+create function XT(Number CoolMediumTemp, Number TempOilIn, Number TempOilOut) -> Vector of Number
+  as ({CoolMediumTemp, TempOilIn, TempOilOut} - mu())./ sigma();
+
+
+create function XTb(Number CoolMediumTemp, Number TempOilIn, Number TempOilOut) -> Vector of Number
+  as {XT(CoolMediumTemp, TempOilIn, TempOilOut) * COEFF1(),
+      XT(CoolMediumTemp, TempOilIn, TempOilOut) * COEFF2(),
+      XT(CoolMediumTemp, TempOilIn, TempOilOut) * COEFF3()};
+
+
+create function ts(Number CoolMediumTemp, Number TempOilIn, Number TempOilOut)-> Number
+  as XTb(CoolMediumTemp, TempOilIn, TempOilOut) .* LATENTinv() * XTb(CoolMediumTemp, TempOilIn, TempOilOut);
+
+
+/* Applied queries */
+
+create function retw(Stream of Window sw) -> Stream of Logevent 
+ /* Retrieve logevents from windows */
+ as streamof(select e from Logevent e, Window w
+             where w in sw and e in w);
+
+
+create function start_test(Record r) -> Record
+  as select r
+     from Number din01, Number reg408, Number reg410, Number reg402, Number reg403
+     where din01 = r["DIN01"] and din01 = 1
+     and reg408 = r["REG408"] and reg408 > 15
+     and reg410 = r["REG410"] and reg402 = r["REG402"] and reg403 = r["REG403"]
+     and ts(reg410, reg402, reg403) > T2knbeta();
+
+create function stop_test(Record r0, Record r) -> Boolean
+  as select true
+     from Number din01, Number reg408, Number reg410, Number reg402, Number reg403
+     where (din01 = r["DIN01"] and reg408 = r["REG408"] and
+            reg410 = r["REG410"] and reg402 = r["REG402"] and
+            reg403 = r["REG403"])
+       and ((din01 = 1 and ts(reg410, reg402, reg403) <= T2knbeta()) or
+	    (din01 = 0) or
+	    (reg408 <= 15));
+
+create function w1() -> Stream of Window
+  as pwindowize(filter_record_agg(simlogeventstream(dirnamed('d1b')), {'REG410','REG402','REG403','DIN01','REG408'}),
+                #'start_test',#'stop_test');
+
+
+create function v_ts_span(Window w) -> Vector of Real
+ /* Timespan of a window */
+ as select {mx - mn, mn, mx}
+    from Real mn, Real mx
+    where mx = maxagg(select r["TS"] from Record r where r in w) and
+    mn = minagg(select r["TS"] from Record r where r in w);
+
+create function q2() -> Bag of (Timeval, Timeval, Boolean)
+  as select timeval(v[1]), timeval(v[2]), true
+     from Window w, Vector of Real v
+     where v = v_ts_span(w) and v[0] > 240 and w in w1();

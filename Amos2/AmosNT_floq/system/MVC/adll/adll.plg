@@ -1,0 +1,97 @@
+<html>
+<body>
+<pre>
+<h1>Build Log</h1>
+<h3>
+--------------------Configuration: adll - Win32 Debug--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "C:\Users\Silvia\AppData\Local\Temp\RSP3B86.tmp" with contents
+[
+kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib Ws2_32.lib /nologo /dll /incremental:no /pdb:"amos2.pdb" /debug /machine:I386 /out:"..\..\..\bin\amos2.dll" /implib:"..\..\..\bin\amos2.lib" /pdbtype:sept 
+.\Debug\a_pca.obj
+.\Debug\a_time.obj
+.\Debug\adll.obj
+.\Debug\aggops.obj
+.\Debug\amosfns.obj
+.\Debug\binary.obj
+.\Debug\buffer.obj
+.\Debug\c0xdir.obj
+.\Debug\cinterf.obj
+.\Debug\comm.obj
+.\Debug\commands.obj
+.\Debug\compl_fns.obj
+.\Debug\coroutine.obj
+.\Debug\CSV.obj
+.\Debug\event_manager.obj
+.\Debug\expression.obj
+.\Debug\extender.obj
+.\Debug\filefns.obj
+.\Debug\files.obj
+.\Debug\getopt.obj
+.\Debug\htbl.obj
+.\Debug\init.obj
+.\Debug\language.obj
+.\Debug\lexSQL.obj
+.\Debug\lexyy.obj
+.\Debug\linh.obj
+.\Debug\lispfns.obj
+.\Debug\lock.obj
+.\Debug\math_fns.obj
+.\Debug\mersenne.obj
+.\Debug\mex_foreign.obj
+.\Debug\mex_generic_api.obj
+.\Debug\mex_relation.obj
+.\Debug\mexi.obj
+.\Debug\mexi_ff.obj
+.\Debug\mexima.obj
+.\Debug\mexmeda.obj
+.\Debug\mexutilities.obj
+.\Debug\nbprint.obj
+.\Debug\os_fns.obj
+.\Debug\parser_tab.obj
+.\Debug\RDF.obj
+.\Debug\scan.obj
+.\Debug\scan_remote.obj
+.\Debug\sql_parser_tab.obj
+.\Debug\startupdirectory.obj
+.\Debug\storagetypes.obj
+.\Debug\strings.obj
+.\Debug\text_fns.obj
+.\Debug\text_match.obj
+.\Debug\threadbarrier.obj
+.\Debug\tls.obj
+.\Debug\top.obj
+.\Debug\typecheck.obj
+.\Debug\uri.obj
+.\Debug\winagg.obj
+.\Debug\wproctime.obj
+.\Debug\wsalib.obj
+..\eval.obj
+..\btree.obj
+..\extfns.obj
+..\fncall.obj
+..\hist.obj
+..\index.obj
+..\libyywrap.obj
+..\misc.obj
+..\oid.obj
+..\olog.obj
+..\print.obj
+..\read.obj
+..\rel.obj
+..\storage.obj
+..\systemfns.obj
+]
+Creating command line "link.exe @C:\Users\Silvia\AppData\Local\Temp\RSP3B86.tmp"
+<h3>Output Window</h3>
+Linking...
+   Creating library ..\..\..\bin\amos2.lib and object ..\..\..\bin\amos2.exp
+
+
+
+<h3>Results</h3>
+amos2.dll - 0 error(s), 0 warning(s)
+</pre>
+</body>
+</html>

@@ -1,0 +1,10 @@
+
+create function charstringResults(Number n)->Charstring
+  as select "<"+concatagg(inject((select "Charstring"
+       from Integer i
+      where i = iota(1,n)),","))+">";
+
+create function makeQueryFunction (Charstring sparql, Charstring fn, Integer w)->Function
+  as select eval("create function " + fn + 
+                 "()->" + charstringResults(w) + " as " + parse_sparql(sparql));
+

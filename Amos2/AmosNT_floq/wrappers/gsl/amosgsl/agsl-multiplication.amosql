@@ -1,0 +1,26 @@
+/* Matrix multiplication operations on specific matrix
+   types to the appropriate functions */
+
+/**
+ * Infix operator \times on general matrices is a synonym for
+ * dgemm
+ *
+ */
+
+create function times (matrix A, matrix B)->matrix C
+             as dgemm (A, B);
+
+create function times (lowertri L, matrix B)->matrix C
+             as dtrmm (L, B);
+
+create function times (uppertri U, matrix B)->matrix C
+             as dtrmm (U, B);
+
+create function times (symmetric S, matrix B)->matrix C
+             as dsymm (S, B);
+
+
+create function times (number alpha, matrix A, matrix B)->matrix C
+             as dgemm (alpha, A, B);
+
+

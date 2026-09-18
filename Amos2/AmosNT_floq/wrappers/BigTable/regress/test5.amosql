@@ -1,0 +1,40 @@
+/* for mysqltest.osql only */
+set :a = jdbc("ibds", "com.mysql.jdbc.Driver");
+set :b = jdbc("ibds2", "com.mysql.jdbc.Driver");
+set :dburl = "jdbc:mysql://localhost:3306/";
+
+connect(:a, :dburl + "regress", "regress", "regress");
+connect(:b, :dburl + "regress", "regress", "regress");
+
+import_table(:a, 'EMPLOYEE');
+/* import_table(:b, 'EMPLOYEE'); */
+import_table(:b, 'DEPARTMENT');
+
+lisp;
+
+(trace get-best-rank)
+
+(trace rewrite-preds)
+
+:osql
+
+select first_name(e) from employee_ibds e where salary(e) > 15000 and salary(e) < 30000 and like(first_name(e),'A*');
+
+select last_name(e) from employee_ibds e
+where first_name(e)='Janet' or first_name(e)='Pete';
+
+select first_name(e)            
+                    from employee_ibds e 
+                    where salary(e) < 15000 or salary(e) > 30000;
+
+select first_name(e), first_name(e2) from employee_ibds e, employee_ibds e2 where dept_no(e2)<"130" and emp_no(e) = emp_no(e2);
+
+select first_name(e), location(d) from employee_ibds e, department_ibds2 d where salary(e)> 97500 and dept_no(e) = dept_no(d);
+
+/* sql */
+select e.first_name, d.location from employee e, department d where e.salary > 97500 and e.dept_no=e.dept_no;
+
+/* run this example in original jdbc context and see execution plan*/
+select first_name(e), location(d) from employee_ibds e, department_ibds2 d where salary(e)> 97500 and budget(d)>300000 and dept_no(e) = dept_no(d);
+
+select first_name(e), location(d) from employee_ibds e, department_ibds2 d where salary(e)> 97500 and dept_no(e) > dept_no(d);

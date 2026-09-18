@@ -1,0 +1,280 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 Thanh Truong, UDBL
+ * $RCSfile: bench_xtree.osql,v $
+ * $Revision: 1.1 $ $Date: 2013/08/01 13:04:14 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Benchmark scripts for Xtree index
+ *
+ ****************************************************************************
+ * $Log: bench_xtree.osql,v $
+ * Revision 1.1  2013/08/01 13:04:14  thatr500
+ * archived old benchmark scripts
+ *
+ * Revision 1.11  2011/06/12 10:52:07  thatr500
+ * *** empty log message ***
+ *
+ * Revision 1.10  2011/05/06 01:32:51  thatr500
+ * *** empty log message ***
+ *
+ * Revision 1.9  2010/11/25 14:18:48  thatr500
+ * change benchmark
+ *
+ * Revision 1.8  2010/11/22 14:18:45  thatr500
+ * change log file
+ *
+ * Revision 1.7  2010/11/22 10:25:56  thatr500
+ * Data generation : adding new dimension to existing data
+ *
+ * Revision 1.6  2010/11/22 09:08:42  thatr500
+ * add another function to random data
+ *
+ * Revision 1.5  2010/11/09 16:17:21  thatr500
+ * benchmark for Knn search
+ *
+ * Revision 1.4  2010/11/09 10:40:35  thatr500
+ * addiing hack Btree function
+ *
+ * Revision 1.3  2010/11/08 19:19:37  thatr500
+ * refine xtree-btree benchmarking
+ *
+ * Revision 1.2  2010/11/08 10:58:12  thatr500
+ * change signature of 'abenchmark' function
+ *
+ * Revision 1.1  2010/11/08 10:23:00  thatr500
+ * add new benchmakring (for Xtree) which supports
+ *  - random distributed values of a vector
+ *  - sampling point functions
+ *  - logging access times to output (filetype csv)
+ *
+ *
+ ****************************************************************************/
+
+lisp;
+
+(defun open-writefile-opt (fno filename opt)
+  (setq *mystream* (openstream filename opt)))
+
+(osql "create function openwritefile(charstring filename, charstring opt)
+       ->boolean as foreign 'open-writefile-opt';")
+
+(defun randGeneration (fno l u dim res)
+  "Generate a d times"
+ (dotimes (i dim)(osql-result l u dim (rand l u))))
+
+(osql "create function randGen(Number lower, Number upper, Number dim)
+       -> Number as foreign 'randGeneration';")
+:osql
+
+
+/*Define some ultility functions */
+create function randElem(Number lower, Number upper, Number dim) -> Number
+ as         
+  /*Emit dim times a rand value between lower and upper.
+   A random vector can be specified by : 
+   vectorof(randElem(lower, upper, dim))*/
+          (iota(1, dim) + rand(lower, upper))/1000;
+
+/*Function to store indexed data */
+create function pictureFeatures(Charstring pic)->Vector of Number features as stored;
+        
+
+create function testdata(Number ) -> Vector of Number as stored;
+create function resultdata()-> Bag of Charstring as stored;
+
+/*Load N number of records which have Dim dimensions*/
+create function load_data(Number n, Number dim)-> Boolean 
+ as
+   begin
+          for each Number i where i in iota(1,n)
+         /*Random distribute value of each attribute in 1 and 1000.
+          It makes Btree such a hard time to index multi-dimensional vector 
+          add pictureFeatures(stringify(i) ) = 
+                                        vectorof(randElem(1, 1000, dim));*/
+	    add pictureFeatures(stringify(i) ) = 
+              vectorof(select v[k] from Number k, Vector of Number v
+                       where k in iota(0, dim-1)
+                       and v = testdata(i));
+   end;
+
+create function volData()->Number as stored;
+
+create function gen_data(Number n, Number dim)-> Boolean
+ as 
+  begin
+	  for each Number i where i in iota(1,n)
+        /*Random distribute value of each attribute in 1 and 1000.
+        It makes Btree such a hard time to index multi-dimensional vector */
+            add testdata(i) = vectorof(randGen(1, 1000, dim));
+  end;
+
+/*Sampling N of records from dataset*/
+create function sample_point(Number n)-> Vector of Number 
+      as select v from Vector of Number v, Number i 
+      where pictureFeatures(stringify(i)) = v 
+      and i in iota(1, n);
+
+/*Benchmarking Xtree access*/
+create function xbench(Vector of Number x) -> Bag of Charstring
+       as select p from Charstring p
+         where euclid(x, pictureFeatures(p)) < 0.7;
+
+/*Benchmarking Mbtree access.
+This is really a hack for Mbtree. Without this, Xtree is *some* 
+thousands times than Mbtree.
+*/
+create function bbench(Vector of Number x) -> Bag of Charstring
+  as select p from Charstring p
+         where euclid(x, pictureFeatures(p)) < 0.7
+           and x + 0.7 >= pictureFeatures(p) 
+           and x - 0.7 <= pictureFeatures(p); 
+
+/*Benchmarking Knn search*/
+create function knnbench(Vector of Number x) -> Bag of Charstring
+ as select p from Charstring p
+   where p in knn(x, 3, #'pictureFeatures');
+
+
+/**************************************************************************
+Benchmarking with different dimension 
+N = 1000000 records
+Dim varies from 2 to 30
+***************************************************************************/
+logging off;
+
+/* Access benchmarking */
+create function abenchmark(Charstring indextype, Number n, Number dim)-> Boolean 
+as 
+ begin
+    declare Timeval start, Timeval stop, Time diff, 
+            Number msecond, Vector of Number sp, Number num; 
+    
+    /*Create index upon the user parameter*/
+    create_index('pictureFeatures','features', indextype,'multiple');
+    /*Recompile functions upon the choice of index*/
+    recompile(#'load_data');
+    recompile(#'sample_point');
+    recompile(#'xbench');
+    recompile(#'bbench');
+
+    /*Open logfile to log the result*/ 
+    openwritefile('simi_' +indextype + '_.csv', "a");
+    print('Test similarity search with ' + indextype);
+      
+   /*Measurement of Load data */
+   set start = now();
+   load_data(n, dim);
+   set stop = now();
+
+   select stime, ss into diff, msecond from Time stime, Number ss 
+   where <stime, ss> = timespan(stop, start);
+       
+   /*log to file*/  
+   print('loading ' + stringify(n) + ' took ' 
+                    + stringify(hour(diff) *3600 + 
+                      minute(diff) * 60 +
+                      second(diff) +
+                      msecond /1000000));
+
+   /*Measurement of Similarity data */
+    print("Dim;second;count");
+    set num = -1;	 
+   /*Select sample data */
+   set sp = sample_point(n/2);
+   set start = now();
+
+  /*Choose xbench or bbench*/
+   if (upper(indextype) = 'XT') then
+	set resultdata() = xbench(sp)
+   else
+	set resultdata() = bbench(sp);
+
+   set stop = now();		
+
+   set num = count(extent(#'resultdata'));
+   select stime, ss into diff, msecond from Time stime, Number ss 
+   where <stime, ss> = timespan(stop, start);
+       
+   /*log to file*/  
+   print(stringify(dim) + ';' + stringify(hour(diff) *3600 + 
+                                minute(diff) * 60 +
+                                second(diff) +
+                                msecond /1000000) + ';' + stringify(num));    
+
+   /*Clear up data for the next round*/
+   clear_function('pictureFeatures');
+   clear_function('resultdata');
+	  
+    /*End of benchmark, close the file*/
+   closewritefile();
+end;
+
+/* Knn benchmarking */
+create function knnbenchmark(Charstring indextype, Number n, Number dim)-> Boolean
+as
+ begin
+ declare Timeval start, Timeval stop, Time diff,Number msecond, Vector of Number sp, Number num; 
+    
+    /*Create index upon the user parameter*/
+    create_index('pictureFeatures','features', indextype,'multiple');
+    /*Recompile functions upon the choice of index*/
+    recompile(#'load_data');
+    recompile(#'sample_point');
+    recompile(#'knnbench');
+
+    /*Open logfile to log the result*/ 
+    openwritefile('knn_' + indextype + '_.csv', "a");
+    print('Test knn search with ' + indextype);
+      
+   /*Measurement of Load data */
+   set start = now();
+   load_data(n, dim);
+   set stop = now();
+
+   select stime, ss into diff, msecond from Time stime, Number ss 
+   where <stime, ss> = timespan(stop, start);
+       
+   /*log to file*/  
+   print('loading ' + stringify(n) + ' took ' 
+                    + stringify(hour(diff) *3600 
+		    + minute(diff) * 60 
+                    + second(diff) 
+                    + msecond /1000000));
+
+   /*Measurement of Similarity data */
+    print("Dim;second;count");
+    set num = -1;	 
+   /*Select sample data */
+   set sp = sample_point(1);
+   set start = now();
+
+  /*knnbench*/
+   set resultdata() = knnbench(sp);
+   set stop = now();		
+
+   set num = count(extent(#'resultdata'));
+   select stime, ss into diff, msecond from Time stime, Number ss 
+   where <stime, ss> = timespan(stop, start);
+       
+   /*log to file*/  
+   print(stringify(dim) + ';' 
+                        + stringify(hour(diff) *3600 
+			+ minute(diff) * 60 
+			+ second(diff) 
+			+ msecond) 
+			+ ';' 
+			+ stringify(num));    
+
+   /*Clear up data for the next round*/
+   clear_function('pictureFeatures');
+   clear_function('resultdata');
+	  
+    /*End of benchmark, close the file*/
+   closewritefile();
+end;
+
+
+
+

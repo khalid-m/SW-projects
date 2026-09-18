@@ -1,0 +1,94 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2013 Sobhan, UDBL
+ * $RCSfile: mergstreams.osql,v $
+ * $Revision: 1.1 $ $Date: 2013/10/29 10:37:36 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: merging two streams without the need for
+ * separate processes generating them.
+ *
+ ****************************************************************************
+ * $Log: mergstreams.osql,v $
+ * Revision 1.1  2013/10/29 10:37:36  sobso953
+ * Moving mergstream.osql to its new place
+ *
+ * Revision 1.2  2013/10/27 15:15:30  sobso953
+ * A variant for stream of vector of number as input added.
+ *
+ * Revision 1.1  2013/10/24 19:37:12  sobso953
+ * *** empty log message ***
+ *
+ *
+ ****************************************************************************/
+
+/*
+Merges two homogeneous streams s1 and s2. both s1 and s2 are supposed
+to be sorted on pos. If |s1|=n and |s2|=m then |output|=m+n
+*/
+
+create function mergstreams(stream s1, stream s2, Number pos) -> bag of vector
+  as begin declare Scan c1, Scan c2;
+      open c1 for s1; next(c1);
+      open c2 for s2; next(c2);
+      loop if (notany(this(c1)) and notany(this(c2)))then leave;
+           if this(c1)[pos]<this(c2)[pos] then
+	 	begin
+			return this(c1);
+			next(c1);
+		end
+           else if this(c1)[pos]>this(c2)[pos] then
+		begin
+			return this(c2);
+			next(c2);
+		end
+           else begin
+                      return this(c1);
+                      return this(c2);
+                      next(c1);
+                      next(c2);
+                end
+      end loop;
+      close c1;
+      close c2;
+     end;
+
+/*
+set :s1=streamof(select i,1 from number i where i in iota(1,10));
+set :s2=streamof(select i/2,2 from number i where i in iota(1,10));
+mergstreams(:s1,:s2,0);
+*/
+
+/*An Overloaded version (slightly different: note the casting used) that takes stream of vector as input argument*/
+create function mergstreams(stream of vector s1, stream of vector s2, Number pos) -> bag of vector
+  as begin declare Scan c1, Scan c2;
+      open c1 for s1; next(c1);
+      open c2 for s2; next(c2);
+      loop if (notany(this(c1)) and notany(this(c2)))then leave;
+           if cast(this(c1)[0] as vector)[pos]<cast(this(c2)[0] as vector)[pos] then
+	 	begin
+			return this(c1)[0];
+			next(c1);
+		end
+           else if cast(this(c1)[0] as vector)[pos]>cast(this(c2)[0] as vector)[pos] then
+		begin
+			return this(c2)[0];
+			next(c2);
+		end
+           else begin
+                      return this(c1)[0];
+                      return this(c2)[0];
+                      next(c1);
+                      next(c2);
+                end
+      end loop;
+      close c1;
+      close c2;
+end;
+
+/*
+set :s1=streamof(select {i,1} from number i where i in iota(1,10));
+set :s2=streamof(select {i/2,2} from number i where i in iota(1,10));
+mergstreams(:s1,:s2,0);
+*/

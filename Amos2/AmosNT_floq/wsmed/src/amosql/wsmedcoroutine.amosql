@@ -1,0 +1,8 @@
+lisp;
+(defun yield-thread (fno)
+ (if (co-inside)
+	(co-busy) 
+         (sleep 0.01)))
+:osql
+
+create function yield()-> Boolean as foreign "yield-thread";

@@ -1,0 +1,66 @@
+load_lisp("C:/amosnt/wrappers/wsmed/src/qplan.lsp");
+/*************Wrapper function ***************/
+
+create function foodDescr_gp_kw( Charstring fgc,Charstring fkw)-><Charstring ndb, Charstring descr>
+as select re["NDB"],re["LD"]
+   from Record out, Sequence res,  Record re
+   where out = cwo("http://130.238.11.96:8080/axis/services/RetriveFood?wsdl","GetFoodService","searchFoodByDescription_gp_kw",{'gpCode',fgc,'keyWord',fkw})
+	 and
+         res = out["searchFoodByDescription_gp_kwResponse"] and 
+         re=elementof(res);
+create function foodDescr_gp( Charstring fgc)-><Charstring ndb, Charstring descr, Charstring keyword>
+as select re["NDB"],re["LD"],re["keyWord"]
+   from Record out, Sequence res,  Record re
+   where out = cwo("http://130.238.11.96:8080/axis/services/RetriveFood?wsdl","GetFoodService","searchFoodByDescription_gc",{'gpCode',fgc})
+	 and
+         res = out["searchFoodByDescription_gcResponse"] and 
+         re=elementof(res);
+
+create function foodDescr_kw(Charstring fkw)-><Charstring ndb, Charstring descr,Charstring gpcode>
+as select re["NDB"],re["LD"],re["gpCode"]
+   from Record out, Sequence res,  Record re
+   where out = cwo("http://130.238.11.96:8080/axis/services/RetriveFood?wsdl","GetFoodService","searchFoodByDescription_kw",{'keyWord',fkw})
+	 and
+         res = out["searchFoodByDescription_kwResponse"] and 
+         re=elementof(res);
+
+create function foodDescr()-><Charstring ndb, Charstring descr,Charstring groupcode, Charstring keyword>
+as select re["NDB"],re["LD"],re["gpCode"],re["keyWord"]
+   from Record out, Sequence res,  Record re
+   where out = cwo("http://130.238.11.96:8080/axis/services/RetriveFood?wsdl","GetFoodService","searchFoodByDescription",{'nodata','nodata'})
+	 and
+         res = out["searchFoodByDescriptionResponse"] and 
+         re=elementof(res);
+
+/*************** multidirectional function ****************/
+
+create function fd()-> <charstring ndb,charstring descr, charstring groupcode,charstring keyword>
+			    as multidirectional  
+						("ffff" select ndb,descr,groupcode,keyword  where foodDescr()=<ndb,descr,groupcode,keyword> )
+						("fffb" select ndb,descr,groupcode where foodDescr_kw(keyword)=<ndb,descr,groupcode> ) 
+						("ffbf" select ndb,descr,keyword where foodDescr_gp(groupcode)=<ndb,descr,keyword>) 
+						("ffbb" select ndb,descr where foodDescr_gp_kw(groupcode,keyword)=<ndb,descr>);
+
+declare_key(theresolvent('fd'),{"ndb"});
+
+
+/**** View food is defined here ***************/
+
+create function #food(charstring ndb)-> <charstring keyword,charstring descr,charstring groupcode> as
+ select keyword,descr,groupcode where fd()= <ndb,descr,groupcode,keyword>;
+
+
+
+create function #foodclasses(charstring ndb)-><charstring keyword,charstring groupcode> as
+ select keyword,groupcode from charstring descr where fd()= <ndb,descr,groupcode,keyword>;
+
+
+create function #fooddescriptions(charstring ndb)-><charstring descr> as
+ select descr from charstring keyword, charstring groupcode where fd()= <ndb,descr,groupcode,keyword>;
+
+lisp;
+
+(sql-query-plan "select f2.descr from foodclasses f1, fooddescriptions f2 where f1.ndb=f2.ndb and f1.groupcode='1900'")
+
+:osql
+

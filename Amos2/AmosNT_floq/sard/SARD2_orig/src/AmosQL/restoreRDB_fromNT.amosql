@@ -1,0 +1,645 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Silvia Stefanova UDBL
+ * $RCSfile: restoreRDB_fromNT.amosql,v $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Functions to restore RDF archived RDB
+ ******************************************************************************/
+
+create function returnspv(Charstring filen)->(Charstring,Charstring,Charstring )
+/*Return the triples (s,p,v) from the NT filen*/
+as
+	select vec[0],vec[1],vec[2] from  Vector vec 
+        where vec in read_Ntuples(filen);
+
+create function populate_stored_trips(Charstring file, Charstring abb)->Boolean
+/*Defines an RDF view over the N-triples file
+ abb is the name that will be used in the WHERE clause*/
+ as eval("create function stored_trips_"+abb+"()->(Charstring,Charstring,Charstring)
+	as select s,p,v from Charstring s, Charstring p, Charstring v 
+	where returnspv('"+file+"')=(s,p,v);");
+
+
+
+create function get_tableURIs(Charstring abb)->Charstring as 
+	parse_sparql("SELECT ?s 
+	     	  FROM <"+abb+">
+	     	  WHERE {?s ?p ?val.
+		  FILTER REGEX (?val,'*Class*').
+		  FILTER REGEX (?p, '*type*').}"); 
+
+
+create function get_tableURIs_fromNT(Charstring ntfile)->Charstring
+/*Retrieves all the URIs corresponding to tables*/ 
+as
+	select s
+	from charstring s, charstring p,charstring v
+	where returnspv(ntfile)=(s,p,v) and like_i(v, "*class*") and like_i(p, "*type*");
+
+
+create function get_tableNames(Charstring ontol,Charstring tableURI, Charstring abb)->Charstring
+/*Retrieves the table name from its URI*/
+as
+   if ( some(select true where eval(get_tableURIs(abb))=tableURI)) then
+	return substring(tableURI,char_length(ontol)+2,char_length(tableURI)-2);
+
+
+
+create function get_tableName_fromNT(Charstring ntfile,Charstring ontol,Charstring tableURI)->Charstring
+/*Retrieves the table name from its URI*/
+as
+   if ( some(select true where get_tableURIs_fromNT(ntfile)=tableURI)) then
+	return substring(tableURI,char_length(ontol)+2,char_length(tableURI)-2);
+
+
+
+create function get_tableName_fromRowID(Charstring ntfile,Charstring ontol,Charstring rowID)->Charstring
+/*Retrieves the table name from the URI of a row record rowID by comparing rowID with all the URIscorresponding to tables*/
+as
+     for each Charstring ch where ch=get_tableURIs_fromNT(ntfile)
+        if (like (rowID,substring(ch,0,char_length(ch)-4)+'*')) then
+		return get_tableName_fromNT(ntfile,ontol,ch);
+
+
+create function get_tableName_fromRowID1(Charstring ontol,Charstring rowID,Charstring abb)->Charstring
+/*Retrieves the table name from the URI of a row record rowID by comparing rowID with all the URIscorresponding to tables*/
+as
+     for each Charstring ch where ch=eval(get_tableURIs(abb))
+        if (like (rowID,substring(ch,0,char_length(ch)-4)+'*')) then
+		return get_tableNames(ontol,ch,abb);
+
+create function get_tableName_fromRowID2(Charstring upv,Charstring ontol,Charstring rowID)->Charstring
+/*Retrieves the table name from the URI of a row record rowID by comparing rowID with all the URIscorresponding to tables*/
+as
+     for each Charstring tname, Charstring cid where cMap(tname,upv)=cid
+        if (like (rowID,substring(cid,0,char_length(cid)-4)+'/_*>')) then
+		return tname;
+
+
+create function get_tableURI_fromRowID(Charstring upv,Charstring ontol,Charstring rowID)->Charstring
+/*Retrieves the table URI form a rowID by */
+as
+     for each Charstring tname, Charstring cid where cMap(tname,upv)=cid
+        if like(rowID,substring(cid,0,char_length(cid)-4)+'/_*>') then
+		return cid;
+
+
+create function get_tableURI_fromRowID1(Charstring ntfile,Charstring ontol,Charstring rowID)->Charstring
+/*Retrieves the table URI from the URI of a row record rowID by comparing rowID with all the URIscorresponding to tables*/
+as
+     for each Charstring ch where ch=get_tableURIs_fromNT(ntfile)
+        if (like (rowID,substring(ch,0,char_length(ch)-2)+'*')) then
+		return substring(rowID,0,char_length(ch)-2)+">";  
+
+
+create function get_PrimaryK_value(Charstring ntfile,Charstring ont,Charstring rowID)->Literal
+/*Retrieves the value of the primary key from the URI of the row*/
+as 
+	select in(pks) from vector pks where rowid( substring(get_tableURI_fromRowID(ntfile,ont,rowID),1, char_length(get_tableURI_fromRowID(ntfile,ont,rowID))-2),pks)= substring(rowID,1,char_length(rowid)-2) and pks!={}; 
+
+
+create function get_primaryKURI_fromNT(Charstring sch,Charstring tabURI)->Charstring
+/*Retrieves the URI of the primary key of the table with tabURI*/
+as
+	select val from Charstring s,Charstring p,Charstring val 
+	where like_i(p,"*primary_keys*") and s =tabURI and returnspv(sch)=(s,p,val);
+
+create function get_primaryK(Charstring sch, Charstring tabURI)->Charstring
+/*Retrieves the string of the primary key columns*/
+as
+   begin
+      if ( some(select true where get_tableURIs_fromNT(sch)=tabURI)) then
+        begin
+	  declare Charstring str;
+	  set str=get_primaryKURI_fromNT(sch,tabURI);
+	  if ( str!= "NULL") then
+	    return substring(str,char_length(tabURI),char_length(str)-2);
+        end;
+   end;
+
+
+/*   
+create function get_primaryK_fromNT(Charstring tabURI)->Charstring
+as
+	select v3 
+	from Charstring loc, Charstring s1, Charstring p1, Charstring v1,Charstring s2, Charstring p2, Charstring v2, Charstring s3, Charstring p3, Charstring v3
+	where loc=tabURI+"_localK" and schemaDB()=(s1,p1,v1) and s1=loc and like_i(p1,"*key_table") and v1=tabURI
+	and schemaDB()=(s2,p2,v2) and s2=loc and like_i(p2,"*is_primary") and like_i(v2,"true")
+   	and schemaDB()=(s3,p3,v3) and s3=loc and like_i(p3,"*key_columns") ;
+
+*/
+
+create function getcolPmap(Charstring tab,Charstring pid, Charstring upv) ->Charstring
+as select col from Charstring col where pMap(tab,col,upv)=pid;
+
+create function get_columnURIs_fromNT(Charstring ntfile)->Charstring
+/*Retrieves all the URIs corresponding to columns*/ 
+as
+	select s
+	from charstring s, charstring p,charstring v
+	where returnspv(ntfile)=(s,p,v) and like_i(v, "*property*");
+
+
+create function get_columnURIs(Charstring abb)->Charstring 
+as parse_sparql("SELECT ?s 
+	     	  FROM <"+abb+">
+	     	  WHERE {?s ?p ?val.
+		  FILTER REGEX (?val,'*Property*').
+		  FILTER REGEX (?p, '*type*').}"); 
+
+
+create function get_tablePksURIsQ(Charstring abb, Charstring ontology,Charstring tname)->Charstring
+as  parse_sparql("SELECT ?val ?p1 ?val1
+	     FROM <"+abb+">
+	     WHERE {?s ?p ?val.
+	      FILTER REGEX (?p,'*PRIMARY_KEY*').
+	       FILTER REGEX (?s, '*"+ontology+"#"+tname+"*').	 
+		   ?val ?p1 ?val1.
+	       FILTER REGEX (?p1,'*rdf-syntax-ns#_*').}");
+
+
+
+create function get_tableFksURIsQ(Charstring abb, Charstring ontology,Charstring tname)->Charstring
+as  parse_sparql("SELECT ?val ?p1 ?val1 ?val2
+		   FROM <"+abb+">
+                   WHERE {?s ?p ?val.
+	       	   FILTER REGEX (?p,'*FOREIGN_KEY*').
+		   FILTER REGEX (?s, '*"+ontology+"#"+tname+">').
+		   ?val ?p1 ?val1.
+		   FILTER REGEX (?p1,'*rdf-syntax-ns#_*').
+		   ?val1 ?p2 ?val2.
+		   FILTER REGEX (?p2,'*REFERENCES*').}");
+
+
+create function get_FKowner_col(Charstring abb, Charstring ont,Charstring tn)->Charstring
+/*Retrieves the name of the FK owner table*/
+as select tnouri 
+   from Charstring tnouri, Charstring tno, Charstring cno, Charstring rdf,
+        Charstring cnouri,Vector ve 
+   where ve in evalv(get_tableFksURIsQ(abb,ont,tn)) and 
+         rdf=ve[1] and 
+         like(rdf,"*www.w3.org/1999/02/22-rdf-syntax*") and 
+         cnouri=ve[3] and 
+         cnouri=pMap(tno,cno,abb) and 
+         cMap(tno,abb)=tnouri;
+
+
+create function orderNum_rdfseq(Charstring rdfseq,Charstring uri)->Number
+as
+	select atoi(substring (uri,char_length(rdfseq)+6,char_length(uri)-2));
+
+
+
+create function get_tablePKURIs(Charstring abb, Charstring ontology,Charstring tname)->(Number,Charstring)
+/*Retrieves the primary key columns and their order */
+as
+   select p1,v1 from Charstring v, Number p1, Vector ve, Charstring p,Charstring v1
+	where ve in evalv(get_tablePksURIsQ(abb,ontology,tname)) and p=ve[1] and p1=orderNum_rdfseq("http://www.w3.org/1999/02/22-rdf-syntax",p)  and v=ve[2] and v1=getcolPmap(tname,v,abb);
+
+
+create function bagf_get_tablePKURIs(Charstring abb, Charstring ontology,Charstring tname)->(Integer,Vector of Charstring)
+as bagify(sortbagby(get_tablePKURIs(abb,ontology,tname),1,'inc'));
+	
+
+create function combine_pkcols(Charstring abb, Charstring ontology,Charstring tname,Vector vals)->(Charstring,Charstring)
+/*Makes the pk string and the values*/
+as 
+   begin
+	declare Charstring pks, Charstring pkval;
+	set pks="";
+	set pkval="";
+	for each integer i,vector of Charstring vec,integer j,literal ll where bagf_get_tablePKURIs(abb,ontology,tname)=(i,vec) and (j,ll) in bagify(vals) and i=j
+	  begin
+	    set pks=pks+vec[1]+",";
+	    set pkval=pkval+"'"+cast(ll as Charstring) +"',";
+	  end;	  
+	return (substring(pks,0,char_length(pks)-2), substring(pkval,0,char_length(pkval)-2));
+   end;
+
+
+
+
+create function get_columnName_fromNT(Charstring ntfile,Charstring tableURI,Charstring columnURI) -> Charstring
+as 
+/*Retrieves the column name from the column URI if such exists*/
+ if ( some(select true where get_columnURIs_fromNT(ntfile)=columnURI)) then
+	return substring(columnURI,char_length(tableURI),char_length(columnURI)-2);
+
+
+
+create function get_columnURI_fromNT(Charstring ntfile,Charstring tableURI)->Charstring colURI
+as
+/*Retrieves the column names of the table from its URI*/
+  	select s from charstring s, charstring p,charstring v
+	where returnspv(ntfile)=(s,p,v) and like(p,"*domain*")and v=tableURI ;
+
+
+
+create function get_columnURI(Charstring tabURI,Charstring abb)->Charstring
+as select ch from Charstring ch, Vector vect where
+		sparql("SELECT ?s 
+		  FROM <"+abb+">
+	     	  WHERE {?s ?p ?val.
+		  FILTER REGEX (?p,'*domain*').
+		  FILTER REGEX (?val,'*"+tabURI+"*').}")=vect and ch=vect[0];
+
+create function get_columnName(Charstring tableURI,Charstring columnURI,Charstring upv) -> Charstring
+as 
+/*Retrieves the column name from the column URI if such exists*/
+ if ( some(select true where eval(get_columnURIs(upv))=columnURI)) then
+	return substring(columnURI,char_length(tableURI),char_length(columnURI)-2);
+
+
+create function assignPMaptable_fromNT(Charstring ontol,Charstring upv, Charstring cid)->Boolean
+as
+	for each Charstring pid where get_columnURI(cid,upv)=pid
+		 set pMap(get_tableNames(ontol,cid,upv),get_columnName(cid,pid,upv),upv)=pid;
+
+
+create function assignCPMap_fromNT(Charstring ontol,Charstring upv)->Boolean
+as
+	for each Charstring cid where eval(get_tableURIs(upv))=cid
+          begin
+	 	set cMap(get_tableNames(ontol, cid,upv),upv)=cid;
+		for each Charstring pid where get_columnURI(cid,upv)=pid
+		 	set pMap(get_tableNames(ontol,cid,upv),get_columnName(cid,pid,upv),upv)=pid;
+	  end;
+
+
+
+create function get_columnName_fromTable(Charstring ntfile,Charstring tabURI)-> (Charstring col,Charstring colURI)
+as
+	select get_columnName_fromNT(ntfile,tabURI,colURI),colURI from Charstring colURI where colURI=get_columnURI_fromNT(ntfile,tabURI);
+	
+
+
+create function get_columnType_fromNT(Charstring ntfile,Charstring columnURI) -> Charstring coltype
+as 
+	select  find_typeCol(substring(v,1,char_length(v)-2))
+	from charstring s, charstring p,charstring v
+	where returnspv(ntfile)=(s,p,v) and s=columnURI and like(p, "*range*");
+
+
+create function get_columnURI_fromColName(Charstring sch,Charstring tabURI,Charstring colname)->Charstring
+as
+	select colU from Charstring colU where get_columnName_fromTable(sch,tabURI)=(colname,colU);
+
+/*
+create function get_columnSize_fromNT(Charstring columnURI) -> Charstring coltype
+as 
+	select v
+	from charstring s, charstring p,charstring v
+	where schemaDB()=(s,p,v) and s=columnURI and like_i(p, "*size");
+*/
+
+
+create function get_tabcolNames_fromTable(Charstring ntfile,Charstring ontol)->(Charstring tabname,Charstring colname,Charstring coltype) 
+/*Retrieves the tables names with their column names, types */
+as
+  	for each original Charstring tabURI, Charstring col, Charstring colURI where tabURI=get_tableURIs_fromNT(ntfile) and get_columnName_fromTable( ntfile,tabURI)= (col,colURI)
+	  return (get_tableName_fromNT(ntfile,ontol,tabURI),col,get_columntype_fromNT(ntfile,colURI));
+
+
+
+
+create function list_colNames(Charstring sch,Charstring tableURI)->Charstring
+/*Makes a list with empty string which number is equal the number of the columns in table, tableURI*/
+as
+  begin
+	declare Charstring collist, Charstring emptylist,Charstring res1, Charstring res2;
+/*	set collist="";*/
+	set emptylist="";
+	for each Charstring col,Charstring colURI where get_columnName_fromTable(sch,tableuRI)=(col,colURI) 	
+	   begin
+	/*	set collist=collist+","+col;*/
+		set emptylist=emptylist+","+"''";
+    	   end;
+	/*set res1 = substring(collist, 1,char_length(collist));*/
+	set res2= substring(emptylist, 1,char_length(emptylist));
+	return res2;
+  end;
+
+create function list_colNames1(Charstring sch,Charstring tableURI)->Charstring
+/*Makes a list of the columns in table, tableURI*/
+as
+  begin
+	declare Charstring collist, Charstring collist;
+	set collist="";
+	for each Charstring col, Charstring colURI where get_columnName_fromTable(sch,tableuRI)=(col,colURI) 	
+	 	set collist=collist+","+col;
+	return substring(collist, 1,char_length(collist));
+  end;
+
+
+
+create function insert_intoTab_fromNTP(Charstring schnt,Charstring datant,Charstring ontol)-> Charstring
+/*Constructs INSERT statements and inserts rows in a RDB from N-Triples in row-order*/
+as
+  begin
+    declare Charstring stat1, Charstring stat2, Charstring tname, Charstring row;
+    set row="";
+  	for each original Charstring subject, Charstring property, Charstring value where returnspv(datant)=(subject, property, value) 
+           begin
+		if (subject!=row) then
+		  begin
+			if (row!="") then
+			  return "INSERT INTO " + tname+ "(" + substring(stat1,0,char_length(stat1)-2)  + ") VALUES (" + substring(stat2,0,char_length(stat2)-2) + ");";
+		    set stat1="";
+		    set stat2="";	
+		    set row=subject;
+		    set tname=get_tableName_fromRowID(schnt,ontol,subject)
+                  end;
+		   /* if (notany(like("'"+value+"'","*null*"))) then
+		     begin*/
+			/* if value is URI .... */
+			set stat1=get_columnName_fromNT(schnt,get_tableURI_fromRowID(schnt,ontol,subject),property)+","+stat1;	
+                  	set stat2="'" + value+"',"+stat2;
+                  /*   end;*/
+	   end;
+		return "INSERT INTO " + tname+ "(" + substring(stat1,0,char_length(stat1)-2)  + ") VALUES (" + substring(stat2,0,char_length(stat2)-2) + ");";
+    end;
+
+
+
+create function insert_intoTab(Charstring upv,Charstring datant,Charstring ontol)-> Charstring
+/*Constructs INSERT statements and inserts rows in a RDB from N-Triple files datant, ordered in row-order*/
+as
+  begin
+    declare Charstring stat1, Charstring stat2, Charstring tname, Charstring tURI,Charstring row,Charstring ch1, Charstring ch2;
+    set row="";
+  	for each original Charstring subject, Charstring property, Charstring value where returnspv(datant)=(subject, property, value) 	 begin
+/*	 if notany(like_i(property, "*type*")) then  
+           begin*/
+	     if (subject!=row) then
+               begin                          
+		 if (row!="") then
+                    return "INSERT INTO " + tname+ "(" + substring(stat1,0,char_length(stat1)-1)  + ") VALUES (" + substring(stat2,0,char_length(stat2)-1) + ");";
+		  set row=subject;
+		  set tname=get_tableName_fromRowID(upv,ontol,subject);
+		  set tURI=get_tableURI_fromRowID(upv,ontol,subject);
+		  select c1,c2 into ch1, ch2 from Charstring c1, Charstring c2 where combine_pkcols(upv, ontol,tname, row_ident(subject,tURI))= (c1,c2);
+		  set stat1=ch1;
+		  set stat2=ch2;
+	       end;
+	       if notany(like_i(property, "*type*")) then  
+                 begin
+	       		set stat1=stat1+","+getcolPmap(tname,property,upv);	
+	       	 	if notany(like(value,"<*>")) then
+                  		set stat2= stat2+",'" + value+ "'"
+ 		   	else
+	/*if the value is a FK value, OBS:hardcoded for a simple FK, one column*/
+                     	begin
+				select c into ch2 from Charstring c,Vector vect where row_ident(value,get_FKowner_col(upv,ontol,tname))=vect and c= vect[0];
+		 		set stat2=stat2+",'"+ch2+"'";     
+		    	end;	
+		end;
+        /*   end;*/
+          end;
+          return "INSERT INTO " + tname+ "(" + substring(stat1,0,char_length(stat1)-1)  + ") VALUES (" + substring(stat2,0,char_length(stat2)-1) + ");";
+  end;
+
+create function insert_intoTab(jdbc jd,Charstring upv,Charstring datant,Charstring ontol)-> Charstring
+/*Inserts rows in a RDBMS from N-Triple files datant, ordered in row-order*/
+as
+  begin
+    declare Charstring stat1, Charstring stat2, Charstring tname, Charstring tURI,Charstring row,Charstring ch1, Charstring ch2;
+    set row="";
+  	for each original Charstring subject, Charstring property, Charstring value where returnspv(datant)=(subject, property, value) 	 begin
+	     if (subject!=row) then
+               begin                          
+		 if (row!="") then
+                    sql(jd, "INSERT INTO " + tname+ "(" + substring(stat1,0,char_length(stat1)-1)  + ") VALUES (" + substring(stat2,0,char_length(stat2)-1) + ");");
+		  set row=subject;
+		  set tname=get_tableName_fromRowID(upv,ontol,subject);
+		  set tURI=get_tableURI_fromRowID(upv,ontol,subject);
+		  select c1,c2 into ch1, ch2 from Charstring c1, Charstring c2 where combine_pkcols(upv, ontol,tname, row_ident(subject,tURI))= (c1,c2);
+		  set stat1=ch1;
+		  set stat2=ch2;
+	       end;
+	       if notany(like_i(property, "*type*")) then  
+                 begin
+	       		set stat1=stat1+","+getcolPmap(tname,property,upv);	
+	       	 	if notany(like(value,"<*>")) then
+                  		set stat2= stat2+",'" + value+ "'"
+ 		   	else
+	/*if the value is a FK value, OBS:hardcoded for a simple FK, one column*/
+                     	begin
+				select c into ch2 from Charstring c,Vector vect where row_ident(value,get_FKowner_col(upv,ontol,tname))=vect and c= vect[0];
+		 		set stat2=stat2+",'"+ch2+"'";     
+		    	end;	
+		end;
+          end;
+          sql(jd,"INSERT INTO " + tname+ "(" + substring(stat1,0,char_length(stat1)-1)  + ") VALUES (" + substring(stat2,0,char_length(stat2)-1) + ");");
+  end;
+
+
+
+
+
+create function insert_intoTab_fromNTP(jdbc j,Charstring schnt,Charstring datant,Charstring ontol)-> Charstring
+/*Constructs INSERT statements and inserts rows in a RDB from N-Triples in row-order*/
+as
+  begin
+    declare Charstring stat1, Charstring stat2, Charstring tname, Charstring row;
+    set row="";
+  	for each original Charstring subject, Charstring property, Charstring value where returnspv(datant)=(subject, property, value) 
+           begin
+		if (subject!=row) then
+		  begin
+			if (row!="") then
+			  sql(j, "INSERT INTO " + tname+ "(" + substring(stat1,0,char_length(stat1)-2)  + ") VALUES (" + substring(stat2,0,char_length(stat2)-2) + ");");
+		    set stat1="";
+		    set stat2="";	
+		    set row=subject;
+		    set tname=get_tableName_fromRowID(schnt,ontol,subject)
+                  end;
+		    if (notany(like("'"+value+"'","*null*"))) then
+		     begin
+			set stat1=get_columnName_fromNT(schnt,get_tableURI_fromRowID(schnt,ontol,subject),property)+","+stat1;	
+                  	set stat2="'" + value+"',"+stat2;
+                     end;
+	   end;
+		sql(j, "INSERT INTO " + tname+ "(" + substring(stat1,0,char_length(stat1)-2)  + ") VALUES (" + substring(stat2,0,char_length(stat2)-2) + ");");
+    end;
+
+
+create function make_eqstatements(Vector of Charstring pkcolumns)->Charstring
+/*Creates the pimary key equalities for the stored procedures*/
+as
+  begin
+   declare Charstring st,Integer num;
+   set st="";
+   set num=0;
+	for each Charstring el where el=in(pkcolumns)
+   	  begin
+	    set st=st+el+"=@numID"+num+" and ";
+	    set num = num+1;
+          end;
+    return substring(st,0,char_length(st)-6);
+  end;
+
+create function make_varlist(Vector of Charstring pkcolumns)->Charstring
+/*Creates the pimary key equalities for the stored procedures*/
+as
+  begin
+   declare Charstring st,integer num;
+   set st="";
+   set num=0;
+	for each Charstring el where el=in(pkcolumns)
+   	  begin
+	    set st=st+"@numID"+num+",";
+	    set num = num+1;
+          end;
+    return substring(st,0,char_length(st)-2);
+  end;
+
+
+create function make_pklist(Vector of Charstring pkcolumns)->Charstring
+/*Creates the pimary key equalities for the stored procedures*/
+as
+  begin
+   declare Charstring st;
+   set st="";
+	for each Charstring el where el=in(pkcolumns)
+   	      set st=st+el+",";
+     return substring(st,0,char_length(st)-2);
+  end;
+
+create function make_vars(Charstring sch,Charstring tabURI,Vector pkcolumns)->Charstring
+/*Creates the variables needed fo the stored procedures*/
+as
+ begin
+   declare Charstring st,Integer num,Charstring typ,Charstring colURI;
+   set st="";
+   set num=0;
+ 	for each Charstring el where el=in(pkcolumns)
+   	  begin  
+	    set colURI=get_columnURI_fromColName(sch,tabURI,el);
+    	    set typ=get_columnType_fromNT(sch,colURI);	
+	    set st=st+"@numID"+num+" "+ typ+", ";
+	    set num = num+1;
+          end;
+    return substring(st,0,char_length(st)-3);
+  end;
+
+
+create function columnProcedures(Charstring sch,Charstring tabURI,Charstring tname, Vector of Charstring keycol,Charstring colname, Charstring collist,Charstring emptyvals,Charstring coltype)-> Charstring
+/*Creates a stored procedure in MS SQL server*/
+as
+ return "create procedure intoCol_"+tname+"_"+colname+"       																		     	     " + 
+		make_vars(sch,tabURI,keycol)+", 
+		@val "+ coltype+"
+		AS
+		  begin
+			DECLARE @num int;
+			if not exists(SELECT "+ make_pklist(keycol)+ " FROM "+tname +" WHERE "+ make_eqstatements(keycol)+")		
+	  		   BEGIN
+				INSERT INTO "+ tname+"("+ make_pklist(keycol)+","+collist+") VALUES("+ make_varlist(keycol)+","+emptyvals+");
+				UPDATE "+tname + " SET "+ colname+"=@val WHERE "+ make_eqstatements(keycol) +";
+		      	    END
+			else
+			  UPDATE "+tname+" SET "+ colname+" =@val WHERE "+ make_eqstatements(keycol)+";
+		end;"; 
+
+
+create function columnProcedures(Charstring tname, Charstring keycol,Charstring colname, Charstring collist,Charstring emptyvals,Charstring coltype)-> Charstring
+/*Creates a stored procedure in MS SQL server*/
+as
+ return "create procedure intoCol_"+tname+"_"+colname+" 
+		@numID int, 
+		@val "+ coltype+"
+		AS
+		  begin
+			DECLARE @num int;
+			SET @num=(SELECT "+keycol+ " FROM "+tname +" WHERE "+ keycol+"=@numID);
+			if @num is null 
+	  		BEGIN
+				INSERT INTO "+ tname+"("+keycol+","+collist+") VALUES(@numID,"+emptyvals+");
+				UPDATE "+tname + " SET "+ colname+"=@val WHERE "+keycol+"=@numID;
+		      	END
+		else
+			UPDATE "+tname+" SET "+ colname+" =@val WHERE "+keycol+"=@numID;
+		end;";
+
+create function createProcedures(jdbc j,Charstring sch,Charstring ontol)-> Boolean
+as
+  begin
+	declare Charstring collist1, Charstring collist2, Charstring colname, Charstring cURI, Charstring coltype, Charstring colsize, Charstring colt, Vector of Charstring key_col;
+	for each Charstring tabURI where tabURI=get_tableURIs_fromNT(sch)
+          begin
+	   set collist1=""; set collist2="";
+	   set key_col= get_pkcolumns_fromURIst(get_primaryK(sch,tabURI));
+	   for each Charstring col, Charstring colURI where get_columnName_fromTable(sch,tabURI)= (col,colURI) 
+		begin
+               	  if (notany(like(col,in(key_col)))) then
+		    begin
+		  	set collist1=collist1+","+col;
+		  	set collist2=collist2+","+"''";
+		    end;
+                 end;
+		set collist1=substring(collist1, 1,char_length(collist1));
+		set collist2=substring(collist2,1,char_length(collist2));
+	    for each Charstring col, Charstring colURI where get_columnName_fromTable(sch,tabURI)= (col,colURI) 
+		begin
+		  set coltype=get_columnType_fromNT(sch,colURI);
+		  set colsize= 500;/*??????*/
+		  if (like_i(coltype,"int*")) then
+			set colt=coltype
+		  else if ( like_i(coltype,"float*")) then	
+			set colt=coltype
+		  else if ( like_i(coltype,"datetime*")) then	
+			set colt=coltype
+		  else
+			set colt=coltype+"("+colsize+")";
+	     		/*return columnProcedures(get_tableName_fromNT(tabURI),get_tableName_fromNT(tabURI)+"_rowid",col,collist1,collist2,colt);*/
+		    if (sql(j, columnProcedures(sch,tabURI,get_tableName_fromNT(sch,ontol,tabURI),key_col,col,collist1,collist2,colt))) then
+				print( "The procedure  intoCol_"+ get_tableName_fromNT(sch,ontol,tabURI)+"_"+col+" was created");
+  		end;
+          end;
+  end;
+
+
+
+create function dropProcedures(jdbc j,Charstring sch,Charstring ontol)-> Boolean
+as
+  for each Charstring tabURI,Charstring col, Charstring colURI where tabURI=get_tableURIs_fromNT(sch) and get_columnName_fromTable(sch,tabURI)= (col,colURI) 
+	sql(j, "drop procedure intoCol_"+get_tableName_fromNT(sch,ontol,tabURI)+"_"+col+";");
+
+
+
+create function insert_intoCols(Charstring sch, Charstring ontol,Charstring datant)-> Charstring
+/*Inserts values in columns in a RDB by stored procedures from N-Triples in column-order*/
+as
+  begin
+    declare Charstring stat1, Charstring stat2, Charstring tname, Charstring collist1,Charstring collist2,Charstring coltype,Charstring procname;
+     	for each original Charstring subject, Charstring property, Charstring value where returnspv(datant)=(subject, property, value) 
+           begin
+		set tname=get_tableName_fromRowID(sch,ontol,subject);
+		set stat1=get_columnName_fromNT(sch,get_tableURI_fromRowID(sch,ontol,subject),property);	
+		set stat2="'" + value+"'";
+		set procname="intoCol_"+tname+"_"+stat1;
+		return ("exec "+procname+ " "+  get_PrimaryK_value(sch,ontol,subject)+","+stat2+";");
+
+           end;
+    end;
+
+
+create function insert_intoCols(jdbc j,Charstring sch, Charstring ontol,Charstring datant)-> Charstring
+/*Inserts values in columns in a RDB by stored procedures from N-Triples in column-order*/
+as
+  begin
+    declare Charstring stat1, Charstring stat2, Charstring tname, Charstring collist1,Charstring collist2,Charstring coltype,Charstring procname;
+     	for each original Charstring subject, Charstring property, Charstring value where returnspv(datant)=(subject, property, value) 
+           begin
+		set tname=get_tableName_fromRowID(sch,ontol,subject);
+		set stat1=get_columnName_fromNT(sch,get_tableURI_fromRowID(sch,ontol,subject),property);	
+		set stat2="'" + value+"'";
+		set procname="intoCol_"+tname+"_"+stat1;
+		sql(j,"exec "+procname+ " "+  get_PrimaryK_value(sch,ontol,subject)+","+stat2+";");
+
+           end;
+    end;
+
+

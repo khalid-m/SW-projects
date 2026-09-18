@@ -1,0 +1,77 @@
+print("----------------------------------------------");
+print(" Testing non-parallel version..........");
+print("----------------------------------------------");
+print("");
+<'regress/iota_exp.amosql';
+lisp;
+(checkequal "orginal code U1"
+  ((osql "count(u1());") '((55))))
+
+(checkequal "orginal code U2"
+  ((osql "count(u2());") '((165))))
+
+(checkequal "orginal code U3"
+  ((osql "count(u3());") '((15642))))
+
+
+:osql
+rollback;
+
+print("");
+print("----------------------------------------------");
+print(" Testing parallel version..........");
+print("----------------------------------------------");
+print("");
+
+load_lisp("src/lisp/subplan.lsp");
+load_lisp("src/lisp/rr_receive_c.lsp");
+<'src/amosql/wsmedpeers.amosql';
+load_lisp('src/lisp/pardecom.lsp');
+
+
+/*lisp;
+(debugging t)
+(trace  rr-receive-resulttypes )
+:osql*/
+
+/*starting wsmed name server*/
+wsmedns();
+
+/*register itself as a peer*/
+register("me");
+
+/*starting wsmed peers */
+startwsmedpeers(4,"test.dmp");
+
+<'regress/iota_exp.amosql';
+
+/* To wait until all peers start */
+sleep(1);
+
+
+lisp;
+
+(checkequal "Parallel QueryPlan test U1- no rr-receive call" 
+  ((osql "count(u1());") '((55))))
+
+(checkequal "Parallel QueryPlan test U2- one rr-receive call" 
+  ((osql "count(u2());") '((165))) )
+
+(checkequal "Parallel QueryPlan test U3- two rr-receive call" 
+  ((osql "count(u3());") '((15642))) )
+
+
+
+:osql
+
+kill_all_peers();
+
+kill_peer("nameserver");
+
+
+
+
+
+quit;
+
+

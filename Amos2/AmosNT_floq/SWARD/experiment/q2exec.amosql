@@ -1,0 +1,130 @@
+ /*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Johan Petrini, UDBL
+ * 
+ * Description: Scalability experiment with content query, Q2, 
+ * increasing the TPC-H database size.
+ *
+ * We measure execution times for strategies END and BE. 
+ * By inspection execution plans of END-P and DVS-P are identical to that of END. 
+ * Execution plan of DPS is very poor containing nested loop joins and does not scale over 
+ * the size of the database.
+ * 
+ * The size of the UPV definition and query is fixed.
+ *
+ * ID: Q2exec
+ * 
+ * Parameters:
+ * We scaled the database size using the TPC-H data generator from 
+ * 0.03125 GB - 2GB while keeping the size of the UPV fixed to 5 mapped properties
+ * from classes Customer and Orders (the UPV is identical to the 'Company' database 
+ * as defined in company.sql).
+ *
+ * As DBMS we use MSSQL Server 2005 SP2.
+ * Buffer size is 100 MB.
+ * 
+ * Connection to MSSQL Server uses JDBC driver for MSSQL 2000.
+ * 
+ * The machine used was a PC with a 2.26 GHz Pentium 4 processor and 
+ * 512 MB running Windows XP.
+ * 
+ * All measurements against MSSQL Server are done with a cold database, 
+ * that is, the MSSQL server is restarted, SWARD is restarted and a 
+ * new JDBC connection is created for every new test.
+ *
+ * Interbase/Firebird is stopped.
+ *****************************************************************************/
+/* Experiment steps 
+ */
+set :f = compileQuery(:dcalc);
+count(select call_function(:f,{}));
+
+/* Experiment pre-settings 
+ */
+set :scenario = "END";			/* Scenario */
+set :pe = false;			/* Partial evaluation */
+set :upv = "Comp";			/* UPV name */
+
+/* Define DS for TPC-H Company relational database.
+ */
+defineDS("COMPANYDS",
+         "jdbc:microsoft:sqlserver://localhost;DatabaseName=tpch00625",
+         "com.microsoft.jdbc.sqlserver.SQLServerDriver",
+         "tpch00625",
+         "dbo",
+         "sa",
+         "12345");
+
+/* Define UPV 'sq' associated with data source 'SQDS'. 
+ */
+defineUPV("COMPANYDS","Comp","http://upv/com/comp/");
+
+/* Connect to predefined data source assigned to UPV 'eGov'. 
+ */
+DSConnect("Comp");	
+
+/* End of experiment pre-settings 
+ */
+
+/* Speed up UPV generation 
+ */
+lisp;
+(defglobal get-columnscache)
+(memo 'get-columnscache 'get-columns (list 'ds 'table))
+:osql
+
+/* Populate SWARD system tables 
+ */
+
+/* Set property and class mappings
+ */
+
+assignPropID("CUSTOMER","C_CUSTKEY","Comp","http://upv.com/schemas/company#CustID");
+assignPropID("CUSTOMER","C_MKTSEGMENT","Comp","http://upv.com/schemas/company#Market");
+assignPropID("ORDERS","O_ORDERKEY","Comp","http://upv.com/schemas/company#OrderID");
+assignPropID("ORDERS","O_CUSTKEY","Comp","http://upv.com/schemas/company#OrderCustomer");
+assignPropID("ORDERS","O_CLERK","Comp","http://upv.com/schemas/company#Clerk");
+
+assignClassID("CUSTOMER","Comp","http://upv.com/schemas/company#Customer");
+assignClassID("ORDERS","Comp","http://upv.com/schemas/company#Orders");
+
+/* End of populating SWARD system tables 
+ */
+
+/* Autogenerate UPV
+ */
+dispatch(:scenario,"Comp");
+
+/* Define example content query Q2
+ */
+set :Q2 =
+"SELECT ?custid, ?cmkt
+ FROM <http://upv/com/comp/>
+ WHERE (?orderid, <http://upv.com/schemas/company#OrderID>, 1),
+       (?orderid, <http://upv.com/schemas/company#OrderCustomer>, ?ocid),
+       (?custid,  <http://upv.com/schemas/company#CustID>, ?ocid),
+       (?custid,  <http://upv.com/schemas/company#Market>, ?cmkt)";
+
+/* Parse Q2 
+ */
+set :dcalc = parse_rdql(:Q2);
+
+/* Experiment post-settings 
+ */
+enable_parteval(:pe);
+
+/* End of experiment post-settings 
+ */
+
+
+/* Cost based optimization in SQLServer  
+ */
+
+/* Measure compilation (optimization) and execution time in MSSQL Server
+ */
+SET STATISTICS TIME ON
+
+select O_CUSTKEY,C_MKTSEGMENT 
+from ORDERS O_,CUSTOMER C_ 
+where O_ORDERKEY = 1 and C_CUSTKEY = O_CUSTKEY

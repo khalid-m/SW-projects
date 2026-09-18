@@ -1,0 +1,8 @@
+#!/bin/bash
+echo "HI"
+curdir=`pwd`
+machine=`hostname`
+echo "Starting CQ server on host $machine"
+cd "${AMOS_HOME}/gsdm"
+../bin/bcast gsdm.dmp -c "$1"@"$NAMESERVER_HOST" -o "listen_gsdm();"
+cd "${curdir}"

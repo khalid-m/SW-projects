@@ -1,0 +1,1 @@
+This folder contains regression tests for the Sanvik Coromant examples.

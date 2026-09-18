@@ -1,0 +1,96 @@
+/***********Lisp code ****************/
+lisp;
+(defun remove_ele(fno H R)
+  (let ((R (make-array (- (Length H) 1))))
+  (do ((I 0 (+ 1 I)))
+      ((= I (- (Length H) 1)))(seta R I (aref H (+ I 1)))(1- I))
+   (osql-result H R))) 
+  
+
+:osql
+/***********AMOSQL code ****************/
+
+
+create type Vecele3 properties(name charstring,value record);
+create Vecele3 instances :vecele3;
+set value(:vecele3)=make_record({});
+set name(:vecele3)="ele3";
+
+
+create type Vecele4 properties(name charstring,value record);
+create Vecele4 instances :vecele4;
+set value(:vecele4)=make_record({});
+set name(:vecele4)="ele4";
+
+
+create type Vecele5 properties(name charstring,value vector, temprec record);
+create Vecele5 instances :vecele5;
+set value(:vecele5)={};
+set name(:vecele5)="ele5";
+set temprec(:vecele5)=make_record({});
+
+create function remove_ele(vector r)
+                ->vector s as foreign "remove_ele";
+			
+create function findresult1()->record rs  
+				as select value(ve) from Vecele3 ve where name(ve)="ele3";
+
+create function findresult2()->record rs  
+				as select value(ve) from Vecele4 ve where name(ve)="ele4";
+	 
+create function iterate2(vector of element r, vector inele)-> record rs
+		as 
+		begin
+		set value(ve5)=inele from Vecele5 ve5 where name(ve5)='ele5';
+		 for each Element p, Vecele4 ve2, Vecele5 ve5 where p=in(r) and name(ve2)="ele4" and name(ve5)="ele5"
+		  begin
+			
+			if subelements(p)then 
+				begin
+				set temprec(ve5)=iterate2(subelements(p),value(ve5)); 
+				set value(ve2)= put_record(value(ve2),name(p),temprec(ve5));
+				 
+				end
+			else
+			  begin
+			 	set value(ve2)= put_record(value(ve2),name(p),value(ve5)[0]);
+			        set value(ve5)=remove_ele(value(ve5));
+			  end;
+		 end;
+	        set rs=findresult2();	
+		result rs;
+		set value(ve2)=make_record({}) from Vecele4 ve2 where name(ve2)="ele4";	
+	
+		end;
+
+create function inputiterate(Operation op, vector inele)-> record rs 
+		as 
+		begin
+		 set value(ve5)=inele from Vecele5 ve5 where name(ve5)='ele5';
+		  for each Element p,Vecele3  ve, Vecele5 ve5  where p=in(input(op))and name(ve)="ele3" and name(ve5)='ele5'
+		   begin
+			if subelements(p)then 
+			begin
+			  set temprec(ve5)=iterate2(subelements(p),value(ve5)); 
+			  set value(ve)= put_record(value(ve),name(p),temprec(ve5));
+			end
+		       else
+			 begin
+		          
+			  set value(ve)= put_record(value(ve),name(p),value(ve5)[0]);
+			 if (value(ve5)!={}) then
+			 	set value(ve5)=remove_ele(value(ve5));
+			end
+		   end;
+		   set rs=findresult1();	
+		   result rs;
+		   set value(ve)=make_record({}) from Vecele3 ve where name(ve)="ele3";
+		    set value(ve5)=make_record({}) from Vecele5 ve5 where name(ve5)="ele5";							 	
+	       end;
+
+create function decode(Operation op,vector inele)
+                ->record rs as
+begin
+   set rs =inputiterate(op,inele);
+   result rs;
+end;

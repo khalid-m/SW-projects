@@ -1,0 +1,21 @@
+< './src/Mysql-lr.osql';
+
+lisp;
+(register-init-form '(delay-emit nil))
+:osql
+
+/*  Decomment this for running SCSQ-MySQL parallelized
+
+set lrdumpfiledir() = getenv("AMOS_HOME") + 'scsq/lr/dexp';*/
+set dumpfile() = 'mysql-lr.dmp';
+
+set daily_exp_node()=<"localhost","LRB64","regress","regress",3036>;
+
+add mysql_nodes(0)=<"tintin1.uppmax.uu.se","LRB128","regress","regress",3036>;
+
+< './init.osql';
+/* < './select.osql'; */
+
+save "../../../bin/mysql-lr.dmp";
+
+quit;

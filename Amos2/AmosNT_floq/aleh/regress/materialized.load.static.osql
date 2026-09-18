@@ -1,0 +1,53 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2006 Ruslan Fomkin, UDBL
+ * $RCSfile: materialized.load.static.osql,v $
+ * $Revision: 1.2 $ $Date: 2007/01/19 08:48:58 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Regression test for ALEH project for materialized ontology 
+ * loading entire file complete static cost model from the paper. 
+ * Tests that some cut queries over entire file t.root located in ROOT wrapper
+ * home directory.
+ ****************************************************************************
+ * $Log: materialized.load.static.osql,v $
+ * Revision 1.2  2007/01/19 08:48:58  ruslan
+ * UR test is added. The level of randomize is 100 and 100
+ *
+ * Revision 1.1  2006/10/02 08:19:59  ruslan
+ * compilation scripts and regression test for the static cost model for aggregates and numerical operations as in the paper
+ *
+ ****************************************************************************/
+
+lisp;
+(checkequal "Loading t.root file"
+	    ((osql "load_root_file(\"../wrappers/ROOTWrap/t.root\");")
+	     '((25000))))
+:osql
+
+cd("osql");
+<"cuts.const.osql";
+
+lisp;
+(checkequal "3 lepton cut"
+	    ((osql "count(select e from event e
+where threeleptoncut(e));")
+	     '((475))))
+
+(checkequal "Opt all cuts"
+	    ((osql "sort(select id(optallcuts()));")
+	     '((#(19015 24455)))))
+:osql
+
+optmethod('randomopt');
+optlevel(100,100);
+
+create function expsort()-> vector of integer as
+select sort(select id(expcuts()));
+
+lisp;
+(checkequal "Exp cuts with ungrouped static cost model and randomopt (100,100)"
+	    ((osql "expsort();")
+	     '((#(19015 24455)))))
+:osql

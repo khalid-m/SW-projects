@@ -1,0 +1,11 @@
+
+/*import the wsdl document */
+importwsdl("wsdl/sum.wsdl");
+
+/*invoke operation intPlus */
+if (3=intPlus(1,2)) then
+		 print("WSMED OK")
+else
+	print("WSMED FAILED");
+
+quit;

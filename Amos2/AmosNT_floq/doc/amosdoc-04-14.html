@@ -1,0 +1,2027 @@
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.04 [en] (Win95; I) [Netscape]">
+</HEAD>
+<BODY BACKGROUND="amosbg.jpg">
+<A NAME="60587"></A>
+<H1>
+4 General syntactic constructs</H1>
+<A NAME="60589"></A>This next sections describe the statements available
+in AMOSQL. For the syntax we use BNF notation with the following special
+constructs:
+
+<P>&nbsp;<A NAME="60591"></A>A ::= B C: A consists of B followed by C.
+<BR>A ::= B | C, alternatively (B | C): A consists of B or C.
+<BR>A ::= [B]: A consists of B or nothing.
+<BR>A ::= B-list: A consists of one or more Bs.
+<BR>A ::= B-commalist: A consists of one or more Bs separated by commas.
+<BR>'xxx': The string (keyword) xxx.
+
+<P><A NAME="60593"></A>AMOSQL statements are always terminated by a semicolon
+(;).
+
+<P><A NAME="60595"></A>
+<H2>
+4.1 Identifiers</H2>
+<A NAME="60597"></A>Identifiers have the syntax:&nbsp;<A NAME="60599"></A>
+<PRE>identifier ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ('_' | letter) [identifier-character-list]&nbsp;
+
+identifier-character ::=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; alphanumeric | '_'</PRE>
+<A NAME="63249"></A>AMOS II keywords are case sensitive; they are always
+written with lower case letters.&nbsp; AMOS II identifiers are NOT case
+sensitive; i.e. they are always internally capitalized.
+
+<P>&nbsp;<A NAME="60609"></A>
+<H2>
+4.2 Variables</H2>
+<A NAME="60611"></A>Variables are of two kinds:&nbsp;<A NAME="60613"></A>
+<UL>
+<LI>
+<I>Local variables</I> are identifiers for data values in AMOSQL queries
+and functions. <I>Local variables</I> must be declared in function signatures
+(<A HREF="amosdoc-04-14.html#60905">``Functions and Queries'' </A>), by
+from clauses (<A HREF="amosdoc-04-14.html#61153">``The select statement''
+</A>), or by the declare construct (<A HREF="amosdoc-04-14.html#61669">``Database
+procedures'' </A>).</LI>
+
+
+<P>Syntax:
+<BR><TT>variable-name ::= identifier</TT>&nbsp;<A NAME="60619"></A>
+<BR>&nbsp;
+<LI>
+<I>Interface variables</I> hold temporary query results during a session
+and is also used to share values with foreign languages (C or Lisp) (see
+AMOS II External Interfaces). Interface variables cannot be referenced
+in function bodies.</LI>
+
+
+<P>Syntax:
+
+<P><TT>interface-variable-name ::= ':' identifier</TT>
+<BR><TT>gen-variable-name ::= variable-name | interface-variable-name</TT></UL>
+<A NAME="60627"></A>
+<H2>
+4.3 Constants</H2>
+<A NAME="60629"></A>Constants can be integers, reals, strings, or&nbsp;
+booleans.
+<BR>Syntax:&nbsp;<A NAME="60633"></A>
+<PRE>constant ::=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; integer-constant | real-constant | boolean-constant |&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; string-constant&nbsp;
+
+integer-constant ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ['-'] digit-list&nbsp;
+
+real-constant ::=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ['-'] digit-list '.' [digit-list]
+
+boolean-constant ::=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'true' | 'false'&nbsp;
+
+string-constant ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; string-separator character-list string-separator
+
+string-separator ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ''' | '"'</PRE>
+<A NAME="60663"></A>In string-constants the surrounding string separators
+must be the same. If the string contains the separator used, it must be
+preceded with the escape character backslash, <TT>'\'</TT>.
+
+<P>&nbsp;<A NAME="60671"></A>
+<H2>
+4.4 Comments</H2>
+<A NAME="60673"></A>The comment statement is a separator, i.e. it can be
+placed anywhere outside identifiers and constants.
+<BR>Syntax:&nbsp;<A NAME="60677"></A>
+<PRE>comment ::=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; '/*' character-list '*/'</PRE>
+<A NAME="60681"></A>
+<H1>
+5 Types</H1>
+<A NAME="60683"></A>Types are represented as identifiers.
+
+<P>Syntax:&nbsp;<A NAME="60687"></A>
+<PRE>type-name ::= identifier</PRE>
+<A NAME="60689"></A>The 'create type' statement creates a new user type.
+It also provides the option to create <I>property functions</I>. Property
+functions are represented as regular AMOSQL functions of a single argument.
+They can also be defined separately with 'create function' statements (<A HREF="amosdoc-04-14.html#60905">``Functions
+and Queries'' </A>).
+<BR>Syntax:&nbsp;<A NAME="60693"></A>
+<PRE>create-type-stmt ::=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'create type' type-name ['subtype of' type-name-commalist]
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ['properties' '(' attr-function-commalist ')']<A NAME="60699"></A></PRE>
+
+<PRE>attr-function ::=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; function-name type-name ['key']</PRE>
+<A NAME="60703"></A>For example:&nbsp;<A NAME="60705"></A>
+<PRE>create type namedobject properties (name charstring key);
+
+create type person subtype of namedobject properties&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (age integer,parents bag of person);
+
+create type student subtype of person properties (score integer);</PRE>
+<A NAME="63252"></A>Type names must be unique across all types.
+
+<P>&nbsp;<A NAME="60715"></A>The new type will be an immediate subtype
+of all the supertypes specified in the 'subtype of' clause. The supertypes
+must be defined. If no supertypes are specified the new type becomes an
+immediate subtype of the system type <TT>usertypeobject</TT>.
+
+<P>&nbsp;<A NAME="60717"></A>The <TT>attr-function-commalist</TT> clause
+is optional, and provides a way to create property functions for the new
+type. The property functions always have a single argument and a single
+result and are initially only stored (but can be later redefined as a derived
+function, <A HREF="amosdoc-04-14.html#60905">``Functions and Queries''
+</A>). The argument type is implicitly the type being created and the result
+type is specified by the<TT> type-name</TT>. The&nbsp; result types must
+exist.
+
+<P>&nbsp;<A NAME="60719"></A>If 'key' is specified for a property, it indicates
+that each value of the property is unique, see <A HREF="amosdoc-04-14.html#60905">``Functions
+and Queries'' </A>.
+
+<P>&nbsp;<A NAME="60721"></A>
+<H2>
+5.1 System type hierarchy</H2>
+<A NAME="60723"></A>The following types are predefined in AMOS II:&nbsp;<A NAME="63966"></A>
+<PRE>AMOS
+
+BAG OF x
+
+BOOLEAN&nbsp;
+
+CHARSTRING
+
+COLLECTION
+
+FUNCTION&nbsp;
+
+INTEGER&nbsp;
+
+LITERAL&nbsp;
+
+NUMBER&nbsp;
+
+OBJECT
+
+PROXY
+
+REAL
+
+SAGA
+
+TYPE&nbsp;
+
+USERTYPE
+
+USERTYPEOBJECT
+
+VECTOR</PRE>
+<A NAME="62839"></A><A HREF="amosdoc-04-14.html#63285">``AMOS II type hierarchy''
+</A>shows the upper levels of the type hierarchy of AMOS II (PICTURE NEEDS
+TO BE MODIFIED).
+
+<P>&nbsp;<A NAME="63285"></A><IMG SRC="amostypes.gif" > AMOS type hierarchy
+<UL><A NAME="60761"></A>
+<LI>
+The root type is called OBJECT.&nbsp;<A NAME="60763"></A></LI>
+
+<LI>
+All user types are placed in the type hierarchy below USERTYPEOBJECT. The
+user is responsible for the structure of the type hierarchy below USERTYPEOBJECT.&nbsp;<A NAME="60765"></A></LI>
+
+<LI>
+The type definitions are objects themselves and are instances of either
+the type TYPE for system types, or USERTYPE for user types.&nbsp;<A NAME="60767"></A></LI>
+
+<LI>
+A LITERAL is a built-in type without explicit OID representation, usually
+representing primitive data types such as numbers and strings.&nbsp;<A NAME="60769"></A></LI>
+
+<LI>
+The type NUMBER is a supertype covering both integer and real numbers.&nbsp;<A NAME="60771"></A></LI>
+
+<LI>
+COLLECTION are literals holding collections of other values.&nbsp;<A NAME="60773"></A></LI>
+
+<LI>
+Functions definitions are instances of the type FUNCTION.&nbsp;<A NAME="60779"></A></LI>
+
+<LI>
+The type BAG&nbsp; holds the result of queries as sets of objects with
+duplicates retained.&nbsp;<A NAME="60781"></A></LI>
+
+<LI>
+AMOS is a type used for handling references to other AMOS II databases.</LI>
+</UL>
+<A NAME="60783"></A>
+<H2>
+5.2 Deleting types</H2>
+<A NAME="60785"></A>The 'delete type' statement deletes a type and all
+its subtypes.
+
+<P>Syntax:
+<BR>&nbsp;<A NAME="60789"></A>
+<PRE>delete-type-stmt ::=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'delete type' type-name</PRE>
+<A NAME="60793"></A>For example:&nbsp;<A NAME="60795"></A>
+<PRE>delete type person; /* Delete types person and student */</PRE>
+<A NAME="60797"></A>Functions using the deleted type will be deleted as
+well (<A HREF="amosdoc-04-14.html#60905">``Functions and Queries'' </A>).
+
+<P>&nbsp;<A NAME="60799"></A>Objects that were instances of the deleted
+type will no longer be instances of that type, but they remain instances
+of their other types. All user objects are instances of USERTYPEOBJECT,
+so deleting a type cannot causes objects to be left without any type.
+
+<P>&nbsp;<A NAME="60801"></A>
+<H1>
+6 Objects</H1>
+<A NAME="60803"></A>The 'create' statement creates one or more objects
+and makes the new object(s) instance(s) of a given user type and all its
+supertypes.
+
+<P>Syntax:&nbsp;<A NAME="60807"></A>
+<PRE>create-object-stmt ::=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'create' type-name
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ['(' function-name-commalist ')'] 'instances' initializer-commalist&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+
+initializer ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; gen-variable-name |
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [gen-variable-name] '(' value-list-item-commalist ')'
+
+value-list-item ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; simple-init-value | multiple-init-value | 'nil'&nbsp;
+
+simple-init-value ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; single-value | collection-value&nbsp;
+
+single-value ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; gen-variable-name | constant
+
+collection-value ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; bag-value | vector-value&nbsp;
+
+bag-value ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'bag(' single-value-commalist ')'&nbsp;
+
+vector-value ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'vector(' single-value-commalist ')' |
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; '{' single-value-commalist '}'&nbsp;
+
+multiple-init-value ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; '&lt;' simple-value-commalist '>'</PRE>
+<A NAME="63294"></A>Example:&nbsp;<A NAME="60855"></A>
+<PRE>create person (name,age) instances
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; :adam ('Adam',26),:eve&nbsp; ('Eve',32);&nbsp;
+
+create person instances :olof;&nbsp;
+
+create person (parents) instances&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; :tore (bag(:adam,:eve));</PRE>
+<A NAME="60867"></A>The new objects are assigned initial values for the
+specified property functions. The property functions can be any updatable
+AMOSQL functions.
+
+<P>&nbsp;<A NAME="60869"></A>One object will be created for each initializer.
+Each initializer can have an optional variable name which will be bound
+to the new object. The variable name can subsequently be used as a reference
+to the object.
+
+<P>&nbsp;<A NAME="60871"></A>The initializer also contains a comma-separated
+list of initial values for the specified functions. Initial values are
+specified as constants or variables.
+
+<P>&nbsp;<A NAME="60873"></A>The types of the initial values must match
+the declared result types of the corresponding functions.
+
+<P>&nbsp;<A NAME="60875"></A>Multiple result functions are initialized
+with a comma-separated list of values enclosed in angle brackets (syntax
+<TT>multiple-init-value</TT>).
+
+<P>&nbsp;<A NAME="60877"></A>Bag valued functions are initialized using
+the keyword BAG (syntax <TT>bag-value</TT>).
+
+<P>&nbsp;<A NAME="60879"></A>Vector result functions are initialized with
+a comma-separated list of values enclosed in curly brackets (syntax <TT>vector-value</TT>).
+
+<P>&nbsp;<A NAME="60881"></A>It is possible to specify NIL for a value
+when no initialization is desired for the corresponding function.
+
+<P>&nbsp;<A NAME="60883"></A>
+<H2>
+6.1 Object deletion</H2>
+<A NAME="60885"></A>Objects are deleted from the database with the 'delete'
+statement.
+
+<P>Syntax:&nbsp;<A NAME="60889"></A>
+<PRE>delete-object-stmt ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'delete' gen-variable-name</PRE>
+<A NAME="60893"></A>Example:&nbsp;<A NAME="60895"></A>
+<PRE>delete :adam;</PRE>
+<A NAME="60897"></A>Referential integrity is maintained by the system which
+will automatically delete references to the deleted object. It is thus
+also removed from all stored functions where it is referenced.
+
+<P>&nbsp;<A NAME="60899"></A>Deleted objects are printed as&nbsp;<A NAME="60901"></A>
+<PRE>#[OID 1234 *DELETED*]</PRE>
+<A NAME="60903"></A>The objects may be undeleted by rollback. The garbage
+collector physically removes the OIDs from the database only when their
+creation has been rolled back or their deletion committed, and they are
+not references from some variable.
+
+<P>&nbsp;<A NAME="60905"></A>
+<H1>
+7 Functions and Queries</H1>
+<A NAME="60907"></A>The 'create function' statement creates a new user
+function that maps arguments of the specified argument types to results
+of the specified result types.
+
+<P>Syntax:&nbsp;<A NAME="60911"></A>
+<PRE>create-function-stmt ::=
+
+'create function' function-name argl-spec&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -> resl-spec [fn-implementation]&nbsp;
+
+function-name ::=specific-function-name |&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; type-name-list '.' specific-function-name '->' type-name-list
+
+type-name-list ::= type-name | type-name '.' type-name-list
+
+specific-function-name ::= identifier&nbsp;
+
+argl-spec ::='(' [arg-spec-commalist] ')'&nbsp;
+
+arg-spec ::=simple-arg-spec | 'bag of' simple-arg-spec&nbsp;
+
+simple-arg-spec ::=&nbsp;&nbsp;&nbsp;&nbsp; type-name [variable-name] ('key' | 'nonkey')
+
+resl-spec ::=&nbsp;&nbsp; arg-spec | multiple-result-spec&nbsp;
+
+multiple-result-spec ::=&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ['&lt;'] simple-arg-spec-commalist ['>']&nbsp;
+
+fn-implementation ::=&nbsp;&nbsp; 'as' (derived-body | procedure-body |
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; foreign-body | 'stored')&nbsp;
+
+derived-body ::= simple-select-stmt
+
+foreign-body ::= 'foreign' [string-constant]</PRE>
+<A NAME="60957"></A>The <TT>fn-implementation</TT> specifies what the function
+does when it is invoked. The following kinds of function implementations
+are supported:<A NAME="60959"></A>
+<UL>
+<LI>
+A <I>stored function</I> (syntax<TT> 'stored'</TT>) represents data stored
+as facts in the database. The corresponding mapping between arguments and
+results are internally stored in a table. Stored functions can always be
+updated using the update statements (<A HREF="amosdoc-04-14.html#61601">``Function
+Updates'' </A>). The set of mappings is initially empty.&nbsp;<A NAME="60961"></A></LI>
+
+<LI>
+A <I>derived function</I> (syntax <TT>derived-body</TT>) is defined by
+a single AMOSQL query (<TT>simple-select-stmt</TT>) in the body. The query
+specifies how to map argument values to results. Queries are described
+below in <A HREF="amosdoc-04-14.html#61153">``The select statement'' </A>.
+The query optimizer is invoked when a derived function is defined so that
+optimization is not required when derived function are called (<A HREF="amosdoc-04-14.html#61031">``Function
+Calls'' </A>). Some, but not all, simple derived functions can be updated
+(<A HREF="amosdoc-04-14.html#61601">``Function Updates'' </A>).&nbsp;<A NAME="60963"></A></LI>
+
+<LI>
+A <I>foreign function</I> (syntax <TT>foreign-body</TT>) is defined by
+a program written in a foreign language (C or Lisp). The definition of
+foreign functions is documented separately in the document 'AMOS II External
+Interfaces'. Foreign functions can currently not be updated.&nbsp;<A NAME="60965"></A></LI>
+
+<LI>
+A <I>database procedure</I> (syntax <TT>procedure-body</TT>) is a program
+written in a procedural subset of AMOSQL that may have side effects, database
+updates, loops, and local variable assignments. Database procedures should
+not be used in queries. Database procedures are described in <A HREF="amosdoc-04-14.html#61669">``Database
+procedures'' </A>.&nbsp;<A NAME="60967"></A></LI>
+
+<LI>
+An<I> overloaded function</I> is a function defined on different types
+with identical names. When a function call is made to an overloaded function,
+the appropriate implementation is selected based on the actual argument
+types. Overloaded functions are described in&nbsp; <A HREF="amosdoc-04-14.html#61273">``Overloaded
+Functions and Late Binding'' </A>.</LI>
+</UL>
+<A NAME="60969"></A>The<TT> argl-spec</TT> and the <TT>resl-spec</TT> constrain
+the argument and the result types of AMOSQL functions. Examples:&nbsp;<A NAME="60971"></A>
+<PRE>&nbsp;create function age(person)->integer as stored;
+
+&nbsp;create function income(person)->integer as stored;
+
+&nbsp;create function richlimit()->integer as stored;</PRE>
+<A NAME="63305"></A>As the function <TT>richlimit</TT> illustrates that
+an AMOSQL function may have zero arguments.
+
+<P>&nbsp;<A NAME="60979"></A>Semantics:<A NAME="60981"></A>
+<UL>
+<LI>
+The types used in the declarations must be previously defined. The name
+of an argument or result parameter can be left unspecified if it is never
+referenced in the function implementation. The names of the argument and
+result parameters for a given function definition must be unique.&nbsp;<A NAME="60983"></A></LI>
+
+<LI>
+'bag of' specifications on a single result parameter declares it to be
+a bag. A bag is a collection of objects, possibly with duplicates. For
+example:</LI>
+
+<BR><TT>create function parents(person) -> bag of person;</TT>
+<BR>permits each person to have more than one parent. If 'bag of' had been
+omitted each person could have only one parent (or none). This is a special
+case of <I>cardinality constraints</I> which are described more in detail
+below.&nbsp;<A NAME="60989"></A>
+<LI>
+Derived functions can also have arguments declared 'bag of'. Such functions
+are called <I>aggregation operators</I>. They are described in <A HREF="amosdoc-04-14.html#61367">``Subqueries
+and Aggregation Operators'' </A>.</LI>
+
+<BR>NOTICE: Stored functions cannot be aggregation operators. 'bag of'
+declarations of results of derived functions are ignored.<A NAME="60993"></A>
+<LI>
+AMOSQL functions may also have multiple results, indicating that a logical
+tuple of values is returned. This is indicated by bracketing the result
+declarations (see syntax for <TT>multiple-result-spec</TT> and example
+below).</LI>
+</UL>
+<A NAME="60995"></A>Derived AMOSQL functions are defined by a single query
+(or select statement). The syntax and semantics of queries are explained
+in <A HREF="amosdoc-04-14.html#61153">``The select statement'' </A>). Some
+examples of derived functions:&nbsp;<A NAME="60997"></A>
+<PRE>create function double_income (person p)->integer&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; as select income(p) + income(p);&nbsp;
+
+create function rich(person p)->boolean&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; as select true where income(p) > richlimit();&nbsp;
+
+create function married(person h,person w) -> boolean as stored;&nbsp;
+
+create function wife(person h)->person w&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; as select w where married(h,w);
+
+create function family_incomes(person p) -> &lt;integer h,integer w>&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; as select income(p),income(wife(p));
+
+create function family_totalincome(person p)->integer t&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; as select hi + wi&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; from integer hi,integer wi&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; where &lt;hi,wi> = family_incomes(p);</PRE>
+<A NAME="61025"></A>The function<TT> wife</TT> is an example of a derived
+function calling a boolean function m<TT>arried</TT>.
+<BR>The function <TT>family_incomes</TT> is an example of a multiple result
+derived function.
+<BR>The function <TT>family_totalincome</TT> is an example of a derived
+function calling a multiple result function <TT>family_incomes</TT>. Notice
+the bracketed notation to take care of multiple results.
+
+<P>&nbsp;<A NAME="61031"></A>
+<H2>
+7.1 Function Calls</H2>
+<A NAME="61033"></A>The simplest form of a query is to make a function
+call.
+<BR>Syntax:&nbsp;<A NAME="61035"></A>
+<PRE>function-call ::=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; function-name '(' [parameter-value-commalist] ')'&nbsp;
+
+parameter-value ::=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; function-call | single-value | '(' simple-select-stmt ')'&nbsp;
+
+simple-select-stmt ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'select' expr-commalist
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [for-each-clause] [where-clause]&nbsp;
+
+expr&nbsp;&nbsp; ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; function-call | single-value</PRE>
+<A NAME="61053"></A>For example:&nbsp;<A NAME="61055"></A>
+<PRE>&nbsp;age(:eve);</PRE>
+<A NAME="61057"></A>The above function call is equivalent to the ad hoc
+query:&nbsp;<A NAME="61059"></A>
+<PRE>&nbsp;select age(:eve);</PRE>
+<A NAME="61061"></A>The query optimizer is not invoked for such simple
+calls to AMOS II functions and the invocation is very fast. The reason
+is that the query optimizer is instead applied when a derived function
+is defined, and the function is optimized for such <I>unnested</I> calls
+to the function.
+
+<P>&nbsp;<A NAME="61063"></A>Function calls can also be <I>nested</I>,
+for example:&nbsp;<A NAME="61065"></A>
+<PRE>&nbsp;age(parents(:eve));</PRE>
+<A NAME="61067"></A>or equivalently:&nbsp;<A NAME="61069"></A>
+<PRE>&nbsp;select age(parents(:eve));</PRE>
+<A NAME="61071"></A>For nested function calls the query optimizer will
+be applied to produce an execution plan for the call, which is then immediately
+executed. Thus nested function calls are therefore significantly slower
+than unnested ones, and the user is recommended to avoid nested function
+calls by defining suitable derived functions. In the example above, define:&nbsp;<A NAME="61073"></A>
+<PRE>&nbsp;create function parage(person p) -> integer
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; as select age(parents(p));&nbsp; /* Optimizer invoked here&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; and execution plan saved in db */&nbsp;
+
+parage(:eve); /* Optimizer NOT invoked here */</PRE>
+<A NAME="61081"></A><I>Daplex</I> semantics is used for nested function
+calls. This means that if a function is applied on an inner function which
+is bag valued (such as <TT>parents</TT>) the outer function (i.e.<TT>age</TT>)
+is applied on each elements of the bag. In the example above, the result
+of the query<FONT FACE="Courier New,Courier"> </FONT><TT>parage(:adam);</TT>
+is a bag of the ages of all parents of<TT> :adam</TT>.
+
+<P>&nbsp;<A NAME="61083"></A>The Daplex semantics is NOT used for aggregation
+operators (See <A HREF="amosdoc-04-14.html#61367">``Subqueries and Aggregation
+Operators'' </A>) which are functions that aggregate over the bag. For
+example, to count how many parent<TT> :adam </TT>has, the aggregation operator
+<TT>count</TT> can be used which counts the elements of its argument bag:&nbsp;<A NAME="61085"></A>
+<PRE>&nbsp;count(parents(:eve));</PRE>
+<A NAME="61087"></A>The built-in functions <TT>+,-,*,/</TT> have equivalent
+infix syntax with the usual priorities.
+<BR>For example:&nbsp;<A NAME="61089"></A>
+<PRE>&nbsp;(income(:eve) + income(:ulla)) * 0.5;</PRE>
+<A NAME="61091"></A>is equivalent to:&nbsp;<A NAME="61093"></A>
+<PRE>&nbsp;times(plus(income(:eve),income(:ulla)),0.5);</PRE>
+<A NAME="61095"></A>
+<H2>
+7.2 Cardinality Constraints</H2>
+<A NAME="61097"></A>A <I>cardinality constraint</I> is a system maintained
+restriction on the number of occurrences of a function parameter. For example,
+a cardinality constraint could be that there is at most one salary and
+one name per person, while a person may have any number of parents. The
+only cardinality constraint that is currently supported in AMOSQL is to
+make a given parameter of a stored function be a <I>key</I> to the extent
+of the function, i.e. a given object can participate at most once as a
+key restricted actual argument or result of the function. This is done
+by attaching the keyword 'key' immediately after a parameter declaration.
+For example:&nbsp;<A NAME="61099"></A>
+<PRE>&nbsp;create function name(person key) -> charstring key as stored;</PRE>
+indicates that there is only one name for each person and that the names
+of persons are unique.
+<BR>If the&nbsp; 'key' cardinality constraint is violated by a database
+update the following error message is printed:&nbsp;<A NAME="61105"></A>
+<PRE>Update would violate upper object participation (updating function ...)</PRE>
+<A NAME="61107"></A>The keyword 'nonkey' specifies that the parameter has
+no cardinality constraint.
+<BR>The default cardinality constraint is 'key' for the first argument
+of a stored function and 'nonkey' for all other arguments and the result(s).
+This implies that stored functions are by default single valued.
+
+<P>&nbsp;<A NAME="61111"></A>The function name could thus also have been
+written:&nbsp;<A NAME="61113"></A>
+<PRE>&nbsp;create function name(person) -> charstring key as stored;</PRE>
+<A NAME="61115"></A>For foreign functions it is up to the implementor to
+guarantee that specified cardinality constraints hold.
+<BR>Cardinality constraint declarations are ignored for derived functions.
+
+<P>&nbsp;<A NAME="61119"></A>For example:&nbsp;<A NAME="61121"></A>
+<PRE>&nbsp;create function married(person husband,person wife key)->boolean as stored;</PRE>
+<A NAME="61125"></A>Polygamous marriages are refused to be stored by the
+function <TT>married</TT>, since the first argument has the default cardinality
+constraint 'key'.
+
+<P>&nbsp;<A NAME="61127"></A>The 'bag of' declaration on the result of
+a stored function actually just overrides the default 'key' declaration
+of its argument with 'nonkey'. Thus the function <TT>parents</TT> above
+could also have been written:&nbsp;<A NAME="61129"></A>
+<PRE>&nbsp;create function parents(person nonkey) -> person as stored;</PRE>
+<A NAME="61131"></A>
+<H2>
+7.3 Deleting functions</H2>
+<A NAME="61133"></A>Functions are deleted with the 'delete function' statement.
+
+<P>&nbsp;<A NAME="61135"></A>Syntax:&nbsp;<A NAME="61137"></A>
+<PRE>delete-function-stmt ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'delete function' function-name</PRE>
+<A NAME="61141"></A>For example:&nbsp;<A NAME="61143"></A>
+<PRE>&nbsp;delete function married;</PRE>
+<A NAME="61145"></A>Deleting a type also deletes all subtypes and all functions
+using the deleted types.
+
+<P>&nbsp;<A NAME="61147"></A>For example:&nbsp;<A NAME="61149"></A>
+<PRE>&nbsp;delete type namedobject; /* Wipes out all functions and
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; types defined so far */</PRE>
+<A NAME="61153"></A>
+<H2>
+7.4 The select statement</H2>
+<A NAME="61155"></A>Queries retrieve objects having specified properties.
+They are specified using the 'query' statement.
+
+<P>&nbsp;<A NAME="61157"></A>Syntax:&nbsp;<A NAME="61159"></A>
+<PRE>query-stmt ::=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; select-stmt | function-call
+
+select-stmt ::=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'select' ['distinct'] expr-commalist
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [into-clause]&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [from-clause]
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [where-clause]
+
+into-clause ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'into' gen-variable-name-commalist&nbsp;
+
+from-clause ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'from' variable-declaration-commalist&nbsp;
+
+variable-declaration ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; type-name variable-name |
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'bag of' type-name variable-name
+
+where-clause ::=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'where' predicate-expression</PRE>
+<A NAME="63314"></A>For example:<A NAME="61193"></A>
+<PRE>select age(p) from person p where name(p) = 'Eve';</PRE>
+<A NAME="61199"></A>selects the age of the person named <TT>Eve</TT>.
+
+<P><A NAME="61201"></A>
+<PRE>&nbsp;select name(q) from person p, person q
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; where name(p) = 'Eve' and age(q) > age(p);</PRE>
+<A NAME="61209"></A>selects the names of all persons older than <TT>Eve</TT>.
+
+<P>&nbsp;<A NAME="61211"></A>Function calls (<A HREF="amosdoc-04-14.html#61031">``Function
+Calls'' </A>) is the simplest form of queries.
+
+<P>&nbsp;<A NAME="61213"></A>The<TT> expr-commalist</TT> defines the object(s)
+to be retrieved. See <A HREF="amosdoc-04-14.html#61233">``Predicate expressions''</A>
+for definition of <TT>function-call</TT>.
+
+<P>&nbsp;<A NAME="61215"></A>The<TT> from-clause</TT> declares types of
+local variables used in the query.
+
+<P>&nbsp;<A NAME="61217"></A>The <TT>where-clause</TT> gives a selection
+criteria for the search. The details of the where clause is described below
+in <A HREF="amosdoc-04-14.html#61233">``Predicate expressions'' </A>.
+
+<P>&nbsp;<A NAME="61219"></A>The result of a select statement is a single
+result tuple of objects or a bag of single result tuples. Duplicates may
+occur, unless suppressed using the keyword 'distinct'.
+
+<P>&nbsp;<A NAME="61221"></A>An <TT>into-clause</TT> is available for specifying
+variables to be bound to the result. In case more than one result tuple
+is returned, the variables will be bound only to the elements of the first
+encountered tuple.
+<BR>For example:&nbsp;<A NAME="61223"></A>
+<PRE>&nbsp;select p into :eve2 from person p where name(p) = 'Eve';
+
+&nbsp;name(:eve2);</PRE>
+<A NAME="61231"></A>This query retrieves into the environment variable
+:eve2 the person whose name is<TT> 'Eve'</TT>.
+
+<P>&nbsp;<A NAME="61233"></A>
+<H2>
+7.5 Predicate expressions</H2>
+<A NAME="61235"></A>The general syntax of predicate expressions is:&nbsp;<A NAME="63330"></A>
+<PRE>predicate-expression ::=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; predicate-expression 'and' predicate-expression |&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; predicate-expression 'or' predicate-expression |&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; '(' predicate-expression ')' |&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; simple-predicate
+
+simple-predicate ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; function-call |
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; simple-relterm relop simple-relterm |</PRE>
+
+<PRE>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; relterm '=' relterm
+
+simple-relterm ::=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; function-call | single-value</PRE>
+
+<PRE>relterm ::=</PRE>
+
+<PRE>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; simple-relterm | mutiple-value | select-statement
+
+multiple-value ::=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; '&lt;' single-value-commalist '>'&nbsp;
+
+relop ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt; | > | &lt;= | >= | !=</PRE>
+<A NAME="61265"></A>In a function call, the types of the actual parameters
+and results must be the same as, or subtypes of, the types of the corresponding
+formal parameters or results.
+
+<P>&nbsp;<A NAME="61267"></A>Resolution of overloaded functions is described
+in<A HREF="amosdoc-04-14.html#61273">``Overloaded Functions and Late Binding''
+</A>.
+
+<P>&nbsp;<A NAME="61269"></A>Query variables can be bound to bags. The
+treatment of bag variables and aggregation operators is described in <A HREF="amosdoc-04-14.html#61367">``Subqueries
+and Aggregation Operators'' </A>.
+
+<P>&nbsp;<A NAME="61271"></A>The comparison operators (=, !=, &lt;, &lt;=,
+> and >=) are treated as binary boolean functions. They are all defined
+for any object type.
+
+<P>&nbsp;<A NAME="61273"></A>
+<H2>
+7.6 Overloaded Functions and Late Binding</H2>
+<A NAME="61275"></A>Function names may be overloaded, i.e., functions having
+the same name may be defined differently on different argument types. This
+allows generic functions to apply to several different object types. Each
+specific implementation of an overloaded function is called a <I>resolvent</I>.
+
+<P>&nbsp;<A NAME="61277"></A>For example, assume the two following AMOS
+II function definitions:&nbsp;<A NAME="61279"></A>
+<PRE>create function less(number i, number j)->boolean
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; as select true where i &lt; j;&nbsp;
+
+create function less(charstring s,charstring t)->boolean&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; as select true where s &lt; t;</PRE>
+<A NAME="61287"></A>Its resolvents will have the signatures:&nbsp;<A NAME="61289"></A>
+<PRE>less(number,number) -> boolean
+
+less(charstring,charstring) -> boolean</PRE>
+<A NAME="61293"></A>Internally the system stores the resolvents under different
+function names. The name of a resolvent is obtained by concatenating the
+type of its arguments with the name of the overloaded function followed
+by the symbol '->' and the type of the result.(syntax in <A HREF="amosdoc-04-14.html#60905">``Functions
+and Queries'' </A>). The two resolvents above will be given the names number.<TT>number.less->boolean</TT>
+and <TT>charstring.charstring.less->boolean</TT>.
+
+<P>&nbsp;<A NAME="61295"></A>Overloaded function resolvents are allowed
+to differ on their argument types and the result types. The query compiler
+resolves the correct resolvent to apply. If there is an ambiguity, i.e.
+several resolvents qualify, or if no resolvent qualify an error will be
+generated by the query compiler.
+
+<P>&nbsp;<A NAME="61297"></A>When overloaded function names are encountered
+in AMOSQL function bodies, the system will try to use local variable declarations
+to choose the correct resolvent (early binding).
+<BR>For example:&nbsp;<A NAME="61299"></A>
+<PRE>&nbsp;create function younger(person p,person q)->boolean
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; as select less(age(p),age(q));</PRE>
+<A NAME="61303"></A>will choose the resolvent<TT> number.number.less->boolean</TT>,
+since <TT>age</TT> returns integers and the resolvent <TT>number.number.less->boolean</TT>
+is applicable to integers by inheritance. The other function resolvent
+<TT>charstring.charstring.less->boolean</TT> does not qualify since it
+is not legal to apply to arguments of type integer.
+
+<P>&nbsp;<A NAME="61305"></A>On the other hand, this function:&nbsp;<A NAME="61307"></A>
+<PRE>create function nameordered(person p,person q)->boolean
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; as select less(name(p),name(q));</PRE>
+<A NAME="61311"></A>will choose the resolvent <TT>charstring.charstring.less->boolean</TT>.
+In both cases the resolution will be done at compile time.
+
+<P>&nbsp;<A NAME="61313"></A>Dynamic type resolution is also done for top
+level function call to choose the correct resolvent. For example,&nbsp;<A NAME="61315"></A>
+<PRE>less(1,2);</PRE>
+<A NAME="61317"></A>will choose <TT>number.number.less->boolean</TT>
+
+<P>&nbsp;<A NAME="61319"></A>To avoid the overhead of dynamic type resolution
+one may use the 'dot notation':&nbsp;<A NAME="61321"></A>
+<PRE>number.number.less->boolean(1,2);</PRE>
+<A NAME="61323"></A>AMOS II supports also<I> late binding</I> of overloaded
+functions where the overload resolution is done at run time instead of
+at compile time. For example, suppose that managers are employees whose
+incomes are the sum of the income as a regular employee plus some manager
+bonus:&nbsp;<A NAME="61325"></A>
+<PRE>&nbsp;create type employee subtype of person;
+
+&nbsp;create type manager subtype of employee;
+
+&nbsp;create function mgrbonus(manager)->integer as stored;
+
+&nbsp;create function income(employee)->integer as stored;&nbsp;
+
+&nbsp;create function income(manager m)->integer i&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; as select employee.income->integer(m) + mgrbonus(m);</PRE>
+<A NAME="61337"></A>Now, suppose that we need a function that returns the
+gross incomes of all persons in the database, i.e. we use <TT>manager.income->integer</TT>
+for managers and<TT> employee.income->integer</TT> for non-manager. In
+AMOS II such a function is defined as:&nbsp;<A NAME="61339"></A>
+<PRE>&nbsp;create function grossincomes()-> integer i&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; as select income(p)
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; from employee p; /* income(p) late bound */</PRE>
+<A NAME="61345"></A>Since <TT>income</TT> is overloaded with resolvents
+<TT>employee.income->integer</TT> and <TT>manager.income->integer</TT>
+and both qualify to apply to employees, the resolution of <TT>income(p)</TT>
+will be done at run time. If only incomes of employees are sought the desired
+resolvent has to be explicitly specified as <TT>employee.income->integer</TT>.
+
+<P>&nbsp;<A NAME="61347"></A>We currently have the restriction on late
+bound functions that they can only be used in the forward direction, i.e.
+in queries where their arguments are known but not their results.
+
+<P>&nbsp;<A NAME="61349"></A>Since the detection of the necessity of dynamic
+resolution is done at compile time, overloading a function name may lead
+to a cascading recompilation of functions defined in terms of that function
+name. This may take some time. For a more detailed and extensive presentation
+of the managemant of late bound functions see <A HREF="amosdoc-04-14.html#62650">[2]</A><A HREF="amosdoc-04-14.html#62651">[3]</A>.
+
+<P>&nbsp;<A NAME="61351"></A>
+<H2>
+7.7 Disjunctive Queries</H2>
+<A NAME="61353"></A>The 'or' operator works like a union operator, i.e.
+the union of the objects satisfying its operands (without duplicates removed)
+is returned. Queries and function definitions can have arbitrary nesting
+of 'and' and 'or'.
+
+<P>&nbsp;<A NAME="61355"></A>Example:&nbsp;<A NAME="61357"></A>
+<PRE>create function father(person) -> person as stored;
+
+create function mother(person) -> person as stored;&nbsp;
+
+create function parent(person p) -> person q&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; as select q where q=father(p) or q=mother(p);</PRE>
+<A NAME="61365"></A>The function body of <TT>parent</TT> is a disjunctive
+query, since it contains an 'or'. <TT>parent</TT> would generate the bag
+of all fathers and mothers for a given person.
+
+<P>&nbsp;<A NAME="61367"></A>
+<H2>
+7.8 Subqueries and Aggregation Operators</H2>
+<A NAME="61369"></A>Normally when an AMOSQL function is applied on a bag-valued
+function it is applied on each element of the bag. For example,&nbsp;<A NAME="61371"></A>
+<PRE>age(parents(:eve));</PRE>
+<A NAME="61373"></A>will return the ages of all parents of <TT>:adam</TT>,
+i.e. the function <TT>age</TT> is applied on each element of the result
+from the function call <TT>parents(:adam)</TT>.
+
+<P>&nbsp;<A NAME="61375"></A>By contrast, an aggregation operator is a
+function that treats a bag valued argument as a single unit. Thus the complete
+bag is passed at once to the outer function, rather than applying the outer
+function on each result of the bag. For example, <TT>count(bag of object)</TT>
+is an example of an aggregation operator:&nbsp;<A NAME="61377"></A>
+<PRE>&nbsp;count(parents(:eve));</PRE>
+<A NAME="61379"></A>In this case the number of parents of <TT>:adam</TT>
+is returned.
+
+<P>&nbsp;<A NAME="61381"></A>Aggregation operators are defined as functions
+where one or several arguments are declared as bags:&nbsp;<A NAME="61383"></A>
+<PRE>&nbsp;&nbsp; bag of type x</PRE>
+<A NAME="61385"></A>The following system aggregation operators are defined:&nbsp;<A NAME="63333"></A>
+<PRE>sum(bag of number x) -> number r&nbsp;
+
+
+
+count(bag of object x) -> integer r
+
+maxagg(bag of object x) -> object r&nbsp;
+
+minagg(bag of object x) -> object r</PRE>
+<A NAME="63334"></A>Aggregation operators can be overloaded. Notice that
+<TT>count, maxagg</TT> and <TT>minagg</TT> can be applied to any bag, while
+<TT>sum</TT> must be applied only to 'uniform' bags of numbers.
+
+<P>&nbsp;<A NAME="61399"></A>NOTICE: Nested subqueries are allowed as arguments
+to aggregation functions. For example, <TT>totalincomes</TT> could also
+be written:&nbsp;<A NAME="61401"></A>
+<PRE>&nbsp;create function totalincomes()->integer
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; as select sum(select i
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; from person p,integer i&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; where income(p)=i);
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* income will be bound at runtime */</PRE>
+<A NAME="61411"></A>Subqueries always return bags as their result; thus
+the result of a subquery must be passed to only aggregation operators.
+
+<P>&nbsp;<A NAME="61415"></A>Local variables in queries may be declared
+as bags. For example <TT>totalincomes</TT> could also have been written:&nbsp;<A NAME="61417"></A>
+<PRE>&nbsp;create function totalincomes()->integer
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; as select sum(b) from bag of integer b&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; where b = (select i from person p,integer i
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; where income(p)=i);&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /* Late binding on income*/</PRE>
+<A NAME="61431"></A>
+<H2>
+7.9 Negated subqueries and quantification</H2>
+<A NAME="61433"></A>There are two aggregation operators in AMOSQL to test
+if a bag is empty, <TT>notany</TT>, or not empty, <TT>some</TT>:&nbsp;<A NAME="61435"></A>
+<PRE>notany(bag of object x) -> Boolean
+
+some(bag of object x)-> Boolean</PRE>
+<A NAME="61439"></A>For example, the function <TT>butlowestincomes(d)</TT>
+returns all incomes that is more than <TT>d</TT> higher than the lowest
+income:&nbsp;<A NAME="61441"></A>
+<PRE>&nbsp;create function butlowestincomes(integer d)->integer i
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; as select i from integer i,person p&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; where some(select from person q
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; where (income(q) + d) &lt; i)/* Late */&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; and i = person.income->integer(p);</PRE>
+<A NAME="61453"></A><TT>some</TT> corresponds to the logical quantifier
+<I>exists</I>.
+
+<P>&nbsp;<A NAME="61455"></A>Contrast this to the complementary function
+<TT>lowestincomes</TT> that computes all incomes within the distance <TT>d</TT>
+from the lowest of all incomes:&nbsp;<A NAME="61457"></A>
+<PRE>&nbsp;create function lowestincomes(integer d)->integer i
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; as select i from integer i,person p
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; where notany(select from person q
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; where (income(q) + d)&lt;i)/* Late */
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; and i = person.income->integer(p);</PRE>
+<A NAME="61467"></A><TT>notany</TT> corresponds to the logical quantifier<I>
+not exists</I>, i.e. it negates subqueries.
+
+<P>&nbsp;<A NAME="61469"></A>
+<H2>
+7.10 Transitive Closures</H2>
+<A NAME="61471"></A>A<I> transitive closure</I> is all objects, o, reached
+directly or indirectly from an object, s, by applying some function, f.
+The classical example is to find all ancestors of a given person following
+the parent function (or finding all subparts of a given part).
+
+<P>&nbsp;<A NAME="61473"></A>The recommended way to compute transitive
+closures in AMOS II is to use the built-in function <TT>tclose</TT>:&nbsp;<A NAME="61475"></A>
+<PRE>tclose(function f,object o,integer maxdepth)-> &lt;object r,integer depth></PRE>
+<A NAME="61477"></A>Starting with object o it constructs the transitive
+closure by successively applying f(o), f(f(o)) etc. down to level <TT>maxdepth</TT>.
+<TT>tclose</TT> returns the objects, r, in the closure and their distance,
+d, from o. f must be function with a single argument and result.
+
+<P>&nbsp;<A NAME="61479"></A><TT>tclose</TT> is overloaded so that, as
+an alternative, the name of the traversal function can be specified as
+a string.
+
+<P>&nbsp;<A NAME="61481"></A>Example:&nbsp;<A NAME="61483"></A>
+<PRE>create function ancestors(person o)-> bag of person a
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; as select a from integer d
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; where&nbsp; tclose("person.parents->person",o,200) = &lt;a,d>&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; and a != o;</PRE>
+<A NAME="61493"></A>The <TT>tclose</TT> function is invertible if the traversal
+function is invertible. This means that the direction of the transitive
+closure can be inverted. Thus both these queries are legal:&nbsp;<A NAME="61495"></A>
+<PRE>ancestors(:kain);
+
+select p from person p where ancestors(p) = :eve;</PRE>
+<A NAME="61499"></A>The first query (function call) returns all ancestors
+of :<TT>kain</TT> while the other query returns all descendants of :<TT>eve</TT>
+.
+
+<P>&nbsp;<A NAME="61501"></A>An alternative definition of <TT>ancestor</TT>
+is as a recursive function (see next section). However, it is <I>strongly
+recommended</I> to use <TT>tclose</TT> as an alternative to recursion whenever
+possible, since this is more efficient. Studies have shown that transitive
+closures account for a large majority of the needs for recursive queries.
+Since <TT>tclose</TT> is invertible in our case, it will be almost as powerful
+as the recursive definition.
+
+<P>&nbsp;<A NAME="61503"></A>
+<H2>
+7.11 Cursors</H2>
+<A NAME="61505"></A>For queries and function calls returning bag valued
+results, the <TT>open-cursor-stmt</TT> and the<TT> fetch-cursor-stmt</TT>,
+statements are available to iterate over the result.
+
+<P>Syntax:&nbsp;<A NAME="61509"></A>
+<PRE>open-cursor-stmt ::=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'open' cursor-name 'for' query-stmt&nbsp;
+
+cursor-name ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; gen-variable-name&nbsp;
+
+fetch-cursor-stmt ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'fetch' cursor-name (into-clause | next-clause)&nbsp;
+
+next-clause ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'next' integer-constant&nbsp;
+
+close-cursor-stmt ::=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'close' cursor-name</PRE>
+<A NAME="61529"></A>For example:&nbsp;<A NAME="61531"></A>
+<PRE>create person (name,age) instances :Viola ('Viola',38);
+
+open :c1&nbsp; for select p from person p where name(p) = 'Viola';&nbsp;
+
+fetch :c1 into :Viola1;
+
+close :c1;&nbsp;
+
+name(:Viola1);&nbsp;
+
+"Viola";</PRE>
+<A NAME="61543"></A>A cursor is created by the <TT>open-cursor-stmt</TT>
+and is represented by a bag of result tuples containing objects with unknown
+types.
+
+<P>&nbsp;<A NAME="61545"></A>The result of the query is always materialized
+and stored in the cursor bag.
+
+<P><A NAME="61549"></A>The<TT> fetch-cursor-stmt</TT> fetches the first
+result tuple from the cursor; i.e. the tuple is removed from the front
+of the cursor bag. NIL is returned if there are no more result tuples left
+in the cursor.
+
+<P>&nbsp;<A NAME="61551"></A>If present in a <TT>fetch-cursor-stmt</TT>,
+the <TT>into</TT> clause will bind elements of the first result tuple to
+AMOSQL interface variables. There must be one interface variable for each
+element in the result tuple.
+
+<P>&nbsp;<A NAME="61553"></A>If present in a<TT> fetch-cursor-stmt</TT>,
+the <TT>next-clause</TT> will display the specified number of result tuples
+and remove them from the cursor bag.
+
+<P>&nbsp;<A NAME="61555"></A>If neither a next nor an into clause is present
+in a<TT> fetch-cursor-stmt</TT>, a single result tuple is fetched and displayed.
+
+<P>&nbsp;<A NAME="61557"></A>The<TT> close-cursor-stmt</TT> emties the
+cursor.
+
+<P>&nbsp;<A NAME="61561"></A>It is sometimes useful to count the number
+of result tuples in a cursor bag:&nbsp;<A NAME="61563"></A>
+<PRE>create function ageofpersonnamed(charstring nm)-> integer a
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; as select age(p) from person p where name(p)=nm;&nbsp;
+
+open :c1 for select ageofpersonnamed('Eve');
+
+count(:c1);&nbsp;
+
+1</PRE>
+&nbsp;<A NAME="61575"></A>
+<H2>
+7.12 Recursive functions</H2>
+<A NAME="61577"></A>AMOS II supports a limited class of recursive queries.
+Recursive functions are normally disjunctive.
+<BR>For example:&nbsp;<A NAME="61581"></A>
+<PRE>&nbsp;create function ancestors(person p)->person a&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; as select a from person q&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; where (a = ancestors(q) and q = parent(p)) or a = parent(p);</PRE>
+<A NAME="61593"></A>Recursive queries are evaluated top-down. The system
+only handles recursive functions that call themselves recursively in the
+'forward' direction (where all arguments are known). Otherwise, the system
+will complain that the query is not executable ('unsafe'). Left recursive
+functions, as <TT>ancestor,</TT> are re-ordered by the optimizer to become
+right-recursive (in order to avoid internal looping). NOTICE that the top-down
+evaluation may still cause indefinite looping in case there are circularities
+in the data.
+
+<P>&nbsp;<A NAME="61595"></A>NOTICE: Because of the above problems it is
+recommended to use the transitive closure function (see <A HREF="amosdoc-04-14.html#61469">``Transitive
+Closures'' </A>) as an alternative to recursion whenever possible. Extra
+care should be taken when defining overloaded recursive function as the
+possibility of infinite loops exists.
+
+<P>&nbsp;<A NAME="61597"></A>
+<H1>
+8 Database updates</H1>
+<A NAME="61599"></A>We describe how to update the contents of the database.
+Notice that database population by object creation and property assignments
+was described in<A HREF="amosdoc-04-14.html#60801">``Objects'' </A>.
+
+<P>&nbsp;<A NAME="61601"></A>
+<H2>
+8.1 Function Updates</H2>
+<A NAME="61603"></A>Information in AMOSQL can be thought of as mappings
+from function arguments to results. These mappings are either defined at
+object creation time (<A HREF="amosdoc-04-14.html#60801">``Objects'' </A>),
+or altered by one of the function update statements 'set', 'add', or 'remove'.
+
+<P>Syntax:&nbsp;<A NAME="61607"></A>
+<PRE>update-stmt ::=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; update-op update-item [for-each-clause] [where-clause]&nbsp;
+
+update-op ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'set' | 'add' | 'remove'&nbsp;
+
+update-item ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; function-name '(' single-value-commalist ')' '=' res-values</PRE>
+<A NAME="61619"></A>Not every function is updatable. AMOS II defines a
+function f to be updatable if it is a stored function, or if it is derived
+from a single updatable function g in such a way that the argument and
+result parameters of f partition all the arguments and results of g and
+such that no selection is involved in the derivation.
+
+<P>&nbsp;<A NAME="61621"></A>Semantics:&nbsp;<A NAME="61623"></A>
+<DL>
+<DT>
+<TT>set</TT> sets the value of an updatable function given the arguments.
+For example:&nbsp;<A NAME="61625"></A></DT>
+
+<PRE>set age(:adam)=33;</PRE>
+</DL>
+<A NAME="61627"></A><TT>set</TT> can be combined with querying for set
+oriented updates. For example:&nbsp;<A NAME="61629"></A>
+<PRE>set age(p)= q from person p, integer q
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; where q = 1 + age(p);</PRE>
+<A NAME="61633"></A>will iterate over all persons and increment their ages.
+
+<P>&nbsp;<A NAME="61635"></A>A boolean function can be set to either 'true'
+or'false'. Setting the value of a boolean function to 'false' means that
+the truth value is removed from the function.
+<BR><A NAME="61637"></A>
+<DL>
+<DT>
+<TT>add </TT>adds the specified tuple(s) to the result of an updatable
+bag result function, analogous to <TT>set</TT>.&nbsp;<A NAME="61639"></A></DT>
+
+<DT>
+<TT>remove</TT> removes the specified tuple(s) from the result of an updatable
+bag result function, analogous to <TT>set</TT>.</DT>
+</DL>
+<A NAME="61641"></A>The update statements are not allowed to violate the
+cardinality constraints ('key') (<A HREF="amosdoc-04-14.html#60905">See
+``Functions and Queries''.</A> ) specified by the <TT>create-type-stmt</TT>
+or the <TT>create-function-stmt</TT>.
+
+<P>&nbsp;<A NAME="61643"></A>
+<H2>
+8.2 Updating type memberships</H2>
+<A NAME="61645"></A>The <TT>add-type-stmt</TT> changes the type of one
+or more objects to the specified type.
+
+<P>&nbsp;<A NAME="61647"></A>Syntax:&nbsp;<A NAME="61649"></A>
+<PRE>add-type-stmt ::=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'add type' type-name ['(' [function-name-commalist] ')']&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'to' new-instances</PRE>
+<A NAME="61655"></A>The updated objects may be assigned initial values
+for all the specified property functions in the same manner as in the create
+object statement.
+
+<P>&nbsp;<A NAME="61657"></A>The <TT>remove-type-stmt</TT> makes one or
+more objects no longer belong to the specified type.
+
+<P>Syntax:&nbsp;<A NAME="61661"></A>
+<PRE>remove-type-stmt ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'remove type' type-name 'from' variable-name-commalist</PRE>
+<A NAME="61665"></A>Referential integrity is maintained so that all references
+to the objects as instances of the specified type cease to exist.
+
+<P>&nbsp;<A NAME="61667"></A>An object will always be an instance of some
+type. If all user defined types have been removed, the object will still
+be member of USERTYPEOBJECT.
+
+<P>&nbsp;<A NAME="61669"></A>
+<H1>
+9 Database procedures</H1>
+<A NAME="61671"></A>A database procedure is an AMOS II function defined
+as a sequence of AMOSQL statements that may have side effects (i.e. database
+update statements or variable assignments). Procedures may return results
+by using a special result statement. Procedures should not be used in queries
+(but this restruction is currently not enforced). Most, but not all, AMOSQL
+statements are allowed in procedure bodies as can be seen by the syntax
+below.
+
+<P>&nbsp;<A NAME="61673"></A>Syntax:&nbsp;<A NAME="63385"></A>
+<PRE>&nbsp;&nbsp;&nbsp; procedure-body ::=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; block |
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; create-type-stmt |
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; create-object-stmt |&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; create-function-stmt |&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; create-index-stmt |
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; delete-type-stmt |&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; delete-object-stmt |&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; delete-function-stmt |
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; delete-index-stmt |
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for-each-stmt |
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; update-stmt |
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; set-variable-stmt |&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fetch-cursor-stmt |&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; open-cursor-stmt |&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; close-cursor-stmt |
+
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; select-stmt |&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if-stmt |
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; result-stmt |&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; quit-stmt&nbsp;
+
+block ::=&nbsp; 'begin' procedure-body-semicolonlist 'end' |&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'begin'&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'declare' variable-declaration-commalist ';'&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; procedure-body-semicolonlist&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'end'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+
+&nbsp;&nbsp;&nbsp; result-stmt ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'result' expr&nbsp;
+
+&nbsp;&nbsp;&nbsp; for-each-stmt ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'for each' ['distinct'] variable-declaration-commalist&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [where-clause] procedure-body&nbsp;
+
+&nbsp;&nbsp;&nbsp; if-stmt ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'if' predicate-expression&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'then' procedure-body&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ['else' procedure-body]&nbsp;
+
+&nbsp;&nbsp;&nbsp; set-variable-stmt ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'set' gen-variable-name '=' expr</PRE>
+<A NAME="61755"></A>Examples:&nbsp;<A NAME="61757"></A>
+<PRE>&nbsp;create function creperson(charstring nm,integer inc) -> person p&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; as&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; begin&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; create person instances p;&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; set name(p)=nm;&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; set income(p)=inc;&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; result p;&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; end;<A NAME="61773"></A></PRE>
+
+<PRE>&nbsp;set :p = creperson('Karl',3500);&nbsp;
+
+&nbsp;create function makestudent(object o,integer sc) -> boolean&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; as add type student(score) to o (sc);&nbsp;
+
+&nbsp;makestudent(:p,30);&nbsp;
+
+&nbsp;create function flatten_incomes(integer threshold) -> boolean&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; as for each person p where income(p) > threshold&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; set income(p) = income(p) -&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ((income(p) - threshold) / 2);
+
+&nbsp;flatten_incomes(1000);</PRE>
+&nbsp;<A NAME="61793"></A>Procedures are compiled at creation time.
+
+<P>&nbsp;<A NAME="61795"></A>Procedures may return (bags of) results. The<TT>
+result-stmt</TT> is used for this, where <TT>expr</TT> is returned as the
+result from the procedure.
+
+<P>&nbsp;<A NAME="61797"></A>The <TT>for-each-stmt</TT> construct can be
+used to iterate over the result of a query. For example the following function
+adds <TT>inc</TT> to the incomes of all persons with salaries higher than
+<TT>limit</TT> and returns their old incomes:&nbsp;<A NAME="61799"></A>
+<PRE>&nbsp;create function increase_incomes(integer inc,integer limit)
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -> integer oldinc&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; as for each person p, integer i&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; where i > limit&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; and i = income(p)&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; begin&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; result i;&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; set income(p) = i + inc&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; end;</PRE>
+<A NAME="61817"></A>NOTICE: The semicolon can be omitted after last statement
+in a block.
+
+<P>&nbsp;<A NAME="61819"></A>NOTICE: <TT>result-stmt</TT> does not not
+change the control flow (different from, e.g., return in C), but it only
+specifies that a value is to be added to the result bag of the function
+and then the procedure evaluation is continued as usual. The<TT> for-each-stmt</TT>
+does not return any value at all unless<TT> result-stmt</TT> is used within
+its body.
+
+<P>&nbsp;<A NAME="61821"></A>NOTICE: Queries and updates embedded in procedure
+bodies are optimized at compile time. The compiler saves the optimized
+query plans in the database so that dynamic query optimization is not needed
+when procedures are executed.
+<BR>&nbsp;
+<H1>
+<A NAME="62012"></A>10 Multi-database facilities</H1>
+The multi-database facilities of AMOS II allow AMOS II clients and servers
+to connect and communicate over a network using TCP/IP. There are furthermore
+AMOSQL data integration primitives to exchange data between different AMOS
+II mediators and to mediate semantically heterogeneous data. Finally there
+are facilties to wrap and access relational databases using ODBC.
+<BR>&nbsp;
+<H2>
+<A NAME="620121"></A>10.1 Interconnecting AMOS II systems</H2>
+The figure below illustrates how AMOS II systems can communicate and how
+AMOS II systems can be configured in different modes with respect to how
+they interact with other systems. The lines indicate communication between
+AMOS II systems where the arrows indicate who is the server.
+<BR><IMG SRC="comm.gif" >
+<BR>AMOS II can be be run in the following modes:
+<BR>&nbsp;
+<LI>
+As a single user <I>stand-alone</I> database (C) which allows the user
+to enter AMOSQL commands to populate, search, update, and save a private
+database, as descibed previously.</LI>
+
+<LI>
+As a <I>mediator server</I> (D) which can service inter-database requests
+from other AMOS II systems and define <I>integrated views</I> that combine
+(integrate) data from other mediator servers through the multidatabase
+facilities of AMOS II..</LI>
+
+<LI>
+As a <I>client mediator</I> (B) which is an AMOS II database that can import
+and integrate data from AMOS II mediator servers through the multidatabase
+facilities.</LI>
+
+<LI>
+As a <I>translator</I> (E) of different kinds data sources. A translator
+is an AMOS II mediator with interfaces to a particular kind of data source
+having knowledge of how to translate between AMOSQL queries and the more
+or less advanced query facilities of the data source. Currenly we provide
+translators for relational data sources, but translators for other kinds
+of data sources are also being developed. We do not elaborate translators
+further here.</LI>
+
+<LI>
+As a single-user <I>embedded</I> AMOS II system (A) linked to an application
+program. AMOS II has interfaces to application programs in Java, C, C++,
+and Lisp. Applications always access meditator servers by AMOSQL commands
+that are passed through an embedded AMOS II system. This document does
+not elaborate the embedded interfaces further.</LI>
+
+
+<P>The rest of this subsection describes how to set up an AMOS II system
+as a<I> mediator server</I>, and how to connect a <I>client mediator</I>
+to an AMOS II server.
+
+<P>When you run <TT>amos2.exe</TT> you initially will have a stand-alone
+AMOS II database which cannot communicate with other AMOS II databases
+or mediators. The stand-alone AMOS II database can become a mediator server
+or a client mediator by issuing some AMOSQL system function calls, to be
+described next.
+<H3>
+The nameserver</H3>
+Every AMOS II mediator belongs to a group of mediators and must be given
+a unique name within the group. There is one particular AMOS II mediator
+server, the <I>nameserver</I> (F), that keeps track of the mediator servers
+and clients in a group of AMOS II mediators. The nameserver is an ordinary
+AMOS II mediator server having the special task to store information about
+names, locations, and other meta-properties of the mediators in a group.
+A nameserver thus identifies a group of mediators and all mediators in
+the group will access meta-data from the nameserver (dotted lines in Figure).
+The nameserver can however also be regarded as an ordinary AMOS II database
+which may be accessed from mediators in the group (illustrated through
+the solid line from D to F).
+
+<P>Every mediator <I>must</I> have a name registered with a nameserver
+and the nameserver is also its own nameserver. So the first thing to do
+when setting up a group of AMOS II mediators on the net is to start nameserver,
+as follows:
+
+<P>1. Start a stand-alone AMOS II database.
+
+<P>2. Call the AMOSQL function
+<BR><TT>&nbsp;&nbsp; nameserver("&lt;server name>");</TT>
+<BR>for example
+<BR><TT>&nbsp;&nbsp; nameserver("MyServer");</TT>
+<BR>This call will register the stand-alone AMOS II database as a mediator
+server named <TT>&lt;server name></TT> in the nameserver, i.e. in itself.
+
+<P>3. Start running the nameserver by calling
+<BR><TT>&nbsp;&nbsp; listen();</TT>
+<BR>After this call the system will no longer prompt for AMOSQL commands
+but will start listening for inter-database requests from other AMOS II
+systems.
+
+<P>You can interrupt the listening loop by typing CTRL-C. After that the
+server is not active and you can type AMOSQL commands as usual. Resume
+the server listening loop again by calling <TT>listen();</TT>.
+
+<P>An unnamed AMOS II system is not a mediator but can be a stand-alone
+(C) or an embedded stand-alone (G) database. It can also be an embedded
+AMOS II system (A) through which an application communicates with mediator
+servers. Before an AMOS II database has become a named client mediator
+it is NOT allowed to import or integrate data from mediators to store in
+the local database.
+<H3>
+Mediator clients</H3>
+The following AMOSQL function makes a stand-alone AMOS II database into
+a mediator client:
+<BR><TT>&nbsp;&nbsp; register(&lt;mediator name>[,&lt;host name>]);</TT>
+<BR>For example
+<BR><TT>&nbsp;&nbsp; register("MediatorA","lina1.ida.liu.se");</TT>
+<BR>The current AMOS II database is then registered as a client mediator
+in the name server running on host <TT>&lt;host name></TT>. The default
+host name is the local workstation.
+
+<P>Once a mediator client is registered it may send multi-database requests
+to the mediator servers registered in its name server. The most primitive
+way to communicate with mediator servers is through the system function
+<BR><TT>&nbsp;&nbsp; ship("&lt;mediator server>","&lt;AMOSQL command>");</TT>
+<BR>For example
+<BR><TT>&nbsp;&nbsp; ship("MyServer","select t from type t;");</TT>
+<BR>It executes an AMOSQL command in a mediator server and ships the result
+back to the issuing mediator. Section 10.2 describes sophisticated multi-database
+query facilities in AMOS II through which data can be retrieved and combined
+from several mediator servers.
+<H3>
+Mediator servers</H3>
+To make a client mediator into a mediator server, simply call
+<BR><TT>&nbsp;&nbsp; listen();</TT>
+<BR>It is currently not possible to revert a mediator server back to a
+client mediator.
+<H3>
+The meta-type AMOS</H3>
+The system maintains a special meta-type, called type <TT>AMOS</TT>,&nbsp;
+to represent meta-objects representing the mediators registered in an AMOS
+II nameserver. The <TT>AMOS</TT> type is available in all AMOS II databases,
+including mediator servers, client mediators, or stand-alone databases.
+There are no meta-object for stand-alone databases; such AMOS II databases&nbsp;
+can query the nameserver for information about the currently registered
+mediators, but they are not themselves represented as meta-objects. Whenever
+objects of type <TT>AMOS</TT> are accessed the current namserver is called
+to obtain the state of the mediators for with meta-properties are accessed.
+The following AMOSQL system&nbsp; functions are used for accessing the
+meta-objects:
+
+<P><TT>&nbsp;&nbsp; name(amos a)-> charstring</TT>
+<BR>returns the name of a mediator.
+
+<P><TT>&nbsp;&nbsp; amos_servers()-> bag of amos</TT>
+<BR>returns the AMOS II <I>mediator servers</I> (excludes client mediators)
+currently registered in the nameserver.
+
+<P><TT>&nbsp;&nbsp; amos_server_ids()-> bag of charstring</TT>
+<BR>returns the names of the currently registered mediator servers.
+
+<P><TT>&nbsp;&nbsp; this_amosid()->charstring</TT>
+<BR>returns the name of the local mediator server or client mediator where
+<TT>this_amosid</TT> is called. The string <TT>"NIL"</TT> is returned if
+the current AMOS II system is a stand-alone database.
+<BR>&nbsp;
+<H2>
+<A NAME="620122"></A>10.2 Data integration primitives</H2>
+More here promised by Vanja Josifovski. Includes derived types and integration
+types.
+<H2>
+<A NAME="620123"></A>10.3 Translators</H2>
+Every kind of data sources needs a translator that has knowledge of how
+to interface that particular kind of data source and how to translate between
+AMOSQL and the query primitives of such data sources. We describe only
+a translator for access to relational databases through ODBC. However,
+other translators have also been developed.
+<H3>
+ODBC translators</H3>
+More here...
+
+<P>&nbsp;<A NAME="61937"></A>
+<H1>
+11 Sagas for long-running transactions</H1>
+<A NAME="64237"></A>The AMOS II transaction system has been extended with
+<I>sagas</I>. Sagas are first class objects and can be used to chain a
+sequence of committed transations with compensating transactions. The sequence
+of sagas can be nested by defining sub-sagas. Abortion of a saga causes
+all the compensations to be executed and the sagas (and sub-sagas) to be
+deleted. Committing a saga just causes deletion (since the transactions
+are already committed). Compensation of one saga is done in one complete
+sequence (unless stopped). If an application needs to schedule sagas (forward
+and backward) in smaller steps it is possible to orchestrate many sagas
+through a saga layer (as part of the application) outside AMOS II.
+
+<P>&nbsp;<A NAME="64251"></A>
+
+<P><A NAME="64326"></A>Sagas are created by the following function calls:&nbsp;<A NAME="64253"></A>
+<PRE>&nbsp;set :s = create_saga();</PRE>
+<A NAME="64254"></A>or&nbsp;<A NAME="64255"></A>
+<PRE>&nbsp;set s = create_sub_saga();</PRE>
+(only to be used within another saga)
+
+<P>&nbsp;<A NAME="64324"></A>
+
+<P><A NAME="64330"></A>The syntax for executing something in a saga is
+as follows:&nbsp;<A NAME="64256"></A>
+<PRE>&nbsp;saga-stmt ::=</PRE>
+'saga' saga procedure-body
+
+<P>&nbsp;'compensation' procedure-body
+
+<P><A NAME="64345"></A>Sagas are commited (and deleted) by:&nbsp;<A NAME="64260"></A>
+<PRE>commit_saga(:s);</PRE>
+<A NAME="64304"></A>and are aborted (and deleted) by&nbsp;<A NAME="64388"></A>
+<PRE>abort_saga(:s);</PRE>
+<A NAME="64395"></A>During abortion of a saga all the compensations are
+executed until the beginning or until stopped by a call to&nbsp;<A NAME="64420"></A>
+<PRE>stop_compensation();</PRE>
+<A NAME="64421"></A>Sagas can be passed to procedures to be executed in
+the body of the procedure. Note that any local variables defined outside
+the saga statement will have the values in the compensation that they had
+at the end of execution of the forward transaction of the associated saga
+statement. If such variables are changed after the saga statement is executed
+this will not be seen in the compensation. To support such behaviour it
+is possible to associate data with a saga through functions that are indexed
+with the current saga (can be accessed by <TT>current_saga()</TT>).
+
+<P>&nbsp;<A NAME="61939"></A>
+<H1>
+12 Physical database design</H1>
+This section describes some AMOSQL commands for database space and performance
+tuning.
+
+<P>&nbsp;<A NAME="61941"></A>
+<H2>
+12.1 Indexing</H2>
+<A NAME="61943"></A>The system supports indexing on any&nbsp; argument
+or result of stored functions. Indexes can be <I>unique</I> or <I>non-unique</I>.
+A unique index prohibits more than one different value of the argument
+or result. The cardinality constraint 'key' of stored functions (<A HREF="amosdoc-04-14.html#61095">See
+``Cardinality Constraints''.</A> ) is implemented as unique indexes. Thus
+by default the system puts a unique index on the first argument of stored
+functions. That index can be made non-unique by suffixing the first argument
+declaration with the keyword 'nonkey' or to specify 'bag of' for the result,
+in which case a non-unique index is used instead.
+
+<P>&nbsp;<A NAME="61945"></A>For example, in the following function there
+can be only one name per person:&nbsp;<A NAME="61947"></A>
+<PRE>create function name(person)->charstring as stored;</PRE>
+<A NAME="61949"></A>By contrast, <TT>names</TT> allow more than one name
+per person:&nbsp;<A NAME="61951"></A>
+<PRE>create function names(person p nonkey)->charstring nm as stored;</PRE>
+<A NAME="61953"></A>Alternatively&nbsp;<A NAME="61955"></A>
+<PRE>create function names(person p)->bag of charstring nm as stored;</PRE>
+<A NAME="61957"></A>Any argument or result declaration can be suffixed
+with the keyword 'key' to indicate the position of a unique index. For
+example, the following definition prohibits two persons to have the same
+name:&nbsp;<A NAME="61959"></A>
+<PRE>delete function person.name->charstring; /* Remove old name function */<A NAME="61961"></A></PRE>
+
+<PRE>create function name(person p)->charstring nm key as stored;</PRE>
+<A NAME="61963"></A>Named non-unique indexes can be created on any arguments
+or results with the statement:&nbsp;<A NAME="61965"></A>
+<PRE>create-index-stmt ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'create index' index-name 'on' index-spec-commalist ;&nbsp;
+
+index-spec ::=&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; function-name '(' argres-name ')'</PRE>
+<A NAME="61973"></A>For example:&nbsp;<A NAME="61975"></A>
+<PRE>create index i1 on person.name->charstring(nm), names(charstring);</PRE>
+<A NAME="61977"></A>creates two indexes on the result of name and of names,
+respectively.
+
+<P>&nbsp;<A NAME="61979"></A>Notice that one may use either the name of
+the type of an argument or the result to specify the index position when
+unique, as in the example.
+
+<P>&nbsp;<A NAME="61981"></A>Named indexes are deleted by:&nbsp;<A NAME="61983"></A>
+<PRE>delete-index-stmt ::=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'delete index' index-name ;</PRE>
+<A NAME="61987"></A>For example, to delete the two indexes above do:&nbsp;<A NAME="61989"></A>
+<PRE>delete index i1;</PRE>
+<A NAME="61991"></A>There always has to be at least one index left on each
+stored function. Thus delete index is a dummy operation if one tries to
+delete the last remaining index.
+
+<P>&nbsp;<A NAME="61993"></A>To save space it is sometimes possible to
+delete the default index on the first argument of a stored function. For
+example, suppose we store a table mapping parts to identifiers with an
+index on the identifier:&nbsp;<A NAME="61995"></A>
+<PRE>create type part;&nbsp;
+
+create function partid(part p)->integer id key as stored;</PRE>
+<A NAME="61999"></A>partid will have two indexes, one on p and one on id.
+To drop the index on p, do the following:&nbsp;<A NAME="62001"></A>
+<PRE>create index dummy on partid(p);&nbsp;
+
+&nbsp;delete index dummy;</PRE>
+<A NAME="62005"></A>
+<H2>
+12.2 Clustering</H2>
+<A NAME="62007"></A>Functions can be <I>clustered</I> by creating multiple
+result stored functions, and then each individual function can be defined
+as a derived function.
+
+<P>&nbsp;<A NAME="62009"></A>For example, to cluster the properties name
+and address of persons one can define:&nbsp;<A NAME="62011"></A>
+<PRE>delete function person.name->charstring;&nbsp;
+
+create function personprops(person p) ->&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &lt;charstring name,charstring address> as stored;&nbsp;
+
+create function name(person p) -> charstring nm&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; as select nm from charstring a&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; where personprops(p) = &lt;nm,a>;&nbsp;
+
+create function address(person p) -> charstring a&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; as select a from charstring nm&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; where personprops(p) = &lt;nm,a>;</PRE>
+<A NAME="62029"></A>Clustering does not improve the execution time performance
+significantly in a main-memory DBMS such as AMOS II. However, clustering
+can decrease the database size considerably.
+<BR><A NAME="62031"></A>
+<H1>
+13 System functions and commands</H1>
+<A NAME="62033"></A>
+
+<P>&nbsp;<A NAME="62035"></A>
+<H2>
+13.1 Comparison operators</H2>
+<A NAME="62037"></A>The built-in, infix comparison operators are:
+
+<P>&nbsp;<A NAME="62039"></A>
+<PRE>=(object x, object y) -> boolean&nbsp;&nbsp; (infix operator =)
+
+!=(object x, object y) -> boolean&nbsp; (infix operator !=)&nbsp;
+
+>(object x, object y) -> boolean&nbsp;&nbsp; (infix operator >)&nbsp;
+
+>=(object x,object y) -> boolean&nbsp;&nbsp; (infix operator >=)
+
+&lt;(object x, object y) -> boolean&nbsp;&nbsp; (infix operator &lt;)&nbsp;
+
+&lt;=(object x,object y) -> boolean&nbsp;&nbsp; (infix operator &lt;=)</PRE>
+<A NAME="62051"></A>All objects can be compared. Strings are compared by
+characters, lists by elements, OIDs by identifier numbers. Equality between
+a bag and another object denotes set membership of that object. The comparison
+functions can, of course, be overloaded for user defined types.
+
+<P>&nbsp;<A NAME="62053"></A>
+<H2>
+13.2 Arithmetic functions</H2>
+<A NAME="63719"></A>
+<PRE>abs(number x) -> number y
+
+div(number x, number y)&nbsp;&nbsp; -> number z (infix operator /)&nbsp;
+
+max(object x, object y)&nbsp;&nbsp; -> object z&nbsp;
+
+min(object x, object y)&nbsp;&nbsp; -> object z&nbsp;
+
+minus(number x, number y) -> number z (infix operator -)&nbsp;
+
+mod(integer x, integer y) -> integer z
+
+plus(number x, number y)&nbsp; -> number z (infix operator +)&nbsp;
+
+times(number x, number y) -> number z (infix operator *)&nbsp;
+
+iota(integer l, integer u)-> bag of integer z&nbsp;
+
+sin(number x) -> number z&nbsp;
+
+cos(number x) -> number z
+
+tan(number x) -> number z&nbsp;
+
+ln(number x)&nbsp; -> number z&nbsp;
+
+sqrt(number x) -> number z</PRE>
+<A NAME="62081"></A>iota constructs bag of integers between l and u.
+<BR>For example, to execute n times AMOSQL statement stmt do:&nbsp;<A NAME="62083"></A>
+<PRE>for each integer i where i = iota(1,n)&nbsp;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; stmt;</PRE>
+<A NAME="62087"></A>
+<H2>
+13.3 Aggregation functions</H2>
+<A NAME="62089"></A>Some of these system functions are described in <A HREF="amosdoc-04-14.html#61367">``Subqueries
+and Aggregation Operators''</A> .
+<BR><A NAME="62093"></A>Number of objects in bag o (<A HREF="amosdoc-04-14.html#61367">``Subqueries
+and Aggregation Operators''</A> ):
+<PRE>count(bag of object o) -> integer c</PRE>
+<A NAME="62099"></A>Extract elements of collections:
+<PRE>in(bag of object b) -> bag of object o&nbsp;
+
+in(vector v) -> bag of object o</PRE>
+<A NAME="62103"></A>Largest object in bag:
+<PRE>maxagg(bag of object x) -> object y</PRE>
+<A NAME="62107"></A>Smallest number in bag:
+<PRE>minagg(bag of object x) -> object y</PRE>
+<A NAME="62111"></A>Test if bag empty. Logical NOT EXISTS:
+<PRE>notany(bag of object o) -> boolean b</PRE>
+<A NAME="62115"></A>Test if there are any elements in bag. Logical EXISTS:
+<PRE>some(bag of object x) -> boolean b</PRE>
+<A NAME="62121"></A>Sum uniform bags of numbers
+<PRE>sum(bag of number x) -> number s&nbsp;
+&nbsp;<A NAME="62123"></A></PRE>
+
+<H2>
+13.4 Accessing the type system</H2>
+<A NAME="62125"></A>
+<PRE>allfunctions() -> bag of function f</PRE>
+<A NAME="63175"></A>
+<PRE>allobjects () -> bag of object o
+
+alltypes() -> bag of type t</PRE>
+<A NAME="63176"></A>All functions, objects, and types, respectively, in
+the database.
+<BR>&nbsp;
+
+<P><A NAME="62133"></A>
+<PRE>subtypes(type t) -> bag of type s&nbsp;
+
+supertypes(type t) -> bag of type s</PRE>
+<A NAME="62137"></A>The types immediately below/above type t in the type
+hierarchy.
+
+<P><A NAME="62139"></A>
+<PRE>allsupertypes(type t) -> bag of type s</PRE>
+<A NAME="62141"></A>All types above t in the type hierarchy.
+
+<P><A NAME="62143"></A>
+<PRE>typesof(object o) -> bag of object t</PRE>
+<A NAME="62145"></A>The types of an object.
+
+<P><TT>typeof(object o) -> type t</TT>
+
+<P>the most specific type of an object.
+
+<P><A NAME="62147"></A>
+<PRE>functionnamed(charstring nm) -> function fn&nbsp;
+
+kindoffunction(function f) -> charstring knd
+
+name(function fn) -> charstring nm
+
+typenamed(charstring nm) -> type t
+
+name(type t) -> charstring nm
+
+objectname(object o, charstring nm) -> boolean
+
+usedwhere(function f) -> function c
+
+useswhich(function f) -> function c</PRE>
+
+<PRE>generic(function f) -> function g</PRE>
+<A NAME="62163"></A><TT>functionnamed </TT>returns the function named nm.
+<BR><TT>kindoffunction</TT> returns the kind of the function f as a string.
+The result can be one of 'stored', 'derived', 'foreign' or 'overloaded'.
+<BR><TT>nameoffunction</TT> returns the name of the function f.
+<BR><TT>typenamed</TT> returns the type named nm.
+<BR><TT>nameoftype</TT> returns the name of the type t.
+<BR><TT>objectname</TT> returns TRUE if the object o has the name nm.
+<BR><TT>usedwhere</TT> returns the functions calling the function f.
+<BR><TT>useswhich</TT> returns the functions called from the function f.
+<BR><TT>generic</TT> returns the generic function of a resolvent.
+
+<P><A NAME="62165"></A>
+<PRE>resolvents(function g) -> bag of function r</PRE>
+<A NAME="62167"></A>The resolvents of an overloaded function g.
+<PRE>attributes(type t) -> bag of function g</PRE>
+The generic functions having a single argument of type t and a single result.
+By contrast the function <TT>methods</TT> returns the corresponding resolvents:
+
+<P><TT>methods(type t) -> bag of function r</TT>
+<BR>&nbsp;
+<PRE>resolventtype(function fn) -> bag of type t</PRE>
+<A NAME="62171"></A>The types of the first arguments of the resolvents
+of function resolvent fn.
+
+<P><A NAME="62173"></A>
+<PRE>argrestypes(function fn) -> &lt;integer pos,type tp,integer kind>&nbsp;
+
+argrestypes(charstring fname) -> &lt;integer pos,type tp,integer kind></PRE>
+<A NAME="62177"></A>Returns for each argument or result of a function resolvent:
+<BR><TT>pos:</TT> The position number. (1st is 1, etc.)
+<BR><TT>type:</TT> The type.
+<BR><TT>kind:</TT> A number indicating if it is an argument (kind = 0)
+or a result (kind = 1).
+<BR>&nbsp;
+
+<P><TT>allfunctions(type t) -> &lt;integer pos, function fn, integer kind></TT>
+
+<P>returns all functions having argument or result declared as having type
+t. <TT>pos</TT> and <TT>kind</TT> are as in <TT>argrestypes</TT>.
+<BR><A NAME="62185"></A>
+<PRE>cardinality(type t) -> integer c</PRE>
+returns the number of object of type t and all its subtypes.
+
+<P>&nbsp;
+<BR><TT>arity(function f) -> integer a</TT>
+
+<P>returns the number of arguments of function f.
+<BR>&nbsp;
+
+<P><TT>width(function f) -> integer w</TT>
+
+<P>returns the number of results of function f.&nbsp;<A NAME="62191"></A>
+<H2>
+13.5 Query optimizer tuning</H2>
+
+<PRE>optmethod(charstring new) -> charstring old</PRE>
+<A NAME="62193"></A>Three optimization modes for AMOSQL queries can be
+chosen. The built-in function&nbsp;<A NAME="62195"></A>
+<PRE>optmethod("name");</PRE>
+<A NAME="62197"></A>The name of the old optimization method is returned.
+Changes the optimization method to name, which can be one of:
+<BR><TT>ranksort</TT>: (default) which is fast but not always optimal.
+<BR><TT>exhaustive</TT>: which is optimal but it may slow down the optimizer
+considerably. Currently not supported.
+<BR><TT>randomopt</TT>: which is a combination of two random optimization
+heuristics:<I> Iterative improvement</I> and <I>sequence heuristics</I>
+<A HREF="amosdoc-04-14.html#62333">[6]</A>. Random optimization can be
+tuned by using the function&nbsp;<A NAME="62199"></A>
+<PRE>optlevel(i,j);</PRE>
+<A NAME="62201"></A>where i and j are integers specifying number of iterations
+in iterative improvement and sequence heuristics, respectively. Default
+settings is i=5 and j=5.
+
+<P>&nbsp;<A NAME="62205"></A>
+<PRE>reoptimize(charstring fn) -> boolean</PRE>
+<A NAME="62207"></A>Reoptimize function named fn. if fn is equal to the
+string <TT>"*ALL*"</TT> then all functions are reoptimized.
+
+<P><A NAME="62209"></A>
+<PRE>costhint(charstring fn,charstring bpat,object q)->boolean</PRE>
+<A NAME="62211"></A>Declare cost hint q for the AMOSQL resolvent function
+named fn and the binding pattern bpat. This cost hint feature is explained
+in AMOS II External Interfaces and in <A HREF="amosdoc-04-14.html#62620">[5]</A>.
+The cost hint can be a vector of two elements, {cost,fanout}, in case the
+cost to execute fn is constant. It can also be the name of an AMOSQL function
+returning the cost and the fanout.
+
+<P>&nbsp;<A NAME="62283"></A>
+<H2>
+13.6 Miscellaneous</H2>
+<A NAME="63186"></A>
+<PRE>eval(charstring stmt) -> object r</PRE>
+evaluate the AMOSQL statement.
+<PRE>print(object x) -> object r</PRE>
+print x on the console.
+<PRE>quit;</PRE>
+quit AMOS II.
+<PRE>exit;</PRE>
+return to the program that called AMOS II. Same as quit for stand-alone
+AMOS II.
+
+<P><A NAME="62307"></A>To redirect the AMOSQL input from a file use:
+
+<P>&nbsp;<A NAME="62309"></A>
+<PRE>redirect-stmt ::= '&lt;' string-constant</PRE>
+<A NAME="62311"></A>For example&nbsp;<A NAME="62313"></A>
+<PRE>&lt; 'person.amosql';</PRE>
+<A NAME="62618"></A>
+<H1>
+References</H1>
+&nbsp;<A NAME="62329"></A>[1] D.Fishman et al.: ``Overview of the IRIS
+DBMS'', in W.Kim, F.H.Lochovsky (eds.): Object-Oriented Concepts, Databases,
+and Applications, ACM Press, Addison-Wesley, 1989.
+
+<P>&nbsp;<A NAME="62650"></A>[2] S. Flodin: An Incremental Query Compiler
+with Resolution of Late Binding, Research Report
+<BR>LiTH-IDA-R-94-46, Link&ouml;ping University 1994
+
+<P>&nbsp;<A NAME="62651"></A>[3] S. Flodin, T. Risch, Processing Object-Oriented
+Queries with Invertible Late Bound Functions, Proc. of 1995 VLDB conference
+
+<P>&nbsp;<A NAME="62331"></A>[4] Y.E.Ioannidis, Y.C.Kang: Randomized Algorithms
+for Optimizing large join queries, Proc. ACM SIGMOD Conf., Atlantic City,
+1990, pp 312-321.
+
+<P><A NAME="62620"></A>[5] W.Litwin, T.Risch: Main Memory Oriented Optimization
+of OO Queries Using Typed Datalog with Foreign Predicates, IEEE Transactions
+on Knowledge and Data Engineering, Vol. 4, No. 6, December 1992.
+
+<P>&nbsp;<A NAME="62333"></A>[6] J.N&auml;s: Randomized optimization of
+object oriented queries in a main memory database management system, Master's
+thesis, LiTH-IDA-Ex 9325 Link&ouml;ping University 1993.
+
+<P>&nbsp;<A NAME="62335"></A>[7] P.G.Selinger et al: Access Path Selection
+in a Relational Database Management System, Proc. ACM SIGMOD Conf., Boston,
+1979, pp 23-34.
+
+<P>&nbsp;<A NAME="62656"></A>[8] M. Sk&ouml;ld, Active Rules based on Object
+Relational Queries - Efficient Change Monitoring Techniques, Lic Thecis
+No 452, Link&ouml;ping University.
+
+<P>&nbsp;<A NAME="62337"></A>[9] J.D.Ullman: Principles of Database and
+Knowledge-Base Systems, Volume I and II, Computer Science Press, 1988 and
+1989.
+
+<P>&nbsp;<A NAME="62343"></A>
+
+<P>
+<HR>
+<H5>
+Last Modified: November 25, 1998</H5>
+
+</BODY>
+</HTML>

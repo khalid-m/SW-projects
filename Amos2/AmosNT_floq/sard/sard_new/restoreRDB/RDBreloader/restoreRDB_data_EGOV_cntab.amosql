@@ -1,0 +1,143 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Ekta Shrestha, 
+ * $RCSfile: restoreRDB_data_EGOV_cntab.amosql,v $
+ * $Revision: 1.1 $ $Date: 2012/05/16 11:50:12 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Functions for restoring
+	relational schema and data from NT archives
+ *
+ ****************************************************************************
+ * $Log: restoreRDB_data_EGOV_cntab.amosql,v $
+ * Revision 1.1  2012/05/16 11:50:12  eksh8896
+ * new
+ *
+ * Revision 1.1  2012/03/30 14:02:58  eksh8896
+ * *** empty log message ***
+ *
+ * Revision 1.2  2012/03/27 08:51:40  eksh8896
+ * *** empty log message ***
+ *
+ * Revision 1.1  2012/02/28 14:02:33  eksh8896
+ * Datafile.
+ *
+ *
+ *  
+ * 
+ *
+ ****************************************************************************/
+
+
+/************************************************************************************************************************/
+			/***FUNCTIONS FOR MANIPULATING DATA FILES ***/
+/************************************************************************************************************************/
+
+
+/************************************************************************************************************************/
+			/***RETRIEVING TABLES FROM GIVEN FILES ***/
+/************************************************************************************************************************/
+
+
+create function ret_tableNamefromrowID(Charstring filename1,Charstring rowID)
+->Charstring 
+/*Retrieves table name from the given rowID which is retrieved from the given file.*/
+as
+begin
+	declare Vector v1, Vector v2,Charstring tname,Charstring t,Charstring t1;
+	set v1={};
+	set v2={};
+	for each Charstring ch1,Charstring ch2 where ret_tableNameURIs(filename1)=<ch1,ch2>
+	begin
+		set v1=concat(v1,{ch1});
+		set v2=concat(v2,{ch2});
+	end;
+	for each Integer i where i in iota(1,dim(v1))
+	begin
+		set t=v1[i-1];
+		set t1=substring(t,0,char_length(t)-2)+'/';
+		if like(rowID,t1+"*") then
+			set tname=v2[i-1];
+	end;
+	result tname;
+end;	
+
+create function ret_tableURIfromrowID(Charstring filename1,Charstring rowID)
+->Charstring 
+/*Retrieves table URI from the given rowID which is retrieved from the given file.*/
+as
+begin
+	declare Vector v1, Vector v2,Charstring tableURI,Charstring t,Charstring t1;
+	set v1={};
+	set v2={};
+	for each Charstring ch1,Charstring ch2 where ret_tableNameURIs(filename1)=<ch1,ch2>
+	begin
+		set v1=concat(v1,{ch1});
+		set v2=concat(v2,{ch2});
+	end;
+	for each Integer i where i in iota(1,dim(v1))
+	begin
+		set t=v1[i-1];
+		set t1=substring(t,0,char_length(t)-2)+'/';
+		if like(rowID,t1+"*") then
+			set tableURI=t;
+	end;
+	result tableURI;
+end;	
+
+/************************************************************************************************************************/
+			/***RETRIEVING primary key FROM GIVEN FILES ***/
+/************************************************************************************************************************/
+
+create function ret_pkURIfromRowID(Charstring filename1,Charstring rowID)
+->Charstring
+/*Retrieve name of PK of the table for the given RowID*/
+as 
+begin
+for each Charstring ch, Charstring t where ch=ret_pkURIs(filename1,t) and  ret_tableURIfromRowID(filename1,rowID)=t
+	 result ch;
+end;
+
+create function ret_pkNamefromRowID(Charstring filename,Charstring rowID)
+->Charstring
+/*Retrieve the name of the PK of the table represented by tableURI*/
+as
+begin
+	declare Vector c1, Vector c2, Vector c3,Charstring t1, Charstring t2;
+	for each Charstring tableURI, Charstring tname where ret_TableNameURIs(filename)=<tableURI,tname>
+	begin
+		for each Charstring colURI, Charstring col where ret_columnNameURIs(filename,tableURI,tname)=<colURI,col>
+		begin
+			set c1=concat(c1,{colURI});
+			set c2=concat(c2,{col});
+			set c3=concat(c3,{tableURI});
+
+		end;
+	end;
+	
+	for each Charstring ch where ch=ret_pkURIfromRowID(filename,rowID)
+	begin
+		for each integer i where i in iota(1,dim(c1))
+		begin
+			set t1=c1[i-1];			
+			if like(t1,ch) and ret_tableURIfromRowID(filename,rowID)=c3[i-1] then
+				set t2=c2[i-1];
+		end;return t2;
+	end;
+end;
+
+/************************************************************************************************************************/
+			/*** RETRIEVING Value of RowID FROM GIVEN FILE***/
+/************************************************************************************************************************/
+
+create function ret_pkVal(Charstring filename1,Charstring rowID)
+->Charstring 
+/*Retrieve PK value with of the table for the given RowID*/
+as
+begin 
+	declare Charstring t1, Charstring tableURI,Charstring t2;
+	set tableURI=ret_tableURIfromrowID(filename1,rowID);
+	set t1=substring(rowID,char_length(tableURI)+1,char_length(rowID)-2);
+	result t1;
+end;

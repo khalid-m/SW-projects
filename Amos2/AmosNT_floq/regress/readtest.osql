@@ -1,0 +1,39 @@
+lisp;
+
+(defun bigstr (len)(null (eval (list 'osql (concat "set :a = '"
+                                      (make-string len "x") "';")))))
+(bigstr 4097)
+(checkequal "AmosQL strings"
+  ((osql "char_length(:a);") '((4097)))
+  ((osql "\"a\\\"b\\\\c\";") '(("a\"b\\c")))
+)
+
+;;; Test I/O of binary arrays 
+
+(let (a b c (str (opentextstream)))
+  (setq a (make-binary 12))
+  (put-integer a 0 12)
+  (put-float a 1 23.6)
+  (print a str)(print a str)
+  (closestream str)
+  (setq b (read str))
+  (setq c (read str))
+  (checkequal "Binary arrays and RAM streams"
+	      ((get-integer a 0) 12)
+	      ((round(get-float a 1)) 24)
+	      ((get-integer b 0) 12)
+	      ((round(get-float b 1)) 24)
+	      ((get-integer c 0) 12)
+	      ((round(get-float c 1)) 24)
+	      ((binary-size c) 12)
+	      )
+  )
+:osql
+rollback;
+
+
+
+
+
+
+

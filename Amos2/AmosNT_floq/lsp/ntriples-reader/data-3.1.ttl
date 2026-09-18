@@ -1,0 +1,5 @@
+# Matching RDF Literals
+
+<http://example.org/ns#x> <http://example.org/ns#p> "42"^^<http://www.w3.org/2001/XMLSchema#integer> . 
+<http://example.org/ns#y> <http://example.org/ns#p> "abc"^^<http://example.org/datatype#specialDatatype> . 
+<http://example.org/ns#z> <http://example.org/ns#p> "cat"@en . 

@@ -1,0 +1,87 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2006 Erik Zeitler, UDBL
+ * $RCSfile: sc.osql,v $
+ * $Revision: 1.45 $ $Date: 2013/11/18 21:13:27 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: All SCSQ definitions go here.
+ *
+ ****************************************************************************/
+
+load_lisp("../lsp/numarray.lsp");
+< 'numarray.osql';
+load_lisp("../lsp/scsq.lsp");
+load_lisp("../lsp/blob.lsp");
+load_lisp("../lsp/profiler.lsp");
+load_lisp("../lsp/logger.lsp");
+load_lisp("../lsp/coord.lsp");
+load_lisp("../lsp/daemon.lsp");
+< 'scsq.osql';
+load_lisp("../lsp/clock.lsp");
+< 'twinagg.osql';
+< 'fft.osql';
+load_lisp("../lsp/sp.lsp");
+load_lisp("../lsp/extract.lsp");
+load_lisp("../lsp/hmerge.lsp");
+load_lisp("../lsp/sumvectors.lsp");
+< 'mathfns.osql';
+< 'stream.osql';
+< 'scsql.osql';
+< 'dprofile.osql';
+< 'ub_uall.osql';
+< 'peakdetect.osql';
+
+/* Everything loaded before this belongs to the basic SCSQ system,
+   and is contained within the watermark. */
+
+lisp;
+(setq _system-watermark_ _oidno_)
+(setq _scsq-watermark_ _oidno_)
+:osql
+
+load_lisp("../lsp/cumsum.lsp");
+
+< 'spconfig.osql';
+< 'istream.osql';
+
+create function vdiff(vector x,vector y)->vector of object as select 
+vectorof(select e from object e
+where e in x and notany (e in y));
+
+create function vunion(vector x,vector y)->vector as 
+select vectorof(select distinct e from object e where e in x or e in y);
+
+create function initge(charstring dmp) -> Vector
+as begin
+  set prepcoordhost() = gethostname();
+  set prephosts() = vectorof(distgenodes());
+/*  set cpus_per_host() = integer(count(genodes())/count(distgenodes()));*/
+  set cpus_per_host() = 1;
+  daemon_mode(1);
+  select scsqged(s, dmp)
+    from charstring s
+    where s in uniqueprephosts()
+    and s != gethostname();
+end;
+
+create function initsl(charstring dmp) -> Vector
+as begin
+  set prepcoordhost() = gethostname();
+  set prephosts() = vectorof(distslnodes());
+  sp_stdout(getenv("TMPDIR") + "/SPlog");
+/*  sp_stdout(getenv("HOME") + "/splogs/SPlog"); */
+  /* Many NFS handles writing to HOME */
+  set cpus_per_host() = 1;
+  daemon_mode(1);
+  select scsqsld(shortname(s), dmp)
+    from charstring s
+    where s in uniqueprephosts()
+    and s != gethostname();
+end;
+
+
+lisp;
+(verify-all)
+:osql

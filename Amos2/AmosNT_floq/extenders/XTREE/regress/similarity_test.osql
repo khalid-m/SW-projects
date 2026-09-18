@@ -1,0 +1,148 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 thanh, UDBL
+ * $RCSfile: similarity_test.osql,v $
+ * $Revision: 1.1 $ $Date: 2013/01/25 16:30:32 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Similarity searches with Xtree
+ *
+ ****************************************************************************
+ * $Log: similarity_test.osql,v $
+ * Revision 1.1  2013/01/25 16:30:32  thatr500
+ * regression test on Unix & Windows
+ *
+ *
+ ****************************************************************************/
+
+create function q1() -> Bag of Charstring
+  /* Index scan on XTREE without any rewrite */
+  as select p from Charstring p
+     where pictureFeatures(p)={1.0, 2.0, 3.0, 4.0};
+
+create function q2() -> Bag of Charstring 
+  /* Full scan on primary hash index without any rewrite */
+  as select p from Charstring p, Vector r 
+     where pictureFeatures(p)=r;
+
+/****************************************************************
+Queries of SIMILARITY SEARCH.
+These queries will be rewritten if there is an Xtree index
+******************************************************************/
+create function q3() -> Bag of Charstring
+  as select p from Charstring p 
+     where euclid(pictureFeatures(p), {1, 2, 3, 4}) < 1;
+
+
+ create function q3a() -> Bag of Charstring
+   as select p from Charstring p
+      where 1 > euclid(pictureFeatures(p),{1,2,3,4});
+
+ create function q3b() -> Bag of Charstring
+   as select p from Charstring p
+      where 1 = euclid(pictureFeatures(p),{1,2,3,4});
+
+ create function q4() -> Bag of Charstring
+   as select p from Charstring p
+      where euclid(pictureFeatures(p),{1,2,3,4}) <= 1.0;
+
+ create function q5() -> Bag of Charstring
+   as select p  from Charstring p
+      where euclid(pictureFeatures(p),{1,2,3,4}) >0
+        and euclid(pictureFeatures(p),{1,2,3,4}) < 1.5 ;
+
+ /*Rewriter - check inequality*/
+ create function q6() -> Bag of Charstring
+   as select p  from Charstring p
+      where euclid(pictureFeatures(p),{1,2,3,4}) > 0
+        and euclid(pictureFeatures(p),{1,2,3,4}) < 1.5
+	        and euclid(pictureFeatures(p),{1,2,3,4}) != 0;
+
+ /*Rewriter - check permutation of arguments*/
+ create function q7() -> Bag of Charstring
+   as select p  from Charstring p
+      where euclid({1, 2,3,4}, pictureFeatures(p)) > 0
+        and euclid({1,2, 3, 4}, pictureFeatures(p)) < 1.5;
+
+
+
+ /*Rewriter - check less-or-equal than*/
+ create function q8() -> Bag of Charstring
+   as select p  from Charstring p
+      where euclid({1, 2, 3, 4}, pictureFeatures(p)) > 0
+        and euclid({1, 2, 3, 4}, pictureFeatures(p)) <= 1.5;
+
+ create function q9() -> Bag of Charstring
+   as select p  from Charstring p
+      where euclid({1, 2,3,4}, pictureFeatures(p)) >= 0
+        and euclid({1,2, 3, 4}, pictureFeatures(p)) <= 1.5;
+
+ /*Rewriter - test Nested Join Loop*/
+ create function q10() -> Bag of Charstring
+   as select p from Charstring p, Charstring q
+      where euclid({1,2,3,5},pictureFeatures(p)) < 1.5
+        and euclid({1,2,3,4},pictureFeatures(q)) < 0.5
+        and p > q
+        and p> "Pic003" and q < "Pic005";
+
+create function q11(Vector of Number v) -> Bag of Charstring
+  as select p from Charstring p 
+     where 
+           euclid(pictureFeatures(p), v) <= 3.0;
+lisp;
+ (checkequal
+  "Xtree index getter"
+  ((osql "q1();")
+   ;; tests getter
+   '(("Pic001"))))
+
+(checkequal "Hash index getter"
+  ((osql "pictureFeatures('Pic001');")
+   '((#(1.0 2.0 3.0 4.0)))))
+
+(checkequal "Mapper"
+  ((osql "q2();")
+   ;; Returns all pictures through the mapper
+   '(("Pic001") ("Pic002") ("Pic003"))))
+
+(checkequal "Euclid < a "
+  ((osql "q3();")
+  '(("Pic001"))))
+
+(checkequal " a > Euclid "
+  ((osql "q3a();")
+   '(("Pic001"))))
+
+(checkequal "Euclid = a "
+  ((osql "q3b();")
+   '(("Pic002"))))
+
+(checkequal "Euclid <= a"
+  ((osql "q4();") 
+   '(("Pic001") ("Pic002"))))
+
+(checkequal " a < Euclid < b "
+  ((osql "q5();")
+   '(("Pic002"))))
+
+(checkequal "a < Euclid < b and != "
+  ((osql "q6();")
+   '(("Pic002"))))
+
+(checkequal
+  "More on rewriting Euclid calls using xtree similarity search "
+  ((osql "q7();")
+   '(("Pic002"))))
+
+(checkequal
+  "More on rewriting Euclid calls using xtree similarity search "
+  ((osql "q8();")
+   '(("Pic002"))))
+
+(checkequal
+  "More on rewriting Euclid calls using xtree similarity search "
+  ((osql "q9();")
+   '(("Pic001") ("Pic002"))))
+
+:osql

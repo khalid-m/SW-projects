@@ -1,0 +1,89 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Andrej Andrejev, UDBL
+ * $RCSfile: setup_ms.osql,v $
+ * $Revision: 1.5 $ $Date: 2013/09/20 10:39:13 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: SQL-based backend implementation - setup script
+ *
+ ****************************************************************************
+ * $Log: setup_ms.osql,v $
+ * Revision 1.5  2013/09/20 10:39:13  andan342
+ * Correctly handling both hex and binary chunks
+ *
+ * Revision 1.4  2013/07/27 18:42:41  andan342
+ * Bulk-loading binary chunks into MS SQL Server,
+ * no longer using isHex parameter to register-proxy-tag,
+ * no longer duplicating :sql_dialect and :isHex variables with stored functions
+ *
+ * Revision 1.3  2013/07/19 19:53:14  andan342
+ * Using CHAR instead of VARCHAR to store hex chunks under MS SQL server,
+ * updated the instructions for bulk loading
+ *
+ * Revision 1.2  2013/07/18 15:06:24  andan342
+ * Added bulk-load functionality for MS SQL Server backend (with hexadecimal chunk storage only)
+ *
+ * Revision 1.1  2013/03/17 16:59:51  andan342
+ * Added MS SQL Server backend option, as described in readme_ms.txt
+ *
+ * Revision 1.6  2013/01/21 16:49:20  andan342
+ * Storing chunksize in Parameter table inside RDF store, comes as a parameter to setup.cmd script
+ * Added test script for bulk-loading
+ *
+ * Revision 1.5  2013/01/11 17:30:48  andan342
+ * Added bulk-loading and dumper functionality
+ *
+ * Revision 1.4  2012/12/12 16:07:18  andan342
+ * Fixed case-sensitivity related glitches
+ *
+ * Revision 1.3  2012/12/12 15:49:11  andan342
+ * DB address is now stored in separate settings file rdfstore.ini
+ *
+ * Revision 1.2  2012/09/06 14:13:51  andan342
+ * Complete SQL-based RDF storage backend, still without array support
+ *
+ * Revision 1.1  2012/09/03 11:47:12  andan342
+ * Added setup script for SQL-based storage
+ *
+ * Revision 1.1  2012/02/14 15:09:50  andan342
+ * Added naive SQL-based implementation of RDF store
+ *
+ * Revision 1.1  2006/02/12 20:01:08  torer
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+
+/* :chunksize needs to be set before running this script! */
+
+< 'settings_ms.osql';
+
+< 'utils.osql';
+
+set :rdfstore = jdbc("rdfstore", :driver);
+
+connect(:rdfstore, :connection_str, :username, :password);
+
+load_lisp("sql-store-utils.lsp");
+
+create function setupDB(JDBC conn, Integer chunksize) -> Boolean as
+begin
+  read_sql(conn, "setup.tsql"); /* Create schema */
+  sql(conn, "ALTER TABLE arrayChunks ALTER COLUMN chunk " + hex_based({"BINARY(", "CHAR("}) 
+            + stringify(chunksize*(1+cast(tlvar('isHex') as Integer))) +")");
+  sql(conn, /* SQL containing ';' cannot be handled by read_sql() */
+      "CREATE FUNCTION mod (@x int, @y int)
+         RETURNS int
+       BEGIN
+         DECLARE @q float;
+         SET @q = 1.0*@x/@y;
+         RETURN ROUND((@q - FLOOR(@q))*@y, 0);
+       END;");
+  sql(conn, "SET IDENTITY_INSERT URI ON; INSERT INTO URI(id,uri) VALUES (?,?)", {sqlStoreDefaultURIs()}); /* Populate default URIs into URI table */
+  sql(conn, "INSERT INTO Parameters VALUES ('chunksize',?)", {chunksize}); /* Store  parameters */
+end;
+
+setupDB(:rdfstore, :chunksize);
+
+disconnect(:rdfstore);

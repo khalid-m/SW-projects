@@ -1,0 +1,53 @@
+/*****************************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2005 Johan Petrini, UDBL
+ * $RCSfile: relational.amosql,v $
+ * $Revision: 1.1 $ $Date: 2005/05/18 13:34:19 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Load general fns for relational stmt sources.
+ *****************************************************************************************/
+the_resource("http://www.sward.se/meta-data-schema#Relational");
+make_rdf_type(resource_named("Relational"),{typenamed("RDF_SOURCE")});
+create rdf_relational instances :r;
+
+ /***********************************************************************	
+ * Models mappings between uri's from different terminologies having	*
+ * the same meaning. 							*
+ ***********************************************************************/
+create function sm(charstring uri1, rdf_resource uri2)->Boolean as stored;
+
+ /***********************************************************************	
+ * Functions for creating persistent rdf resources. 			*
+ ***********************************************************************/
+create function the_transient(charstring uri key)->rdf_resource key
+as multidirectional ("bf" foreign "encode-transient" cost {10,1})
+("fb" foreign "decode-transient" cost {1,1});
+
+lisp;
+
+(defun encode-transient (fno k transient)
+  "Create transient with encodes as key" 
+  (let ((a (getfunction 'alias (list k)))(transient (create-transient-object 'RDF_RESOURCE)))
+    (cond ((NOT a)
+	   (putobject transient 'encodes k)
+	   (osql-result k transient))
+	  (t (putobject transient 'encodes a)
+	     (osql-result k transient)))))
+
+(defun decode-transient (fno k transient)
+  "Get transient key as encodes"
+  (osql-result transient (getobject transient 'encodes)))
+
+:osql
+
+ /***********************************************************************	
+ * Functions for creating uriKeys from prefix and keyValue. 		*
+ ***********************************************************************/
+create function uriKey(charstring prefix, charstring keyValue)->charstring uri key as foreign "uriKey";
+
+lisp;
+(defun uriKey (fno str1 str2 str3)
+  (osql-result str1 str2 (concat str1 str2)))
+:osql

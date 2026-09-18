@@ -1,0 +1,68 @@
+
+create function states()-><charstring state, charstring statename> as 
+				      select state,statename
+				      from  Charstring types,  real latDegrees, real lonDegrees, real latRadians, real lonRadians 
+				      where GetAllStates()=< statename ,types ,state, latDegrees , lonDegrees , latRadians , lonRadians>;
+
+
+
+create type state properties(stab vector of vector);
+create state instances :s;
+set stab(:s)=vectorof(GetAllStates());
+
+
+
+//create function state_r(integer num1, integer num2)-><charstring> as select ((stab(st))[i])[2] from  integer i , state st where  i in iota(num1-1,num2-1);
+create function state_r(integer num1, integer num2)-><charstring> as select x[i][2] from  vector of vector x, integer i , state st where  i in iota(num1-1,num2-1) and x=stab(st);
+
+
+
+
+
+
+
+create function placeinfo_r(charstring city, integer start , integer finish, charstring peername)-> charstring as
+					select peername
+					from charstring placename, charstring statename, real plon, real plat, charstring placetypeid,charstring country,integer availablethememask,integer population,  charstring state1
+					where GetPlaceList(city+", "+state1, 100,'true')=<placename, statename, country, plon, plat, availablethememask, placetypeid,population> and state1=state_r(start,finish);
+
+create function placeinfo_count(charstring city,integer start , integer finish, charstring peername)-> charstring as
+					select peername
+                                        where count(placeinfo_r(city,start,finish,peername))!=-1;
+
+/* Multicastreceive for peers */
+
+multicastReceive({'p1'},'placeinfo_r',{{'Atlanta',1,52,'p1'}});
+
+multicastReceive({'p1','p2'},'placeinfo_r',{{'Atlanta',1,26,'p1'},{'Atlanta',27,52,'p2'}});
+
+multicastReceive({'p1','p2','p3','p4'},'placeinfo_r',{{'Atlanta',1,13,'p1'},{'Atlanta',14,26,'p2'},{'Atlanta',27,39,'p3'},{'Atlanta',40,52,'p4'}});
+
+multicastReceive({'p1','p2','p3','p4','p5','p6','p7','p8'},'placeinfo_r',{{'Atlanta',1,7,'p1'},{'Atlanta',8,14,'p2'},{'Atlanta',15,21,'p3'},{'Atlanta',22,28,'p4'},{'Atlanta',29,34,'p5'},{'Atlanta',35,40,'p6'},{'Atlanta',41,46,'p7'},{'Atlanta',47,52,'p8'}});
+
+multicastReceive({'p1','p2','p3','p4','p5','p6','p7','p8','p9','p10','p11','p12','p13','p14','p15','p16'},'placeinfo_r',{{'Atlanta',1,4,'p1'},{'Atlanta',5,8,'p2'},{'Atlanta',9,12,'p3'},{'Atlanta',13,16,'p4'},{'Atlanta',17,19,'p5'},{'Atlanta',20,22,'p6'},{'Atlanta',23,25,'p7'},{'Atlanta',26,28,'p8'},{'Atlanta',29,31,'p9'},{'Atlanta',32,34,'p10'},{'Atlanta',35,37,'p11'},{'Atlanta',38,40,'p12'},{'Atlanta',41,43,'p13'},{'Atlanta',44,46,'p14'},{'Atlanta',47,49,'p15'},{'Atlanta',50,52,'p16'}});
+
+multicastReceive({'p1','p2','p3','p4','p5','p6','p7','p8','p9','p10','p11','p12','p13','p14','p15','p16','p17','p18','p19','p20','p21','p22','p23','p24','p25','p26','p27','p28','p29','p30','p31','p32'},'placeinfo_r',{{'Atlanta',1,2,'p1'},{'Atlanta',3,4,'p2'},{'Atlanta',5,6,'p3'},{'Atlanta',7,8,'p4'},{'Atlanta',9,10,'p5'},{'Atlanta',11,12,'p6'},{'Atlanta',13,14,'p7'},{'Atlanta',15,16,'p8'},{'Atlanta',17,18,'p9'},{'Atlanta',19,20,'p10'},{'Atlanta',21,22,'p11'},{'Atlanta',23,24,'p12'},{'Atlanta',25,26,'p13'},{'Atlanta',27,28,'p14'},{'Atlanta',29,30,'p15'},{'Atlanta',31,32,'p16'},{'Atlanta',33,34,'p17'},{'Atlanta',35,36,'p18'},{'Atlanta',37,38,'p19'},{'Atlanta',39,40,'p20'},{'Atlanta',41,41,'p21'},{'Atlanta',42,42,'p22'},{'Atlanta',43,43,'p23'},{'Atlanta',44,44,'p24'},{'Atlanta',45,45,'p25'},{'Atlanta',46,46,'p26'},{'Atlanta',47,47,'p27'},{'Atlanta',48,48,'p28'},{'Atlanta',49,49,'p29'},{'Atlanta',50,50,'p30'},{'Atlanta',51,51,'p31'},{'Atlanta',52,52,'p32'}});
+ 
+
+ multicastReceive({'p1','p2','p3','p4','p5','p6','p7','p8','p9','p10','p11','p12','p13','p14','p15','p16','p17','p18','p19','p20','p21','p22','p23','p24','p25','p26','p27','p28','p29','p30','p31','p32','p33','p34','p35','p36','p37','p38','p39','p40','p41','p42','p43','p44','p45','p46','p47','p48','p49','p50','p51','p52'},'placeinfo_r',{{'Atlanta',1,1,'p1'},{'Atlanta',2,2,'p2'},{'Atlanta',3,3,'p3'},{'Atlanta',4,4,'p4'},{'Atlanta',5,5,'p5'},{'Atlanta',6,6,'p6'},{'Atlanta',7,7,'p7'},{'Atlanta',8,8,'p8'},{'Atlanta',9,9,'p9'},{'Atlanta',10,10,'p10'},{'Atlanta',11,11,'p11'},{'Atlanta',12,12,'p12'},{'Atlanta',13,13,'p13'},{'Atlanta',14,14,'p14'},{'Atlanta',15,15,'p15'},{'Atlanta',16,16,'p16'},{'Atlanta',17,17,'p17'},{'Atlanta',18,18,'p18'},{'Atlanta',19,19,'p19'},{'Atlanta',20,20,'p20'},{'Atlanta',21,21,'p21'},{'Atlanta',22,22,'p22'},{'Atlanta',23,23,'p23'},{'Atlanta',24,24,'p24'},{'Atlanta',25,25,'p25'},{'Atlanta',26,26,'p26'},{'Atlanta',27,27,'p27'},{'Atlanta',28,28,'p28'},{'Atlanta',29,29,'p29'},{'Atlanta',30,30,'p30'},{'Atlanta',31,31,'p31'},{'Atlanta',32,32,'p32'},{'Atlanta',33,33,'p33'},{'Atlanta',34,34,'p34'},{'Atlanta',35,35,'p35'},{'Atlanta',36,36,'p36'},{'Atlanta',37,37,'p37'},{'Atlanta',38,38,'p38'},{'Atlanta',39,39,'p39'},{'Atlanta',40,40,'p40'},{'Atlanta',41,41,'p41'},{'Atlanta',42,42,'p42'},{'Atlanta',43,43,'p43'},{'Atlanta',44,44,'p44'},{'Atlanta',45,45,'p45'},{'Atlanta',46,46,'p46'},{'Atlanta',47,47,'p47'},{'Atlanta',48,48,'p48'},{'Atlanta',49,49,'p49'},{'Atlanta',50,50,'p50'},{'Atlanta',51,51,'p51'},{'Atlanta',52,52,'p52'}});
+
+
+
+select count(placename)
+from charstring placename, charstring statename, real plon, real plat, charstring placetypeid,charstring country,integer availablethememask,integer population,  charstring state1
+where GetPlaceList("Atlanta"+", "+state1, 100,'true')=<placename, statename, country, plon, plat, availablethememask, placetypeid,population> and state1=state_r(1,52);
+
+
+select count( GetPlaceList("Atlanta"+", "+state1, 100,'true'))
+from charstring placename, charstring statename, real plon, real plat, charstring placetypeid,charstring country,integer availablethememask,integer population,  charstring state1
+where state1=state_r(1,52);
+
+
+
+
+select placename
+from charstring placename, charstring statename, real plon, real plat, charstring placetypeid,charstring country,integer availablethememask,integer population,  charstring state1
+where GetPlaceList('Atlanta'+", "+state1, 100,'true')=<placename, statename, country, plon, plat, availablethememask, placetypeid,population> and state1=state_r(1,52);
+
+ 

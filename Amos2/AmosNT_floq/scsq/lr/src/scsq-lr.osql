@@ -1,0 +1,534 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Tore Risch, UDBL
+ * $RCSfile: scsq-lr.osql,v $
+ * $Revision: 1.41 $ $Date: 2013/04/29 12:12:02 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: SCSQ-LR system functions
+ *
+ ****************************************************************************
+ * $Log: scsq-lr.osql,v $
+ * Revision 1.41  2013/04/29 12:12:02  jaba9649
+ * add jdbc connection pool
+ *
+ * Revision 1.40  2012/05/15 20:41:14  torer
+ * result -> return
+ *
+ * Revision 1.39  2012/03/13 11:23:03  zeitler
+ * coersion avoided by cast
+ *
+ * Revision 1.38  2012/03/13 10:49:09  zeitler
+ * Type warnings eliminated by casting
+ * Assignment replaced by in
+ *
+ * Revision 1.37  2010/06/03 18:48:46  zeitler
+ * lrbinsink absorbs all output data
+ *
+ * Revision 1.36  2009/11/25 14:01:12  zeitler
+ * equality on bag valued functions removed
+ *
+ * Revision 1.35  2009/05/19 15:15:12  zeitler
+ * out of band bcast topology
+ *
+ * Revision 1.34  2009/05/08 22:31:12  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.33  2009/04/22 15:58:08  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.32  2009/04/16 09:44:10  zeitler
+ * experiments
+ *
+ * Revision 1.31  2009/04/15 07:38:08  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.30  2009/04/07 14:56:48  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.29  2009/03/24 18:38:02  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.28  2009/02/24 20:55:44  zeitler
+ * Fully declarative //-ization
+ *
+ * Revision 1.27  2009/02/17 12:35:50  zeitler
+ * Binary all the way sir!
+ *
+ * Revision 1.26  2009/02/11 14:07:55  zeitler
+ * type checker
+ *
+ * Revision 1.25  2009/02/10 14:25:50  zeitler
+ * binary LR regress
+ *
+ * Revision 1.24  2009/02/09 15:12:50  zeitler
+ * scsq with new readfile
+ *
+ * Revision 1.23  2008/11/23 14:43:13  torer
+ * Type errors
+ *
+ * Revision 1.22  2008/11/12 16:30:52  zeitler
+ * Tree u-benchmark
+ *
+ * Revision 1.21  2008/11/09 21:21:27  torer
+ * Corrections for strict checking of result types of functions
+ *
+ * Revision 1.20  2008/11/06 17:44:41  zeitler
+ * one accident clearing order per xway
+ *
+ * Revision 1.19  2008/10/09 16:10:46  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.18  2008/10/01 16:21:19  zeitler
+ * port signature changed
+ * SP() is replaced with newSP()
+ *
+ * Revision 1.17  2008/09/03 16:27:35  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.16  2008/07/11 13:20:34  zeitler
+ * Account balance fixes
+ *
+ * Revision 1.15  2008/07/09 18:34:17  zeitler
+ * - get_nsport.sh: Automatically acquire a free nameserver TCP port
+ * - test scripts changed accordingly
+ *
+ * - NB: Some SCSQ tests currently fail due to changes in groupagg and Linear Road
+ *
+ * Revision 1.14  2008/05/07 18:02:36  zeitler
+ * LR with PS
+ *
+ * Revision 1.13  2008/04/29 14:22:01  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.12  2008/04/28 16:22:31  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.11  2008/04/22 12:22:37  zeitler
+ * - detailed time measurements
+ * - pre-emitting lread
+ *
+ * Revision 1.10  2008/04/17 22:15:45  zeitler
+ * Improved timestamping
+ *
+ * Revision 1.9  2008/04/17 11:12:20  zeitler
+ * Improved emit time reporting
+ *
+ * Revision 1.8  2008/03/26 11:12:23  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.7  2008/02/15 11:59:53  zeitler
+ * Enabling individual history .dmp files for each sp in lr
+ *
+ * Revision 1.6  2008/02/13 21:37:43  zeitler
+ * Portable LR
+ *
+ * Revision 1.5  2008/02/13 17:54:35  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.4  2008/02/12 17:00:06  zeitler
+ * scsq and lr linux tests
+ *
+ * Revision 1.3  2008/02/12 15:34:05  zeitler
+ * LR cleanup
+ *
+ * Revision 1.2  2008/01/30 12:44:55  zeitler
+ * LR on an SP
+ *
+ * Revision 1.1  2007/12/28 16:31:11  torer
+ * New file for scsq-lr system definition
+ *
+ ****************************************************************************/
+
+create function in_d(stream s)->darray
+as select d from darray d
+where d in s;
+
+create function tscount0(stream s)->vector as begin
+ return {real(now())};
+ return {count(in(s))};
+ return {real(now())};
+end;
+
+create function tscount(stream s)->stream
+as streamof(tscount0(s));
+
+create function L()->integer; 
+
+create function lreadfast(charstring filename, integer L)
+ -> Stream of Vector of Integer as begin
+clear_function("L");
+add L() = L;
+return readintstream(filename);
+end; 
+
+/*
+create function lreadfastbin(charstring filename, integer L)
+ -> Stream of Iarray as begin
+clear_function("L");
+add L() = L;
+return streamof(readfile(filename));
+end;
+*/
+
+create function lreadfast(vector of charstring filenames, integer L)
+ -> Stream of Vector of Integer as begin
+clear_function("L");
+add L() = L;
+return readintstreams(filenames);
+end; 
+
+/*
+create function lreadfast_t(vector of charstring filenames, integer L)
+ -> Stream of vector of integer as begin
+clear_function("L");
+add L() = L;
+return streamof(concat(readintstream(filenames), {real(now())});
+end; 
+*/
+
+create function set_current_second(Number s)->Boolean
+  as set current_second()=s; 
+
+create function set_current_minute(Number m)->Boolean
+  as set current_minute()=m; 
+
+/* Init timers */ 
+
+set_current_second(0);
+set_current_minute(1); 
+
+/****************************Seg stat*****************/
+create function seg_stat(Vector x)->Boolean
+  /* Update statistics stored per expressway segment */
+  as begin
+	if (x[1]>current_second()) 	/* new second */
+	then begin
+             set_current_second(cast(x[1] as Integer));
+	     remove_stopped_cars(current_second()); 
+                                      /* remove old reports of stopped cars */
+             if floor(current_second()/60) + 1 > current_minute() 
+                                                              /* new minute */
+             then begin
+	          set_current_minute(floor(current_second()/60) + 1);
+	          print({current_minute(), now()});
+                  /* Look for cleared accident */
+	          select check_kill_accident(xways)
+	            from Integer xways where xways in iota(0, 99);
+
+                  /* remove old stat tables and start new ones */
+	          init_stat(current_minute()); 
+	          end;
+	     end;
+     add_stat(x,current_minute()); /* add stat to NOV and LAV*/
+     /*if(current_minute()>10) then error("Completed 10 min run");*/
+     end; 
+
+create function seg_statbin(iarray x)->Boolean
+  /* Update statistics stored per expressway segment */
+  as begin
+	if (x[1]>current_second()) 	/* new second */
+	then begin
+             set_current_second(cast(x[1] as Integer));
+	     remove_stopped_cars(current_second()); 
+                                      /* remove old reports of stopped cars */
+             if floor(current_second()/60) + 1 > current_minute() 
+                                                              /* new minute */
+             then begin
+	          set_current_minute(floor(current_second()/60) + 1);
+	          print({current_minute(), now()});
+                  /* Look for cleared accident */
+	          select check_kill_accident(xways)
+	            from Integer xways where xways in iota(0, 99);
+
+                  /* remove old stat tables and start new ones */
+	          init_stat(current_minute()); 
+	          end;
+	     end;
+     add_statbin(x,current_minute()); /* add stat to NOV and LAV*/
+     /*if(current_minute()>10) then error("Completed 10 min run");*/
+     end; 
+
+
+create function toll_calc(Integer sec, Integer vid, Integer xway, Integer pos,
+                          Integer seg, Integer dir, Integer spd, Integer lane)
+                         -> Vector
+     /* Update toll calculations */
+     as if (lane = 4) /*if car is on exit ramp no toll is charged*/
+        then update_vehicle_info(sec, vid, xway, pos, seg, dir, spd)
+        else if check_new_seg_report(vid, seg, xway)
+             then begin end
+             else begin
+	          add_previous_toll(sec, vid, xway, pos, seg, dir, spd);
+                              /* Add toll from previous segment*/
+	          return calc_toll(sec, vid, xway, pos, seg, dir, spd);
+                           /*calculate toll for the new segment*/
+	          end; 
+
+create function toll_calc_t(Integer sec, Integer vid, Integer xway, Integer pos,
+                            Integer seg, Integer dir, Integer spd, Integer lane, real ts)
+                         -> Vector
+     /* Update toll calculations */
+     as if (lane = 4) /*if car is on exit ramp no toll is charged*/
+        then update_vehicle_info(sec, vid, xway, pos, seg, dir, spd)
+        else if check_new_seg_report(vid, seg, xway)
+             then begin end
+             else begin
+	          add_previous_toll(sec, vid, xway, pos, seg, dir, spd);
+                              /* Add toll from previous segment*/
+	          return calc_toll_t(sec, vid, xway, pos, seg, dir, spd, ts);
+                           /*calculate toll for the new segment*/
+	          end; 
+
+create function check_accident_cleared(Integer sec, Integer vid, Integer pos,
+                                       Integer seg, Integer xway, Integer tpe)
+                                      -> Boolean
+  /* One accident should be cleared */
+  as if is_smashed(vid) > 0
+    then if ((giveme_smashed_pos(vid) != pos) and (tpe = 0)) then begin
+      print({"accident cleared in xway,seg,vid,minute,sec:",
+             giveme_smashed_xway(vid),
+	     giveme_smashed_seg(vid), vid, current_minute(), sec});
+      add accident_remove_order(giveme_smashed_xway(vid)) = 
+        (current_minute()+2);
+end; 
+
+/**************************************MAIN**************************/ 
+
+create function rvi()->Boolean 
+  /* Internal function to empty vehicle data table */
+  as remove vehicle_info(i)=(j,k,l,m,n,rlu,o,rn) 
+       from Integer i, Integer j, Integer k, Integer l, Integer m, Real n, 
+            Integer o, Integer rlu, real rn; 
+
+create function lrinit()->Boolean
+  /* Initialize the benchmark run */
+  as begin
+     rvi();
+     remove rtime()= t from timeval t;
+     remove current_second() = i from Integer i;
+     set current_minute()=1;
+     end; 
+
+create function lrfinalize()->Boolean
+  /* Finalize the benchmrk run */
+  as begin
+     remove accident()= (i,j,k,l,m) 
+       from Integer i, Integer j, Integer k, Integer l,Integer m;
+     remove stopped_car() = (i,j,k,l,m,o) 
+       from Integer i, Integer j, Integer k, Integer l, Integer m,Integer o;
+     remove smashed_car()= (i,j,k,l,m,o) 
+       from Integer i, Integer j, Integer k, Integer l, Integer m,Integer o;
+     remove vehicle_info(i)= (j,k,l,m,x,y,n,z) 
+       from Integer i, Integer j, Integer k, Integer l, Integer m, Integer n,
+            Real x, Integer y, real z;
+     init_stat(0);
+     init_stat(1);
+     init_stat(2);
+     init_stat(3);
+     init_stat(4);
+     init_stat(5);
+     end;
+
+create function in_vi(stream s)->vector of integer as
+select v
+from vector of integer v
+where v in s;
+
+create function lr0(vector of integer x)->Vector
+  as begin
+     if x[3] = 0 then accident_check(x[1], x[2], x[4], x[5], x[6], x[7], x[8]);
+                                       /* Speed=0 => possible accident. */
+     if (is_smashed(x[2])) > 0 then check_accident_cleared(x[1], x[2], x[8],
+                                                           x[7], x[4], x[0]);
+                                /* Report from car involved in accident. */
+     if x[0] = 0
+     then begin
+	  seg_stat(x);
+	  return toll_calc(x[1], x[2], x[4], x[8], x[7], x[6], x[3], x[5]);
+          end
+     else if x[0] = 3
+          then begin 
+               declare integer expenditure;
+               set expenditure = hist_toll(x[2], x[14], x[4]);
+               if expenditure != nil then 
+	       return {x[0], x[1], 0, x[9], expenditure};
+               /* Daily expenditure.    
+                  Return[2] (emit time) is computed in timestamplr(). */
+	       end
+          else if x[0] = 2
+          then begin
+               declare real lasttime, real balance;
+               set lasttime = giveme_lasttime(x[2]);
+               set balance = giveme_balance(x[2]);
+               /* Account balance.   
+                  Return[2] (emit time) is computed in timestamplr(). */
+               if balance != nil then begin
+	         return {x[0], x[1], 0, x[9], lasttime, real(balance)};
+               end else begin
+	         return {x[0], x[1], 0, x[9], x[1], 0.0};
+               end;
+	       end;
+     end;
+
+create function lr(stream of vector of integer s)->stream as
+select streamof(lr0(in_vi(s)));
+
+create function realify(Vector v)->Numarray as
+darray(vectorize(select i, real(r) from integer i, number r where r = v[i]));
+
+create function lr0bin(iarray x)->Darray as begin
+  if x[3] = 0 then accident_check(x[1], x[2], x[4], x[5], x[6], x[7], x[8]);
+  if (is_smashed(x[2])) > 0 then check_accident_cleared(x[1], x[2], x[8],
+                                                        x[7], x[4], x[0]);
+  if x[0] = 0 then begin
+    seg_statbin(x);
+    return realify(toll_calc(x[1], x[2], x[4], x[8], x[7], x[6], x[3], x[5]));
+  end
+  else if x[0] = 3 then begin 
+    declare integer expenditure;
+    set expenditure = hist_toll(x[2], x[14], x[4]);
+    if expenditure != nil then 
+    return realify({x[0], x[1], 0, x[9], expenditure});
+  end
+  else if x[0] = 2 then begin
+    declare real lasttime, real balance;
+    set lasttime = giveme_lasttime(x[2]);
+    set balance = giveme_balance(x[2]);
+    if balance != nil then begin
+      return realify({x[0], x[1], 0, x[9], lasttime, real(balance)});
+    end else begin
+      return realify({x[0], x[1], 0, x[9], x[1], 0.0});
+    end;
+  end;
+end;
+
+create function mylr0bin(iarray x)->Darray as begin
+  if x[3] = 0 then accident_check(x[1], x[2], x[4], x[5], x[6], x[7], x[8]);
+  if (is_smashed(x[2])) > 0 then check_accident_cleared(x[1], x[2], x[8],
+                                                        x[7], x[4], x[0]);
+  if x[0] = 0 then begin
+    seg_statbin(x);
+    return realify(toll_calc(x[1], x[2], x[4], x[8], x[7], x[6], x[3], x[5]));
+  end
+  else if x[0] = 2 then begin
+    declare real lasttime, real balance;
+    set lasttime = giveme_lasttime(x[2]);
+    set balance = giveme_balance(x[2]);
+    if balance != nil then begin
+      return realify({x[0], x[1], 0, x[9], lasttime, real(balance)});
+    end else begin
+      return realify({x[0], x[1], 0, x[9], x[1], 0.0});
+    end;
+  end;
+end;
+
+create function lrbin(stream of iarray s)->stream of Darray as
+select streamof(lr0bin(in(s)));
+
+create function mylrbin(stream of iarray s)->stream of Darray as
+select streamof(mylr0bin(in(s)));
+
+create function lrbinsink(stream of iarray s)->stream of Vector of Number as
+stcount(streamof(lr0bin(in(s))));
+
+create function lr_t(Vector of Integer x)->Vector
+  /* Process one input event. x[15] is lread's emit time. */
+  as begin
+    if x[3] = 0 then accident_check(x[1], x[2], x[4], x[5], x[6], x[7], x[8]);
+                                           /* Speed=0 => possible accident. */
+    if (is_smashed(x[2])) > 0 then check_accident_cleared(x[1], x[2], x[8],
+                                                          x[7], x[4], x[0]);
+                                   /* Report from car involved in accident. */
+    if x[0] = 0 then begin
+      seg_stat(x);
+      return toll_calc_t(x[1], x[2], x[4], x[8], x[7], x[6], x[3], x[5],
+	real(x[15]));
+    end
+    else if x[0] = 3 then begin
+      declare integer expenditure;
+      set expenditure = hist_toll(x[2], x[14], x[4]);
+      if expenditure != nil then 
+      return {x[0], x[1], 0, x[9], expenditure, x[15]};
+      /* Daily expenditure.  
+         Return[2] (emit time) is computed in timestamplr(). */
+    end
+    else if x[0] = 2 then begin
+      declare real lasttime, real balance;
+      set lasttime = giveme_lasttime(x[2]);
+      set balance = giveme_balance(x[2]);
+      /* Account balance.   
+         Return[2] (emit time) is computed in timestamplr(). */
+      if balance != nil then begin
+        return {x[0], x[1], 0, x[9], lasttime, real(balance), x[15]};
+      end else begin
+      return {x[0], x[1], 0, x[9], x[1], 0.0, x[15]};
+    end;
+  end;
+end;  
+
+create function vtimediffs(vector t) -> vector as
+select {r - cast(t[0] as real), r - cast(t[1] as real), r - cast(t[2] as real)}
+from real r
+where r = real(now()); 
+
+create function tsrec(vector v)->vector
+as begin
+  return concat(v, {real(now())});
+end;   
+
+create function timestamplr(vector v) -> vector as
+select concat(vectorof(select v[i] from integer i
+                       where i in iota(0, tindex - 1)),
+              concat({vtimediffs(cast(v[tindex] as vector))},
+              vectorof(select v[i] from integer i
+                       where i in iota(tindex + 1, dim(v)))))
+from integer tindex
+where tindex = 3 - compare(cast(v[0] as integer), 0); 
+
+/* testLR is used for testing */
+create function testLR(Charstring filename, integer L) -> vector
+  as begin
+      lrinit();
+      set current_second() = 0;  
+      set rtime()=now();
+      return in(lr(lreadfast(filename, L)));
+      lrfinalize();
+     end; 
+
+create function testLRbin(Charstring filename, integer L) -> Darray
+as begin
+  lrinit();
+  set current_second() = 0;  
+  set rtime()=now();
+  clear_function("L");
+  add L() = L;
+  return in(lrbin(lreadfastbin(filename)));
+  lrfinalize();
+end;
+
+create function responsetime()->Boolean 
+	/*calculate worst case response time for the different queries*/
+	as begin declare  Number toll, Number accalert, Number daily, 
+                          Number account;
+                 set toll=maxagg(select (a[3]-a[2]) 
+                                 from Vector of Number a 
+                                 where	a in readnumstream('o-0'));
+                 set accalert=maxagg(select (b[2]-b[1]) 
+                                     from Vector of Number b 
+                                     where b in readnumstream('o-1'));
+                 set daily=maxagg(select (c[2]-c[1]) 
+                                  from Vector of Number c 
+                                  where c in readnumstream('o-3'));
+                 set account=maxagg(select (d[2]-d[1]) 
+                                    from Vector of Number d 
+                                    where d in readnumstream('o-2'));	
+                 print ({"worst case response time for toll alerts:",toll});
+                 print ({"worst case response time for accident alerts:",
+                         accalert});
+                 print ({"worst case response time for daily expenditure:",
+                          daily});
+                 print ({"worst case response time for account balance:",
+                          account});
+           end; 

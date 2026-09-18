@@ -1,0 +1,26 @@
+lisp;
+
+(checkequal 
+ "Foreign functions in Java"
+ ((osql "mysqrt(4.0);") '((2.0) (-2.0)))
+ ((osql "mysqrt(0.0);") '((0.0)))
+ ((osql "mysqrt(-1.0);") nil)
+ ((osql "myabs(-1.1);") '((1.1)))
+ ((osql "select n from real n where myabs(n)=1.1;") '((1.1) (-1.1)))
+ ((osql "select n from real n where myabs(n)=0.0;") '((0.0)))
+ ((osql "jeval('1+2;');") '((3)))
+ ((errstring (osql "jeval('1+true;');"))"Cannot resolve function call")
+ ((errstring (osql "jeval('jerror(\"test\");');"))"test") 
+ ((osql "char_length(bigstring(8000));") '((8000)))
+;  ((osql "char_length(bigstring(16000));") '((16000))) crashes JVM
+ )
+
+(if (equal (system-environment)"VisualC++")
+    (checkequal "Coroutines and Java"
+		((test-java-coroutines) '(1.2))
+		((osql "coback();") '((1.2)))
+                ((osql "jeval('coback();');") '((1.2)))
+		))
+
+:osql
+quit;

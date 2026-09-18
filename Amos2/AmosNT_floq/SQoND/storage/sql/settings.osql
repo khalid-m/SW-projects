@@ -1,0 +1,13 @@
+set :sql_dialect = 'mysql';
+
+set :driver = 'com.mysql.jdbc.Driver';
+
+set :connection_str = 'jdbc:mysql://localhost:3306/rdfstore';
+
+set :username = 'root';
+
+set :password = 'root';
+
+set :nma_proxy_threshold = 256;
+
+set :isHex = 0;

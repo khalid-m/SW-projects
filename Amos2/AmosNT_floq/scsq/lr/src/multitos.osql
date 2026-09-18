@@ -1,0 +1,828 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 Erik Zeitler, UDBL
+ * $RCSfile: multitos.osql,v $
+ * $Revision: 1.33 $ $Date: 2012/03/13 10:49:09 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Massively // LR. Enabling tech:
+ *              readmulti: Input data is represented by multiarrays
+ *               clrmultiply multiplies L=64 input data to any L=n*64
+ *               randrobin with // fsplit
+ *               uall on multiarrays
+ *               account balance data join using multiarray zipstreamtrees
+ ****************************************************************************/
+
+/* help functions */
+
+create function prepare_multifiles(charstring infile, charstring outfile)
+ -> boolean as
+select writefile(outfile + '-' + stringify(i),
+na2multi(iarray(vreadfile(infile)), integer(2^i)))
+from integer i where i in iota(1, 6);
+
+create function xways(stream of iarray sv)->vector as
+vectorof(select distinct eventtype(v), xway(v)
+from iarray v
+where v in sv);
+
+create function sxways(stream of iarray sv)->stream of vector as
+streamof(xways(sv));
+
+create function xwayrfn(iarray e, integer fanout) -> integer p as
+select xway(e) where eventtype(e) = 0;
+
+create function distribcpu()->vector as
+in(sort(select c, r['nsub'], r['mappertime']
+from charstring c, record r
+where <c, r> in dprofile()));
+
+create function na2multi4_0(stream of darray sd)->bag of darray as
+na2multi(in(sd), 16);
+
+create function na2multi4(stream of darray sd)->stream of darray as
+streamof(na2multi4_0(sd));
+
+/* prel exp: scale uall inputs */
+
+create function bcast_id_uall(integer para)->integer as
+count(select in(mergestreams(p))
+from vector of stream p, vector of stream inp
+where p = mapstreams(inp, #'id')
+and inp = splitstream(streamof(retard(0.1, iota(1,10))), para, #'bcast'));
+
+create function iota_uall(integer para)->integer as
+count(select uall(p)
+from vector of sp p
+where p = spv(select siota(1,10)
+ from integer i where i in iota(1,para)));
+
+/* Read multiarray, stream and extract */
+
+create function extractsp()->vector as
+tcount(ostream(newsp(streamof(clrmultiply(in(lreadfastbins(
+{getenv('HOME') + "/glob/ezgen/output/64m4/cdpm0"})), 64, 2))), 0));
+
+/* premerge: merge fo*rrfo streams into fo streams */
+
+create function premerge(vector of stream fsplit, integer rrfo, integer fo)
+-> vector of stream as 
+vectorize(
+select i, smjstreamsna(vectorize(
+  select j, fsplit[i + j*fo]
+  from integer j
+  where j in iota(0, rrfo - 1)), 1)
+from integer i
+where i in iota(0, fo - 1));
+
+/* premergep: merge fo*rrfo streams into fo streams in a separate process 
+              layer. NB: This turned out to be sub-optimal, because of the
+              read/write overhead incurred large number of processes in the pipeline. */
+
+create function premergep(vector of stream fsplit, integer rrfo, integer fo)
+-> vector of stream as 
+vectorize(
+select i, ostream(newsp(smjstreamsna(vectorize(
+  select j, fsplit[i + j*fo]
+  from integer j
+  where j in iota(0, rrfo - 1)), 1)), 0)
+from integer i
+where i in iota(0, fo - 1));
+
+create function aggstat(vector of vector of number w)->
+<real time, integer sumcount> as
+select roundto(m[2],3), s[3]
+from vector of number m,  vector of number s
+where s = aggv(in(w), #'sum')
+and m = aggv(in(w), #'maxagg');
+
+/* readfast - randrobin - fsplit - premerge+count */
+
+create function readfastmulti_rr_fsplit_mergecount(
+ charstring file, integer inl, integer mult, integer rrfo)
+ -> vector of vector of number as
+select in(zipstreams(c))
+from stream of iarray src, vector of stream of iarray rr, integer fo,
+vector of stream fsplit, vector of stream c
+where c = mapstreams(premerge(fsplit, rrfo, fo), #'stcount')
+and fsplit = unpackfsplit(rr, fo, #'xwayrfn', #'q2bfn', 15)
+and rr = splitstream(src, rrfo, #'randr', #'f')
+and src = ostream(newsp(streamof(clrmultiply(in(lreadfastbin(file)), 
+                                             inl, mult))), 0)
+and fo = inl*mult;
+
+create function simmulti_rr_fsplit_mergecount(
+ integer inl, integer promille, integer mult, integer msz, integer rrfo, integer rep)
+ -> vector of vector of number as
+select in(zipstreams(c))
+from stream of iarray src, vector of stream of iarray rr, integer fo,
+vector of stream fsplit, vector of stream c
+where c = mapstreams(premerge(fsplit, rrfo, fo), #'stcount')
+and fsplit = unpackfsplit(rr, fo, #'xwayrfn', #'q2bfn', 15)
+and rr = splitstream(src, rrfo, #'randr', #'f')
+and src = ostream(newsp(streamof(clrmultiply(in(
+i_multihybrid_enumc(inl, promille, rep, msz)), inl, mult))), 0)
+and fo = inl*mult;
+
+/* readfast - randrobin - fsplit - premerge+xways inspection */
+
+create function readfastmulti_rr_fsplit_premergexways(
+ charstring file, integer inl, integer mult, integer rrfo)
+ -> vector of vector of number as
+select in(zipstreams(c))
+from stream of iarray src, vector of stream of iarray rr, integer fo,
+vector of stream fsplit, vector of stream c
+where c = mapstreams(premerge(fsplit, rrfo, fo), #'sxways')
+and fsplit = unpackfsplit(rr, fo, #'xwayrfn', #'q2bfn', 15)
+and rr = splitstream(src, rrfo, #'randr', #'f')
+and src = ostream(newsp(streamof(clrmultiply(in(lreadfastbin(file)), 
+                                             inl, mult))), 0)
+and fo = inl*mult;
+
+/* readfast+mult - randrobin - fsplit - premerge+LR - count */
+
+create function readfastmulti_rr_fsplit_lr(
+ charstring file, integer inl, integer mult, integer rrfo, integer fo)
+ -> integer as
+select count(in(res))
+from stream of iarray src, vector of stream of iarray rr, 
+vector of stream fsplit, vector of stream of darray proc, stream of darray res
+where res = mergestreams(proc)
+and proc = mapstreams(premerge(fsplit, rrfo, fo), #'lrbin')
+and fsplit = unpackfsplit(rr, fo, #'xwayrfn', #'q2bfn', 15)
+and rr = splitstream(src, rrfo, #'randr', #'f')
+and src = ostream(newsp(streamof(clrmultiply(in(lreadfastbin(file)), 
+                                             inl, mult))), 0);
+
+/* readfast+mult - randrobin - fsplit - premerge+LR - LRmerge */
+/* Might exceed #proc handles on linux. Use rr_fsplit_lr_mrg_opt instead */
+
+create function readfastmulti_rr_fsplit_lr_mrg(
+ charstring infile, integer inl, integer mult, integer rrfo,
+ charstring outfile)
+ -> object as
+select in(res)
+from stream of iarray src, vector of stream of iarray rr, integer fo,
+vector of stream fsplit, vector of stream of darray proc,
+vector of stream of darray postproc, stream of darray res,
+stream t0, stream t1, stream t2
+where res = mergestreams({t0, t1, t2})
+and t2 = ostream(newsp(streamof(writefiles(outfile + "-2-", 10000000,
+  dtslrbin(lrf0(in(zipstreams(vectorize(select i, postproc[i*3 + 2]
+  from integer i where i in iota(0, dim(postproc)/3))))))))), 0)
+and t1 = ostream(newsp(streamof(writefiles(outfile + "-1-", 10000000,
+  dtslrbin(in_d(mergestreams(vectorize(select i, postproc[i*3 + 1]
+  from integer i where i in iota(0, dim(postproc)/3)))))))), 0)
+and t0 = ostream(newsp(streamof(writefiles(outfile + "-0-", 10000000,
+  dtslrbin(in_d(mergestreams(vectorize(select i, postproc[i*3]
+  from integer i where i in iota(0, dim(postproc)/3)))))))), 0)
+and postproc = splitstreams(proc, 3, #'oesplit')
+and proc = mapstreams(premerge(fsplit, rrfo, fo), #'lrbin')
+and fsplit = unpackfsplit(rr, fo, #'xwayrfn', #'q2bfn', 15)
+and rr = splitstream(src, rrfo, #'randr', #'f')
+and src = ostream(newsp(streamof(clrmultiply(in(lreadfastbin(infile)),
+                                             inl, mult))), 0)
+and fo = inl*mult;
+
+/* readfast+mult - randrobin - fsplit - premerge+LR+postsplit - LRmerge */
+
+create function rr_fsplit_lr_mrg_opt(
+ vector of charstring infiles, integer inl, integer mult, integer rrfo,
+ charstring outfile)
+ -> object as
+select in(res)
+from stream of iarray src, vector of stream of iarray rr, integer fo,
+vector of stream fsplit, vector of stream of darray proc, stream of darray res,
+stream t0, stream t1, stream t2
+where res = mergestreams({t0, t1, t2})
+and t2 = ostream(newsp(streamof(writefiles(outfile + "-2-", 10000000,
+  dtslrbin(lrf0(in(zipstreams(vectorize(select i, proc[i*3 + 2]
+  from integer i where i in iota(0, dim(proc)/3))))))))), 0)
+and t1 = ostream(newsp(streamof(writefiles(outfile + "-1-", 10000000,
+  dtslrbin(in_d(mergestreams(vectorize(select i, proc[i*3 + 1]
+  from integer i where i in iota(0, dim(proc)/3)))))))), 0)
+and t0 = ostream(newsp(streamof(writefiles(outfile + "-0-", 10000000,
+  dtslrbin(in_d(mergestreams(vectorize(select i, proc[i*3]
+  from integer i where i in iota(0, dim(proc)/3)))))))), 0)
+and proc = mapflex(premerge(fsplit, rrfo, fo), #'lrbin',
+  make_record({'nsub',3,'sfn',#'oesplit'}))
+and fsplit = unpackfsplit(rr, fo, #'xwayrfn', #'q2bfn', 15)
+and rr = splitstream(src, rrfo, #'randr', #'f')
+and src = ostream(newsp(streamof(clrmultiply(in(lreadfastbins(infiles)),
+                                             inl, mult))), 0)
+and fo = inl*mult;
+
+/* rr_fsplit_lr_mrg_opt() turned out to delay a lot. This function,
+   rr_fsplit_lrcnt_opt() has no merge. Are all delays introduced at merge? */
+
+create function rr_fsplit_lrcnt_opt(
+ vector of charstring infiles, integer inl, integer mult, integer rrfo,
+ charstring outfile)
+ -> object as
+select in(res)
+from stream of iarray src, vector of stream of iarray rr, integer fo,
+vector of stream fsplit, vector of stream of darray proc, stream of darray res
+where res = mergestreams(proc)
+and proc = mapstreams(premerge(fsplit, rrfo, fo), #'lrbinsink')
+and fsplit = unpackfsplit(rr, fo, #'xwayrfn', #'q2bfn', 15)
+and rr = splitstream(src, rrfo, #'randr', #'f')
+and src = ostream(newsp(streamof(clrmultiply(in(lreadfastbins(infiles)),
+                                             inl, mult))), 0)
+and fo = inl*mult;
+
+/* Answer: The reason for the delays were insufficient resources */
+
+/* rr_fsplit_lr_mrgtree: tree shaped mergestreams */
+
+create function rr_fsplit_lr_mrgtree(
+ vector of charstring infiles, integer inl, integer mult, integer rrfo,
+ charstring outfile)
+ -> object as
+select in(res)
+from stream of iarray src, vector of stream of iarray rr, integer fo,
+vector of stream fsplit, vector of stream of darray proc, stream of darray res,
+stream t0, stream t1, stream t2, vector of stream o0, vector of stream o0l,
+vector of stream o0r, stream t0l, stream t0r, vector of stream o1
+where res = mergestreams({t0, t1, t2})
+and t2 = ostream(newsp(streamof(writefiles(outfile + "-2-", 10000000,
+  dtslrbin(lrf0(in(zipstreams(vectorize(select i, proc[i*3 + 2]
+  from integer i where i in iota(0, dim(proc)/3))))))))), 0)
+and t1 = ostream(newsp(streamof(writefiles(outfile + "-1-", 10000000,
+  dtslrbin(in_d(mergestreams(o1)))))), 0)
+and t0 = ostream(newsp(streamof(writefiles(outfile + "-0-", 10000000,
+  dtslrbin(in_d(mergestreams({t0l, t0r})))))), 0)
+and t0l = ostream(newsp(mergestreams(o0l)), 0)
+and t0r = ostream(newsp(mergestreams(o0r)), 0)
+and o0l = vectorize(select i,o0[2*i]
+  from integer i where i in iota(0, dim(o0)))
+and o0r = vectorize(select i,o0[2*i + 1]
+  from integer i where i in iota(0, dim(o0)))
+and o1 = vectorize(select i, proc[i*3 + 1]
+  from integer i where i in iota(0, dim(proc)/3))
+and o0 = vectorize(select i, proc[i*3]
+  from integer i where i in iota(0, dim(proc)/3))
+and proc = mapflex(premerge(fsplit, rrfo, fo), #'lrbin',
+  make_record({'nsub',3,'sfn',#'oesplit'}))
+and fsplit = unpackfsplit(rr, fo, #'xwayrfn', #'q2bfn', 15)
+and rr = splitstream(src, rrfo, #'randr', #'f')
+and src = ostream(newsp(streamof(clrmultiply(in(lreadfastbins(infiles)),
+                                             inl, mult))), 0)
+and fo = inl*mult;
+
+/* rr_fsplit_lr_mrgtree_sched: tree shaped mergestreams w special scheduling */
+
+create function rr_fsplit_lr_mrgtree_sched(
+ vector of charstring infiles, integer inl, integer mult, integer rrfo,
+ charstring outfile)
+ -> object as
+select in(res)
+from stream of iarray src, vector of stream of iarray rr, integer fo,
+vector of stream fsplit, vector of stream of darray proc, stream of darray res,
+stream t0, stream t1, stream t2, vector of stream o0, vector of stream o0l,
+vector of stream o0r, stream t0l, stream t0r, vector of stream o1
+where res = mergestreams({t0, t1, t2})
+and t2 = ostream(newspflex(streamof(writefiles(outfile + "-2-", 10000000,
+  dtslrbin(lrf0(in(zipstreams(vectorize(select i, proc[i*3 + 2]
+  from integer i where i in iota(0, dim(proc)/3)))))))), {"hostnum":0}), 0)
+and t1 = ostream(newspflex(streamof(writefiles(outfile + "-1-", 10000000,
+  dtslrbin(in_d(mergestreams(o1))))), {"hostnum":0}), 0)
+and t0 = ostream(newspflex(streamof(writefiles(outfile + "-0-", 10000000,
+  dtslrbin(in_d(mergestreams({t0l, t0r}))))), {"hostnum":0}), 0)
+and t0l = ostream(newspflex(mergestreams(o0l), {"hostnum":0}), 0)
+and t0r = ostream(newspflex(mergestreams(o0r), {"hostnum":0}), 0)
+and o0l = vectorize(select i,o0[2*i]
+  from integer i where i in iota(0, dim(o0)))
+and o0r = vectorize(select i,o0[2*i + 1]
+  from integer i where i in iota(0, dim(o0)))
+and o1 = vectorize(select i, proc[i*3 + 1]
+  from integer i where i in iota(0, dim(proc)/3))
+and o0 = vectorize(select i, proc[i*3]
+  from integer i where i in iota(0, dim(proc)/3))
+and proc = mapflex(premerge(fsplit, rrfo, fo), #'lrbin',
+  make_record({'nsub',3,'sfn',#'oesplit'}))
+and fsplit = unpackfsplit(rr, fo, #'xwayrfn', #'q2bfn', 15)
+and rr = splitstream(src, rrfo, #'randr', #'f')
+and src = ostream(newspflex(
+  streamof(clrmultiply(in(lreadfastbins(infiles)), inl, mult)), 
+  {"hostnum":1}), 0)
+and fo = inl*mult;
+
+/* rr_fsplit_lr_multimrgtree_sched() multiarrays in merge */
+
+create function rr_fsplit_lr_multimrgtree_sched(
+ vector of charstring infiles, integer inl, integer mult, integer rrfo,
+ charstring outfile)
+ -> object as
+select in(res)
+from stream of iarray src, vector of stream of iarray rr, integer fo,
+vector of stream fsplit, vector of stream of darray proc, stream of darray res,
+stream t0, stream t1, stream t2, vector of stream o0, vector of stream o0l,
+vector of stream o0r, stream t0l, stream t0r, vector of stream o1
+where res = mergestreams({t0, t1, t2})
+and t2 = ostream(newspflex(streamof(writefiles(outfile + "-2-", 10000000,
+  dtslrbin(lrf0(in(zipstreams(vectorize(select i, proc[i*3 + 2]
+  from integer i where i in iota(0, dim(proc)/3)))))))), {"hostnum":0}), 0)
+and t1 = ostream(newspflex(streamof(writefiles(outfile + "-1-", 10000000,
+  dtslrbin(in_d(mergestreams(o1))))), {"hostnum":0}), 0)
+and t0 = ostream(newspflex(streamof(writefiles(outfile + "-0-", 10000000,
+  dtslrbin(in_d(mergestreams({t0l, t0r}))))), {"hostnum":0}), 0)
+and t0l = ostream(newspflex(streamof(na2multi(in_d(mergestreams(o0l)), 16)), 
+  {"hostnum":0}), 0)
+and t0r = ostream(newspflex(streamof(na2multi(in_d(mergestreams(o0r)), 16)), 
+  {"hostnum":0}), 0)
+and o0l = vectorize(select i,o0[2*i]
+  from integer i where i in iota(0, dim(o0)))
+and o0r = vectorize(select i,o0[2*i + 1]
+  from integer i where i in iota(0, dim(o0)))
+and o1 = vectorize(select i, proc[i*3 + 1]
+  from integer i where i in iota(0, dim(proc)/3))
+and o0 = vectorize(select i, proc[i*3]
+  from integer i where i in iota(0, dim(proc)/3))
+and proc = mapflex(premerge(fsplit, rrfo, fo), #'lrbin',
+  make_record({'nsub',3,'sfn',#'oesplit'}))
+and fsplit = unpackfsplit(rr, fo, #'xwayrfn', #'q2bfn', 15)
+and rr = splitstream(src, rrfo, #'randr', #'f')
+and src = ostream(newspflex(
+  streamof(clrmultiply(in(lreadfastbins(infiles)), inl, mult)), 
+  {"hostnum":1}), 0)
+and fo = inl*mult;
+
+/* rr_fsplit_lr_schedmrg() schedule a single uall */
+
+create function rr_fsplit_lr_schedmrg(
+ vector of charstring infiles, integer inl, integer mult, integer rrfo,
+ charstring outfile)
+ -> object as
+select in(res)
+from stream of iarray src, vector of stream of iarray rr, integer fo,
+vector of stream fsplit, vector of stream of darray proc, stream of darray res,
+stream t0, stream t1, stream t2
+where res = mergestreams({t0, t1, t2})
+and t2 = ostream(newspflex(streamof(writefiles(outfile + "-2-", 10000000,
+  dtslrbin(lrf0(in(zipstreams(vectorize(select i, proc[i*3 + 2]
+  from integer i where i in iota(0, dim(proc)/3)))))))), {"hostnum":0}), 0)
+and t1 = ostream(newspflex(streamof(writefiles(outfile + "-1-", 10000000,
+  dtslrbin(in_d(mergestreams(vectorize(select i, proc[i*3 + 1]
+  from integer i where i in iota(0, dim(proc)/3))))))), {"hostnum":0}), 0)
+and t0 = ostream(newspflex(streamof(writefiles(outfile + "-0-", 10000000,
+  dtslrbin(in_d(mergestreams(vectorize(select i, proc[i*3]
+  from integer i where i in iota(0, dim(proc)/3))))))), {"hostnum":0}), 0)
+and proc = mapflex(premerge(fsplit, rrfo, fo), #'lrbin',
+  make_record({'nsub',3,'sfn',#'oesplit'}))
+and fsplit = unpackfsplit(rr, fo, #'xwayrfn', #'q2bfn', 15)
+and rr = splitstream(src, rrfo, #'randr', #'f')
+and src = ostream(newspflex(
+  streamof(clrmultiply(in(lreadfastbins(infiles)), inl, mult)), 
+  {"hostnum":0}), 0)
+and fo = inl*mult;
+
+/* rr_fsplit_lr_multi_schedmrg() make multiarrays in a separate mapstreams 
+   before uall */
+
+create function rr_fsplit_lr_multi_schedmrg(
+ vector of charstring infiles, integer inl, integer mult, integer rrfo,
+ charstring outfile)
+ -> object as
+select in(res)
+from stream of iarray src, vector of stream of iarray rr, integer fo,
+vector of stream fsplit, vector of stream of darray proc, stream of darray res,
+vector of stream m0, stream t0, stream t1, stream t2
+where res = mergestreams({t0, t1, t2})
+and t2 = ostream(newspflex(streamof(writefiles(outfile + "-2-", 10000000,
+  dtslrbin(lrf0(in(zipstreams(vectorize(select i, proc[i*3 + 2]
+  from integer i where i in iota(0, dim(proc)/3)))))))), {"hostnum":0}), 0)
+and t1 = ostream(newspflex(streamof(writefiles(outfile + "-1-", 10000000,
+  dtslrbin(in_d(mergestreams(vectorize(select i, proc[i*3 + 1]
+  from integer i where i in iota(0, dim(proc)/3))))))), {"hostnum":0}), 0)
+and t0 = ostream(newspflex(streamof(writefiles(outfile + "-0-", 10000000,
+  dtslrbin(in_d(mergestreams(m0))))), {"hostnum":0}), 0)
+and m0 = mapstreams(vectorize(select i, proc[i*3]
+  from integer i where i in iota(0, dim(proc)/3)), #'na2multi4')
+and proc = mapflex(premerge(fsplit, rrfo, fo), #'lrbin',
+  make_record({'nsub',3,'sfn',#'oesplit'}))
+and fsplit = unpackfsplit(rr, fo, #'xwayrfn', #'q2bfn', 15)
+and rr = splitstream(src, rrfo, #'randr', #'f')
+and src = ostream(newspflex(
+  streamof(clrmultiply(in(lreadfastbins(infiles)), inl, mult)), 
+  {"hostnum":0}), 0)
+and fo = inl*mult;
+
+/* rr_fsplit_lr_schedmrgr() single uallr (rand- instead of poll-sockets) */
+
+create function rr_fsplit_lr_schedmrgr(
+ vector of charstring infiles, integer inl, integer mult, integer rrfo,
+ charstring outfile)
+ -> object as
+select in(res)
+from stream of iarray src, vector of stream of iarray rr, integer fo,
+vector of stream fsplit, vector of stream of darray proc, stream of darray res,
+stream t0, stream t1, stream t2
+where res = mergestreams({t0, t1, t2})
+and t2 = ostream(newspflex(streamof(writefiles(outfile + "-2-", 10000000,
+  dtslrbin(lrf0(in(zipstreams(vectorize(select i, proc[i*3 + 2]
+  from integer i where i in iota(0, dim(proc)/3)))))))), {"hostnum":0}), 0)
+and t1 = ostream(newspflex(streamof(writefiles(outfile + "-1-", 10000000,
+  dtslrbin(in_d(mergestreams(vectorize(select i, proc[i*3 + 1]
+  from integer i where i in iota(0, dim(proc)/3))))))), {"hostnum":0}), 0)
+and t0 = ostream(newspflex(streamof(writefiles(outfile + "-0-", 10000000,
+  dtslrbin(in_d(mergestreamsr(vectorize(select i, proc[i*3]
+  from integer i where i in iota(0, dim(proc)/3))))))), {"hostnum":0}), 0)
+and proc = mapflex(premerge(fsplit, rrfo, fo), #'lrbin',
+  make_record({'nsub',3,'sfn',#'oesplit'}))
+and fsplit = unpackfsplit(rr, fo, #'xwayrfn', #'q2bfn', 15)
+and rr = splitstream(src, rrfo, #'randr', #'f')
+and src = ostream(newspflex(
+  streamof(clrmultiply(in(lreadfastbins(infiles)), inl, mult)), 
+  {"hostnum":0}), 0)
+and fo = inl*mult;
+
+/* rr_fsplit_lrmulti_schedmrg() make multiarrays inside proc before uall */
+
+create function rr_fsplit_lrmulti_schedmrg(
+ vector of charstring infiles, integer inl, integer mult, integer rrfo,
+ integer postmsz, charstring outfile)
+ -> object as
+select in(res)
+from stream of iarray src, vector of stream of iarray rr, integer fo,
+vector of stream fsplit, vector of stream of darray proc, stream of darray res,
+stream t0, stream t1, stream t2
+where res = mergestreams({t0, t1, t2})
+and t2 = ostream(newsp(streamof(writefiles(outfile + "-2-", 10000000,
+  dtslrbin(lrf0(in(zipstreams(vectorize(select i, proc[i*3 + 2]
+  from integer i where i in iota(0, dim(proc)/3))))))))), 0)
+and t1 = ostream(newsp(streamof(writefiles(outfile + "-1-", 10000000,
+  dtslrbin(in_d(mergestreams(vectorize(select i, proc[i*3 + 1]
+  from integer i where i in iota(0, dim(proc)/3)))))))), 0)
+and t0 = ostream(newsp(streamof(writefiles(outfile + "-0-", 10000000,
+  dtslrbin(in_d(mergestreams(vectorize(select i, proc[i*3]
+  from integer i where i in iota(0, dim(proc)/3)))))))), 0)
+and proc = mapflex(premerge(fsplit, rrfo, fo), #'lrbin',
+  make_record({'nsub',3,'sfn',#'oesplit', 'na2m', {'ma-size': postmsz}}))
+and fsplit = unpackfsplit(rr, fo, #'xwayrfn', #'q2bfn', 15)
+and rr = splitflex(src, rrfo, #'randr', #'f', {'hostnum':0})
+and src = ostream(newspflex(
+  streamof(clrmultiply(in(lreadfastbins(infiles)), inl, mult)),
+  {'hostnum':0}), 0)
+and fo = inl*mult;
+
+/* rr_fsplit_lrmulti_schedmrg_tcount() does not save any output files */
+
+create function rr_fsplit_lrmulti_schedmrg_tcount(
+ vector of charstring infiles, integer inl, integer mult, integer rrfo,
+ integer postmsz, charstring outfile)
+ -> object as
+select in(res)
+from stream of iarray src, vector of stream of iarray rr, integer fo,
+vector of stream fsplit, vector of stream of darray proc, stream of darray res,
+stream t0, stream t1, stream t2
+where res = mergestreams({t0, t1, t2})
+and t2 = ostream(newsp(stcount(streamof(
+  dtslrbin(lrf0(in(zipstreams(vectorize(select i, proc[i*3 + 2]
+  from integer i where i in iota(0, dim(proc)/3))))))))), 0)
+and t1 = ostream(newsp(stcount(streamof(
+  dtslrbin(in_d(mergestreams(vectorize(select i, proc[i*3 + 1]
+  from integer i where i in iota(0, dim(proc)/3)))))))), 0)
+and t0 = ostream(newsp(stcount(streamof(
+  dtslrbin(in_d(mergestreams(vectorize(select i, proc[i*3]
+  from integer i where i in iota(0, dim(proc)/3)))))))), 0)
+and proc = mapflex(premerge(fsplit, rrfo, fo), #'lrbin',
+  make_record({'nsub',3,'sfn',#'oesplit', 'na2m', {'ma-size': postmsz}}))
+and fsplit = unpackfsplit(rr, fo, #'xwayrfn', #'q2bfn', 15)
+and rr = splitflex(src, rrfo, #'randr', #'f', {'hostnum':0})
+and src = ostream(newspflex(
+  streamof(clrmultiply(in(lreadfastbins(infiles)), inl, mult)),
+  {'hostnum':0}), 0)
+and fo = inl*mult;
+
+/* rr_fsplit_lrmulti_mrg_tzip_tcount()
+   merges account balance answers using lrf0d, having no type conversion
+   "max-2" tree shaped zip => zipfi = {max, 2} */
+
+create function rr_fsplit_lrmulti_mrg_tzip_tcount(
+ vector of charstring infiles, integer inl, integer mult, integer rrfo,
+ integer postmsz, charstring outfile)
+ -> vector as
+select in(res)
+from stream of iarray src, vector of stream of iarray rr, integer fo,
+vector of stream fsplit, vector of stream of darray proc, stream of darray res,
+stream t0, stream t1, stream t2, stream t2odd, stream t2even
+where res = mergestreams({t0, t1, t2})
+and t2 = ostream(newsp(stcount(streamof(
+  lrf0d(in(zipstreams({t2odd,t2even})))))), 0)
+and t2odd = ostream(newspflex(streamof(
+  lrf0d(in(zipstreamsm(vectorize(select i, proc[i*6 + 2]
+  from integer i where i in iota(0, dim(proc)/6)), 6)))),{'rem':'t2odd'}), 0)
+and t2even = ostream(newspflex(streamof(
+  lrf0d(in(zipstreamsm(vectorize(select i, proc[i*6 + 5]
+  from integer i where i in iota(0, dim(proc)/6)), 6)))),{'rem':'t2even'}), 0)
+and t1 = ostream(newsp(stcount(streamof(
+  in_d(mergestreams(vectorize(select i, proc[i*3 + 1]
+  from integer i where i in iota(0, dim(proc)/3))))))), 0)
+and t0 = ostream(newsp(stcount(streamof(
+  in_d(mergestreams(vectorize(select i, proc[i*3]
+  from integer i where i in iota(0, dim(proc)/3))))))), 0)
+and proc = mapflex(premerge(fsplit, rrfo, fo), #'lrbin',
+  make_record({'nsub',3,'sfn',#'oesplit', 'na2m', {'ma-size': postmsz}}))
+and fsplit = unpackfsplit(rr, fo, #'xwayrfn', #'q2bfn', 15)
+and rr = splitflex(src, rrfo, #'randr', #'f', {'hostnum':0})
+and src = ostream(newspflex(
+  streamof(clrmultiply(in(lreadfastbins(infiles)), inl, mult)),
+  {'hostnum':0}), 0)
+and fo = inl*mult;
+
+/* rr_fsplit_lrmulti_mrg_tzip_unpack_tcount() is the same as
+   rr_fsplit_lrmulti_mrg_tzip_tcount() except that it
+   unpacks all data before tcount, useful for regression testing */
+
+create function rr_fsplit_lrmulti_mrg_tzip_unpack_tcount(
+ vector of charstring infiles, integer inl, integer mult, integer rrfo,
+ integer postmsz, charstring outfile)
+ -> vector as
+select in(res)
+from stream of iarray src, vector of stream of iarray rr, integer fo,
+vector of stream fsplit, vector of stream of darray proc, stream of darray res,
+stream t0, stream t1, stream t2, stream t2odd, stream t2even
+where res = mergestreams({t0, t1, t2})
+and t2 = ostream(newsp(stcount(streamof(
+  lrf0d(in(zipstreams({t2odd,t2even})))))), 0)
+and t2odd = ostream(newspflex(streamof(
+  lrf0d(in(zipstreamsm(vectorize(select i, proc[i*6 + 2]
+  from integer i where i in iota(0, dim(proc)/6)), 6)))),{'rem':'t2odd'}), 0)
+and t2even = ostream(newspflex(streamof(
+  lrf0d(in(zipstreamsm(vectorize(select i, proc[i*6 + 5]
+  from integer i where i in iota(0, dim(proc)/6)), 6)))),{'rem':'t2even'}), 0)
+and t1 = ostream(newsp(stcount(streamof(
+  in_d(mergestreams(vectorize(select i, proc[i*3 + 1]
+  from integer i where i in iota(0, dim(proc)/3))))))), 0)
+and t0 = ostream(newsp(stcount(streamof(
+  multi2na(in_d(mergestreams(vectorize(select i, proc[i*3]
+  from integer i where i in iota(0, dim(proc)/3)))), 6)))), 0)
+and proc = mapflex(premerge(fsplit, rrfo, fo), #'lrbin',
+  make_record({'nsub',3,'sfn',#'oesplit', 'na2m', {'ma-size': postmsz}}))
+and fsplit = unpackfsplit(rr, fo, #'xwayrfn', #'q2bfn', 15)
+and rr = splitflex(src, rrfo, #'randr', #'f', {'hostnum':0, 'rem':'rr'})
+and src = ostream(newspflex(
+  streamof(clrmultiply(in(lreadfastbins(infiles)), inl, mult)),
+  {'hostnum':0, 'rem':'src'}), 0)
+and fo = inl*mult;
+
+/* rsplit_fsplit_lrmulti_mrg_tzip_unpack_tcount: 
+   - dedicated rsplit */
+
+create function rsplit_fsplit_lrmulti_mrg_tzip_unpack_tcount(
+ vector of charstring infiles, integer inl, integer mult, integer rsplitfo,
+ integer postmsz, charstring outfile)
+ -> vector as
+select in(res)
+from stream of iarray src, vector of stream of iarray rsplit, integer fo,
+vector of stream fsplit, vector of stream of darray proc, stream of darray res,
+stream t0, stream t1, stream t2, stream t2odd, stream t2even
+where res = mergestreams({t0, t1, t2})
+and t2 = ostream(newsp(stcount(streamof(
+  lrf0d(in(zipstreams({t2odd,t2even})))))), 0)
+and t2odd = ostream(newspflex(streamof(
+  lrf0d(in(zipstreamsm(vectorize(select i, proc[i*6 + 2]
+  from integer i where i in iota(0, dim(proc)/6)), 6)))),{'rem':'t2odd'}), 0)
+and t2even = ostream(newspflex(streamof(
+  lrf0d(in(zipstreamsm(vectorize(select i, proc[i*6 + 5]
+  from integer i where i in iota(0, dim(proc)/6)), 6)))),{'rem':'t2even'}), 0)
+and t1 = ostream(newsp(stcount(streamof(
+  in_d(mergestreams(vectorize(select i, proc[i*3 + 1]
+  from integer i where i in iota(0, dim(proc)/3))))))), 0)
+and t0 = ostream(newsp(stcount(streamof(
+  multi2na(in_d(mergestreams(vectorize(select i, proc[i*3]
+  from integer i where i in iota(0, dim(proc)/3)))), 6)))), 0)
+and proc = mapflex(premerge(fsplit, rsplitfo, fo), #'lrbin',
+  make_record({'nsub',3,'sfn',#'oesplit', 'na2m', {'ma-size': postmsz}}))
+and fsplit = unpackfsplit(rsplit, fo, #'xwayrfn', #'q2bfn', 15)
+and rsplit = rsplit_force_flex(src, rsplitfo, {'hostnum':0, 'rem':'rsplit'})
+and src = ostream(newspflex(
+  streamof(clrmultiply(in(lreadfastbins(infiles)), inl, mult)),
+  {'hostnum':0, 'rem':'src'}), 0)
+and fo = inl*mult;
+
+/* rsplit_fsplit_lrmulti_mrg_sqzip_unpack_tcount: 
+   - sqrt zip tree */
+
+create function rsplit_fsplit_lrmulti_mrg_sqzip_unpack_tcount(
+ vector of charstring infiles, integer inl, integer mult, integer rsplitfo,
+ integer postmsz, charstring outfile)
+ -> vector as
+select in(res)
+from stream of iarray src, vector of stream of iarray rsplit, integer fo,
+vector of stream fsplit, vector of stream of darray proc, stream of darray res,
+stream t0, stream t1, stream t2, vector of stream t20
+where res = mergestreams({t0, t1, t2})
+and t2 = ostream(newsp(stcount(zipmmaplayer(t20, 1, 6, #'lrfd')[0])), 0)
+and t20 = zipmmaplayerm(vectorize(select i, proc[i*3 + 2]
+  from integer i where i in iota(0, dim(proc)/3)), 
+  integer(sqrt(fo)), 6, #'lrfd', postmsz)
+and t1 = ostream(newsp(stcount(streamof(
+  in_d(mergestreams(vectorize(select i, proc[i*3 + 1]
+  from integer i where i in iota(0, dim(proc)/3))))))), 0)
+and t0 = ostream(newsp(stcount(streamof(
+  multi2na(in_d(mergestreams(vectorize(select i, proc[i*3]
+  from integer i where i in iota(0, dim(proc)/3)))), 6)))), 0)
+and proc = mapflex(premerge(fsplit, rsplitfo, fo), #'lrbin',
+  make_record({'imagesize', 200000000, 'nsub',3,'sfn',#'oesplit', 'na2m', {'ma-size': postmsz}}))
+and fsplit = unpackfsplit(rsplit, fo, #'xwayrfn', #'q2bfn', 15)
+and rsplit = rsplit_force_flex(src, rsplitfo, {'hostnum':0, 'rem':'rsplit'})
+and src = ostream(newspflex(
+  streamof(clrmultiply(in(lreadfastbins(infiles)), inl, mult)),
+  {'hostnum':0, 'rem':'src'}), 0)
+and fo = inl*mult;
+
+
+/* rsplit_fsplit_lrmulti_uallonly_unpack_tcount: 
+   - sqrt zip tree */
+
+create function rsplit_fsplit_lrmulti_uallonly_unpack_tcount(
+ vector of charstring infiles, integer inl, integer mult, integer rsplitfo,
+ integer postmsz, charstring outfile)
+ -> vector as
+select in(res)
+from stream of iarray src, vector of stream of iarray rsplit, integer fo,
+vector of stream fsplit, vector of stream of darray proc, stream of darray res,
+stream t0, stream t1, stream t2
+where res = mergestreams({t0, t1, t2})
+and t2 = ostream(newsp(stcount(streamof(
+  in_d(mergestreams(vectorize(select i, proc[i*3 + 2]
+  from integer i where i in iota(0, dim(proc)/3))))))), 0)
+and t1 = ostream(newsp(stcount(streamof(
+  in_d(mergestreams(vectorize(select i, proc[i*3 + 1]
+  from integer i where i in iota(0, dim(proc)/3))))))), 0)
+and t0 = ostream(newsp(stcount(streamof(
+  multi2na(in_d(mergestreams(vectorize(select i, proc[i*3]
+  from integer i where i in iota(0, dim(proc)/3)))), 6)))), 0)
+and proc = mapflex(premerge(fsplit, rsplitfo, fo), #'lrbin',
+  make_record({'imagesize', 200000000, 'nsub',3,'sfn',#'oesplit', 'na2m', {'ma-size': postmsz}}))
+and fsplit = unpackfsplit(rsplit, fo, #'xwayrfn', #'q2bfn', 15)
+and rsplit = rsplit_force_flex(src, rsplitfo, {'hostnum':0, 'rem':'rsplit'})
+and src = ostream(newspflex(
+  streamof(clrmultiply(in(lreadfastbins(infiles)), inl, mult)),
+  {'hostnum':0, 'rem':'src'}), 0)
+and fo = inl*mult;
+
+/* zip micro-benchmarking params: w, masize, tree fan-in */
+/* conventional zip */
+
+create function ub_zip(integer w, integer rep)->vector as
+tcount(zipstreams(abrproc(w, rep)));
+
+/* multiarray zip */
+
+create function ub_zipma(integer w, integer rep, integer masize)->vector as
+tcount(zipstreamsm(abrprocm(w, rep, masize), 6));
+
+/* conventional zipmap */
+
+create function ub_zipmap(integer w, integer rep)->vector as
+tcount(zipmaplayer(abrproc(w, rep), 1, #'lrfd')[0]);
+
+/* multiarray zipmap */
+
+create function ub_zipmapma(integer w, integer rep, integer masize)->vector as
+tcount(zipmmaplayer(abrprocm(w, rep, masize), 1, 6, #'lrfd')[0]);
+
+/* multiarray zipmap tree */
+
+create function ub_zipmapmatree(integer w, integer rep, integer masize, 
+                                integer fi1)->vector as
+select tcount(zipmmaplayer(fi, 1, 6, #'lrfd')[0])
+from vector of stream fi
+where fi=zipmmaplayerm(abrprocm(w, rep, masize), fi1, 6, #'lrfd', masize);
+
+create function ub_zip_res(integer)->vector;
+create function ub_zipma_res(integer, integer)->vector;
+create function ub_zipmap_res(integer)->vector;
+create function ub_zipmapma_res(integer, integer)->vector;
+create function ub_zipmapmatree_res(integer, integer, integer)->vector;
+
+/* Conclusion: 2 layer zip tree with fi_1 = sqrt(w) can do L = 512.
+   Might even do L = 768, but that's stretching it.  */
+
+/* Will parallel zipmap achieve higher scalability? */
+
+create function ub_pzipmap_res(integer, integer, integer)->vector;
+
+/* Parallel zipmap + multiarray experiment */
+
+create function ub_pzipmmapm(integer w, integer rep, integer masize,
+                             integer fo) -> vector as
+tcount(streamof(select multi2na(r, 6) from darray r
+where r in mergestreams(pzipmmapm(
+abrprocm_rr(w, rep, masize, fo), 6, #'lrfd', masize))));
+
+/* // zipmap with no multiarray */
+
+create function ub_pzipmapm(integer w, integer rep, integer masize,
+                            integer fo) -> vector as
+tcount(streamof(select multi2na(r, 6) from darray r
+where r in mergestreams(pzipmapm(
+abrproc_rr(w, rep, fo), #'lrfd', masize))));
+
+/* Conclusions:
+   1. pzipmmapm (multiarrays all over) is faster than pzipmapm
+   2. // zipmap is substantially faster for small w.
+      For high w, complexity of zipping dominates exe time no matter
+      degree of //-ism.
+   Problem: Both pzipmmapm and pzipmapm lose data sometimes.
+            MUST be solved in order to pass benchmark. */
+
+/* Question: Will // ziptree alleviate the complexity for high w,
+   at the same time achieving high throughput thanks to the //-ism? */
+
+create function ub_ptree(integer w, integer rep, integer fi, integer rr)
+->stream of darray as streamof(select multi2na(r, 6)
+from darray r, stream of darray mrg, vector of vector of stream L2,
+vector of vector of stream L1, vector of vector of stream srct, 
+vector of vector of stream src
+where r in mrg
+and mrg = mergestreams(vectorof(in(L2)[0]))
+and L2 = pzipmmaplayerm(L1, 1, 6, #'lrfd', 16)
+and L1 = pzipmmaplayerm(srct, fi, 6, #'lrfd', 16)
+and srct = transpose(src)
+and src = abrprocm_rr(w, rep, 16, rr));
+
+create function pzt_experiment(integer w, integer rep, vector of integer rrs)
+-> object as begin
+declare vector res, charstring outputfilename;
+for each integer rr where rr in rrs begin
+        set outputfilename = "pzip" + stringify(w) + "_rr" + stringify(rr) +
+                             "_r" + stringify(rep);
+        set res = tcount(ub_ptree(w, rep, integer(sqrt(w)), rr));
+        print(concat({w, rr}, res));
+        add ub_pzipmap_res(w, 16, rr) = res;
+        writefile("dp-" + outputfilename, {dprofile()});
+end;
+write_ntuples(
+(select concat({i,j,k}, ub_pzipmap_res(i,j,k))
+from integer i, integer j, integer k),
+"ub_pzip_" + timestamp());
+end;
+
+/* Do merge in a separate process, not in the client. Then, merge
+   cost is included in dprofile. */
+
+create function ub_ptree_p(integer w, integer rep, integer fi, integer rr)
+-> vector as
+select in(res)
+from vector of vector of stream L2, stream res,
+vector of vector of stream L1, vector of vector of stream srct, 
+vector of vector of stream src
+where res = ostream(newsp(stcount(streamof(select multi2na(r, 6) from darray r where r in mergestreams(vectorof(in(L2)[0]))))), 0)
+and L2 = pzipmmaplayerm(L1, 1, 6, #'lrfd', 16)
+and L1 = pzipmmaplayerm(srct, fi, 6, #'lrfd', 16)
+and srct = transpose(src)
+and src = abrprocm_rr(w, rep, 16, rr);
+
+create function pzt_experiment_p(integer w, integer rep, vector of integer fis, vector of integer rrs)
+-> object as begin
+declare vector res, charstring outputfilename;
+for each integer rr where rr in rrs begin
+for each integer fi where fi in fis begin
+        set outputfilename = "pzip" + stringify(w) + "_fi" + stringify(fi) +
+                             "_rr" + stringify(rr) + "_r" + stringify(rep);
+        set res = ub_ptree_p(w, rep, fi, rr);
+        print(concat({w, fi, rr}, res));
+        add ub_pzipmap_res(w, fi, rr) = res;
+        writefile("dp-" + outputfilename, {dprofile()});
+end;
+end;
+write_ntuples(
+(select concat({i,j,k}, ub_pzipmap_res(i,j,k))
+from integer i, integer j, integer k),
+"ub_pzip_" + timestamp());
+end;
+
+/* Conclusion: Parallel zip trees improve throughput substantially. However,
+               for high values of w they seem to hit a scalability barrier. */
+
+/* Question: Will a limited maximum fan-in value at each level of the zip tree
+             avoid scalability barrier and improve throughput? */
+
+/* Todo: Implement trees with more than two levels! */
+
+create function ub_nlevelzip(integer w, integer rep, integer fimax)->vector as
+tcount(streamof(select multi2na(r,6) from darray r
+where r in zipmmaprecm(abrprocm(w, rep, 16), fimax, 6, 16, #'lrfd')));
+
+create function ub_nlevelzip_res(integer, integer)->vector;
+
+create function nl_experiment(integer w, integer rep,
+                              vector of integer fimaxx)
+-> object as begin
+declare vector res, charstring outputfilename;
+for each integer fim where fim in fimaxx begin
+        set outputfilename = "nl-" + stringify(w) + "_fim" + stringify(fim) +
+                             "_r" + stringify(rep);
+        set res = ub_nlevelzip(w, rep, fim);
+        print(concat({w, fim}, res));
+        add ub_nlevelzip_res(w, fim) = res;
+        writefile("dp-" + outputfilename, {dprofile()});
+end;
+write_ntuples(
+(select concat({i,j}, ub_nlevelzip_res(i,j)) from integer i, integer j),
+"ub_pzip_" + timestamp());
+end;

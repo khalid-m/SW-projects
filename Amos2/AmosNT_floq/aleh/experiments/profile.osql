@@ -1,0 +1,117 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2007 Ruslan Fomkin, UDBL
+ * $RCSfile: profile.osql,v $
+ * $Revision: 1.1 $ $Date: 2007/09/11 08:30:16 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ * 
+ ****************************************************************************
+ * $Log: profile.osql,v $
+ * Revision 1.1  2007/09/11 08:30:16  ruslan
+ * functions for doing experiments with profiling during execution
+ *
+ ****************************************************************************/
+
+load_lisp("profile.lsp");
+
+create function myprint (integer i, real cst, real card, integer change,
+			real exec) -> boolean as foreign 'myprint';
+
+create function profileprint (charstring resultfile, integer nrevents) ->
+	boolean as
+begin
+	declare real cst, real card, real exec;
+	openwritefile(resultfile);
+	print(0);
+	grouping(true);
+	reoptimize("expcuts->event");
+	grouping(false);
+	unprofile("expcuts->event");
+	set cst = plancost();
+	set card = plancard();
+	set exec = execute();
+	myprint(0,cst,card,0,exec);
+	for each integer i where i=iota(1,nrevents)
+	begin
+		declare real cst, real card, integer change, real exec;
+/*create_struct_stat();*/
+		print(i);
+		clr_aggstat();
+		grouping(true);
+		reoptimize0("expcuts->event");
+		grouping(false);
+		set_stop_counter(i);
+		profiling(true);
+		expcuts();
+		set cst = plancost();
+		set card = plancard();
+		set change = getchange(functionnamed("expcuts->event"));
+		set exec = execute();
+		myprint(i,cst,card,change,exec);
+	end;
+	closewritefile();
+end;
+
+create function profileprintoptmethods(integer nrevents) -> boolean as
+begin
+	group_optmethods("randomopt","randomopt");
+	profileprint("profileRandomopt.txt",nrevents);
+	group_optmethods("ranksort","ranksort");
+	profileprint("profileRanksort.txt",nrevents);
+end;
+
+create function profileNoChanges(file f) -> boolean as
+begin
+	declare function fn;
+	print("Stop when no changes in plan");
+	set fn=functionnamed('charstring.expcuts->event');
+	clean_structstat();
+	stop_nochange();
+/*	group_optmethods("ranksort","ranksort");*/
+	for each integer i where i=iota(1,5)
+	begin
+		set_nochange_counter(i);
+		print(i);
+		clr_aggstat();
+		grouping(true);
+		reoptimize(fn);
+		profiling(true);
+		print(profile(fn,location(f)));
+		print(execute(fn,location(f)));
+		print_newplan();
+	end;
+
+	print("Stop when 70 events profiled");
+	stop_nevents();
+	set_stop_counter(70);
+	grouping(true);
+/*	group_optmethods("exhaustive","randomopt");*/
+	reoptimize(fn);
+	profiling(true);
+	print(profile(fn,location(f)));
+	print(execute(fn,location(f)));
+	print_newplan();
+
+	print("Ungrouped, randomopt");
+	optmethod('randomopt');
+	optlevel(100,1000);
+	getstructstat(location(f),size(f));
+	reoptimize(fn);
+	print(execute(fn,location(f)));
+
+/*	print("Ungrouped, ranksort");
+	optmethod('ranksort');
+	getstructstat(location(f),size(f));
+	reoptimize(fn);
+	print(execute(fn,location(f)));*/
+end;
+
+create function profileNoChanges(charstring filename) -> boolean as
+	select profileNoChanges(f) from file f where name(f)=filename;
+
+commit;
+logging off;
+

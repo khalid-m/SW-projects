@@ -1,0 +1,76 @@
+/*-*-sql-*-*******************************************************************
+ * SVALI
+ * Author: Elisabeth Ibeh Volvo CE, Tore Risch UDBL
+ * 
+ * Description: Volvo meta-data
+ ****************************************************************************/
+
+create Machine (name, description) instances
+ :ma ("L90F", "Wheel Loader");
+
+create Location (name, country, region) instances
+ :la ("Eskilstuna", "Sweden", "Södermanland");
+ 
+create Operator (name) instances
+ :oa ("Reza"),
+ :ob ("Kalle");
+
+create MachineInstallation(locatedAt,  machineModel, operator) instances
+ :mia (:la, :ma, :oa),
+ :mib (:la, :ma, :ob);
+
+create Sensor(name, manufacturer, version)
+ instances
+ :s1 ("Pressures", "Druck", "PMP 1400"), 
+ :s2 ("Rear Torque", "Acurex", "1216A"),
+ :s3 ("Front Torque", "Acurex", "1206D"), 
+ :s4 ("Temperature", "Thermometrics", "K-type  thermo element"),
+ :s5 ("Speed", "Siemens", "WS300");
+ 
+create SensorInstallation(onMachine, sensorModel, serialNumber) 
+ instances
+ (:mia, :s1, "Y21185/07"),
+ (:mia, :s1, "Y02291/14"),
+ (:mia, :s1, "Z20797/10"),
+ (:mia, :s1, "C01428/03"),
+ (:mia, :s1, "C01428/04"),
+ (:mia, :s2, "2-263"),
+ (:mia, :s3, "1-183"),
+ (:mia, :s4, "234-1"),
+ (:mia, :s4, "234-2"),
+ (:mia, :s5, "566-8"),
+ (:mia, :s5, "566-9"),
+ (:mia, :s5, "578-4"),
+ (:mib, :s1, "Y21185/07"),
+ (:mib, :s1, "Y02291/14"),
+ (:mib, :s1, "Z20797/10"),
+ (:mib, :s1, "C01428/03"),
+ (:mib, :s1, "C01428/04"),
+ (:mib, :s2, "2-263"),
+ (:mib, :s3, "1-183"),
+ (:mib, :s4, "234-1"),
+ (:mib, :s4, "234-2"),
+ (:mib, :s5, "566-8"),
+ (:mib, :s5, "566-9"),
+ (:mib, :s5, "578-4");
+
+create function signals() -> Vector of Charstring as stored;
+
+set signals() =  {'pressureForward1', 'pressureForward2', 'mainPressure', 
+                  'forwardPressure',  'pressureR', 'rearTorque', 'frontTorque',
+                  'inputSpeed', 'turbTorque', 'TrmOilTemp', 'Shifting1To2', 
+                  'OffgSlipping', 'OngSlipping', 'Gear', 'DirGear',
+                  'diffSpeed1', 'diffSpeed2', 'turbSpeed', 'outgSpeed',
+                  'outputCoolerTemp'};
+
+create CanBusStream(canbusid, receivesFrom, port, host, settings, signals, loggedAt)
+ instances
+ :csa("volvo_a",:mia, 35021, "localhost", "", signals(), "../Volvo/data/cbd.csv");
+
+create CanBusStream(canbusid, receivesFrom, port, host, settings, signals, loggedAt)
+ instances
+ :csa("volvo_b",:mia, 35021, "localhost", "", signals(), "../Volvo/data/canbuslog2013-11-14_1.csv");
+
+create CanBusStream(canbusid, receivesFrom, port, host, settings, signals, loggedAt)
+ instances
+ :csa("volvo_c",:mia, 35021, "localhost", "", signals(), "../Volvo/data/canbuslog2013-11-14_2.csv");

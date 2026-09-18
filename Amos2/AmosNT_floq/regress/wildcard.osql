@@ -1,0 +1,73 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Tore Risch, UDBL
+ * $RCSfile: wildcard.osql,v $
+ * $Revision: 1.4 $ $Date: 2011/01/27 11:26:16 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Testing wildcard ObjectLog variables
+ *
+ ****************************************************************************
+ * $Log: wildcard.osql,v $
+ * Revision 1.4  2011/01/27 11:26:16  torer
+ * Changed from <...> to SQL's (...) notation for tuples (much nicer)
+ *
+ * Revision 1.3  2010/02/26 15:22:47  torer
+ * Disallowing same declaration in arguments and FROM clause in derived function
+ *
+ * Revision 1.2  2009/11/16 21:54:57  torer
+ * Strict use of in over bag (not =)
+ *
+ * Revision 1.1  2007/11/07 14:40:19  torer
+ * Testing C foreign functions
+ * Testing Linear Road
+ *
+ ****************************************************************************/
+
+create type rdf;
+
+create function enc(rdf r)-> vector as stored;
+
+create function nick(rdf r)->charstring nick 
+  as select nick from charstring pre where {pre, nick}=enc(r);
+
+create function stmt_store(rdf s, rdf p, rdf o, number n)->boolean;
+
+create function get_new()->Bag of (Rdf, Rdf, Rdf)
+as
+	select s, p, o 
+	from rdf s, rdf p, rdf o 
+	where stmt_store(s, p, o, 1);
+
+create function is_cl(rdf r)->boolean as
+       select true where nick(r)!="Class";
+
+create function get_new_cl()->rdf r 
+as  	select distinct s
+	from rdf s, rdf p, rdf o
+	where (s,p,o) in get_new() and 
+	is_cl(s);
+
+create rdf instances :a , :b , :c , :d , :e;
+set enc(:a)={"a","na"};
+set enc(:b)={"b","nb"};
+set enc(:c)={"c","nc"};
+set enc(:d)={"d","nd"};
+set enc(:e)={"e","ne"};
+
+set stmt_store(:a,:b,:c,1)=true;
+set stmt_store(:b,:c,:d,1)=true;
+set stmt_store(:c,:d,:e,1)=true;
+
+get_new_cl();
+
+lisp;
+
+(checkequal "The distinct bug"
+  ((length(osql "get_new_cl();")) 3)
+)
+
+:osql
+rollback;
+

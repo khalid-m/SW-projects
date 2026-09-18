@@ -1,0 +1,87 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2004 Maryam Ladjvardi, UDBL
+ * $RCSfile: bkwrap.amosql,v $
+ * $Revision: 1.4 $ $Date: 2005/03/06 14:13:25 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: AmosQL functions to generate ABKW wrapper interfaces
+ *
+ ****************************************************************************/
+
+/***************************************************************/
+/* Automatic generation of ABKW wrapper interface for a table: */
+/***************************************************************/
+
+create function bk_columnnames(Charstring src, Charstring tbl)
+                ->Bag of Charstring
+  /* Names of all columns of table */
+  as select col
+     from Charstring tp
+     where bk_columns(src,tbl) = <tp, col>;
+
+create function bk_nonkeys(Charstring src, Charstring tbl)
+                -> Bag of Charstring col
+       /* Names of non-key columns of table */
+       as select col
+       where col = bk_columnnames(src,tbl) and
+             notany(select pk from Charstring pk
+                    where pk = bk_primkeys(src,tbl) and 
+                          pk = col);
+
+create function commalist(Bag b)->Charstring
+       /* Make comma-delimited string of strings in bag */
+       as select concatagg(inject(b,","));
+
+create function bk_typename(Charstring src, Charstring tbl)-> Charstring
+       /* Make a unique type name*/
+       as select tbl + "_" + src;
+
+create function bk_column_declarations(Charstring src, Charstring tbl)
+                                      -> Bag of Charstring
+  /* Create bag of Amos II declarations of columns in bk table */
+  as select tpn + " " + col 
+     from Charstring tpn, Charstring col
+     where <tpn,col> = bk_columns(src,tbl);
+
+create function create_bk_ccfn(Charstring src, Charstring tbl)-> Function
+  as select eval(
+  "create function "+bk_typename(src,tbl)+"_cc()
+                   -><"+commalist(bk_column_declarations(src,tbl))+">
+   as select "+commalist(bk_columnnames(src,tbl))+
+    " where bk_access(bk_handle('"+src+"','"+tbl+"')) =
+              <{"+commalist(bk_primkeys(src,tbl))+"},
+               {"+commalist(bk_nonkeys(src,tbl))+"}>;");
+
+/*************************************************/
+/* Automatic generation of wrapper               */
+/* for all tables that exist in data source      */
+/* "meta data" function bk_tables() returns name */
+/* of the tables in data source                  */
+/*************************************************/
+	
+create function bk_generate_wrapper(Charstring src, Charstring tbl)->boolean
+ as begin
+	declare Charstring ccfn;
+	set ccfn = bk_typename(src,tbl)+"_cc";
+	create_bk_ccfn(src, tbl);
+	create_mapped_type(bk_typename(src,tbl),      /* Name of mapped type */
+                   vectorof(bk_primkeys(src,tbl)),         /* key attributes */
+		   vectorof(bk_columnnames(src, tbl)),  /* mapped attributes */
+                   ccfn);                         /* Name of core cluster fn */
+	result true;
+ end;    
+
+create function bk_generate_wrappers(Charstring src)->boolean
+ as begin
+	for each  charstring tbl
+	where tbl = bk_tables(src)
+	  bk_generate_wrapper(src, tbl);
+    end;
+
+create function bk_connect(Charstring db)->Boolean
+ as begin
+        bk_open(db);
+        bk_generate_wrappers(db);
+    end;

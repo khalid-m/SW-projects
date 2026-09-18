@@ -1,0 +1,15 @@
+/**************  INTBAG    ******************************/ 
+ 
+create function sql:INTBAG ( )->< INTEGER OUT0   > 
+as select row['OUT0']
+from sequence out  , record results1 , sequence results2 , record results , record row
+where out=cwo('wsdl/sum.wsdl', 'summationService', 'INTBAG', {} )   and results1 in out  and results2 = results1['results'] and results in results2  and row=results['row'];
+ 
+/**************  INTPLUS    ******************************/ 
+ 
+create function sql:INTPLUS ( INTEGER NUM1 , INTEGER NUM2 )->< INTEGER VWSMOS11 > 
+as select VWSMOS1['VWSMOS1']
+from sequence out  , record VWSMOS1
+where out=cwo('wsdl/sum.wsdl', 'summationService', 'INTPLUS', {NUM1, NUM2} )   and VWSMOS1 in out ;
+ 
+

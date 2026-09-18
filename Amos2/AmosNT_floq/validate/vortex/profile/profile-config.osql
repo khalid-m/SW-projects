@@ -1,0 +1,31 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012, Cheng Xu, UDBL
+ * $RCSfile: profile-config.osql,v $
+ *
+ * Description: configuration for profiling
+ *
+ ****************************************************************************
+ * $Log: profile-config.osql,v $
+ * Revision 1.1  2012/12/19 20:07:04  chexu484
+ * central vs paralell
+ *
+ *
+ ****************************************************************************/
+
+/* for data generation */
+< 'gen.osql';
+
+/* default dump file */
+set dumpfile() = getenv("AMOS_HOME") + "\\bin\\profile.dmp";
+
+/* load model and validate */
+< 'vMillWrapper.osql';
+
+< 'vMillValidator.osql';
+
+
+save "C:\\AmosNT\\bin\\profile.dmp";
+
+quit;

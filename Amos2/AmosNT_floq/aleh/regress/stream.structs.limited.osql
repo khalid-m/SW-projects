@@ -1,0 +1,94 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Ruslan Fomkin, UDBL
+ * $RCSfile: stream.structs.limited.osql,v $
+ * $Revision: 1.14 $ $Date: 2008/09/03 11:24:24 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Regression test for ALEH project for streamed approach with 
+ * ontology implemented with use of structs, which represent objects in
+ * transient way. Wrapper streams events as structs. For each event particles
+ * are materialized as structs and added to event structs.
+ * Testing when no cost model for ALEH defined, i.e. default Amos cost model.
+ ****************************************************************************
+ * $Log: stream.structs.limited.osql,v $
+ * Revision 1.14  2008/09/03 11:24:24  ruslan
+ * Implementations of the both analyses are moved in one file and function names correspond to the thesis
+ *
+ * Revision 1.13  2008/08/18 11:59:47  ruslan
+ * names are corrected according the schema in the thesis
+ *
+ * Revision 1.12  2008/05/25 15:08:02  ruslan
+ * cost hint for wrapper functions
+ *
+ * Revision 1.11  2008/05/20 07:25:04  ruslan
+ * using multidirectional
+ *
+ * Revision 1.10  2008/05/13 09:18:04  ruslan
+ * same strategy in the test for Linux and Windows
+ *
+ * Revision 1.9  2008/05/13 09:02:05  ruslan
+ * for correct cost model of multidirectional. one more case is tested in regression test
+ *
+ * Revision 1.8  2008/05/06 12:26:14  ruslan
+ * files should be given
+ *
+ * Revision 1.7  2008/05/06 08:21:09  ruslan
+ * new definition of the view
+ *
+ * Revision 1.6  2008/02/28 13:14:37  ruslan
+ * using sobjects
+ *
+ * Revision 1.5  2008/02/18 14:32:04  ruslan
+ * tuples in misseecuts
+ *
+ * Revision 1.4  2008/02/13 15:54:40  ruslan
+ * using sum over bag of tuples in misseecuts
+ *
+ * Revision 1.3  2008/01/23 13:00:49  ruslan
+ * improvement in miss ee cuts.
+ *
+ * Revision 1.2  2007/12/20 16:50:21  ruslan
+ * paper cuts in regression test with no cost model (default) and with hagrid simple cost model. should be added to windows regression test later
+ *
+ * Revision 1.1  2007/12/14 08:53:03  ruslan
+ * regression test for current working version
+ *
+ ****************************************************************************/
+
+cd('regress');
+
+create function idOptAllCuts() -> integer as
+select eventid(ev) from event ev where 
+	ev=optsixcuts("../../wrappers/ROOTWrap/t.root");
+
+lisp;
+(checkequal "Checking optsixcuts (best effort manual with default ranksort 
+optimization without ALEH cost model"
+	    ((lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'idoptallcuts->integer)) 
+	      '(2 10))
+	     '(940859 207618048))
+	    ((osql "idoptallCuts();")
+	     '((19015) (24455))))
+(princ "Time to execute optsixcuts without ALEH cost model ")
+(print (timer2 (osql "idOptAllCuts();")))
+:osql
+
+create function idPaperCuts() -> integer as
+select eventid(ev) from event ev where
+        ev=papersixcuts("../../wrappers/ROOTWrap/t.root");
+
+lisp;
+(checkequal "Checking paper sixcuts with default ranksort optimization without
+ALEH cost model"
+            ((lr2i10nl
+              (exec-cost-of-fn (getfunctionnamed 'idpapercuts->integer))
+              '(2 10))
+             '(947591 207618048))
+            ((osql "idPaperCuts();")
+             '((19015) (24455))))
+(princ "Time to execute papersixcuts without ALEH cost model ")
+(print (timer2 (osql "idPaperCuts();")))
+:osql

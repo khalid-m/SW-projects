@@ -1,0 +1,313 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 thanh, UDBL
+ * $RCSfile: similarity_test.osql,v $
+ * $Revision: 1.2 $ $Date: 2011/11/02 16:56:29 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Similarity searches with Xtree
+ *
+ ****************************************************************************
+ * $Log: similarity_test.osql,v $
+ * Revision 1.2  2011/11/02 16:56:29  thatr500
+ * Use a new term "AQUIT" (Algebraic Query Inequality Transformation)
+ *
+ * Revision 1.1  2011/05/06 02:04:21  thatr500
+ * *** empty log message ***
+ *
+ * Revision 1.8  2011/04/11 08:36:08  thatr500
+ * add tests for smart-ordering-preds
+ *
+ * Revision 1.7  2011/04/05 11:12:17  thatr500
+ * add tests for AQUIT
+ *
+ * Revision 1.6  2011/03/31 08:04:16  thatr500
+ * missing "this" predicate in the returned conjunction after rewritten
+ *
+ * Revision 1.5  2011/03/31 07:39:20  thatr500
+ * removed != from q6() to pass the regression test.
+ * TODO :revert
+ *
+ * Revision 1.4  2010/12/02 15:04:49  thatr500
+ * *** empty log message ***
+ *
+ * Revision 1.3  2010/12/01 19:20:01  thatr500
+ * use EXSTMA to integerate Xtree
+ *
+ * Revision 1.2  2010/10/27 10:20:41  thatr500
+ * add tests
+ *
+ * Revision 1.1  2010/10/07 13:30:42  thatr500
+ * add test cases ( similarity / knn search) with and without Xtree
+ *
+ *
+ ****************************************************************************/
+
+create function q1() -> Bag of Charstring
+  /* Index scan on XTREE without any rewrite */
+  as select p from Charstring p
+     where pictureFeatures(p)={1.0, 2.0, 3.0, 4.0};
+
+create function q2() -> Bag of Charstring 
+  /* Full scan on primary hash index without any rewrite */
+  as select p from Charstring p, Vector r 
+     where pictureFeatures(p)=r;
+
+/****************************************************************
+Queries of SIMILARITY SEARCH.
+These queries will be rewritten if there is an Xtree index
+******************************************************************/
+create function q3() -> Bag of Charstring
+  as select p from Charstring p 
+     where euclid(pictureFeatures(p), {1, 2, 3, 4}) < 1;
+
+
+ create function q3a() -> Bag of Charstring
+   as select p from Charstring p
+      where 1 > euclid(pictureFeatures(p),{1,2,3,4});
+
+ create function q3b() -> Bag of Charstring
+   as select p from Charstring p
+      where 1 = euclid(pictureFeatures(p),{1,2,3,4});
+
+ create function q4() -> Bag of Charstring
+   as select p from Charstring p
+      where euclid(pictureFeatures(p),{1,2,3,4}) <= 1.0;
+
+ create function q5() -> Bag of Charstring
+   as select p  from Charstring p
+      where euclid(pictureFeatures(p),{1,2,3,4}) >0
+        and euclid(pictureFeatures(p),{1,2,3,4}) < 1.5 ;
+
+ /*Rewriter - check inequality*/
+ create function q6() -> Bag of Charstring
+   as select p  from Charstring p
+      where euclid(pictureFeatures(p),{1,2,3,4}) > 0
+        and euclid(pictureFeatures(p),{1,2,3,4}) < 1.5
+	        and euclid(pictureFeatures(p),{1,2,3,4}) != 0;
+
+ /*Rewriter - check permutation of arguments*/
+ create function q7() -> Bag of Charstring
+   as select p  from Charstring p
+      where euclid({1, 2,3,4}, pictureFeatures(p)) > 0
+        and euclid({1,2, 3, 4}, pictureFeatures(p)) < 1.5;
+
+
+
+ /*Rewriter - check less-or-equal than*/
+ create function q8() -> Bag of Charstring
+   as select p  from Charstring p
+      where euclid({1, 2, 3, 4}, pictureFeatures(p)) > 0
+        and euclid({1, 2, 3, 4}, pictureFeatures(p)) <= 1.5;
+
+ create function q9() -> Bag of Charstring
+   as select p  from Charstring p
+      where euclid({1, 2,3,4}, pictureFeatures(p)) >= 0
+        and euclid({1,2, 3, 4}, pictureFeatures(p)) <= 1.5;
+
+ /*Rewriter - test Nested Join Loop*/
+ create function q10() -> Bag of Charstring
+   as select p from Charstring p, Charstring q
+      where euclid({1,2,3,5},pictureFeatures(p)) < 1.5
+        and euclid({1,2,3,4},pictureFeatures(q)) < 0.5
+        and p > q
+        and p> "Pic003" and q < "Pic005";
+
+/*Test AQUIT inequality*/
+create function q11(Vector of Number v) -> Bag of Charstring
+  as select p from Charstring p 
+     where 
+           euclid(pictureFeatures(p), v) <= 3.0;
+
+/*Test AQUIT inequality*/
+ create function q12(Vector of Number v, Number eps) -> Bag of Charstring
+  as select p from Charstring p 
+     where 
+           euclid(pictureFeatures(p), v) <= eps;
+
+/*Test AQUI */
+create function q13() -> Bag of Charstring
+  as select p from Charstring p 
+     where 
+           (7 / ((3 + euclid(pictureFeatures(p), 
+                     {1, 2, 3, 4})) *2 - 1))* 2 - 0.0004 > (2/2 + 0) *1;
+
+/*Test AQUIT*/
+create function q14() -> Bag of Charstring
+  as select p from Charstring p 
+     where 
+           4/(4/((7 / ((3 + euclid(pictureFeatures(p), 
+                     {1, 2, 3, 4})) *2 - 1))* 2)) - 0.0004 
+            > (3 - (2/2 + 0)*1 - 1);
+
+create function t()-> Number as (2-1)*3/4;
+
+create function q15() -> Bag of Charstring
+  as select p from Charstring p 
+     where 
+           4 / (0.0001+euclid(pictureFeatures(p), {1, 2, 3, 4}))
+            > 0.75;
+
+
+/* Cannot be rewritten !!!*/
+create function q16() -> Bag of Charstring
+  as select p from Charstring p 
+     where 
+          (3 - (2/2 + 0)*1 - 1) < 
+               1/3/4/
+               (4/
+                 ((7 / 
+                    ((3 + euclid(pictureFeatures(p), 
+                        {1, 2, 3, 4})) *2 - 1))* 28)) - 0.0004;
+
+
+
+create function q17() -> Bag of Charstring
+  as select p from Charstring p 
+     where 
+           4/(4/((7 / ((3 + euclid(pictureFeatures(p), 
+                     {1, 2, 3, 4})) *2 - 1))* 2)) - 0.0004 
+          + 1/1 - 1 > (3 - (2/2 + 0)*1 - 1);
+
+
+create function q18() -> Bag of Charstring
+  as select p from Charstring p 
+     where 
+           4 / (0.001 + euclid(pictureFeatures(p), {1, 2, 3, 4}))
+            > t();
+
+/*Test smart ordering to-be-rewritten predicate*/
+create function q19() -> Bag of Charstring
+  as select p from Charstring p 
+	/*swap variables*/
+     where 
+           4 / (0.001 + euclid({1, 2, 3, 4}, pictureFeatures(p)))
+            > t();
+
+create function q20(Charstring q) -> Bag of Charstring
+  as select p from Charstring p 
+	/*swap variables*/
+     where 
+           4 / (0.001 + euclid(pictureFeatures(q), pictureFeatures(p)))
+            > t();
+
+create function q21(Charstring q) -> Bag of Charstring
+  as select p from Charstring p 
+	/*swap variables*/
+     where 
+           4 / (0.001 + euclid(pictureFeatures(p), pictureFeatures(q)))
+            > t();
+
+lisp;
+ (checkequal
+  "Xtree index getter"
+  ((osql "q1();")
+   ;; tests getter
+   '(("Pic001"))))
+
+(checkequal "Hash index getter"
+  ((osql "pictureFeatures('Pic001');")
+   '((#(1.0 2.0 3.0 4.0)))))
+
+(checkequal "Mapper"
+  ((osql "q2();")
+   ;; Returns all pictures through the mapper
+   '(("Pic001") ("Pic002") ("Pic003"))))
+
+(checkequal "Euclid < a "
+  ((osql "q3();")
+  '(("Pic001"))))
+
+(checkequal " a > Euclid "
+  ((osql "q3a();")
+   '(("Pic001"))))
+
+(checkequal "Euclid = a "
+  ((osql "q3b();")
+   '(("Pic002"))))
+
+(checkequal "Euclid <= a"
+  ((osql "q4();")
+   '(("Pic001") ("Pic002"))))
+
+(checkequal " a < Euclid < b "
+  ((osql "q5();")
+   '(("Pic002"))))
+
+(checkequal "a < Euclid < b and != "
+  ((osql "q6();")
+   '(("Pic002"))))
+
+(checkequal
+  "More on rewriting Euclid calls using xtree similarity search "
+  ((osql "q7();")
+   '(("Pic002"))))
+
+(checkequal
+  "More on rewriting Euclid calls using xtree similarity search "
+  ((osql "q8();")
+   '(("Pic002"))))
+
+(checkequal
+  "More on rewriting Euclid calls using xtree similarity search "
+  ((osql "q9();")
+   '(("Pic001") ("Pic002"))))
+
+
+(checkequal
+  "Test AQUIT on Q11"
+  ((osql "q11({1,2,3,4});")
+   '(("Pic001") ("Pic002")  ("Pic003"))))
+
+
+(checkequal
+  "Test AQUIT on Q12"
+  ((osql "q12({1,2,3,4}, 3.0);")
+   '(("Pic001") ("Pic002") ("Pic003"))))
+
+(checkequal
+  "Test AQUIT on Q13"
+  ((osql "q13();")
+   '(("Pic001") ("Pic002") ("Pic003"))))
+
+(checkequal
+  "Test AQUIT on Q14"
+  ((osql "q14();")
+   '(("Pic001") ("Pic002") ("Pic003"))))
+
+(checkequal
+  "Test AQUIT on Q155"
+  ((osql "q15();")
+   '(("Pic001") ("Pic002") ("Pic003"))))
+
+(checkequal
+  "Test AQUIT Q16"
+  ((osql "q16();")
+   '()))
+
+(checkequal
+  "Test AQUIT on Q17"
+  ((osql "q17();")
+   '(("Pic001") ("Pic002") ("Pic003"))))
+
+(checkequal
+  "Test AQUIT on Q18"
+  ((osql "q18();")
+   '(("Pic001") ("Pic002") ("Pic003"))))
+
+(checkequal
+  "Test AQUIT on Q19"
+  ((osql "q19();")
+   '(("Pic001") ("Pic002") ("Pic003"))))
+
+(checkequal
+  "Test AQUIT on Q20"
+  ((osql "q20('Pic001');")
+   '(("Pic001") ("Pic002") ("Pic003"))))
+
+(checkequal
+  "Test AQUIT on Q21"
+  ((osql "q21('Pic001');")
+   '(("Pic001") ("Pic002") ("Pic003"))))
+:osql

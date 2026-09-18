@@ -1,0 +1,74 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year>Minpeng Zhu<author>, UDBL
+ * $RCSfile: configuration.osql,v $
+ * $Revision: 1.4 $ $Date: 2013/05/01 15:35:27 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: configuration to setup absorber, finalizer, absorbability 
+                for a kind of DS.
+ ****************************************************************************/
+
+/* set absorber, finalizer for relational wrapper */
+set_absorber('relational', 'absorb-sql');  /* In sql_absorber.lsp */
+set_finalizer('relational', 'finalize-sql'); /* In sql_finalizer.lsp */
+
+/* set the amos function that relational wrapper is able to absorb and 
+   relational data source is capable to handle */
+create_wrapper_absorbability('relational', '<');
+
+create_wrapper_absorbability('relational', '<=');
+
+create_wrapper_absorbability('relational', '>');
+
+create_wrapper_absorbability('relational', '>=');
+
+create_wrapper_absorbability('relational', 'like');
+
+create_wrapper_absorbability('relational', '=');
+
+create_wrapper_absorbability('relational', '!=');  
+
+/* for plus and minus */
+create_wrapper_absorbability('relational', 'number.number.plus->number');
+
+/* for times and division */
+create_wrapper_absorbability('relational', 'number.number.times->number');
+
+create_wrapper_absorbability('relational', 'VECTOR.IN->OBJECT');
+
+create_wrapper_absorbability('relational','abs');
+
+/* Table of mappings between Amos functions and SQL infix operators */
+/* params: amos fn, sql operator, infix, hasvalue, reverse */
+/* help in translating the absorbed predicates into sql string */
+sqloperator("!=","<>",true, false, false); /* != -> <> in sql query */
+
+sqloperator('number.number.plus->number', '+', true, true, false);
+
+sqloperator('number.number.times->number', '*', true, true, false);
+
+sqloperator('VECTOR.IN->OBJECT', 'in', true, false, true);
+
+sqloperator('abs', 'abs', false, true, false);  
+
+sqloperator("<","<",true, false, false); 
+
+sqloperator("<=","<=",true, false, false); 
+
+sqloperator(">",">",true, false, false); 
+
+sqloperator(">=",">=",true, false, false); 
+
+sqloperator("like","like",true, false, false); 
+
+sqloperator("=","=",true, false, false); 
+
+/*
+
+create_wrapper_absorbability('relational','sin');
+
+sqloperator('sin', 'sin', false, true, false);
+
+*/

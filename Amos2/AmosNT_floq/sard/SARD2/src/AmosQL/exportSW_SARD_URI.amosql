@@ -1,0 +1,1267 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2009,2012 Silvia Stefanova UDBL
+ * $RCSfile: exportSW_SARD_URI.amosql,v $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: D-view definitions, Export the whole RD-view
+ ******************************************************************************/
+
+
+
+create function pklist(Relational r,Charstring catalog_name,Charstring schema_name,Charstring tab)->Charstring
+as
+ if (some (primary_keys(r,catalog_name,schema_name,tab))) then
+   begin
+	declare Charstring list;
+	set list="";
+	for each Charstring keycol,Charstring keyname where primary_keys(r,catalog_name,schema_name,tab)=(keycol,keyname)
+		set list=list+keycol+"_";
+	return RDB_URI(ret_tableO(tab))+"/_"+substring(list,0,char_length(list)-2);
+   end
+ else return "NULL";
+         
+
+
+
+
+create function is_in_rMap(Charstring upv, Charstring tname,Charstring cname)->Boolean
+/*True if the column 'cn' is mapped as a foreign key column*/
+as
+	select true 
+	from Vector of Charstring cn2,Charstring tn1,Charstring tn2, URI rid 
+	where rMap(tname,cname,tn1,upv,rid) or
+		rmmMap(tname,{cname},cn2,tn1,tn2,upv,rid) or
+		rmmMap(tname,cn2,{cname},tn2,tn1,upv,rid); 
+
+
+
+
+create function gen_seqPKs(Charstring upv,Charstring catalog,Charstring schema, Charstring tn)-> Charstring
+/*Defines the Primary key view*/
+as
+ if (some( primary_keys(jdbcOfDS(DSOfUPV(upv)),catalog,schema,tn))) then
+   begin
+	declare integer i,Charstring seq;
+	set i= count( primary_keys(jdbcOfDS(DSOfUPV(upv)),catalog,schema,tn));
+	 set seq= "(	 cmap('"+tn+"','"+upv+"',taburi) and
+			 s = taburi and
+			 p='http://user.it.uu.se/~udbl/sard#PRIMARY_KEY' and
+			 val = '_:"+tn+"_PrK' ) or
+		   	(s='_:"+tn+"_PrK' and
+			p='http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and
+			val='http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq')";
+	for each Charstring col,Charstring pkstr 
+			where (col,pkstr) in primary_keys(jdbcOfDS(DSOfUPV(upv)),catalog,schema,tn)
+	   begin
+	      set seq= seq +" or (s='_:"+tn+"_PrK' and
+			 p='http://www.w3.org/1999/02/22-rdf-syntax-ns#_"+i+"' and
+			 pMap('"+tn+"',colp,'"+upv+"',prop) and like_i(colp,'"+col+"') and
+			val=prop )"; 
+			 
+ 		set i=i-1;
+	   end;
+	return seq;
+   end;
+ 
+
+
+
+
+create function gen_seqFKs(Charstring upv,Charstring catalog,Charstring schema, Charstring tn)-> Charstring
+/*Defines the Foreign key view*/
+as
+    if (some (imported_keys(jdbcOfDS(DSOfUPV(upv)),catalog,schema,tn))) then
+     begin
+	declare integer i,Charstring seq;
+	for each Charstring reftable, URI prop where prop in rcMap(tn,reftable,upv)
+	 begin
+		set i=1;
+		set seq= seq + " or ( cmap('"+tn+"','"+upv+"',taburi) and
+			 s = taburi and
+			 p='http://user.it.uu.se/~udbl/sard#FOREIGN_KEY' and
+			  rcMap('"+tn+"','"+reftable+"','"+upv+"',val))  or
+		   	(  rcMap('"+tn+"','"+reftable+"','"+upv+"',s) and
+			p='http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and
+			val='http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq')";
+	     for each Charstring refcolumn, Charstring cn  
+		where (reftable,refcolumn,cn) in imported_keys(jdbcOfDS(DSOfUPV(upv)),catalog,schema,tn)
+		begin 
+		       set seq= seq +" or ( rcMap('"+tn+"','"+reftable+"','"+upv+"',s) and
+			 p='http://www.w3.org/1999/02/22-rdf-syntax-ns#_"+i+"' and
+			 pMap('" + tn + "','" + cn + "','" + upv + "', val)) or
+			(pMap('" + tn + "','" + cn + "','" + upv + "', p1) and 
+        		 s = p1 and 
+	 		pMap('" + reftable + "','" + refcolumn + "','" + upv + "', p2) and
+			 p ='http://user.it.uu.se/~udbl/sard#REFERENCES' and
+  	 		val = p2)";
+	                set i=i+1;
+	        end;		
+	   end;
+	return substring (seq,6,char_length(seq));
+     end;
+   
+
+create function gen_seqFKs10(Charstring upv,Charstring catalog,Charstring schema, Charstring tn)-> Charstring
+/*Defines the Foreign key view*/
+as
+    if (some (imported_keys(jdbcOfDS(DSOfUPV(upv)),catalog,schema,tn))) then
+     begin
+	declare integer i,Charstring seq,Charstring ref,integer j;
+	set j=0; set seq=""; set ref="";
+	for each Charstring reftable, Charstring refcolumn, Charstring cn  
+	 where (reftable,refcolumn,cn) in imported_keys(jdbcOfDS(DSOfUPV(upv)),catalog,schema,tn)
+            begin
+		if notany(like(ref,reftable)) then
+	         begin
+			set i=1;
+			set j=j+1;
+		        set seq= "( cmap('"+tn+"','"+upv+"',taburi) and
+			 s = taburi and
+			 p='http://user.it.uu.se/~udbl/sard#FOREIGN_KEY' and
+			 val = '_:"+tn+"_FK_" + j +"' ) or
+		   	(s='_:"+tn+"_FK_"+j+"' and
+			p='http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and
+			val='http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq') or  		
+	   		 (s='_:"+tn+"_FK_"+j+"' and
+			 p='http://www.w3.org/1999/02/22-rdf-syntax-ns#_"+i+"' and
+			 rcMap('"+tn+"','"+reftable+"','"+upv+"',val) ) or
+			(rcMap('"+tn+"','"+reftable+"','"+upv+"',s) and 
+        		 pMap('" + reftable + "','" + refcolumn + "','" + upv + "',val) and
+			 p ='http://user.it.uu.se/~udbl/sard#REFERENCES')" + " or " + seq;
+			 set ref=reftable;
+		  end
+		else
+		 begin
+			set i=i+1;
+		 	set seq =  seq + "(s='_:"+tn+"_FK_"+j+"' and
+			 p='http://www.w3.org/1999/02/22-rdf-syntax-ns#_"+i+"' and
+			 val = '"+RDB_URI(ret_columnO(tn,cn))+"') or
+			(rcMap('"+tn+"','"+reftable+"','"+upv+"',s) and 
+        		 pMap('" + reftable + "','" + refcolumn + "','" + upv + "',val) and
+			 p ='http://user.it.uu.se/~udbl/sard#REFERENCES' )" + " or " + seq;			
+		 end;
+            end;
+	return substring(seq,0,char_length(seq)-4);
+      end;
+
+
+
+
+
+create function genPKs(Charstring upv)->Bag of Charstring
+as 
+	for each Charstring tn, Charstring catalog, Charstring schema,URI taburi
+			where (tn,catalog,schema,"TABLE") in tables(jdbcOfDS(DSOfUPV(upv))) and cmap(tn,upv)=taburi
+	   return gen_seqPKs(upv,catalog,schema,tn);
+	
+
+create function genFKs(Charstring upv)->Bag of Charstring
+as 
+	for each Charstring tn, Charstring catalog, Charstring schema, URI taburi
+			where (tn,catalog,schema,"TABLE") in tables(jdbcOfDS(DSOfUPV(upv))) and  cmap(tn,upv)=taburi
+		 return  gen_seqFKs(upv,catalog,schema,tn);
+
+create function genPKeys(Charstring upv)->Bag of Charstring
+  as 
+	if(genPKs(upv) != "") then
+	  	return concatagg(inject(genPKs(upv)," or "));
+
+create function genFKeys(Charstring upv)->Bag of Charstring
+  as 
+	if(genFKs(upv) != "") then
+		return concatagg(inject(genFKs(upv)," or "));
+
+
+create function gen_classpropview(Charstring upv)->Charstring 
+as
+	select ("(cMap(tn,'"+upv+"',taburi) and
+	          s = taburi and
+		  p = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and
+		 val = 'http://www.w3.org/2000/01/rdf-schema#Class') or
+		 (cMap(tn,'"+upv+"',taburi) and
+	  	 pMap(tn,cn,'"+upv+"',prop) and
+	        s = prop and
+		 p = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and
+		 val = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property') or
+	      (pMap(tn,cn,'"+upv+"',prop) and
+	        cMap(tn,'"+upv+"',taburi) and
+	        s = prop and
+	        p = 'http://www.w3.org/2000/01/rdf-schema#domain' and 
+	        val = taburi) or
+	       (pMap(tn,cn,'"+upv+"',prop) and
+	        cMap(tn,'"+upv+"',taburi) and
+		typeMap(tn,cn,'"+upv+"',typ) and
+		s = prop and
+		p = 'http://www.w3.org/2000/01/rdf-schema#range' and
+		val = typ) or
+		(s='http://user.it.uu.se/~udbl/sard#size' and
+   	         p= 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and
+		 val='http://www.w3.org/1999/02/22-rdf-syntax-ns#Property') or
+		(s='http://user.it.uu.se/~udbl/sard#PRIMARY_KEY' and
+   	         p= 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and
+		 val='http://www.w3.org/1999/02/22-rdf-syntax-ns#Property') or
+		(s='http://user.it.uu.se/~udbl/sard#FOREIGN_KEY' and
+   	         p= 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and
+		 val='http://www.w3.org/1999/02/22-rdf-syntax-ns#Property') ");
+
+/*Function NEQ is taken away.
+create function sizeprops(Charstring tn, Charstring cn, Charstring upv,Charstring prop)->Charstring
+as
+	if( neq(itoa(size(ret_columnO(tn,cn))),"") )  then
+		return "( s = '"+prop+"' and
+			   p= 'http://user.it.uu.se/~udbl/sard#size' and 
+			   pmap('"+tn+"','"+cn+"','"+upv+"','"+prop+"') and
+			   val = valueid(itoa(size(ret_columnO('"+tn+"','"+cn+"'))),
+				'http://www.w3.org/2001/XMLSchema#int') )";
+*/
+
+create function sizeprops(Charstring tn, Charstring cn, Charstring upv,URI prop)->Charstring
+as
+	if notany(size(ret_columnO(tn,cn)))  then
+		return "( s = '"+prop+"' and
+			   p= 'http://user.it.uu.se/~udbl/sard#size' and 
+			   pmap('"+tn+"','"+cn+"','"+upv+"','"+prop+"') and
+			   val = valueid(itoa(size(ret_columnO('"+tn+"','"+cn+"'))),
+				'http://www.w3.org/2001/XMLSchema#int') )";
+
+
+create function all_sizeprops(Charstring upv)->Bag of Charstring 
+as
+	for each Charstring tn, Charstring cn, Charstring upv, URI prop
+		where (tn,cn,upv,prop) in pMap()
+  		return  sizeprops(tn,cn,upv,prop);
+
+
+create function gen_sizeprops(Charstring upv)->Bag of Charstring 
+as	return concatagg(inject(all_sizeprops(upv), " or "));
+
+
+
+
+create function gen_FKprops(Charstring upv)-> Charstring
+as
+	select ("(cMap(tn,'"+upv+"',taburi) and
+	  	  rcMap(tn,tn1,'"+upv+"',prop) and
+	          s = prop and
+		  p = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and
+		  val = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property') or
+	         (rcMap(tn,tn1,'"+upv+"',prop) and
+	          cMap(tn,'"+upv+"',taburi) and
+	          s = prop and
+	          p = 'http://www.w3.org/2000/01/rdf-schema#domain' and
+	          val = taburi) or
+	         (rcMap(tn,tn1,'"+upv+"',prop) and
+	          cMap(tn,'"+upv+"',taburi) and
+	          cMap(tn1,'"+upv+"',taburi1) and
+		  s = prop and
+		  p = 'http://www.w3.org/2000/01/rdf-schema#range' and
+		  val = taburi1) ");
+
+
+create function gen_MMprops(Charstring upv)-> Charstring
+as
+	select ("(rmmMap(tn,vcn1,vcn2,tn1,tn2,'"+upv+"',prop) and
+	          s = prop and
+		  p = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and
+		  val = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property') or
+	         (rmmMap(tn,vcn1,vcn2,tn1,tn2,'"+upv+"',prop) and
+	          s = prop and
+	          p = 'http://www.w3.org/2000/01/rdf-schema#domain' and
+		  cMap(tn1,'"+upv+"',taburi) and
+	          val = taburi) or
+	          (rmmMap(tn,vcn1,vcn2,tn1,tn2,'"+upv+"',prop) and
+	          s = prop and
+		  p = 'http://www.w3.org/2000/01/rdf-schema#range' and
+		   cMap(tn2,'"+upv+"',taburi) and
+		  val = taburi) ");
+		
+
+
+create function define_schemaview(Charstring upv)->Boolean
+  as
+   begin
+    declare Charstring fkv, Charstring pkv;
+   /* set fkv= genFKeys(upv);
+    set pkv= genPKeys(upv);*/
+    if ( some(genFKeys(upv)) and some(genPKeys(upv))
+	and some(rmmMap()) and gen_sizeprops(upv) != ''  ) then
+    begin
+     eval("create function schema_view_" + upv + "()-> 
+          (Charstring s,Charstring p,Charstring val) 
+          as 
+            select s,p,val 
+           from Charstring s,Charstring p,Charstring val, Charstring taburi,Charstring taburi1,
+		Charstring prop,Charstring typ,Charstring tn,Charstring cn,Charstring tn1,
+		Charstring p1, Charstring p2,Charstring colp,
+		Vector of Charstring vcn1,Vector of Charstring vcn2,Charstring tn2
+           where " +  gen_classpropview(upv) + " or " +  gen_sizeprops(upv) + " or " + genPKeys(upv) + " or "
+		+ gen_FKprops(upv) + " or "+ genFKeys(upv) + " or " + gen_MMprops(upv) +";");
+    end ;
+    if ( some(genFKeys(upv)) and some(genPKeys(upv))
+	and some(rmmMap()) and like(gen_sizeprops(upv),'')  ) then
+    begin
+     eval("create function schema_view_" + upv + "()-> 
+          (Charstring s,Charstring p,Charstring val) 
+          as 
+            select s,p,val 
+           from Charstring s,Charstring p,Charstring val, Charstring taburi,Charstring taburi1,
+		Charstring prop,Charstring typ,Charstring tn,Charstring cn,Charstring tn1,
+		Charstring p1, Charstring p2,Charstring colp,
+		Vector of Charstring vcn1,Vector of Charstring vcn2,Charstring tn2
+           where " +  gen_classpropview(upv) + " or " + genPKeys(upv) + " or "
+		+ gen_FKprops(upv) + " or "+ genFKeys(upv) + " or " + gen_MMprops(upv) +";");
+    end ;
+
+    if ( some(genFKeys(upv)) and some(genPKeys(upv))
+	and notany(rmmMap()) and gen_sizeprops(upv) != '' ) then
+    begin
+     eval("create function schema_view_" + upv + "()-> 
+          (Charstring s,Charstring p,Charstring val) 
+          as 
+            select s,p,val 
+           from Charstring s,Charstring p,Charstring val, Charstring taburi,Charstring taburi1,
+		Charstring prop,Charstring typ,Charstring tn,Charstring cn,Charstring tn1,
+		Charstring p1, Charstring p2,Charstring colp
+           where " +  gen_classpropview(upv) + " or " +  gen_sizeprops(upv)+ " or " + genPKeys(upv) + " or "
+		+ gen_FKprops(upv) + " or "+ genFKeys(upv) + ";");
+    end ;		
+     if  (notany(genFKeys(upv)) and some(genPKeys(upv))
+		and notany(rmmMap()) and gen_sizeprops(upv) != '') then
+       begin
+	eval("create function schema_view_" + upv + "()-> 
+          (Charstring s,Charstring p,Charstring val) 
+          as  exportSW_SARD_URI.amosql
+            select s,p,val 
+           from Charstring s,Charstring p,Charstring val, Charstring taburi,
+		Charstring prop,Charstring typ,Charstring tn,Charstring cn,Charstring colp
+	 where " + gen_classpropview(upv)+ " or " +  gen_sizeprops(upv) + " or " + genPKeys(upv) +" ;");
+	end ;
+     	if ( notany(genFKeys(upv)) and notany(genPKeys(upv)) 
+			and notany(rmmMap()) and gen_sizeprops(upv) != '' )  then
+      begin
+	eval("create function schema_view_" + upv + "()-> 
+          (Charstring s,Charstring p,Charstring val) 
+          as  
+            select s,p,val 
+           from Charstring s,Charstring p,Charstring val, Charstring taburi,
+		Charstring prop,Charstring typ,Charstring tn,Charstring cn 
+	 where " + gen_classpropview(upv)+ " or " +  gen_sizeprops(upv) + " ;");
+      end;
+      if  (some(genFKeys(upv)) and some(genPKeys(upv))
+		and notany(rmmMap()) ) then
+       begin
+	eval("create function schema_view_" + upv + "()-> 
+          (Charstring s,Charstring p,Charstring val) 
+          as select s,p,val 
+            from Charstring s,Charstring p,Charstring val, Charstring taburi,Charstring taburi1,
+		Charstring prop,Charstring typ,Charstring tn,Charstring cn,Charstring tn1,
+		Charstring p1, Charstring p2,Charstring colp
+	 where " + gen_classpropview(upv)+ " or " +  genPKeys(upv) + " or " + gen_FKprops(upv) +
+		 " or "+ genFKeys(upv) + ";");
+	end ;
+   end;
+
+
+create function SchemaViewMaterialize(Charstring upv)->Boolean 
+as 
+ begin
+  /*define_schemaview(upv);*/
+  eval("create function s" + upv 
+	+ "(URI s,URI p,Literal val)->
+		Boolean as stored;");
+ 
+  eval("declare_key(theresolvent('s" + upv + "'),{'s','p','val'});");
+
+   /* Since the schema view resides in main memory the cost is 2 and fanout is
+    * very small
+    */
+  eval("costhint('URI.URI.Literal.s" + upv + "->Boolean',
+		'fbf',{2,1});");
+
+  eval("parteval('s" + upv + "');");
+   	begin
+  	 eval("for each URI s, URI p, Literal val 
+	     where (s,p,val) in s_view('"+upv+"')
+         	add s" + upv + "(s,p,val)=true;");
+    	end;
+ 
+  eval("create function s" + upv + "()->
+	(URI s,URI p,Literal val) 
+		as select s, p, val where s" + upv + "(s,p,val);");
+ end;
+
+
+create function SchemaViewNoMaterialize(Charstring upv)->Boolean 
+as 
+/*Define S-view - generic s-view, non-generated  */
+ begin
+ 	eval("create function s" + upv+ "()->(URI s,URI p,Literal val)
+		as select s,p,val where (s,p,val) in s_view('"+upv+"');");
+  end;
+
+
+create function SchemaViewNoMaterialize_g(Charstring upv)->Boolean 
+as 
+/*Generate S-view  */
+ begin
+  generate_S_view(upv);
+  eval("declare_key(theresolvent('s" + upv + "'),{'s','p','val'});");
+ end;
+
+
+
+create function SchemaViewMaterialize_old(Charstring upv)->Boolean 
+as 
+ begin
+  define_schemaview(upv);
+  eval("create function s" + upv 
+	+ "(URI s,URI p,Literal val)->
+		Boolean as stored;");
+ 
+  eval("declare_key(theresolvent('s" + upv + "'),{'s','p','val'});");
+
+   /* Since the schema view resides in main memory the cost is 2 and fanout is
+    * very small
+    */
+  eval("costhint('URI.URI.Literal.s" + upv + "->Boolean',
+		'fbf',{2,1});");
+
+  eval("parteval('s" + upv + "');");
+   	begin
+  	 eval("for each URI s, URI p, Literal val 
+	     where (s,p,val) in schema_view_"+upv+"()
+         	add s" + upv + "(s,p,val)=true;");
+    	end;
+ 
+  eval("create function s" + upv + "()->
+	(URI s,URI p,Literal val) 
+		as select s, p, val where s" + upv + "(s,p,val);");
+ end;
+
+
+
+create function genRelcall(Charstring upv,
+	                    Charstring rname)->Charstring r
+as
+ begin
+  declare Charstring relcall;  
+  set relcall=rname + "_" + DSOfUPV(upv) + "_cc()=(" +  
+              concatagg(inject((select rname + "_" + cname 
+                                from Charstring cname, Charstring ctype 
+                                where (ctype, cname) in 
+                                       columns(JDBCOfDS(DSOfUPV(upv)), 
+                                        rname)), ",")) + ")";
+  if(relcall="") then
+   error("Could not extract any columns from table " + rname);
+  
+  return relcall;
+ end;
+
+
+create function genRelcall_nokey(Charstring upv,
+	                    Charstring rname)->Charstring r
+as
+ begin
+  declare Charstring relcall;  
+  set relcall=rname + "_" + DSOfUPV(upv) + "_cc()=("+rname+"__ident_," +  
+              concatagg(inject((select rname + "_" + cname 
+                                from Charstring cname, Charstring ctype 
+                                where (ctype, cname) in 
+                                       columns(JDBCOfDS(DSOfUPV(upv)), 
+                                        rname)), ",")) + ")";
+  if(relcall="") then
+   error("Could not extract any columns from table " + rname);
+  return relcall;
+ end;
+
+
+
+create function rel(Charstring upv, Charstring tn)->Charstring
+as
+ begin
+    declare Charstring relvars, integer i, Vector column;
+    set column=vectorOf(columns(JDBCOfDS(DSOfUPV(upv)),tn ));
+    set i=0;
+    set relvars="";
+    for each Charstring cctype where cctype=name(result_types(theresolvent(tn+"_"+DSOfUPV(upv)+"_CC") ))
+	and some(primary_keys(jdbcOfDS(DSOfUPV(upv)),catalogOfDS(DSOfUPV(upv)),schemaOfDS(DSOfUPV(upv)),tn))
+      begin
+        declare vector v;
+	set v=column[i];
+	set relvars=relvars + cctype+ " "+ tn+"_" + v[1]+",";
+	set i=i+1;
+      end;
+   
+    if(relvars = "") then
+     error("Could not extract any columns from table " + tn);
+    return substring(relvars,0,char_length(relvars)-2); 
+ end;
+
+
+create function rel_nokey(Charstring upv, Charstring tn)->Charstring
+as
+ begin
+    declare Charstring relvars, integer i, Vector column,Vector v;
+    set v={"int","_ident_"};
+    set column=concat(vectorOf(v),vectorOf(columns(JDBCOfDS(DSOfUPV(upv)),tn )));
+    set i=0;
+    set relvars="";
+    for each Charstring cctype where cctype=name(result_types(theresolvent(tn+"_"+DSOfUPV(upv)+"_CC") ))
+	and notany(primary_keys(jdbcOfDS(DSOfUPV(upv)),catalogOfDS(DSOfUPV(upv)),schemaOfDS(DSOfUPV(upv)),tn))
+      begin
+        declare vector v;
+	set v=column[i];
+	set relvars=relvars + cctype+ " "+ tn+"_" + v[1]+",";
+	set i=i+1;
+      end;
+   
+    if(relvars = "") then
+     error("Could not extract any columns from table " + tn);
+    return substring(relvars,0,char_length(relvars)-1); 
+ end;
+
+create function genRelvars(Charstring upv)-> Charstring
+as
+ begin
+  for each Charstring tn 
+    where (tn,catalogOfDS(DSOfUPV(upv)),schemaOfDS(DSOfUPV(upv)), "TABLE") in
+         tables(jdbcOfDS(DSOfUPV(upv)))
+   begin
+    declare Charstring relvars;
+     if (notany(functionnamed(upper(tn) + "_" + DSOfUPV(upv) + "_CC"))) then
+      begin
+      if( some(primary_keys(jdbcOfDS(DSOfUPV(upv)),catalogOfDS(DSOfUPV(upv)),schemaOfDS(DSOfUPV(upv)),tn)) ) then
+        begin
+    	 import_table(JDBCOfDS(DSOfUPV(upv)),catalogOfDS(DSOfUPV(upv)),
+                        schemaOfDS(DSOfUPV(upv)),tn,'',false,{});
+	 set relvars=rel(upv,tn);
+        end
+       else if (notany(primary_keys(jdbcOfDS(DSOfUPV(upv)),catalogOfDS(DSOfUPV(upv)),schemaOfDS(DSOfUPV(upv)),tn)) ) then
+        begin
+	 import_tableRDB(JDBCOfDS(DSOfUPV(upv)),catalogOfDS(DSOfUPV(upv)),
+                        schemaOfDS(DSOfUPV(upv)),tn,'',false,{});  
+	 set relvars=rel_nokey(upv,tn);
+	 end;       
+     end
+     else  
+      begin
+	if( some(primary_keys(jdbcOfDS(DSOfUPV(upv)),catalogOfDS(DSOfUPV(upv)),schemaOfDS(DSOfUPV(upv)),tn)) ) then
+		set relvars=rel(upv,tn)
+	else set relvars=rel_nokey(upv,tn);
+      end;	
+    if(relvars = "") then
+     error("Could not extract any columns from table " + tn);
+    return relvars; 
+    
+   end;
+ end;
+
+
+
+	
+create function concatLiteral(Number l1,Literal l2)->Charstring
+as
+	return  plus(itoa(l1),l2);
+
+
+
+/* Get key of relational table. 
+ */
+create function getKeyrr(Charstring ds,
+  	                Charstring tn)
+	                ->Charstring col
+as 
+  begin
+	declare Charstring str;
+	set str="";
+	if (count (primary_keys(JDBCOfDS(ds),catalogOfDS(ds),schemaOfDS(ds),tn)) > 0) then
+         begin
+		for each Charstring col,Charstring constraint
+			 where (col,constraint) in primary_keys(JDBCOfDS(ds),catalogOfDS(ds),schemaOfDS(ds),tn) 
+			set str=tn+"_"+col +","+str ;
+		return "{"+ substring(str,0,char_length(str)-2)+"}";
+ 	 end;
+  end;
+
+/*Construct Charstring containing a vector of compound foreign key attributes*/
+create function getFKeyrr(Charstring ds, Charstring tn, Charstring otn) ->Charstring col
+as 
+ begin
+   	declare Charstring str;
+	set str="";
+	 if ( some(imported_keys(JDBCOfDS(ds),catalogOfDS(ds),schemaOfDS(ds),tn))) then
+	  begin
+		for each Charstring col,Charstring ocol
+			where(otn,ocol,col) in imported_keys(JDBCOfDS(ds),catalogOfDS(ds),schemaOfDS(ds),tn)
+	 	  set str=tn+"_"+col+","+str ;
+		return "{"+ substring(str,0,char_length(str)-2)+"}";
+  	  end;
+  end;
+
+
+create function formVal(Literal val key, Charstring xsdtype key)->Charstring maptype
+as foreign 'gen-concat';	
+
+create function retrieveVal(Charstring mapvalue,Charstring xsdtype)->Literal val
+as foreign 'split-value';
+
+create function valueid(Literal val, Charstring xsdtype)->Charstring mapvalue key
+as multidirectional ('bbf' select formVal(val,xsdtype))
+		    ('fbb' select retrieveVal(mapvalue,xsdtype));
+
+
+
+
+
+create function genPVp(Charstring upv,		
+	              Charstring tn,
+	              Charstring cn)->Charstring clause
+as 
+/*TO DO: The version of the genPV with concat of the XSD type to val*/
+ select "(" + genRelcall(upv,tn) + " and 
+	 ucMap('" + tn + "','" + upv + "', ucid) and 
+         pMap('" + tn + "','" + cn + "','" + upv + "', p) and 
+         s = rowID_URI(ucid,"+k+") and 	 
+	 /*val = valueid(" + tn + "_" + cn + ",typeMap('"+tn+"','"+cn+"','"+upv+"'))*/
+	(  val = rdf:totypedrdf(" + tn + "_" + cn + ") or val=ustr(" + tn + "_" + cn + "))) "
+ from Charstring k
+ where k =  getKeyrr(DSOfUPV(upv),tn);
+
+
+create function genPV_strings(Charstring upv,		
+	              Charstring tn,
+	              Charstring cn)->Charstring clause
+as	  select "(" + genRelcall(upv,tn) + " and 
+	         ucMap('" + tn + "','" + upv + "', ucid) and 
+         	 pMap('" + tn + "','" + cn + "','" + upv + "', p) and 
+                 s = rowID_URI(ucid,"+k+") and 	 	
+		 val=ustr(" + tn + "_" + cn + ")) "
+	        from Charstring k  where k =  getKeyrr(DSOfUPV(upv),tn);
+
+
+create function genPV_nostrings(Charstring upv,		
+	              Charstring tn,
+	              Charstring cn)->Charstring clause
+as	  select "(" + genRelcall(upv,tn) + " and 
+	         ucMap('" + tn + "','" + upv + "', ucid) and 
+         	 pMap('" + tn + "','" + cn + "','" + upv + "', p) and 
+                 s = rowID_URI(ucid,"+k+") and 	 
+		val=USTR_literal(" + tn + "_" + cn + ")) "	
+		 /*val=typedrdf(rdf_str(" + tn + "_" + cn + "),typeMap('"+tn+"','"+cn+"','"+upv+"'))*/
+		 /*val=rdf:totypedrdf(" + tn + "_" + cn + )*/
+	        from Charstring k  where k =  getKeyrr(DSOfUPV(upv),tn);
+
+
+
+/*An old generator that uses imort_tableRDB instead import_table */
+create function genPV_nokey(Charstring upv,		
+	              Charstring tn,
+	              Charstring cn)->Charstring clause
+as 
+ select "(" + genRelcall_nokey(upv,tn) + " and 
+        ucMap('" + tn + "','" + upv + "', ucid) and 
+        pMap('" + tn + "','" + cn + "','" + upv + "', p) and 
+        s = rowid_URI(ucid,{"+tn+"__ident_}) and 
+        val = USTR_literal(" + tn + "_" + cn + ")) ";
+
+
+
+create function genCCV(Charstring upv,		
+	               Charstring tn)->Charstring clause
+as 
+ select "(" + genRelcall(upv,tn) + " and 
+        cMap('" + tn + "','" + upv + "', cid) and      
+	ucMap('" + tn + "','" + upv + "', cid1) and   
+         s = rowid_URI(cid1,"+k+") and 
+        p = uri('http://www.w3.org/1999/02/22-rdf-syntax-ns#type') and 	
+        val = cid  )"
+ from Charstring k
+ where k =  getKeyrr(DSOfUPV(upv),tn);
+
+
+create function genCCV_nokey(Charstring upv,		
+	               Charstring tn)->Charstring clause
+as 
+ select "(" + genRelcall_nokey(upv,tn) + " and 
+        cMap('" + tn + "','" + upv + "', cid) and         
+        s = rowid_URI(cid,{"+tn+"__ident_}) and 
+        p = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and 
+        val = cid)";
+
+
+/* Generate class membership views for each mapped class. 
+ */
+create function genCCVs(Charstring up)->Charstring
+  as  for each Charstring tn,URI cid 
+          where cMap(tn,up,cid) 
+  begin
+   if (isTblOf(JDBCOfDS(DSOfUPV(up)),tn) and 
+   notany(primary_keys(jdbcOfDS(DSOfUPV(up)),catalogOfDS(DSOfUPV(up)),schemaOfDS(DSOfUPV(up)),tn)) ) then
+	     return genCCV_nokey(up,tn) 
+   else if isTblOf(JDBCOfDS(DSOfUPV(up)),tn) then 
+	    return genCCV(up,tn) 
+   else error("No table named "+tn+" in data source");
+  end;
+
+create function genDCCVs(Charstring upv)-> Charstring
+  as concatagg(inject(genCCVs(upv)," or "));
+
+
+
+
+create function genPVs(Charstring up)->Bag of Charstring
+/*Defines a relational column view for column cn in table tn if:
+	- cn is a column of tn
+	- cn is a primary key in tn
+	- cn is not a foreign key column 
+	(neither in o-many nor in many-many relationship
+*/
+/* as  for each Charstring tn, Charstring cid where cMap(tn,up,cid)
+  begin */
+   as for each Charstring tn,Charstring cn,URI pid  where pMap(tn,cn,up,pid) 
+   begin
+       if (isColOf(JDBCOfDS(DSOfUPV(up)),tn,cn) 
+	/*and notany(isPrKOf(JDBCOfDS(DSOfUPV(up)),catalogOfDS(DSOfUPV(up)),schemaOfDS(DSOfUPV(up)),tn,cn))*/
+  	   and count(primary_keys(jdbcOfDS(DSOfUPV(up)),catalogOfDS(DSOfUPV(up)),schemaOfDS(DSOfUPV(up)),tn))>=1
+	   /*and notany(isForKOf(jdbcOfDS(DSOfUPV(up)),catalogOfDS(DSOfUPV(up)),schemaOfDS(DSOfUPV(up)),tn,cn))*/
+		/*and notany(is_in_rMap(up,tn,cn))*/ ) then
+	      if ( isStringType(tn,cn,up) ) then		
+	     	return genPV_strings(up,tn,cn) 
+ 	      else return genPV_nostrings(up,tn,cn)
+         else  if  notany(primary_keys(jdbcOfDS(DSOfUPV(up)),catalogOfDS(DSOfUPV(up)),schemaOfDS(DSOfUPV(up)),tn) ) then
+	    /*print("Table "+ tn + " doesn't have a primary key");*/
+	    return genPV_nokey(up,tn,cn);
+    end;
+/*  end;*/
+
+
+/* Fn for defining a one-to-many relationship view for a foreign key column  mapped to 
+ * an RDF property;
+ * !!! NOT  generalized for the case of compound keys !!!!
+ */
+create function genFPV_nocompK(Charstring upv,		
+	                Charstring tn,
+                        Charstring cn,
+                        Charstring otn)->Charstring clause
+  as select "(" + genRelcall(upv,tn) + " and 
+        ucMap('" + tn + "','" + upv + "', cid) and 
+       	rMap('" + tn + "','" +cn +"','"+ otn +"','"+upv +"',p) and
+        s = rowID_URI(cid,"+k+") and 
+        val = rowID_URI(cMap('" + otn + "','" + upv + "'),{" + tn + "_"+cn+"})  )"
+  from Charstring k
+  where k = getKeyrr(DSOfUPV(upv),tn);
+
+
+
+/* Fn for defining a foreign key relationship view for a foreign key column  mapped to 
+ * an RDF property;
+ * !!! Generalized for the case of compound keys !!!!
+ */
+create function genFPV(Charstring upv,		
+	                Charstring tn,
+                        Charstring otn)->Charstring clause
+  as select "(" + genRelcall(upv,tn) + " and 
+        ucMap('" + tn + "','" + upv + "', cid) and 
+       	rcMap('" + tn + "','"+ otn +"','"+upv +"',p) and
+        s = rowID_URI(cid,"+k+") and 
+        val = rowID_URI(ucMap('" + otn + "','" + upv + "')," + k2+")  )"
+  from Charstring k, Charstring k2
+  where k = getKeyrr(DSOfUPV(upv),tn) and
+	k2=  getFKeyrr(DSofUPV(upv),tn,otn);
+
+
+
+create function genFPV_fk(Charstring upv,		
+	                Charstring tn,
+                        Charstring cn,
+                        Charstring otn)->Charstring clause
+  as select "(" + genRelcall(upv,tn) + " and 
+        ucMap('" + tn + "','" + upv + "', cid) and 
+       	rMap('" + tn + "','" +cn +"','"+ otn +"','"+upv +"',p) and
+        s = rowID_URI(cid," + k + ") and 
+        val = uri(rowID_fk(ucMap('" + otn + "','" + upv + "'), tuple(" + tn + "_"+cn+")))  )"
+  from Charstring k
+  where k = getKeyrr(DSOfUPV(upv),tn);
+
+
+/* Fn for defining a many-to-many relationship view for pair of foreign key columns 
+ */
+create function genFMMPV(Charstring upv,		
+	                Charstring tn,
+                        Vector of Charstring cn1,
+			Vector of Charstring cn2,
+                        Charstring otn1,
+			Charstring otn2)->Charstring clause
+  as select "(" + genRelcall(upv,tn) + " and 
+        ucMap('" + otn1 + "','" + upv + "', cid) and 
+        s = rowID_URI(cid,{" +k1 + "}) and 
+	rmmMap('" + tn + "',"+cn1+","+cn2+",'" +otn1 +"','" +otn2 +"','"+upv+"',p) and
+        val = rowID_URI(ucMap('" + otn2 + "','" + upv + "'),{" + k2 + "}) )"
+   from Charstring k1, Charstring k2
+  where k1 = concat_cols(tn, cn1) and
+	k2 = concat_cols(tn, cn2);
+ 
+        
+
+
+
+/* Generate one-to-many relationship views for each rMap-mapped relationship 
+between tables tn and otn.
+ */
+create function genFPVs(Charstring up)->Bag of Charstring
+  as 
+  for each Charstring tn, URI cid where cMap(tn,up,cid)
+  begin 
+   for each Charstring otn,URI prop
+    where rcMap(tn,otn,up,prop)
+   begin
+    return genFPV(up,tn,otn);
+   end;
+  end;
+
+create function genDFPVs(Charstring upv)-> Charstring
+  as concatagg(inject(genFPVs(upv)," or "));
+
+
+/* Generate many-to-many relationship views for each rmmMap-mapped relationship 
+among the tables tn, and otn1 and otn2.
+ */
+create function genFMMPVs(Charstring up)-> Charstring
+  as 
+    for each Charstring tn,Charstring otn1,Charstring otn2,Vector of Charstring cn1,Vector of Charstring cn2,URI prop
+	 where rmmMap(tn,cn1,cn2,otn1,otn2,up,prop)
+    return genFMMPV(up,tn,cn1,cn2,otn1,otn2);
+  
+
+create function genDFMMPVs(Charstring upv)-> Charstring
+  as concatagg(inject(genFMMPVs(upv)," or "));
+
+
+
+/*
+create function genPV(Charstring upv,		
+	              Charstring tn,
+	              Charstring cn)->Charstring clause
+as 
+ select "(" + genRelcall(upv,tn) + " and 
+        cMap('" + tn + "','" + upv + "', cid) and 
+        pMap('" + tn + "','" + cn + "','" + upv + "', p) and 
+        s = rowid(cid,concatLiteral("+tn+"_"+k+")) and 
+        val = " + tn + "_" + cn + ")"
+ from Charstring k
+ where k =  concatagg(inject(getKey(DSOfUPV(upv),tn),","+tn+"_"));
+
+*/
+
+
+
+create function genPV_oneK(Charstring upv,		
+	              Charstring tn,
+	              Charstring cn)->Charstring clause
+as 
+ select "(" + genRelcall(upv,tn) + " and 
+        cMap('" + tn + "','" + upv + "', cid) and 
+        pMap('" + tn + "','" + cn + "','" + upv + "', p) and 
+        s = rowid_URI(cid,"+tn+"_"+k+") and 
+        val = " + tn + "_" + cn + ")"
+ from Charstring k
+ where k =  concatagg(inject(getKey(DSOfUPV(upv),tn),","+tn+"_"));
+
+
+
+
+
+/*Plocka fram nyckel dynamiskt!*/
+
+
+create function genRelvars2(Charstring upv )->Charstring
+/*Creates the list of the columns for the tables that are classes*/
+as 
+ begin
+  declare Charstring relvars, Vector tabs;  
+  set relvars="";
+  for each Charstring tn, URI cid  where cMap(tn,upv)=cid 
+	set relvars= relvars + ","+rel(upv, tn);
+   return substring(relvars,1,char_length(relvars)-1); 
+ end;
+
+create function genRelvars2old(Charstring upv)->Charstring relvars
+as 
+ return concatagg(inject(genRelvars(upv), ","));
+
+
+
+
+/*
+create function genPVss(Charstring up)->Bag of Charstring
+  as 
+  for each Charstring tn, Charstring cid where cMap(tn,up,cid)
+  begin 
+   for each Charstring cn,Charstring pid where pMap(tn,cn,up,pid) 
+   begin
+     if (isColOf(JDBCOfDS(DSOfUPV(up)),tn,cn) and count(primary_keys(jdbcOfDS(DSOfUPV(up)),catalogOfDS(DSOfUPV(up)),schemaOfDS(DSOfUPV(up)),tn))>=1 ) then 
+     	return genPV(up,tn,cn)
+    else if (isColOf(JDBCOfDS(DSOfUPV(up)),tn,cn) and count(primary_keys(jdbcOfDS(DSOfUPV(up)),catalogOfDS(DSOfUPV(up)),schemaOfDS(DSOfUPV(up)),tn))=1 ) then
+	return genPV_oneK(up,tn,cn) 
+    else  if  notany(primary_keys(jdbcOfDS(DSOfUPV(up)),catalogOfDS(DSOfUPV(up)),schemaOfDS(DSOfUPV(up)),tn) ) then
+	return genPV_nokey(up,tn,cn);
+      end;
+  end;
+*/
+
+create function genDPV(Charstring upv)->Charstring
+  as concatagg(inject(genPVs(upv)," or "));
+
+
+/* Fn for definition of content view
+ */
+create function defineCV(Charstring upv)->Boolean
+  as
+   begin
+    eval("create function c" + upv + "()-> 
+          (Charstring s,Charstring p,Literal val) 
+         as 
+          select s,p,val 
+          where p" + upv + "() = (s,p,val) or
+		cr" + upv +"() = (s,p,val) or
+		mmr"+ upv +"() = (s,p,val) or
+	        cm" + upv + "()= (s,p,val) ;");
+   end;
+
+/* Fn for definition of content view
+ */
+create function defineDataView(Charstring upv)->Boolean
+  as
+   begin
+    eval("create function dat_" + upv + "()-> 
+          (URI s,URI p,Literal val) 
+         as 
+          select s,p,val 
+          where p" + upv + "() = (s,p,val) or
+	        cm" + upv + "()= (s,p,val) ;");
+   end;
+
+
+/* Definition of relationships view: including one-to-many and 
+	and many-to-many relationships*/
+
+create function defineRelView(Charstring upv)->Boolean
+  as
+   begin
+    eval("create function rel_" + upv + "()-> 
+          (URI s,URI p,Literal val) 
+         as 
+          select s,p,val 
+          where cr" + upv +"() = (s,p,val) or
+		mmr"+ upv +"() = (s,p,val) ;");
+   end;
+
+
+create function genRelvarsPV(Charstring upv )->Charstring
+/*Creates the list of the columns for the tables that will be 
+included in the p- view*/
+as 
+ begin
+  declare Charstring relvars,Charstring res, Vector tabs;    
+  set relvars="";	
+  for each Charstring tn, URI prop
+     where cMap(tn,upv)=prop
+     begin	
+     /*if (notany(select tabs[i] from integer i where tabs[i]=tn)) then*/
+      if( some(primary_keys(jdbcOfDS(DSOfUPV(upv)),catalogOfDS(DSOfUPV(upv)),schemaOfDS(DSOfUPV(upv)),tn)) ) then
+       begin
+     	set relvars= relvars + ","+rel(upv, tn);
+	/*set tabs=concat({tn},tabs);		*/
+      end
+      else
+       begin
+	set res="";
+      	set res=rel_nokey(upv,tn);  
+        if(res != "" ) then
+            set res=substring(res,0,char_length(res)-2);
+	set relvars=relvars+ "," + res;
+        end  ;     
+      end;
+    if(relvars = "" ) then
+        error("Could not extract any columns from table ")     
+    else 
+    	return substring(relvars,1,char_length(relvars)-1);  
+  end;
+
+
+
+/* Fn for defining of union of property views
+ */
+create function defineP(Charstring upv)->Boolean
+  as
+   begin
+    declare Charstring dpv;
+    genRelvars(upv);
+    set dpv=genDPV(upv);
+    if (dpv != "") then
+    begin
+     eval("create function p" + upv + "()-> 
+          (URI s,URI p,Literal val) 
+          as 
+           select s,p,val 
+           from " + genRelvarsPV(upv) 
+                 + ",Charstring ucid
+           where " + genDPV(upv) + ";");
+    end
+    else 
+    begin
+     eval("create function p" + upv + "()-> 
+          (URI s,URI p,Literal val) 
+          as 
+           select s,p,val where nil;");
+    end;
+   end;
+
+
+
+
+create function genRelvarsCR(Charstring upv )->Charstring
+/*Creates the list of the columns for the tables having FK and tables referencing to FK*/
+as 
+ begin
+  declare Charstring relvars, Vector tabs;  
+  set relvars="";
+  for each Charstring tn, Charstring otn,URI prop
+     where rcMap(tn,otn,upv)=prop
+  /*for each Charstring tn, Charstring cn,Charstring otn,Charstring prop
+     where rMap(tn,cn,otn,upv)=prop*/
+   begin
+     if (notany(select tabs[i] from integer i where tabs[i]=tn)) then
+      begin
+	set relvars= relvars + ","+rel(upv, tn);
+	set tabs=concat({tn},tabs);	
+      end;
+    /* if (notany(select tabs[i] from integer i where tabs[i]=otn)) then
+    /*  begin	*/
+   /*	set relvars = relvars + ","+rel(upv,otn);*/
+   /*	set tabs = concat({otn},tabs);	*/
+   /*   end;*/
+   end;
+   return substring(relvars,1,char_length(relvars)-1); 
+ end;
+
+
+create function genRelvarsMMR(Charstring upv )->Charstring
+/*Creates the list of the columns for the tables having FK and tables referencing to FK*/
+as 
+ begin
+  declare Charstring relvars, Vector tabs;  
+  set relvars="";
+  for each Charstring tn, Vector of Charstring cn1,Charstring otn1, Vector of Charstring cn2,Charstring otn2,URI prop
+     where rmmMap(tn,cn1,cn2,otn1,otn2,upv)=prop
+   begin
+     if (notany(select tabs[i] from integer i where tabs[i]=tn)) then
+      begin
+	set relvars= relvars + ","+rel(upv, tn);
+	set tabs=concat({tn},tabs);	
+      end;
+    /* if (notany(select tabs[i] from integer i where tabs[i]=otn)) then
+    /*  begin	*/
+   /*	set relvars = relvars + ","+rel(upv,otn);*/
+   /*	set tabs = concat({otn},tabs);	*/
+   /*   end;*/
+   end;
+   return substring(relvars,1,char_length(relvars)-1); 
+ end;
+
+/* Fn for defining union of class membership views
+ */
+create function defineCM(Charstring upv)->Boolean
+  as
+   begin
+    declare Charstring dccv;
+    set dccv=genDCCVs(upv);
+    if (dccv != "") then
+    begin
+     eval("create function cm" + upv + "()-> 
+          (URI s,URI p,Literal val) 
+         as 
+          select s,p,val 
+          from " + genRelvars2(upv) 
+                 + ",URI cid,Charstring cid1
+          where " + dccv + ";");
+    end
+    else 
+    begin
+     eval("create function cm" + upv + "()-> 
+          (URI s,URI p,Literal val) 
+          as 
+           select s,p,val where nil;");
+    end;    
+   end;
+
+
+/* Fn for defining union of one-to-many relationship views.
+ */
+create function defineCR(Charstring upv)->Boolean
+  as
+   begin
+    declare Charstring dfpv;
+    set dfpv=genDFPVs(upv);
+    if (dfpv != "") then
+    begin
+     eval("create function cr" + upv + "()-> 
+          (URI s,URI p,Literal val) 
+         as 
+          select s,p,val 
+          from " + genRelvarsCR(upv) 
+                 + ",Charstring cid
+          where " + dfpv + ";");
+    end
+    else
+    begin
+     eval("create function cr" + upv + "()-> 
+          (URI s,URI p,Literal val) 
+          as 
+           select s,p,val where nil;");
+    end;    
+   end;
+
+
+/* Fn for defining union of many-to-many relationship views.
+ */
+create function defineMMR(Charstring upv)->Boolean
+  as
+   begin
+    declare Charstring dfpv;
+    set dfpv=genDFMMPVs(upv);
+    if (dfpv != "") then
+    begin
+     eval("create function mmr" + upv + "()-> 
+          (URI s,URI p,Literal val) 
+         as 
+          select s,p,val 
+          from " + genRelvarsMMR(upv) 
+                 + ",Charstring cid
+          where " + dfpv + ";");
+    end
+    else
+    begin
+     eval("create function mmr" + upv + "()-> 
+          (URI s,URI p,Literal val) 
+          as 
+           select s,p,val where nil;");
+    end;    
+   end;
+
+  
+create function sdef()->(URI,URI,Literal);
+
+create function make_sdef(Charstring upv)->Charstring
+/*Contsructs the sdef function*/
+as
+  eval("create function sdef()-> (URI s,URI p,Literal o) 
+	as select s,p,o from URI s,URI p,Literal o
+	where (s,p,o) in s"+upv+"();");
+
+
+create function defineUPV(Charstring upv)->Boolean
+  as
+   begin
+    eval("create function " + upv + "()->
+          (URI s,URI p,Literal val)
+         as
+          select s,p,val where s" + upv + "() = (s,p,val) or 
+		  	      cr" + upv +"() = (s,p,val) or
+			     	mmr"+ upv +"() = (s,p,val) or
+	        	       cm" + upv + "()= (s,p,val) or
+                               p" + upv + "() = (s,p,val);");
+   end;
+
+
+/* Automatic generation of UPVs with END, END-P. 
+ */
+create function ViewRDB(Charstring upv)->Boolean 
+as
+ begin
+  declare Boolean pflg;
+	
+  /* Check if UPV already exists 
+   */
+  if(notany(functionnamed(upv))) then
+  begin
+
+   /* Never use partial evaluation during UPV creation
+    * when it is not further investigated 
+    */
+   /*if (pStat() = true) then
+    begin 
+     set pflg = true;
+     enable_parteval(false);  
+    end;*/
+
+   /* Definition of schema view 
+    */
+   
+  SchemaViewMaterialize(upv);
+   /* SchemaViewNoMaterialize(upv);*/
+   /*SchemaViewNoMaterialize_g(upv);*/
+
+  /*genRelvars(upv);*/
+
+   /* Definition of property views 
+    */
+   defineP(upv);
+
+/* Definition of one-to-many relationship views 
+    */
+   defineCR(upv);
+
+/* Definition of many-to-many relationship views 
+    */
+    defineMMR(upv);
+
+/* Definition of class membership views 
+    */
+   defineCM(upv);
+
+   /* Definition of content view 
+    */
+
+ /*  defineCV(upv); */
+  
+/*Define relationships view*/
+    defineRelView(upv);
+
+/*Define data view*/
+    defineDataView(upv);
+  
+   /* Definition of the UPV 
+    */
+   defineUPV(upv);
+
+   /* Definition of the SQL UPV 
+    */
+  /* defineSUPV(upv);*/
+
+   /* Never use partial evaluation during UPV creation
+    * when it is not further investigated. 
+    */  
+   if (pflg = true) then
+    begin 
+     enable_parteval(true);  
+    end;
+	
+   /* Set name of schema and content view for UPV 
+    */
+   set swofupv(upv)="s"+upv+"->URI.URI.Literal";
+   set cwofupv(upv)="c"+upv+"->URI.URI.Literal";
+
+   /*Overload UPV fn dynamically with dummy to patch SparQL parser*/
+   eval("create function " + upv + "(Literal lit)->
+    (URI s, URI p) 
+   as
+    select s, p where " + upv + "()=(s,p,lit);");
+    make_sdef(upv);
+
+ end;
+ return true;
+end;
+ 

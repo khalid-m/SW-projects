@@ -1,0 +1,26 @@
+register("WSMED");
+/* creating WSDL document */
+
+lisp;
+;; wait until WSMOS server started
+(while (not (osql "select 'WSMOS' in other_peers();")) )
+:osql
+
+
+/*import the wsdl document */
+importwsdl("wsdl/CMWS.wsdl");
+
+/*invoke operation EXISTCOURSE*/
+create function testquery()->charstring as select d["member"] from vector c, record d where c =in(sql("select * from EXISTCOURSE E "))  and d =in(c) and d["member"]="DBT-HT2010";
+lisp;
+(checkequal "UDBL CourseManager's EXISTCOURSE web service operation >>"
+   ((osql "testquery();")
+    '(("DBT-HT2010"))))
+:osql
+
+kill_peer("wsmos");
+kill_the_federation();
+quit;
+
+
+

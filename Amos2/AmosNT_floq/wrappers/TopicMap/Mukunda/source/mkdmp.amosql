@@ -1,0 +1,21 @@
+< "../source/TMSchema.amosql";
+/*< "../source/crInstances.amosql";*/
+< "../source/TMForeign.amosql";
+<'../../../../SWARD/src/amosql/h.amosql';
+<'../../../../SWARD/src/amosql/sparqlParser.amosql';
+<'../../../../SWARD/src/amosql/rdql.amosql';
+<'../../../../SWARD/src/amosql/sql.amosql';
+< "../source/newTMO.amosql";
+< "../source/TMRDFSchemaT.amosql";
+< "../source/RDFMap.amosql";
+
+
+
+
+lisp;
+(setq _prompter_ "SWATM")
+(load "../../../../SWARD/src/lsp/h.lsp")
+
+:osql
+save "../TAmos.dmp";
+quit;

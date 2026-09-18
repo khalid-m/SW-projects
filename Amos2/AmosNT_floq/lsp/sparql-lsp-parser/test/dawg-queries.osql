@@ -1,0 +1,134 @@
+/*-*-sql-*-*******************************************************************/
+
+/* Examples with OPTIONAl and UNION from http://www.w3.org/2001/sw/DataAccess/tests/ */
+
+/*
+dropfunction(#'DEF',1);
+add DEF() = turtle('data/dawg/Expr1/data-1.ttl');
+*/
+	
+/* changed '< 15' to '!= "20"' */
+set :q_expr1 = '
+PREFIX  dc: <http://purl.org/dc/elements/1.1/>
+PREFIX  x: <http://example.org/ns#>
+SELECT  ?title ?price
+WHERE
+    { ?book dc:title ?title .
+      OPTIONAL
+        { ?book x:price ?price .
+          FILTER (?price != "20") .
+        } .
+    }
+';
+
+/* changed '< 15' to '!= "20"' */
+set :q_expr2 = '
+PREFIX  dc: <http://purl.org/dc/elements/1.1/>
+PREFIX  x: <http://example.org/ns#>
+SELECT  ?title ?price
+WHERE
+    { ?book dc:title ?title .
+      OPTIONAL
+        { ?book x:price ?price } .
+      FILTER (?price != "20")  .
+    }
+';
+
+/*
+dropfunction(#'DEF',1);
+add DEF() = turtle('data/dawg/extracted-examples/data-5.5.ttl');
+*/
+
+set :q_5_5 = '
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+PREFIX vcard: <http://www.w3.org/2001/vcard-rdf/3.0#>
+SELECT ?foafName ?mbox ?gname ?fname
+WHERE
+  {  ?x foaf:name ?foafName .
+     OPTIONAL { ?x foaf:mbox ?mbox } .
+     OPTIONAL { ?x vcard:N ?vc .
+                ?vc vcard:Given ?gname .
+                OPTIONAL { ?vc vcard:Family ?fname }
+              }
+  }
+';
+
+set :q_5_5a = '
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+PREFIX vcard: <http://www.w3.org/2001/vcard-rdf/3.0#>
+SELECT ?foafName ?mbox ?gname ?fname ?year
+WHERE
+  {  ?x foaf:name ?foafName .
+     OPTIONAL { ?x foaf:mbox ?mbox } .
+     OPTIONAL {  ?x vcard:N ?vc .
+                 ?vc vcard:Given ?gname .
+                 OPTIONAL { ?vc vcard:Family ?fname }
+              } .
+     OPTIONAL { ?x foaf:year ?year .
+                FILTER (?vc = "_:a")
+              }
+  }
+';
+
+/*
+dropfunction(#'DEF',1);
+add DEF() = turtle('data/dawg/extracted-examples/data-6.1.ttl');
+*/
+
+set :q_6_1 = '
+PREFIX dc10:  <http://purl.org/dc/elements/1.0/>
+PREFIX dc11:  <http://purl.org/dc/elements/1.1/>
+
+SELECT ?title
+WHERE  { { ?book dc10:title  ?title } UNION { ?book dc11:title  ?title } }
+';
+
+
+set :q_6_1_r1 = '
+PREFIX dc10:  <http://purl.org/dc/elements/1.0/>
+PREFIX dc11:  <http://purl.org/dc/elements/1.1/>
+
+SELECT ?x ?y
+WHERE  { { ?book dc10:title ?x } UNION { ?book dc11:title  ?y } }
+';
+
+/*
+dropfunction(#'DEF',1);
+add DEF() = turtle('data/dawg/extracted-examples/data-10.2.ttl');
+*/
+
+set :q_10_2 = '
+PREFIX foaf:    <http://xmlns.com/foaf/0.1/>
+SELECT ?nameX ?nameY ?nickY
+WHERE
+  { ?x foaf:knows ?y ;
+       foaf:name ?nameX .
+    ?y foaf:name ?nameY .
+    OPTIONAL { ?y foaf:nick ?nickY }
+  }
+';
+
+/* contradicts DAWG, probably error there */
+
+/*
+dropfunction(#'DEF',1);
+add DEF() = turtle('data/dawg/extracted-examples/data-11.4.10.ttl');
+*/
+
+set :q_11_4_10 = '
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+SELECT ?name1 ?name2
+ WHERE { ?x foaf:name  ?name1 ;
+            foaf:mbox  ?mbox1 .
+         ?y foaf:name  ?name2 ;
+            foaf:mbox  ?mbox2 .
+         FILTER (?mbox1 = ?mbox2 && ?name1 != ?name2)
+       }
+';
+
+/*
+sparql(:q_11_4_10);
+*/
+
+/* syntax not supported */
+

@@ -1,0 +1,7 @@
+<"parteval.osql";
+<"files.osql";
+< "stream.structs.osql";
+load_lisp("../lsp/ineqrewrite.lsp");
+<'formulas.stream.osql';
+<"allcuts.stream.rewritten.osql";
+save "../current.limited.dmp";

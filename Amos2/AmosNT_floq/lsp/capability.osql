@@ -1,0 +1,151 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2002 Martin Hansson, UDBL
+ * $RCSfile: capability.osql,v $
+ * $Revision: 1.20 $ $Date: 2012/03/25 15:49:59 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Definition of the datatype capability and functions for 
+ *              querying.
+ *
+ * A capability is a local representation of a remote datasource's ability to
+ * do some particular processing of data, expressed in the local query 
+ * language, AmosQL.
+ *
+ * The type capability cannot be instantiated, but there are two subtypes: 
+ *
+ * - generic_capability : these are hooked to a wrapper, 
+ *     i.e. a type of datasources, for example the type Relational. 
+ *     Examples of generic wrapper capabilities are 
+ *     comparisons, arithmetic, etc. Generic capabilities are inherited.
+ *
+ * - specific_capability : belong to a particular instance of a datasource,
+ *     this is where the capability to absorb a call to a core-cluster
+ *     function comes in. 
+ ****************************************************************************/
+
+create function resolvent (Capability) -> Function
+  /* The resolvent owning a capability */
+  as stored;
+
+create function adornment (Capability) -> Charstring bpat
+  /* The binding pattern of a capability */
+  as stored;
+
+create function absorbent (Capability) -> Charstring
+  /* The absorbent of a capability */
+  as stored;
+
+create function datasource(Specific_capability) -> Datasource
+  /* Relationship from data source specific capability to datasource */
+  as stored;
+
+create function wrapper(Generic_capability c) -> Type w
+  /* Relationship from generic capability to wrapper */
+  as stored;
+
+create function wrapper(Datasource ds) -> Type w
+  /* A wrapper is a type w under type Datasource */
+  as typeof(ds);
+
+create function wrapper(Specific_capability c) -> Type w
+  /* Find the wrapper of a datasource specific capability */
+  as wrapper(datasource(c));
+
+create function instantiate_specific_capability(Charstring name) -> Capability
+  /* Constructor for a named datasource specific capability */
+  as foreign 'instantiate_specific_capability-+';
+
+create function instantiate_generic_capability(Charstring name) -> Capability
+  /* Constructor for a named generic wrapper capability */
+  as foreign 'instantiate_generic_capability-+';
+
+create function capabilitynamed(Charstring name) -> Capability cap 
+  /* Find capability by name */
+  as select cap 
+     where objectname(cap)=name;
+
+create function generic_capabilities(Datasource ds)->Bag of Generic_capability
+  /* Get the generic capabilities of a datasource */
+  as select gc 
+     from Generic_capability gc 
+     where wrapper(gc) = typeof(ds);
+
+create function inherited_generic_capabilities(Datasource ds)
+                                           -> Bag of Generic_capability
+  /* Get all generic wrapper capabilities of a datasource and its supertypes */
+  as select gc 
+     from Generic_capability gc 
+     where wrapper(gc) in allsupertypes(typeof(ds));
+
+create function specific_capabilities(Datasource ds)
+                                  -> Bag of Specific_capability
+  /* Get the specific capabilities of a datasource */
+  as select sc 
+  from Specific_capability sc 
+  where datasource(sc)=ds;
+
+create function capabilities(Datasource ds) -> Bag of Capability 
+  /* Get all capabilities of a datasource: specific, generic, and inherited */
+  as select distinct c 
+     from Capability c
+     where c in specific_capabilities(ds) or
+           c in generic_capabilities(ds) or
+           c in inherited_generic_capabilities(ds);
+
+create function absorbent(Datasource ds, Function f, Charstring bpat)
+                      -> Charstring 
+  /* Get the absorbent in datasource ds of function f 
+     with binding pattern bpat */
+  as select absorbent(c)
+     from capability c
+     where c = capabilities(ds) and 
+           adornment(c) = bpat and 
+           resolvent(c)= f;
+
+create function adornments(Datasource ds, Function f) -> Bag of Charstring 
+  /* Get the binding patterns of the capabilities in datasource ds 
+     of function f */ 
+  as select adornment(c)
+     from   Capability c
+     where  c in capabilities(ds) and 
+            f = resolvent(c);
+
+create function create_capability(Datasource datasource, Function resolvent, 
+				  Charstring adornment, Charstring absorbent)
+                -> Specific_capability 
+  /* Create a specific capability for a datasource */
+  as begin
+     declare Specific_capability cap;
+     set cap = instantiate_specific_capability(name(resolvent)+'.'+
+				               adornment+'@'+name(datasource));
+     set datasource(cap)= datasource;
+     set resolvent(cap) = resolvent;
+     set adornment(cap) = adornment;
+     set absorbent(cap) = absorbent;
+     return cap;
+  end;
+
+create function create_capability(Type wrapper,
+				  Function resolvent, 
+				  Charstring adornment,
+				  Charstring absorbent) -> Generic_capability
+  /* Create a generic capability for a wrapper */
+  as begin
+     declare Generic_capability cap;
+     set cap = instantiate_generic_capability(name(resolvent)+'.'+
+                                              adornment+'@'+name(wrapper));
+     set wrapper(cap)= wrapper;
+     set resolvent(cap) = resolvent;
+     set adornment(cap) = adornment;
+     set absorbent(cap) = absorbent;
+     return cap;
+     end;
+
+create function create_capability(Charstring wrapper, Charstring resolvent,
+                                  Charstring bpat, Charstring absorbent)
+                 -> Generic_capability
+  /* Define a generic capability for a wrapper */
+  as create_capability(typenamed(wrapper), theresolvent(resolvent),
+                       bpat, absorbent);

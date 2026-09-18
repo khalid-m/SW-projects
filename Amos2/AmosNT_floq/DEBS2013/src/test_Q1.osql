@@ -1,0 +1,30 @@
+
+set :testQ1 = "data/testQ3.csv";
+
+lisp;
+
+(checkequal "test for q1"
+((osql "count(in(q1(q1input(:testQ1))));")
+ '((0))))
+
+(checkequal "q1a result check 1 minute window"
+((osql "count(csv_file_tuples('output/q1a.csv'));")
+ '((48))))
+
+(checkequal "q1 result check 1 minute window"
+((osql "count(csv_file_tuples('output/q1b_1M.csv'));")
+ '((48))))
+
+(checkequal "q1 result check 5 minute window"
+((osql "count(csv_file_tuples('output/q1b_5M.csv'));")
+ '((48))))
+
+(checkequal "q1 result check 20 minute window"
+((osql "count(csv_file_tuples('output/q1b_20M.csv'));")
+ '((48))))
+
+(checkequal "q1 result check 60 minute window"
+((osql "count(csv_file_tuples('output/q1b_landmark.csv'));")
+ '((48))))
+
+:osql

@@ -1,0 +1,795 @@
+options
+{
+  JAVA_UNICODE_ESCAPE   = true;
+  UNICODE_INPUT         = false ;
+}
+//************************************
+
+PARSER_BEGIN(Rdql2Amos)
+import java.util.*;
+import callin.*;
+import callout.*;
+
+public class Rdql2Amos {
+static String[] wholeQuery=new String[10];
+static Vector selectVariables=new Vector();
+static Vector sources=new Vector();
+static Vector rdfTripleVariables=new Vector();
+static Vector rdfTriples=new Vector();
+static Vector prefixvec=new Vector();
+static Vector constraintvec=new Vector();
+static int andVar=0;
+
+
+public Rdql2Amos() {
+}
+
+public void reinit() {
+	wholeQuery=new String[10];
+	selectVariables=new Vector();
+	sources=new Vector();
+	rdfTripleVariables=new Vector();
+	rdfTriples=new Vector();
+	prefixvec=new Vector();
+	constraintvec=new Vector();
+	andVar=0;
+}
+
+
+public String output() {
+        	
+/************** remove doubles in rdfTripleVariables ************************************/
+        	
+        	for (int a=0;a<rdfTripleVariables.size();a++)	{
+				int last=rdfTripleVariables.lastIndexOf(rdfTripleVariables.get(a));
+				if (last!=a)	{
+					rdfTripleVariables.remove(last);
+					a--;
+				}
+			}
+			
+/*************** handling of the select variables following ***************************************/           	        	        	
+        	
+        	int b=0;
+        	String selectvars="";
+        	if (selectVariables.size()==0)	{  //if it is "select *"
+        		selectVariables=rdfTripleVariables;
+        	}
+        	while(b < selectVariables.size()) {
+        		if (b==selectVariables.size()-1)	{
+        			selectvars+=selectVariables.elementAt(b);
+        		} else	{
+        			selectvars+=selectVariables.elementAt(b)+", ";  	
+        		}
+        		b++;
+			}
+			
+        wholeQuery[1]= selectvars; 
+
+//wholeQuery[2]="from" (in the grammar)        
+/*********************** sources are in AmosQL all select variables and variables in RDFtriples - following *****/
+
+        	Vector sourceVars=(Vector) selectVariables.clone();	
+        	for (int c=0;c<rdfTripleVariables.size();c++) {
+				if (!selectVariables.contains(rdfTripleVariables.get(c))) { 
+				sourceVars.addElement(rdfTripleVariables.get(c));
+				}
+			} 
+			for (int d=0;d<sourceVars.size();d++)	{ 	//we need just the variables
+				if (sourceVars.elementAt(d).equals(","))	{
+					sourceVars.remove(d);
+					d--;
+				}
+			}
+			int e=0;
+        	String sourceVarsOut="";
+        	while(e < sourceVars.size()) {
+        		if (e==sourceVars.size()-1) {
+        			sourceVarsOut+="charstring "+sourceVars.elementAt(e);
+        		} else { 
+        			sourceVarsOut+="charstring "+sourceVars.elementAt(e)+", ";
+        		} 
+        		e++;
+			}
+						
+        wholeQuery[3]=sourceVarsOut; //output of the sources. These are the select variables and all variables in the TriplePatterns
+        
+//wholeQuery[4]="where" (in the grammar)
+/************** that will be in the form: "rdf_triples('source') in AmosQL****************/        
+        	//not fixed for more than one source. 
+        	int f=0;
+        	while (f < sources.size())	{
+ 				if (Start.SourceNameSpace==null)	{
+ 					wholeQuery[5]= "rdf_triples('"+sources.elementAt(f)+"')";
+ 				} else	{
+        			wholeQuery[5]= "rdf_triples('"+Start.SourceNameSpace+sources.elementAt(f)+"')";
+        		}
+        		f++; 
+        	}
+        	
+//**************************************************************************************/
+       
+        wholeQuery[6]="=";
+        
+/****************** prefixes from PrefixClause must be inserted into TriplePatterns - following ************/
+        	
+        	for (int prefsize=prefixvec.size();prefsize>0;prefsize=prefsize-2)	{
+        		String shortcut=(String)prefixvec.elementAt(1);
+        		int length=shortcut.length();
+           		for (int g=0;g<rdfTriples.size();g++)	{
+           			String tripleElement=(String)rdfTriples.elementAt(g);
+           			if (tripleElement.length()>length)	{
+        				if (tripleElement.substring(1,length+1).equals(shortcut))	{   
+        					int colonindex=tripleElement.lastIndexOf(":");
+        					String postfix=tripleElement.substring(colonindex+1);
+        					rdfTriples.set(g,"'"+prefixvec.elementAt(0)+postfix); //see also URI method for description
+        				}
+        			}
+        		}
+        		prefixvec.removeElementAt(1);
+        		prefixvec.removeElementAt(0);	
+        	}
+/**************** now the prefixes are inserted into the RDFTriples ***************************/
+/****************** this the handling of the RDFTriples following******************************/        	
+        	int h=0;
+        	while(h < rdfTriples.size()) {
+        		String svo="";
+        		if (andVar==0)	{
+        			for (int i=0; i<5; i++)	{
+        				svo+=rdfTriples.elementAt(h); 
+        				h++;
+        			}
+        			if (wholeQuery[7]==null)	{
+        				wholeQuery[7]="<"+svo+">";
+        			} else	{
+        				wholeQuery[7]+="<"+svo+">";
+        			}
+        		} else	{
+        			for (int i=0; i<5; i++)	{
+        				svo+=rdfTriples.elementAt(h);
+        				h++;
+        			} 	
+        			andVar--;
+        			if (wholeQuery[7]==null)	{
+        				wholeQuery[7]="<"+svo+"> and "+wholeQuery[5]+" = ";
+        			} else	{
+        				wholeQuery[7]+="<"+svo+"> and "+wholeQuery[5]+" = ";
+        			}
+        		}
+        	}
+/************************ now comes constraint syntax (for Example where age>=24)***************/        		
+
+		for (int j=0; j<constraintvec.size(); j++)	{
+			if (wholeQuery[8]==null)	{
+				wholeQuery[8]=(String)constraintvec.elementAt(j);
+			} else	{
+				wholeQuery[8]+=(String)" "+constraintvec.elementAt(j);
+			}
+		}
+		
+/*************************** output of the AmosQL query following *******************************/
+
+        wholeQuery[9]=";";
+        
+        String parsedquery="";
+        int k=0;
+        while(k < 10) {
+        	if (wholeQuery[k]==null)	{
+        		k++;
+        	} else	{
+        		//System.out.print(wholeQuery[k]+" "); //output of the whole query
+        		parsedquery+=wholeQuery[k]+" ";
+        		k++;
+        	}
+        }
+      	
+      	//System.out.println("");
+      	reinit();
+		return parsedquery;
+	}
+
+}
+
+PARSER_END(Rdql2Amos)
+
+/* WHITE SPACE */
+
+SKIP : { " " | "\t" | "\n" | "\r" | "\f" }
+// Need this because we may not be at the start of the identifier
+// when the mode is entered.  For URIs, we enter that mode because
+// a suitable < is seen, similarly we exit on > so no skip necessary
+
+
+/* COMMENTS */
+
+MORE :
+{
+  "//" : IN_SINGLE_LINE_COMMENT
+|
+  "/*" : IN_MULTI_LINE_COMMENT
+}
+
+<IN_SINGLE_LINE_COMMENT>
+SPECIAL_TOKEN :
+{
+  <SINGLE_LINE_COMMENT: "\n" | "\r" | "\r\n" > : DEFAULT
+}
+
+<IN_MULTI_LINE_COMMENT>
+SPECIAL_TOKEN :
+{
+  <MULTI_LINE_COMMENT: "*/" > : DEFAULT
+}
+
+<IN_SINGLE_LINE_COMMENT,IN_MULTI_LINE_COMMENT>
+MORE :
+{
+  < ~[] >
+}
+
+/* LITERALS */
+
+TOKEN :
+{
+  < INTEGER_LITERAL:
+        <DECIMAL_LITERAL> (["l","L"])?
+      | <HEX_LITERAL> (["l","L"])?
+  >
+|
+  < #DECIMAL_LITERAL: <DIGITS> >
+|
+  < #HEX_LITERAL: "0" ["x","X"] (["0"-"9","a"-"f","A"-"F"])+ >
+|
+  < FLOATING_POINT_LITERAL:
+        (["0"-"9"])+ "." (["0"-"9"])* (<EXPONENT>)? (["f","F","d","D"])?
+      | "." (["0"-"9"])+ (<EXPONENT>)? (["f","F","d","D"])?
+      | (["0"-"9"])+ <EXPONENT> (["f","F","d","D"])?
+      | (["0"-"9"])+ (<EXPONENT>)? ["f","F","d","D"]
+  >
+|
+  < #EXPONENT: ["e","E"] (["+","-"])? (["0"-"9"])+ >
+|
+/****
+ * No character literals
+ * And we allow single quoted strings
+ */
+
+  < STRING_LITERAL1:
+      "'"
+      (   (~["'","\\","\n","\r"])
+        | ("\\" ~["\n","\r"])
+      )*
+      "'"
+  >
+|
+  < STRING_LITERAL2:
+      "\""
+      (   (~["\"","\\","\n","\r"])
+        | ("\\"  ~["\n","\r"])
+      )*
+      "\""
+  >
+|
+  < #LETTER: (["a"-"z"] | ["A"-"Z"])>
+|
+  < #DIGIT:  ["0"-"9"]>
+  
+}
+
+/* Keywords : includes operators that are words and should be
+ * before general things like IDENTIFIER which swallow almost anything
+ */
+
+TOKEN [IGNORE_CASE] :
+{
+  < SELECT:      "select" >
+|
+  < SOURCE:      "source" >
+|
+  < FROM:        "from" >
+|
+  < WHERE:       "where" >
+|
+  < SUCHTHAT:    "and" >
+|
+  < PREFIXES:    "using" >
+|
+  < FOR:         "for" >
+| < STR_EQ: "eq" >
+| < STR_NE: "ne" >
+| <IDENTIFIER: (<LETTER>|<DIGIT>|"_"|"$"|"."|"-"|":"|"//"|"/"|"#"|"~")+ > //must be after Select etc.
+}
+
+TOKEN :
+{
+  < BOOLEAN_LITERAL: "true" | "false" >
+|
+  < NULL_LITERAL: "null">
+|
+  < DIGITS: (["0"-"9"])+ >
+}
+
+/* SEPARATORS */
+
+TOKEN :
+{
+  < LPAREN: "(" >
+| < RPAREN: ")" >
+| < LBRACE: "{" >
+| < RBRACE: "}" >
+| < LBRACKET: "[" >
+| < RBRACKET: "]" >
+| < SEMICOLON: ";" >
+| < COMMA: "," >
+| < DOT: "." >
+}
+
+/* OPERATORS */
+
+TOKEN :
+{
+  // ASSIGN is here so that the tokenizer will process it and
+  // the parser will flag an error.  Otherwise, the tokenizer
+  // gives a less helpful message. 
+  < ASSIGN: "=" >
+| < GT: ">" >
+| < LT: "<" >
+| < BANG: "!" >
+| < TILDE: "~" >
+| < HOOK: "?" >
+| < COLON: ":" >
+| < EQ: "==" >
+| < NEQ: "!=" >
+| < LE: "<=" >    // Maybe: | "=>" >
+| < GE: ">=" >    // Maybe: | "=<" >
+| < SC_OR: "||" >
+| < SC_AND: "&&" >
+| < INCR: "++" >
+| < DECR: "--" >
+| < PLUS: "+" >
+| < MINUS: "-" >
+| < STAR: "*" >
+| < SLASH: "/" >
+| < BIT_AND: "&" >
+| < BIT_OR: "|" >
+| < BIT_XOR: "^" >
+| < REM: "%" >
+| < LSHIFT: "<<" >
+| < RSIGNEDSHIFT: ">>" >
+| < RUNSIGNEDSHIFT: ">>>" >
+// The tokens for string EQ and string NE are done before IDENTIFIER
+// to ensure that they are recognized as reserved words.
+| < STR_MATCH: ("=~"|"~~") >
+| < STR_NMATCH: "!~">
+| < DATATYPE: "^^">
+| < AT: "@">
+}
+
+// **** Debug point
+
+void CompilationUnit() #void :
+{}
+{
+  // The <EOF> tests for trailing junk
+  // but does not work for "//...<EOF>"
+  Query() <EOF>
+}
+
+// Optional comma
+//commaflag==0 means more than one selectvariable
+//commaflag==1 means more than one source
+//commaflag==2 means more than one triplepattern
+//commaflag==3 means more than one prefix (Using ... for , ... for)
+//commaflag==4 are the commas in the rdfTriples
+void CommaOpt(int commaflag) #void :
+{}
+{
+    (<COMMA>)?
+    {
+  	//if(commaflag==0) {selectVariables.addElement(",");} //comma output is done in the output directly
+  	if(commaflag==1) {sources.addElement(",");}           //not tested for more than one source
+  	if(commaflag==2) {andVar=andVar+1;}
+  	//if(commaflag==3) {prefixvec.addElement(",");}
+  	if(commaflag==4) {rdfTriples.addElement(",");}
+  	}
+	
+}
+
+// **** Debug point
+
+void Query() :
+{}
+{
+  SelectClause() 
+  ( SourceClause() )?  
+  TriplePatternClause()
+  (ConstraintClause() )?
+  ( PrefixesClause() ) ?
+}
+
+void SelectClause() :
+{}
+{
+  LOOKAHEAD(2)
+  <SELECT> Var(0) (CommaOpt(0) Var(0))* 
+  	{
+  	wholeQuery[0]="select";
+  	}
+|
+  <SELECT> "*" // in this case, just the Variables from the RDFTriples must stand here in AmosQL
+	{
+	wholeQuery[0]="select";
+	}
+}
+
+void SourceClause() :
+{}
+{
+  (<SOURCE> | <FROM>)
+   {
+   wholeQuery[2]="from";
+   }
+   SourceSelector()
+  (CommaOpt(1) SourceSelector() )* //not fixed for more than one source
+}
+
+void SourceSelector() :
+{}
+{
+  URI(0)
+}
+
+void TriplePatternClause() :
+{}
+{
+  <WHERE> TriplePattern() ( CommaOpt(2) TriplePattern() )*
+	{
+  	wholeQuery[4]="where";
+  	}
+}
+
+void ConstraintClause() :
+{}
+{
+  // This comma is not optional - must have comma or "AND"
+  <SUCHTHAT> {constraintvec.addElement("and");} Expression() ( (<COMMA> | <SUCHTHAT> ){constraintvec.addElement("and");} Expression())*
+}
+
+void PrefixesClause() : 
+{}
+{
+    <PREFIXES> PrefixDecl() ( CommaOpt(3) PrefixDecl() )*
+    	
+}
+
+void PrefixDecl() :
+{String prefix="";}
+{
+  prefix=Identifier() <FOR> URI(1)
+	{
+	prefixvec.addElement(prefix);
+	}
+}
+
+void TriplePattern() :
+{}
+{
+  <LPAREN> VarOrURI() CommaOpt(4)  VarOrURI() CommaOpt(4)  VarOrLiteral() <RPAREN>
+}
+
+void VarOrURI() #void :
+{}
+{
+  Var(1) | URI(2)
+}
+
+void VarOrLiteral() #void :
+{}
+{
+  Var(1) | Literal()
+}
+
+//varflag==0: coming from SelectClause
+//varflag==1; coming from Triplepattern
+//varflag==2; coming from PrimaryExpression
+void Var(int varflag) :
+{String varName="";}
+{
+  "?" varName=Identifier() {
+  	if (varflag==0) {selectVariables.addElement(varName);}
+  	if (varflag==1) {rdfTripleVariables.addElement(varName);
+  	    			rdfTriples.addElement(varName);}
+  	if (varflag==2)	{constraintvec.addElement(varName);}
+  }
+}
+
+/******************************************************************/
+// Constraint syntax follows.
+
+// **** Debug point
+
+void Expression() #void :
+{}
+{
+  ConditionalOrExpression()
+}
+
+void ConditionalOrExpression() #void :
+{}
+{
+  ConditionalXorExpression() 
+  ( <SC_OR> {constraintvec.addElement(getToken(0).toString());} ConditionalXorExpression() #LogicalOr(2))*
+}
+
+void ConditionalXorExpression() #void :
+{}
+{
+  ConditionalAndExpression() 
+  // Skip this
+  //( <SC_XOR> ConditionalAndExpression() #LogicalXor(2) )*
+}
+
+void ConditionalAndExpression() #void :
+{}
+{
+   ValueLogical()
+   ( <SC_AND> {constraintvec.addElement(getToken(0).toString());} ValueLogical() #LogicalAnd(2))*
+}
+
+// End of boolean expressions
+
+/******************************************************************/
+
+// Things that are not operations on boolean terms.
+
+void ValueLogical() #void :
+{}
+{
+  StringEqualityExpression()
+}
+
+void StringEqualityExpression() #void :
+{}
+{
+  NumericalLogical()
+  ( <STR_EQ> {constraintvec.addElement(getToken(0).toString());} NumericalLogical()     #StringEqual(2)
+  | <STR_NE> {constraintvec.addElement(getToken(0).toString());} NumericalLogical()     #StringNotEqual(2)
+  )*
+}
+
+// Expressions that involve comparing numbers.
+
+void NumericalLogical() #void :
+{}
+{
+  InclusiveOrExpression()
+}
+
+void InclusiveOrExpression() #void :
+{}
+{
+  ExclusiveOrExpression()
+  ( <BIT_OR> {constraintvec.addElement(getToken(0).toString());} ExclusiveOrExpression() #BitOr(2) )*
+}
+
+void ExclusiveOrExpression() #void :
+{}
+{
+  AndExpression()
+  ( <BIT_XOR> {constraintvec.addElement(getToken(0).toString());} AndExpression() #BitXor(2) )*
+}
+
+void AndExpression() #void :
+{}
+{
+  ArithmeticCondition()
+  ( <BIT_AND> {constraintvec.addElement(getToken(0).toString());} ArithmeticCondition() #BitAnd(2) )*
+}
+
+void ArithmeticCondition() #void :
+{}
+{
+  EqualityExpression()
+}
+
+void EqualityExpression() #void :
+{}
+{
+  RelationalExpression() 
+  ( <EQ> {constraintvec.addElement(getToken(0).toString());} RelationalExpression()    #Equal(2)
+  | <NEQ> {constraintvec.addElement(getToken(0).toString());} RelationalExpression()   #NotEqual(2)
+  )?
+}
+
+void RelationalExpression() #void :
+{}
+{
+  NumericExpression()
+  ( <LT> {constraintvec.addElement(getToken(0).toString());} NumericExpression() #LessThan(2)
+  | <GT> {constraintvec.addElement(getToken(0).toString());} NumericExpression() #GreaterThan(2)
+  | <LE> {constraintvec.addElement(getToken(0).toString());} NumericExpression() #LessThanOrEqual(2)
+  | <GE> {constraintvec.addElement(getToken(0).toString());} NumericExpression() #GreaterThanOrEqual(2) 
+  )?
+}
+/*************************************************************/
+
+// **** Debug point
+
+void NumericExpression ()  #void :
+{}
+{
+  ShiftExpression()
+}
+
+
+void ShiftExpression() #void :
+{}
+{
+  AdditiveExpression()
+  ( <LSHIFT> {constraintvec.addElement(getToken(0).toString());} AdditiveExpression()         #LeftShift(2)
+  | <RSIGNEDSHIFT> {constraintvec.addElement(getToken(0).toString());} AdditiveExpression()   #RightSignedShift(2)
+  | <RUNSIGNEDSHIFT> {constraintvec.addElement(getToken(0).toString());} AdditiveExpression() #RightUnsignedShift(2)
+  )*
+}
+
+void AdditiveExpression() #void :
+{}
+{
+  MultiplicativeExpression()
+  ( <PLUS> {constraintvec.addElement(getToken(0).toString());} MultiplicativeExpression()   #Add(2)
+  | <MINUS> {constraintvec.addElement(getToken(0).toString());} MultiplicativeExpression()  #Subtract(2)
+  )*
+}
+
+void MultiplicativeExpression()  #void :
+{}
+{
+  UnaryExpression()
+  ( <STAR>  {constraintvec.addElement(getToken(0).toString());} UnaryExpression() #Multiply(2)
+  | <SLASH> {constraintvec.addElement(getToken(0).toString());} UnaryExpression() #Divide(2)
+  | <REM>   {constraintvec.addElement(getToken(0).toString());} UnaryExpression() #Modulus(2)
+  )*
+}
+
+void UnaryExpression() #void :
+{}
+{
+  UnaryExpressionNotPlusMinus()
+|
+  ( <PLUS>  {constraintvec.addElement(getToken(0).toString());} UnaryExpression()  #UnaryPlus(1)
+  | <MINUS> {constraintvec.addElement(getToken(0).toString());} UnaryExpression()  #UnaryMinus(1)
+  )
+}
+
+void UnaryExpressionNotPlusMinus() #void :
+{}
+{
+  ( <TILDE> | <BANG> ) {constraintvec.addElement(getToken(0).toString());} UnaryExpression() #UnaryNot(1)
+|
+  PrimaryExpression()
+}
+
+void PrimaryExpression() #void :
+{}
+{
+  Var(2)
+|
+  Literal1()
+|
+  <LPAREN> {constraintvec.addElement(getToken(0).toString());} Expression() <RPAREN>{constraintvec.addElement(getToken(0).toString());} 
+}
+
+/*********************************************************************/
+
+//Literal comes from Triplepattern
+void Literal() #void :
+{}
+{
+  URI(2)
+|
+  NumericLiteral(0)
+|
+  TextLiteral(0)
+|
+  BooleanLiteral(0)
+|
+  NullLiteral(0)
+}
+
+//Literal1 comes from Primary Expression
+void Literal1() #void :
+{}
+{
+  URI(3)
+|
+  NumericLiteral(1)
+|
+  TextLiteral(1)
+|
+  BooleanLiteral(1)
+|
+  NullLiteral(1)
+}
+
+// for the rest of the literals: 
+//0, from Triplepattern
+//1, from PrimaryExpression
+
+void NumericLiteral(int numlit) :
+{}
+{
+  <INTEGER_LITERAL> 
+  {
+  if (numlit==0) {rdfTriples.addElement(getToken(0).toString());}
+  if (numlit==1) {constraintvec.addElement("'"+getToken(0).toString()+"'");}
+  }
+|
+  <FLOATING_POINT_LITERAL> 
+  {
+  if (numlit==0) {rdfTriples.addElement(getToken(0).toString());}
+  if (numlit==1) {constraintvec.addElement("'"+getToken(0).toString()+"'");}
+  }
+}
+
+void TextLiteral(int textlit) :
+{}
+{
+  <STRING_LITERAL1>
+  {
+  if (textlit==0) {rdfTriples.addElement(getToken(0).toString());}
+  if (textlit==1) {constraintvec.addElement("'"+getToken(0).toString()+"'");}
+  }
+|
+  <STRING_LITERAL2>
+  {
+  if (textlit==0) {rdfTriples.addElement(getToken(0).toString());}
+  if (textlit==1) {constraintvec.addElement("'"+getToken(0).toString()+"'");}
+  }
+}
+ 
+void BooleanLiteral(int boollit) :
+{}
+{
+  <BOOLEAN_LITERAL>
+  {
+  if (boollit==0) {rdfTriples.addElement(getToken(0).toString());}
+  if (boollit==1) {constraintvec.addElement(getToken(0).toString());}
+  }
+}
+
+void NullLiteral(int nulllit) :
+{}
+{
+  <NULL_LITERAL>
+  {
+  if (nulllit==0) {rdfTriples.addElement(getToken(0).toString());}
+  if (nulllit==1) {constraintvec.addElement("'"+getToken(0).toString()+"'");} //"null" does not exist in AmosQL
+  }
+}
+
+//uriflag==0, source
+//uriflag==1, prefix (... for URI)
+//uriflag==2, URI in rdfTriple
+//uriflag==3, URI in PrimaryExpression
+void URI(int uriflag) :
+{String ident="";}
+{
+  	"<" ident=Identifier() ">" 
+  	{
+  	if (uriflag==0) {sources.addElement(ident);}
+  	if (uriflag==1) {prefixvec.addElement(ident);}/*that´s a bit tricky: in the postfix (prefix:postfix)
+  													we have the "'" after it included because it´s extractet
+  													from an	Uri in a RDFTriple. But not before the prefix*/
+  	if (uriflag==2) {rdfTriples.addElement("'"+ident+"'");}
+  	if (uriflag==3) {constraintvec.addElement(ident);}
+  	}
+}
+
+String Identifier() :
+{}
+{
+  <IDENTIFIER> 
+  {
+  	return getToken(0).toString();
+  } 
+}

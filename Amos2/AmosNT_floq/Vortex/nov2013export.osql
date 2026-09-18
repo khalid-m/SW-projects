@@ -1,0 +1,79 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2013 Cheng Xu, UDBL
+ * $RCSfile: nov2013export.osql,v $
+ * $Revision: 1.1 $ $Date: 2013/11/20 20:58:35 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Master file for exported svali with all three cases
+ *
+ ****************************************************************************
+ * $Log: nov2013export.osql,v $
+ * Revision 1.1  2013/11/20 20:58:35  chexu484
+ * *** empty log message ***
+ *
+ ****************************************************************************/
+
+exposeSource(true);
+
+< 'schema/SmartVortexSchema.osql'; /* The generic Smart Vortex schema based on D3.1 */
+
+cd("Sandvik");  /* load Sandvik's case */
+
+< 'CorenetWrapper.osql'; /* The general Corenet stream wrapper that handles any 
+                            equipment stream from Sandvik */
+
+< 'MillWrapper.osql'; /* The milling wrapper in terms of CORENET */
+
+< 'MillingModel.osql'; /* The math model for milling */
+
+exposeSource(false);
+
+< 'MillingValidator.osql'; /* The milling stream validation model */
+
+< 'OtherWrapper.osql'; /* The other Sandvik wrapper in terms of CORENET */
+
+< 'LearningModel.osql'; /* The learning model and validator */
+
+< 'LearningValidator.osql';
+
+< 'SandvikMetaData.osql'; /* Populate the Smart Vortex database with meta-data */
+
+exposeSource(true);
+
+cd("../Hagglunds");  /* load Hagglunds' case */
+
+< 'HagglundsLogWrapper.osql';
+
+< 'HagglundsCOOLERWrapper.osql';
+
+< 'HagglundsCOOLERModel.osql';
+
+exposeSource(false);
+
+< 'HagglundsCOOLERValidator.osql';
+
+< 'HagglundsCOOLERMetaData.osql';
+
+exposeSource(true);
+
+cd("../Volvo");  /* load Volvo' case */
+
+< 'CanBusWrapper.osql';
+
+< 'WheelLoaderWrapper.osql';
+
+< 'WheelLoaderModel.osql';
+
+exposeSource(false);
+
+< 'WheelLoaderValidator.osql';
+
+< 'VolvoMetaData.osql';
+
+cd("..");
+
+save "bin/demo2013.dmp";
+
+quit;

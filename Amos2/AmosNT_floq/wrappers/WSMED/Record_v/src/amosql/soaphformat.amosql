@@ -1,0 +1,30 @@
+create function soaphiterate(Operation op, vector inele)-> record rs 
+		as 
+		begin
+		 set value(ve5)=inele from Vecele5 ve5 where name(ve5)='ele5';
+		  for each Element p,Vecele3  ve, Vecele5 ve5  where p=in(soapheader(op))and name(ve)="ele3" and name(ve5)='ele5'
+		   begin
+			if subelements(p)then 
+			begin
+			  set temprec(ve5)=iterate2(subelements(p),value(ve5)); 
+			  set value(ve)= put_record(value(ve),name(p),temprec(ve5));
+			end
+		       else
+			 begin
+		          
+			  set value(ve)= put_record(value(ve),name(p),value(ve5)[0]);
+			  set value(ve5)=remove_ele(value(ve5));
+			end
+		   end;
+		   set rs=findresult1();	
+		   result rs;
+		   set value(ve)=make_record({}) from Vecele3 ve where name(ve)="ele3";
+		  						 	
+	       end;
+
+create function soaphdecode(Operation op,vector inele)
+                ->record rs as
+begin
+   set rs =soaphiterate(op,inele);
+   result rs;
+end;

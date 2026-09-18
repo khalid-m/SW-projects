@@ -1,0 +1,1 @@
+svali.exe -o "loadsystem('src', 'master.osql'); quit;"

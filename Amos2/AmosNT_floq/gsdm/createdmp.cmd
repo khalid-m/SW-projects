@@ -1,0 +1,1 @@
+amos2 -O createdmp.osql

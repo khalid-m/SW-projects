@@ -1,0 +1,29 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2002 Martin Hansson, UDBL
+ * $RCSfile: constructor.osql,v $
+ * $Revision: 1.2 $ $Date: 2009/11/16 20:06:33 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Functions for declaring a custom constructor function for a 
+ *              user type.
+ *
+ ****************************************************************************/
+create function set_constructor(type t, function constructor) -> boolean
+as foreign 'set_constructor--+';
+
+create function forbid_constructor(type t) -> boolean
+as foreign 'forbid_constructor-+';
+
+create function forbid_constructor(type t, charstring error_message) -> boolean
+as foreign 'forbid_constructor--+';
+
+create function get_property(type base, charstring generic_name, type res)
+  -> function f
+as
+select f
+where generic(f) != f and
+      res in result_types(f) and
+      name(generic(f))=generic_name and
+      argument_types(f)= allsupertypes(base);

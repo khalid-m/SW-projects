@@ -1,0 +1,254 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2002 Martin Hansson, UDBL
+ * $RCSfile: jdbc.osql,v $
+ * $Revision: 1.29 $ $Date: 2013/10/18 16:05:09 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: OSQL declaration of functions that constitute the JDBC wrapper
+ *              interface.
+ ****************************************************************************
+ * $Log: jdbc.osql,v $
+ * Revision 1.29  2013/10/18 16:05:09  thatr500
+ * added/modified getting tableIndexStatistics from relational database.
+ *
+ * Revision 1.28  2013/07/30 20:34:14  andan342
+ * Added Amos wrappers for connection.setAutoCommit() & connection.commit()
+ *
+ * Revision 1.27  2013/03/26 16:33:58  andan342
+ * Implemented sqlbatch() function (timely garbage collection is still an issue!)
+ *
+ * Revision 1.26  2013/03/22 16:04:33  andan342
+ * Changed the way ByteStream:s are processed - compatibility fix for MS SQL Server JDBC Driver
+ *
+ * Revision 1.25  2012/10/23 15:05:03  minzh812
+ * move the running SQL wrapper code to AmosNT/wrappers
+ *
+ * Revision 1.24  2012/09/04 14:18:05  torer
+ * sql() returns Bag of Vector
+ *
+ * Revision 1.23  2012/04/13 12:30:05  torer
+ * = -> in
+ *
+ * Revision 1.22  2012/02/13 19:19:36  torer
+ * Corrected signatures
+ *
+ * Revision 1.21  2011/01/29 11:04:41  torer
+ * Base system uses (...) tuple notation, 'return' statement, and systematic indentation
+ *
+ * Revision 1.20  2008/08/15 11:46:25  torer
+ * SQLU in terms of SQL
+ *
+ * Revision 1.19  2008/07/31 20:27:46  torer
+ * read_sql(JDBC c, Charstring file)->Bag of Vector
+ * executes SQL statements in FILE separated by ;
+ *
+ * Revision 1.18  2007/08/28 08:18:16  petrini
+ * Added possibility for user to define keys outside of schema.
+ *
+ * Revision 1.17  2006/04/29 10:11:13  torer
+ * Check for duplicated or conflicting declarations in FROM clause
+ *
+ ****************************************************************************/
+
+create function jdbc(Charstring name, Charstring driver) -> Jdbc
+  as foreign 'jdbc--+';
+
+create function load_driver(Charstring driver) -> Boolean
+  as foreign 'JAVA:jdbc_interface.JDBCInterface/loadDriver';
+
+create function load_driver(Jdbc ds, Charstring driver) -> Boolean
+  as foreign 'JAVA:jdbc_interface.JDBCInterface/loadDriver';
+ 
+create function connect(Jdbc ds1, 
+			Charstring url,
+                        Charstring user_name, 
+			Charstring password)  -> Jdbc ds2
+  as foreign 'JAVA:jdbc_interface.JDBCInterface/connect';
+
+/* Connect to a JDBC database using default username and password */
+create function connect(Jdbc ds1, Charstring url) -> Jdbc ds2
+  as foreign 'JAVA:jdbc_interface.JDBCInterface/connectDefault';
+
+create function disconnect(Jdbc ds) -> Integer
+  as foreign 'JAVA:jdbc_interface.JDBCInterface/disconnect';
+
+create function sql_setMaxBinarySize(Jdbc ds, Integer maxBinarySize) -> Boolean
+  as foreign 'JAVA:jdbc_interface.JDBCInterface/setMaxBinarySize'; /* AA */
+
+create function sql_setAutoCommit(Jdbc ds, Integer v) -> Boolean
+  as foreign 'JAVA:jdbc_interface.JDBCInterface/setAutoCommit'; /* AA */
+
+create function sql_commit(Jdbc ds) -> Boolean
+  as foreign 'JAVA:jdbc_interface.JDBCInterface/commit'; /* AA */
+
+create function sql(Jdbc ds, Charstring query) -> Bag of Vector
+  as foreign 'JAVA:jdbc_interface.JDBCInterface/executeQuery';
+
+costhint('JDBC.CHARSTRING.SQL->VECTOR','bbf',{1000,1000});
+
+create function sql(Jdbc ds, Charstring query, Vector arguments) 
+                  ->Vector
+  as foreign 'JAVA:jdbc_interface.JDBCInterface/executeParametrizedQuery';
+
+create function sqlbatch(Jdbc ds, Charstring query, Bag argBag)  /* AA */
+                  ->Vector
+  as foreign 'JAVA:jdbc_interface.JDBCInterface/executeParametrizedQueryBatch';
+
+create function sqlu(Jdbc ds,Charstring update) -> Integer
+  as sql(ds,update)[0];
+	 	     
+create function sqlu(Jdbc ds, Charstring query, Vector arguments) -> Integer
+  as sql(ds,query,arguments)[0];
+
+costhint('JDBC.CHARSTRING.VECTOR.SQL->VECTOR','bbbf',{1000,100});
+
+create function read_sql (jdbc ds, Charstring file) -> Bag of Vector
+  as select sql(ds, ln) 
+     from Charstring ln 
+     where ln in readlines(file,";") and not_empty(ln);
+
+create function tables(Jdbc ds)
+                     -> Bag of(Charstring table,Charstring catalog,
+                               Charstring schema, Charstring tbl_type)
+  as foreign 'JAVA:jdbc_interface.JDBCInterface/tables';
+
+create function tables(Jdbc ds, Charstring tablename_pattern)
+                     -> Bag of (Charstring table,Charstring catalog,
+                                Charstring schema, Charstring tbl_type)
+  as foreign 'JAVA:jdbc_interface.JDBCInterface/tablesByName';
+
+create function tables_in_schema(Jdbc ds, Charstring schemaname)
+                               -> Bag of (Charstring tablename, 
+                                          Charstring catalogname,
+                                          Charstring typename)
+  as select tablename, catalogname, typename 
+     where (tablename, catalogname, schemaname, typename) in tables(ds);
+
+create function columns(Jdbc ds, 
+			Charstring schema_pattern,
+			Charstring table_name_pattern,
+			Charstring column_name_pattern)
+                      -> Bag of (Charstring column_type, 
+                                 Charstring column_name)
+  as foreign 'JAVA:jdbc_interface.JDBCInterface/columns';
+
+/* User defined keys
+ */
+create function primaryUDKeys(Charstring dsn, Charstring catalog_name, 
+                              Charstring schema_name, Charstring table_name)
+                            -> Bag of (Charstring column_name, 
+                                       Charstring constraint_name)
+  as stored;
+
+/* Old primary_keys fn.
+ */
+create function primaryDefaultKeys(Jdbc ds, Charstring catalog_name, 
+                                   Charstring schema_name, 
+                                   Charstring table_name) 
+                                 -> Bag of (Charstring column_name, 
+                                            Charstring constraint_name)
+  as foreign 'JAVA:jdbc_interface.JDBCInterface/primaryKeys';
+
+/* New primary_keys fn handling both primary keys defined 
+ * outside the relational database schema and ordinary primary keys.
+ */
+create function primary_keys(Jdbc ds, 
+                             Charstring catalog_name, 
+                             Charstring schema_name, 
+                             Charstring table_name) 
+                           -> Bag of (Charstring column_name, 
+                                      Charstring constraint_name)
+  as  begin
+      if(some(primaryUDKeys(name(ds),catalog_name,schema_name,table_name)))
+      then for each Charstring col, Charstring con 
+           where (col,con) in primaryUDKeys(name(ds),catalog_name, 
+                                           schema_name, table_name)
+           return (col,con)
+      else for each Charstring col, Charstring con 
+           where (col,con) in primaryDefaultKeys(ds,catalog_name, 
+                                                schema_name, table_name)
+           return (col,con);
+      end;
+
+create function cross_reference(Jdbc,
+				Charstring primary_table,
+				Charstring foreign_table) 
+                              -> (Charstring foreign_key, 
+                                  Charstring primary_key)
+  as foreign 'JAVA:jdbc_interface.JDBCInterface/getCrossReference';
+
+/*
+ * Ordered by pktable
+ */
+create function imported_keys(Jdbc ds, Charstring fktable)
+                            -> Bag of (Charstring pktable, 
+                                       Charstring pkcolumn, 
+                                       Charstring fkcolumn)
+  as foreign 'JAVA:jdbc_interface.JDBCInterface/getImportedKeys';
+
+/*
+ * Ordered by pktable. Works with MSQL Server.
+ */
+create function imported_keys(Jdbc ds, Charstring catalog, Charstring schema,
+                              Charstring fktable)
+                          -> Bag of (Charstring pktable, Charstring pkcolumn, 
+                                     Charstring fkcolumn)
+  as foreign 'JAVA:jdbc_interface.JDBCInterface/getImportedKeys';
+
+/*
+ * Ordered by pktable
+ */
+create function exported_keys(Jdbc ds, Charstring pktable)
+                          -> Bag of (Charstring pkcolumn, Charstring fktable, 
+                                     Charstring fkcolumn)
+  as foreign 'JAVA:jdbc_interface.JDBCInterface/getExportedKeys';
+			      
+/*
+ * A feature of JDBC. Not even Interbase bothered to implement this.
+ */
+create function index_info(Jdbc j, 
+			   Charstring schema_name,
+			   Charstring table_name, 
+    			   Boolean unique, 
+			   Boolean approximate)
+                       -> (Charstring index_type, Integer cardinality) 
+  as foreign 'JAVA:jdbc_interface.JDBCInterface/getIndexInfo';
+
+create function max_index_length(Jdbc j) -> Integer 
+  as foreign 'JAVA:jdbc_interface.JDBCInterface/getMaxIndexLength';
+
+create function set_trace_printing(Jdbc j, Boolean mode) -> Boolean
+  as foreign 'JAVA:jdbc_interface.JDBCInterface/setTracePrinting';
+
+
+/*
+ * A feature of JDBC. Not even Interbase bothered to implement this.
+ */
+/*[2012-10-31 - Thanh]
+a)  The result will consist of
+    - Table statistic which is table's statistic
+    - All indexes of the tables
+b) More information will be returned for indexes
+   - index_type  : tableIndexStatistic, clustred,non-clustured, hashed, 
+                   or other index 
+   - index_name  : name of the index, null when type is tableIndexStatistic
+   - column_name : null when type is tableIndexStatistic
+   - position    : sequence number within index;
+                   zero when TYPE is tableIndexStatistic
+   - index cardinality       
+c) If there is a composite index on column A, B, C then it will return 3
+   result rows accordingly
+
+Reference: http://docs.oracle.com/javase/6/docs/api/java/sql/DatabaseMetaData.html#getIndexInfo(java.lang.String, java.lang.String, java.lang.String, boolean, boolean)   
+   
+*/
+create function index_info(Jdbc j, 
+                           Charstring catalog,  
+			   Charstring schema_name,
+			   Charstring table_name, 
+    			   Boolean unique, 
+			   Boolean approximate)
+                       -> (Charstring index_type, Charstring indexname, Charstring column_name, Integer ordinal_position, Integer cardinality) 
+  as foreign 'JAVA:jdbc_interface.JDBCInterface/getIndexInfo';

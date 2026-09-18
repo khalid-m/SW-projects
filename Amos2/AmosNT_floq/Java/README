@@ -1,0 +1,43 @@
+This directory contains libraries and demos of interface between Java
+and Amos II.
+
+---------------
+A. Demonstration of Java callout interface from Amos II to Java:
+
+The following three Java source code files demonstrate how Amos II 
+foreign functions can be defined in Java:
+
+EvalTest.java
+Foreign.java
+LenTest.java
+
+To dymamically load and define the foreign functions in the above files
+do: 
+
+A1: You first need to download the Java virtual machine from
+    http://www.oracle.com/
+
+A2: Set PATH to include the directory 'bin' under the JDK
+    as well as the amos2 'bin' directory
+
+A3: Set CLASSPATH to include '.' and 'javaamos.jar' in the amos2 'bin'
+    folder.
+
+A4: javac LenTest.java EvalTest.java Foreign.java
+
+A5: javaamos ../bin/amos2.dmp
+
+A6: < 'javademo.osql';
+
+Now the above Java programs are loaded into Amos II. To test them, see
+instructions in javademo.osql.
+
+---------------
+B. Example of callin interface from Java to Amos II.
+
+B1: javac AmosDemo.java
+
+B2: java AmosDemo ..\bin\amos2.dmp
+
+
+

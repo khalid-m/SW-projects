@@ -1,0 +1,111 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2000 Tore Risch, UDBL
+ * $RCSfile: index.osql,v $
+ * $Revision: 1.11 $ $Date: 2013/03/25 20:59:37 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Testing basic index management
+ *
+ ****************************************************************************
+ * $Log: index.osql,v $
+ * Revision 1.11  2013/03/25 20:59:37  torer
+ * Testing cardinality constraint violations
+ *
+ * Revision 1.10  2013/02/17 17:11:02  torer
+ * Now estimates selectivity independent of index kind
+ *
+ * Revision 1.9  2011/03/09 07:15:57  torer
+ * Testing indexing parameterless function returning tuple
+ *
+ * Revision 1.8  2011/01/27 11:26:15  torer
+ * Changed from <...> to SQL's (...) notation for tuples (much nicer)
+ *
+ ****************************************************************************/
+
+create function pdata(Integer ssn) -> (Charstring name, Integer age);
+
+create function pdata0() -> (Charstring name, Integer age);
+
+set pdata(1)= ("Bill",4);
+set pdata(2)= ("Bull",3);
+
+add pdata0() = ("Bill",4);
+add pdata0() = ("Bill",5);
+
+lisp;
+(checkequal 
+ "Indexing"
+ ((osql "select pdata(i) from integer i;") '(("Bill" 4) ("Bull" 3)))
+ ((errstring (osql "add pdata(1)= ('Kalle',2);")) "Violating unique index")
+ ((null(osql "create_index('PDATA','age','hash','unique');")) nil)
+ ((osql "drop_index('PDATA','ssn');") '((0)))
+ ((osql "select pdata(i) from integer i;")'(("Bull" 3) ("Bill" 4)))
+ ((errstring (osql "drop_index('PDATA','ssn');"))
+  "No index for INTEGER.PDATA->CHARSTRING.INTEGER in position 0")
+ ((errstring (osql "drop_index('PDATA','age');"))
+  "Trying to remove last index on INTEGER.PDATA->CHARSTRING.INTEGER")
+ ((osql "add pdata(1)= ('Kalle',2);") nil)
+ ((errstring (osql "create_index('PDATA','ssn','hash','unique');")) 
+  "Violating unique index")
+ ((null(osql "create_index('PDATA','ssn','hash','multiple');")) nil) 
+ ((osql "drop_index('PDATA','age');") '((2)))
+ ((sorttuples (osql "select pdata(i) from integer i;"))
+  '(("Bill" 4) ("Bull" 3) ("Kalle" 2)))
+ )
+:osql
+create function pname(integer ssn) -> charstring name;
+set pname(1)="a";
+set pname(2)="b";
+set pname(3)="a";
+set pname(4)="b";
+create_index('PNAME','name','hash','multiple');
+lisp;
+
+(checkequal 
+ "Index properties"
+ ((errstring (osql "create_index('PNAME','name','hash','unique');"))
+  "Violating unique index")
+ ((length(osql "select indexes(functionnamed('PNAME'));")) 2)
+ ((osql "index_cardinality(indexes(functionnamed('PNAME')));") '((4)(2)))
+ )
+:osql
+
+create function income(Integer ssn) -> Number inc as stored;
+
+create_index("income","inc","mbtree","multiple");
+
+add income(ssn)=inc from Integer ssn, Integer inc
+    where ssn in iota(1,5000) and inc = mod(ssn,101);
+
+lisp;
+
+(defglobal _indexes_ (relation-indexes (get-relation (theresolvent 'income))))
+
+(checkequal 
+ "Index statistics"
+ ((index-cardinality (car _indexes_)) 5000)
+ ((index-cardinality (cadr _indexes_)) 101)
+ ((roundto (estimate-pos-selectivity (car _indexes_) 1 6000) 5) 0.0099)
+ ((roundto (estimate-pos-selectivity (cadr _indexes_) 1 6000) 5) 0.0099)
+ ((roundto (estimate-pos-selectivity (car _indexes_) 0 6000) 5) 0.0002)
+ ((roundto (estimate-pos-selectivity (cadr _indexes_) 0 6000) 5) 0.0002)
+ ((roundto (estimate-pos-selectivity (car _indexes_) 0 1000) 5) 0.001)
+ )
+
+:osql
+
+create function idmap(Number x) -> Number y key as stored;
+set idmap(1)=10;
+
+lisp;
+
+(checkequal "Cardinality constraints"
+	    ((errstring (osql "add idmap(1)=11;")) "Violating unique index")
+	    ((errstring (osql "set idmap(2)=10;")) "Violating unique index")
+	    )
+
+:osql
+
+rollback;

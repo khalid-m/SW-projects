@@ -1,0 +1,62 @@
+
+create function NoCheckColOrderInsertLoader(JDBC jd,Charstring filename2, charstring baseURI)
+->Boolean
+/*Generates CALL PROCEDURE_NAME  statements to insert data into the database. These CAll Procedure_name statements calls the stored procedures in the database for the data insertion.*/
+as begin
+        declare Number time1,Number time2, Number total,Vector cnt,Charstring z,Charstring tname,Charstring t,Charstring t1,Charstring t2,Charstring t3,
+		Charstring t4,Charstring t5,Charstring pkV,Charstring c1,Charstring c2,Charstring cont3,Charstring cont1,Charstring cont2;
+	set t="";set cont3="";	set total=0;
+	
+	/*Retrieves all connecting tables from the NT file and stores in a vector.*/
+	for each charstring ch where ret_tableURIs_CT()=ch set cnt=concat(cnt,{ch});
+	
+	for each charstring s, charstring p,charstring v, Charstring i where readtuples1(filename2)=<s,p,v,i>
+	begin   if(p in cnt) then 
+		begin	if (p!=t) then 
+			begin 	
+				set cont1=ret_pknamefromRowId(baseURI,s);
+				set cont2=ret_pknamefromRowId(baseURI,v);
+				set cont3="";set t=p;
+				for each charstring pk where ret_pkURIs(p)=pk 
+					set cont3=str_exp(clearURI(pk,baseURI),"/"); 
+			end;
+             		set c1=ret_pkVal(baseURI,s);set c2=ret_pkVal(baseURI,v);
+			
+			set time1=real(now());
+				
+				sql(jd,"CALL SP_"+clearURI(p,baseURI)+"_"+cont3+"("+c1+","+c2+");");
+			set time1=real(now())-time1; 
+			set total=time1+total;	
+		end
+		else 
+		begin if (s!=t) then 
+				begin set pkV=get_pkVal_Col(baseURI,s);set tname=ret_tableNamefromRowID(baseURI,s);set t=s; end;
+
+			if(v!="" and p!="<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>") then
+			begin 	set z=clearURI(p,baseURI);
+				if(like(z,"*/*")) then 
+				begin 	set t3=str_exp(clearURI(p,baseURI),'/');set t4="'"+v+"'";
+					set time1=real(now());
+						sql(jd,"CALL SP_"+tname+"_"+t3+"("+pkV+","+t4+");");
+					set time1=real(now())-time1;set total=time1+total; 
+				end
+				else 
+				begin  set t1=str_exp1(clearURI(v,baseURI),"/");
+					set t2=ret_pknamefromRowId(baseURI,v);
+					for each Charstring ch1,Charstring ch2,Vector vec1,Vector vec2 where get_fkVal_NameCol(baseURI,p,v)=<ch1,ch2,vec1,vec2> 
+					begin 
+						set t3=ch1;set t4=ch2;
+						set time1=real(now());
+						for each integer j where j in iota(1,dim(vec1))
+							sql(jd,"CALL SP_"+tname+"_"+vec1[j-1]+"("+pkV+","+vec2[j-1]+");");
+						set time1=real(now())-time1;
+						set total=time1+total;	
+					end;
+				end;
+			end;
+		end;
+	end;
+	print(total);
+end;
+/*****************************************************************************/
+

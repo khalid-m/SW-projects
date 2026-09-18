@@ -1,0 +1,516 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2006 Johan Petrini, Tore Risch,Silvia Stefanova UDBL
+ * $RCSfile: export_SWARD_URI.amosql,v $
+ * $Revision: 1.2 $ $Date: 2013/12/11 16:24:02 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Definition of fns for automatic generating of UPVs in SWARD.
+ ******************************************************************************
+ * 
+ ****************************************************************************/
+
+
+
+/* Property mapping table
+ * A table, column and UPV decides a property identifier i.e. 
+ *  they make up a key in pMap.
+ * A second key in pMap is UPV and property identifier that decides table 
+ * and column.
+ * There can be several underlying data sources since every UPV is associated 
+ * with a data source. Table pMap is on BCNF. 
+ */
+create function pMap(Charstring tn,Charstring cn,Charstring upv,
+                        URI prop)->Boolean
+  as stored;
+
+/* Wrapper for pMap stored fn. 
+ */
+create function pMap(Charstring tn,Charstring cn,Charstring upv)
+                        ->URI prop
+  as select prop where pMap(tn,cn,upv,prop);
+
+create function getPMap(Charstring tn,Charstring cn,Charstring upv)
+                          ->URI prop
+  as select prop where pMap(tn,cn,upv,prop); 
+
+/* Get those tbls refered to in pMap table. 
+ */
+create function getPMapTbls(Charstring upv)->Charstring tn
+  as select distinct tn 
+     from Charstring cn, URI prop 
+     where pMap(tn,cn,upv,prop);
+
+/* Get extent of pMap. 
+ */
+create function pMap()->(Charstring tn,Charstring cn,Charstring upv,URI propid)
+as
+ select tn,cn,upv,propid 
+ where pMap(tn,cn,upv,propid);
+
+/* Class mapping table 
+ */
+create function cMap(Charstring tn,Charstring upv,URI class)
+                        ->Boolean
+  as stored;
+
+/* Wrapper for cMap stored fn.
+ */
+create function cMap(Charstring tn,Charstring upv)->URI class
+  as select class where cMap(tn,upv,class);
+
+/* Get extent of cMap. 
+ */
+create function cMap()->(Charstring tn,Charstring upv,URI classid)
+as
+ select tn,upv,classid 
+ where cMap(tn,upv,classid);
+
+create function cMap(Charstring upv)->(Charstring tn,URI class)
+  as select tn,class where cMap(tn,upv,class)=true;
+
+/* Setter fns for pMap and cMap 
+ */	
+create function assignPropID(Charstring tbl,
+                             Charstring col,
+                             Charstring upv,
+                             URI propid)->Boolean
+as
+ begin
+  set pMap(tbl,col,upv)=propid;
+ end;	
+
+create function assignClassID(Charstring tbl,
+                              Charstring upv,
+                              URI classid)->Boolean
+as
+ begin
+  set cMap(tbl,upv)=classid;
+ end;	
+	
+/* Defining TEVExtent table that maps a colid to 
+ * corresponding domain calculus expression that 
+ * defines the column triple extent of the colid. 
+ */
+create function TEVExtent(Charstring tid,
+                          Charstring upv,
+                          Function vd)->Boolean as stored;
+
+/* Wrapper for TEVExtent stored fn.
+ */
+create function TEVExtent(Charstring tid,
+                          Charstring upv)->Function vd
+as 
+  select vd 
+  where TEVExtent(tid,upv,vd);
+
+
+/* Stored fn rMap containing all foreign properties together with their respective 
+ * relational columns for a given UPV. 
+ */
+create function rMap(Charstring tn,Charstring cn,Charstring otn,Charstring upv,URI relationship)
+                        ->Boolean as stored;
+
+declare_key(theresolvent(
+             'Charstring.Charstring.Charstring.Charstring.URI.rMap->Boolean'),
+               {'tn','cn','upv'});
+declare_key(theresolvent(
+             'Charstring.Charstring.Charstring.Charstring.URI.rMap->Boolean'),
+               {'upv','relationship'});
+
+/* Wrapper for rMap stored fn. 
+ */
+create function rMap(Charstring tn,Charstring cn,Charstring otn,Charstring upv)
+                        ->URI prop
+  as select prop where rMap(tn,cn,otn,upv,prop);
+
+/* Get extent of rMap. (Silvia S)
+ */
+create function rMap()->(Charstring tn,Charstring cn,Charstring otn,Charstring upv,URI prop)
+as
+ select tn,cn,otn,upv,prop 
+ where rMap(tn,cn,otn,upv,prop);
+
+/* Setter fns for rMap. User not allowed to set the foreign property identifier of a column in a table
+ * to a property identifier already existing in pMap for that column. 
+ */	
+create function assignCRID(Charstring tn,
+                           Charstring cn,
+                           Charstring otn,
+                           Charstring upv,
+                           URI crid)->Boolean
+as
+ begin
+  set rMap(tn,cn,otn,upv)=crid
+ end;
+
+/* Defining fn that given a name of a function f returns f. 
+ * If there exist more than one resolvent for f an exception is thrown. 
+ */
+create function resolventNamed(Charstring fn) -> Function
+ as if count(resolvents(functionnamed(fn))) != 1 
+    then error("Not exactly one resolvent",fn)
+    else return resolvents(functionnamed(fn));
+
+/* Get key of relational table. 
+ */
+create function getKey(Charstring ds,
+  	                Charstring tn)
+	                ->Charstring col
+as 
+ select col 
+ from Charstring constraint 
+ where (col,constraint) in primary_keys(JDBCOfDS(ds),catalogOfDS(ds),
+                                        schemaOfDS(ds),tn);
+
+/* Generate variables as part of UPV for RDB. 
+ */
+create function genRelvars(Charstring upv,
+                            Charstring rname)->Charstring
+as 
+ begin
+  declare Charstring relvars;
+  set relvars= concatagg(inject((select "Charstring " +  rname + "_" + cname 
+                                 from Charstring cname,Charstring ctype 
+                                 where (ctype, cname) = 
+                                        columns(JDBCOfDS(DSOfUPV(upv)),
+                                         rname)), ","));
+  if(relvars = "") then
+   begin
+    error("Could not extract any columns from table " + rname);
+   end
+  else
+  return relvars; 
+ end;
+
+create function genRelvars1(Charstring upv)->Bag of Charstring
+as
+ begin
+  for each Charstring tn,URI cid where cMap(tn,upv,cid)
+   begin
+    declare Charstring relvars;
+    if (notany(functionnamed(upper(tn) + "_" + DSOfUPV(upv) + "_CC"))) 
+    then  import_table(JDBCOfDS(DSOfUPV(upv)),catalogOfDS(DSOfUPV(upv)),
+                        schemaOfDS(DSOfUPV(upv)),tn,'',false,{});
+    set relvars = concatagg(inject((select "Charstring " +  tn + "_" + cn 
+	                    from Charstring cn,Charstring ctype 
+	                    where (ctype, cn) in 
+                             columns(JDBCOfDS(DSOfUPV(upv)),tn)), ","));
+    if(relvars = "") then
+     error("Could not extract any columns from table " + tn);
+
+    return relvars; 
+   end;
+ end;
+
+create function genRelvarsCR1(Charstring upv)->Bag of Charstring
+as
+ begin
+  for each Charstring tn,Charstring cn,Charstring otn,URI crid where rMap(tn,cn,otn,upv,crid)
+   begin
+    declare Charstring relvars;
+    if (notany(functionnamed(upper(tn) + "_" + DSOfUPV(upv) + "_CC"))) 
+    then  import_table(JDBCOfDS(DSOfUPV(upv)),catalogOfDS(DSOfUPV(upv)),
+                        schemaOfDS(DSOfUPV(upv)),tn,'',false,{});
+    set relvars = concatagg(inject((select "Charstring " +  tn + "_" + cn 
+	                    from Charstring cn,Charstring ctype 
+	                    where (ctype, cn) = 
+                             columns(JDBCOfDS(DSOfUPV(upv)),tn)), ","));
+    if(relvars = "") then
+     error("Could not extract any columns from table " + tn);
+
+    return relvars; 
+   end;
+ end;
+
+
+create function genRelvars2(Charstring upv)->Charstring relvars
+as 
+ return concatagg(inject(genRelvars1(upv), ","));
+
+create function genRelvarsCR2(Charstring upv)->Charstring relvars
+as 
+ return concatagg(inject(genRelvarsCR1(upv), ","));
+
+/* Generate call to core cluster fn of table in 
+ * exported relational database. 
+ */
+create function genRelcall(Charstring upv,
+	                    Charstring rname)->Charstring r
+as
+ begin
+  declare Charstring relcall;  
+  set relcall=rname + "_" + DSOfUPV(upv) + "_cc()=(" + 
+              concatagg(inject((select rname + "_" + cname 
+                                from Charstring cname, Charstring ctype 
+                                where (ctype, cname) = 
+                                       columns(JDBCOfDS(DSOfUPV(upv)), 
+                                        rname)), ",")) + ")";
+  if(relcall="") then
+   error("Could not extract any columns from table " + rname);
+  
+  return relcall;
+ end;
+
+/* Get primary key in owning relational table for foreign key in a table. 
+ */
+create function getFKeys(Charstring ds,
+  	                 Charstring fktbl)->
+                             (Charstring pktbl,Charstring pkcol,Charstring fkcol)
+  as select pktbl,pkcol,fkcol  
+     where (pktbl,pkcol,fkcol) in 
+            imported_keys(JDBCOfDS(ds),catalogOfDS(ds),schemaOfDS(ds),fktbl);
+
+/* Calculate if column is foreign key. 
+ */
+create function getFKey(Charstring cn,
+                        Vector fkeys)->Vector
+  as
+   for each Vector fkey where fkey in(fkeys)
+   begin
+    if (cn = fkey[2]) then return fkey;
+   end;
+
+/* Fn returning true if cn is a column mapped to a foreign property and 
+ * false othervise.
+ */
+create function isFProp(Charstring tn,Charstring cn)->Boolean 
+  as
+   select true from Charstring upv,URI fp,Charstring otn where rMap(tn,cn,otn,upv,fp);  
+
+/* Calculate the RDFS range of a property mapped to a relational column. 
+ */
+/*
+create function getRangeVal(Charstring upv,Charstring tn,Charstring cn)->Charstring
+  as
+  begin
+   declare Vector pkey,Vector fkey;
+   if(isFProp(tn,cn)) then
+   begin
+    set fkey=getFkey(cn,sortvector(vectorof(getFkeys(DSOfUPV(upv),tn)),'<'));
+    if (fkey!=nil) then 
+    begin
+     return in(select c from Literal c where cMap(cast(fkey[0] as Charstring),upv,c)); 
+    end
+    else error("No foreign key " + cn + " in table " + tn);
+   end
+   else return 'http://www.w3.org/2000/01/rdf-schema#Literal';
+  end;
+*/
+
+create function isColOf(Relational r, 
+	                Charstring tbl, 
+	                Charstring col)->Boolean
+  as 
+   select true
+   from Charstring dummy,Charstring native_col
+   where columns(r,tbl)=(dummy,native_col) and like_i(col, native_col);
+
+
+create function isTblOf(Relational r, 
+	                Charstring tbl)->Boolean
+  as 
+   select true
+   from Charstring dummy1,
+        Charstring dummy2,
+        Charstring dummy3,
+        Charstring native_tbl
+   where tables(r)=(native_tbl,dummy1,dummy2,dummy3) and 
+         like_i(native_tbl,tbl);
+
+/* Definition of schema view. 
+ */  
+create function SchemaView(Charstring upv)->
+		 (Charstring s,Charstring p,Charstring val)
+as
+ select s,p,val
+ from Charstring tn,Charstring cn, URI prop,
+       URI class
+ where (cMap(tn,upv,class) and
+        s = class and
+        p = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and
+        val = 'http://www.w3.org/2000/01/rdf-schema#Class') or
+       (cMap(tn,upv,class) and
+ 	pMap(tn,cn,upv,prop) and
+        s = prop and
+        p = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and
+        val = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property') or
+       (pMap(tn,cn,upv,prop) and
+        cMap(tn,upv,class) and
+        s = prop and
+        p = 'http://www.w3.org/2000/01/rdf-schema#domain' and
+        val = class) or
+       (pMap(tn,cn,upv,prop) and
+        cMap(tn,upv,class) and
+	s = prop and
+	p = 'http://www.w3.org/2000/01/rdf-schema#range' and
+	val = 'http://www.w3.org/2000/01/rdf-schema#Literal');
+
+/* Fn materializing the schema view.
+ */
+create function SchemaViewMaterialize(Charstring upv)->Boolean 
+as 
+ begin
+  eval("create function s" + upv 
+	+ "(Charstring s,Charstring p,Charstring val)->
+		Boolean as stored;");
+ 
+  eval("declare_key(theresolvent('s" + upv + "'),{'s','p','val'});");
+
+   /* Since the schema view resides in main memory the cost is 2 and fanout is
+    * very small
+    */
+  eval("costhint('Charstring.Charstring.Charstring.s" + upv + "->Boolean',
+		'fbf',{2,1});");
+
+  eval("parteval('s" + upv + "');");
+
+  begin
+   for each Charstring s, Charstring p, Charstring val 
+    where (s,p,val) = SchemaView(upv)
+    begin
+     eval("add s" + upv + "('" + s + "','" + p + "','" + val + "')=true;");
+    end;
+  end;
+
+  eval("create function s" + upv + "()->
+	(Charstring s,Charstring p,Charstring val) 
+		as select s, p, val where s" + upv + "(s,p,val);");
+ end;
+
+/* Extending schema view definition to incorporate triples about class relationshop properties.
+ */
+create function CRSchemaView(Charstring upv)->
+		 (Charstring s,Charstring p,Charstring val)
+as
+ select s,p,val
+ from Charstring tn,Charstring otn,Charstring cn, URI prop,
+       URI class
+ where (rMap(tn,cn,otn,upv,prop) and
+        cMap(otn,upv,class) and
+	s = prop and
+	p = 'http://www.w3.org/2000/01/rdf-schema#range' and
+	val = class) or
+       (cMap(tn,upv,class) and
+ 	rMap(tn,otn,cn,upv,prop) and
+        s = prop and
+        p = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and
+        val = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property') or
+       (rMap(tn,cn,otn,upv,prop) and
+        cMap(tn,upv,class) and
+        s = prop and
+        p = 'http://www.w3.org/2000/01/rdf-schema#domain' and
+        val = class);
+
+
+
+/* Fn materializing the extended schema view.
+ */
+create function CRSchemaViewMaterialize(Charstring upv)->Boolean 
+as 
+ begin
+   for each Charstring s, Charstring p, Charstring val 
+    where (s,p,val) = CRSchemaView(upv)
+    begin
+     eval("add s" + upv + "('" + s + "','" + p + "','" + val + "')=true;");
+    end;
+  end;
+
+
+
+ 
+/* Fn for definition of content view
+ */
+create function defineCV(Charstring upv)->Boolean
+  as
+   begin
+    eval("create function c" + upv + "()-> 
+          (Charstring s,Charstring p,Charstring val) 
+         as 
+          select s,p,val 
+          where p" + upv + "() = (s,p,val);");
+   end;
+
+/* Fn for definition of UPVd
+ */
+create function defineUPV(Charstring upv)->Boolean
+  as
+   begin
+    eval("create function " + upv + "()->
+          (Charstring s,Charstring p,Charstring val)
+         as
+          select s,p,val where s" + upv + "() = (s,p,val) or 
+                               c" + upv + "() = (s,p,val);");
+   end;
+
+/* Fn for definition of SQL UPV
+ */
+create function defineSUPV(Charstring upv)->Boolean
+  as
+   begin
+    eval("create function #" + upv + "()-> 
+          (Charstring s,Charstring p,Charstring val) 
+         as 
+          select s,p,val
+          where (s,p,val) = " + upv + "();");
+   end;
+
+create function SWOfUPV(Charstring upv)->Charstring sw as stored;
+create function CWOfUPV(Charstring upv)->Charstring cw as stored;
+
+
+/* Dynamically calling UPV 
+ */	
+create function UPVTriples(Charstring UPV)-> Vector
+as 
+ select call_function(upv,{});
+
+create function schemaTriples(Charstring UPV)-> Vector
+as 
+ select call_function(swofupv(upv),{});
+
+create function contentTriples(Charstring UPV)-> Vector
+as 
+ select call_function(cwofupv(upv),{});       
+
+
+/* Key declarations 
+ */
+
+
+declare_key(theresolvent(
+             'Charstring.Charstring.Charstring.URI.pMap->Boolean'),
+               {'tn','cn','upv'});
+declare_key(theresolvent(
+             'Charstring.Charstring.Charstring.URI.pMap->Boolean'),
+               {'upv','prop'});
+
+declare_key(theresolvent(
+             'Charstring.Charstring.Charstring.URI.pMap->Boolean'),
+               {'tn','upv'});
+
+
+declare_key(theresolvent('Charstring.Charstring.URI.cMap->Boolean'),
+                          {'upv'});
+declare_key(theresolvent('Charstring.Charstring.URI.cMap->Boolean'),
+                          {'tn','upv'});
+declare_key(theresolvent('Charstring.Charstring.URI.cMap->Boolean'),
+                          {'tn','upv','class'});
+
+declare_key(theresolvent('Charstring.Charstring.Function.TEVExtent->Boolean'),
+                          {'tid','upv'});
+declare_key(theresolvent('Charstring.Charstring.Function.TEVExtent->Boolean'),
+                          {'vd'});
+
+/* Very simple cost model.
+ * Intuition: All main memory tables in SWARD are very small and 
+ * have a low fanout and cost.
+ */
+costhint("Charstring.Charstring.Charstring.URI.pMap->Boolean",
+	   "bbbb",{2,1}); 
+
+costhint("Charstring.Charstring.URI.cMap->Boolean",
+           "bbb",{2,1}); 
+
+create function sp2areg(Charstring spreg)->Charstring areg as foreign 'sp2areg';

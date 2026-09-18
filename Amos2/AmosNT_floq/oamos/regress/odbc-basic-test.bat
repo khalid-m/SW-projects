@@ -1,0 +1,1 @@
+..\..\bin\amos2 ..\..\bin\amos2.dmp ..\..\wrappers\odbc\regress\odbc-basic-test.osql

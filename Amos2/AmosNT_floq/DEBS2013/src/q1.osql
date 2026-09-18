@@ -1,0 +1,345 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2013 Sobhan and Thanh, UDBL
+ * $RCSfile: q1.osql,v $
+ * $Revision: 1.23 $ $Date: 2013/05/23 14:04:54 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Q1
+ *
+ ****************************************************************************
+ * $Log: q1.osql,v $
+ * Revision 1.23  2013/05/23 14:04:54  thatr500
+ * - removed addSeed / sampleRate
+ * - modified index.html
+ *
+ * Revision 1.22  2013/05/21 14:53:40  chexu484
+ * output naming
+ *
+ * Revision 1.21  2013/04/21 23:35:53  chexu484
+ * aggregate_function
+ *
+ * Revision 1.20  2013/04/21 22:38:36  thatr500
+ * removed SAMPLING !!!!
+ *
+ * Revision 1.19  2013/04/21 10:39:06  chexu484
+ * bug fix for q1 and q3
+ *
+ * Revision 1.18  2013/04/20 21:53:31  chexu484
+ * q1 takes care of breaks
+ *
+ * Revision 1.17  2013/04/16 09:49:41  torer
+ * Added samplerate parameter
+ *
+ * Revision 1.16  2013/04/15 06:51:43  chexu484
+ * q1 and q1_old
+ *
+ * Revision 1.15  2013/04/11 17:53:23  chexu484
+ * break event taken care
+ *
+ * Revision 1.14  2013/04/10 09:36:36  chexu484
+ * write to csv file
+ *
+ * Revision 1.13  2013/04/10 09:25:53  chexu484
+ * window jump during game break fix for q1
+ *
+ * Revision 1.12  2013/04/09 18:43:13  sobso953
+ * -Sampling added
+ * -Q1 writes to file
+ *
+ * Revision 1.11  2013/04/09 11:50:16  sobso953
+ * -
+ *
+ * Revision 1.10  2013/04/08 10:20:18  chexu484
+ * running all fours queries at the same time by a function call
+ *
+ * Revision 1.9  2013/04/05 19:03:21  sobso953
+ * Q1-b implemented.
+ *
+ * Revision 1.8  2013/04/04 15:13:07  thatr500
+ * added comments
+ *
+ * Revision 1.7  2013/04/03 15:14:02  thatr500
+ * Added Q1b excluding "at least one second requires you to delay the output until a reliable measurement has been made "
+ *
+ * Revision 1.6  2013/03/29 16:49:53  thatr500
+ * Added player running statistic
+ *
+ * Revision 1.5  2013/03/28 19:38:56  chexu484
+ * *** empty log message ***
+ *
+ * Revision 1.4  2013/03/28 16:41:19  thatr500
+ * Added some logic code for Q1a
+ *
+ * Revision 1.3  2013/03/08 13:50:49  thatr500
+ * - file organization changed
+ * - schema changed (startgameinpico added)
+ *
+ * Revision 1.2  2013/03/07 09:38:32  sobso953
+ * Cheng comments added, need to be considered.
+ *
+ * Revision 1.1  2013/02/26 14:08:03  thatr500
+ * New file organization
+ *
+ ****************************************************************************/
+create function i_stop()->Number as 0;
+create function i_trot()->Number as 1;
+create function i_low()->Number as 2;
+create function i_medium()->Number as 3;
+create function i_high()->Number as 4;
+create function i_sprint()->Number as 5;
+
+/*velocity to the intensity of the run*/
+create function intensity(Number velocity)-> Number as
+begin
+	if (velocity<=1) then return i_stop() /*stop*/
+	else if (velocity>1 and velocity<=11) then return i_trot() /*trot*/
+	else if (velocity>11 and velocity<=14) then return i_low() /*low*/
+	else if (velocity>14 and velocity<=17) then return i_medium() /*medium*/
+	else if (velocity>17 and velocity<=24) then return i_high() /*high*/
+	else if (velocity>24) then return i_sprint(); /*sprint*/
+end;
+
+
+create function strIntensity(Number velocity)-> Charstring as
+begin
+	declare Number i;
+	set i = intensity(velocity);	
+	if i = i_stop() then return "stop"
+	else if i = i_trot() then return "trot"
+	else if i= i_low()  then return "low"
+	else if i= i_medium() then return "medium"
+	else if i= i_high() then return "high"
+	else if i= i_sprint() then return "sprint"; /*sprint*/
+end;
+
+/*
+
+Sensor 40 (the right foot of Christopher Lee) does not report any data during 3.532655187306 and 4.353370981362
+
+
+current running statistic*/
+
+
+/* each element represents a player with 12 aggregate i.e.: 
+   FirstTs, LastTs, fLeftPosX fLeftPosY fRightPosX fRightPosY
+   lLeftPosX lLeftPosY lRightPosX lRightPosY speedsum count  */
+create function q1a_init() -> Vector of Vector of Number
+  as {new_vector(14, -1), new_vector(14, -1), new_vector(14, -1), new_vector(14, -1),
+      new_vector(14, -1), new_vector(14, -1), new_vector(14, -1), new_vector(14, -1),
+      new_vector(14, -1), new_vector(14, -1), new_vector(14, -1), new_vector(14, -1),
+      new_vector(14, -1), new_vector(14, -1), new_vector(14, -1), new_vector(14, -1)};
+
+/*
+      {{0,0,0,0,0,0,0,0,0,0,0,0},
+      {0,0,0,0,0,0,0,0,0,0,0,0},
+      {0,0,0,0,0,0,0,0,0,0,0,0},
+      {0,0,0,0,0,0,0,0,0,0,0,0},
+      {0,0,0,0,0,0,0,0,0,0,0,0},
+      {0,0,0,0,0,0,0,0,0,0,0,0},
+      {0,0,0,0,0,0,0,0,0,0,0,0},
+      {0,0,0,0,0,0,0,0,0,0,0,0},
+      {0,0,0,0,0,0,0,0,0,0,0,0},
+      {0,0,0,0,0,0,0,0,0,0,0,0},
+      {0,0,0,0,0,0,0,0,0,0,0,0},
+      {0,0,0,0,0,0,0,0,0,0,0,0},
+      {0,0,0,0,0,0,0,0,0,0,0,0},
+      {0,0,0,0,0,0,0,0,0,0,0,0},
+      {0,0,0,0,0,0,0,0,0,0,0,0},
+      {0,0,0,0,0,0,0,0,0,0,0,0}};
+*/
+
+lisp;
+(defglobal _break_ 0)
+(defun isbreak+ (fno r) (osql-result (= _break_ 1)))
+(defun setbreak- (fno r) (setq _break_ r))
+:osql
+
+load_lisp("q1.lsp");
+
+create function isbreak() -> Boolean
+   as foreign 'isbreak+';
+
+create function setbreak (Integer x) -> Boolean
+   as foreign 'setbreak-';
+
+create function q1aadd(Vector of Vector of Number res, Numarray e) -> Boolean
+   as foreign 'q1aadd--';
+
+create function q1a_removefn(Vector of Vector of Number res, Numarray e)
+							  -> Boolean
+  as nil;
+
+/*replaces mising values (-1) by zero.*/
+create function interpret_val(number val)-> number as
+begin
+	if val=-1 then return 0 else return val;
+end;
+
+/* calculates the statistics of pid from the incrementally aggregated raw stats */
+create function prunstat(Vector of Number pstat, Number pid) -> Vector of Number as
+	select 	{pstat[0], pstat[1], pid, intensity(pstat[10]/pstat[11]),
+		euclid({( pstat[2] + pstat[4])/2, (pstat[3] + pstat[5])/2}, 
+		       {(i_val_pstat6 + i_val_pstat8)/2, (i_val_pstat7 + i_val_pstat9)/2})
+		,pstat[10]/pstat[11]}
+	from number i_val_pstat6, number i_val_pstat7,number i_val_pstat8,number i_val_pstat9
+	where pstat[0] != -1 and 
+	i_val_pstat6 = interpret_val(pstat[6]) and i_val_pstat7 = interpret_val(pstat[7]) and
+	i_val_pstat8 = interpret_val(pstat[8]) and i_val_pstat9 = interpret_val(pstat[9]);
+
+aggregate_function("q1a_agg", "q1a_init", "q1aadd", "q1a_removefn");
+
+create function q1aagg0(Window w) -> Bag of Vector of Number
+  as select prunstat(pstats[idx], idx + 1)
+     from Vector of Vector of Number pstats, Number idx
+     where pstats = q1a_agg(w)
+      and idx in iota(0, dim(pstats) - 1);
+
+/* this is the part to inject break event for q1b! any better solution? 2013.04.11 Cheng */
+create function q1aagg(Window w) -> Bag of Vector of Number
+  as begin
+       return q1aagg0(w);	
+       if isbreak() then
+	begin
+	  return breakstartv(); 
+          return breakendv();
+	  setbreak(0);
+	end;
+     end;
+
+create function q1ats(Numarray e) -> Number as floor(e[0]);
+
+create function q1a_0(Stream of Numarray input) -> Bag of Vector of Number
+  as select q1aagg(w)
+     from Window w
+     where w in twindowize(input, #'q1ats',
+			   microWinSize(), microWinSize());
+
+create function q1a(Stream of Numarray input) -> Stream of Vector of Number
+  as q1logger("output/q1a.csv", streamof(q1a_0(input)));
+
+lisp;
+(setq _print-delay_ 0)
+:osql
+
+/*set :testbin = "data/head4M.bin";
+set :test = "data/head4M.csv";
+
+select a from Numarray a
+where a in q3input(inputstreamna(:testbin))
+and sid(a) = 40 and ts(a) >= 0 and vabs(a) >= 11;
+
+create function foo(Stream of Numarray input) ->Numarray as
+select a from Numarray a
+where a in q3input(input)
+and ts(a) >= 9.84 and (sid(a) = 66 or sid(a) = 65)
+and ts(a) <= 9.9;
+
+foo(inputstreamna(:testbin));
+
+Run Q1a 
+
+select v from vector v
+where v in q1a(q3input(inputstreamna(:fullbin)))
+and v[3] != "trot" and v[3] != "stop";
+*/
+
+/*-----------------THIS IS ANOTHER NEW DAY----------------------------*/
+/*Output
+ ts 0, 
+ player_id 1, 
+ standing_time 2, standing_distance 3, 
+ trot_time 4, trot_distance 5, 
+ low_time 6, low_distance 7, 
+ medium_time 8, medium_distance 9, 
+ high_time 10 , high_distance 11, 
+ sprint_time 12, sprint_distance 13*/
+
+create function q1b_init() -> Vector of Vector of Number
+  as {new_vector(14, 0), new_vector(14, 0), new_vector(14, 0), new_vector(14, 0),
+      new_vector(14, 0), new_vector(14, 0), new_vector(14, 0), new_vector(14, 0),
+      new_vector(14, 0), new_vector(14, 0), new_vector(14, 0), new_vector(14, 0),
+      new_vector(14, 0), new_vector(14, 0), new_vector(14, 0), new_vector(14, 0)};
+
+create function q1b_addfn(Vector of Vector of Number res, Vector of Number e)
+								-> Boolean
+  as begin
+	declare Number pid, Number ts,
+		Vector of Number pstats,
+		Number intensity, Number duration, Number indist, Number i;
+
+	set duration =  e[1] - e[0];
+	set pid = e[2];
+	set ts =  e[1]; /* latest ts */
+        set pstats = res[pid - 1];
+	set intensity = e[3];
+	set indist = e[4];
+	set i = intensity * 2 + 2;
+
+	set_vref(pstats, i, pstats[i] + duration);
+	set_vref(pstats, i + 1, pstats[i + 1] + indist);
+
+	set_vref(pstats, 0, ts);
+	set_vref(pstats, 1, pid);
+     end;
+
+create function q1b_removefn(Vector of Vector of Number res, Vector of Number e)
+								-> Boolean
+  as begin
+	declare Number pid, Number ts,
+		Vector of Number pstats, 
+		Number intensity, Number duration, Number indist, Number i;
+
+	set duration =  e[1] - e[0];
+	set pid = e[2];
+	set ts =  e[1]; /* latest ts */
+        set pstats = res[pid - 1];
+	set intensity = e[3];
+	set indist   = e[4];
+	set i = intensity * 2 + 2;
+
+	set_vref(pstats, i, pstats[i] - duration);
+	set_vref(pstats, i + 1, pstats[i + 1] - indist);
+     end;
+
+aggregate_function("q1b_agg", "q1b_init", "q1b_addfn", "q1b_removefn");
+
+create function q1bagg(Window w) -> Vector of Number
+  as select pstats[idx]
+     from Vector of Vector of Number pstats, Number idx
+     where pstats = q1b_agg(w)
+      and idx in iota(0, dim(pstats) - 1);
+
+create function q1bts(Vector of Number e) -> Number as floor(e[0]);
+
+create function q1outputfile(Number wsize) -> Charstring as stored;
+
+add q1outputfile(60) = "output/q1b_1M.csv";
+add q1outputfile(300) = "output/q1b_5M.csv";
+add q1outputfile(1200) = "output/q1b_20M.csv";
+add q1outputfile(4200) = "output/q1b_landmark.csv";
+
+/* functions to run 1, 5, 10 minutes window of q1b */
+create function q1b_0(Stream of Vector of Number input, Number wsize) -> Bag of Vector of Number
+  as select q1bagg(w)
+     from Window w
+     where w in twindowize(input, #'q1bts',
+			   wsize, microWinSize(), microWinSize(),
+			   #'isInterruptBreakStartv', #'isInterruptBreakEndv');
+create function q1b(Stream of Vector of Number input, Number wsize) -> Stream
+  as streamof(writecsvfile(q1outputfile(wsize), q1b_0(input, wsize)));
+
+
+create function q1(Stream of Numarray s) -> Stream
+  as mergestreams(svali:mapstreams(splitstream(q1a(s), 4, #'broadcastv'),
+                                   {#'q1b', #'q1b', 
+				    #'q1b', #'q1b'},
+				   {{60}, {300}, {1200}, 
+				    {4200}}));
+
+create function q1input(Charstring filename)
+                      -> Stream of Numarray
+  as streamof(select e from Numarray e
+	      where e in inputstreamna(filename)
+	      and (isPlayer(e) or isBreakInterrupt(e)));

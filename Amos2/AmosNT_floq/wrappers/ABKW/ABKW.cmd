@@ -1,0 +1,1 @@
+bkamos %amos_home%/bin/abkw.dmp

@@ -1,0 +1,101 @@
+/* SPARQL queries to a RDB 'person' stored in MS SQL Server */ 
+lisp;
+:osql
+defineDS("personDS",
+         "jdbc:microsoft:sqlserver://localhost;DatabaseName=person",
+        "com.microsoft.jdbc.sqlserver.SQLServerDriver",
+         "person",
+         "person",
+         "sard2",
+         "sard2");
+
+
+defineUPV("personDS","per", "http://user.it.uu.se/~udbl/sard/person");
+
+DSConnect("per");	
+
+wrapRDB(jdbcOfDS("personDS"), "person", "person", "person");
+
+assignIDS("per","person", "person");
+
+ViewRDB("per");
+/*make_def("per");*/
+
+
+set :q1=
+"SELECT ?subject ?property ?value 
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE { ?subject ?property ?value }";
+	   
+
+eval("create function q1()-> (Literal,Literal,Literal)
+	as " + sparql_translate(:q1,true));
+
+set :q2=
+"SELECT ?subject ?value 
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE { ?subject <http://user.it.uu.se/~udbl/sard/person#person/name> ?value }";
+	   
+
+eval("create function q2()-> (URI,Literal)
+	as " + sparql_translate(:q2,true));
+
+/*Requires invertable ustr function*/
+set :q3=
+"SELECT ?subject  
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE { ?subject <http://user.it.uu.se/~udbl/sard/person#person/name>  'Ivan' }";
+	   
+
+eval("create function q3()-> URI
+	as " + sparql_translate(:q3,true));
+
+set :q44=
+'SELECT ?subject  
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE { ?subject <http://user.it.uu.se/~udbl/sard/person#person/age> "30"^^<http://www.w3.org/2001/XMLSchema#integer> }';
+
+set :q44=
+'SELECT ?subject  
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE { ?subject <http://user.it.uu.se/~udbl/sard/person#person/age> 30 }';
+	   
+
+eval("create function q44()-> (URI)
+	as " + sparql_translate(:q44,true));
+
+
+set :q5=
+"SELECT ?prop ?value 
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE { <http://user.it.uu.se/~udbl/sard/person#person/_25_1025> ?prop ?value }";
+
+eval("create function q5()-> (URI,Literal)
+	as " + sparql_translate(:q5,true));
+
+
+/* rdf_regex() needs to be translated to like */
+
+set :q6=
+"SELECT ?subject ?value 
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE 
+         { ?subject <http://user.it.uu.se/~udbl/sard/person#person/name> ?value .
+	    FILTER REGEX (?value, 'ana') } ";
+
+eval("create function q6()-> (URI,Literal)
+	as " + sparql_translate(:q6,true));	
+
+
+set :q7 = 
+"SELECT ?s ?val ?s1 ?val1
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s <http://user.it.uu.se/~udbl/sard/person#person/age> ?val .
+	FILTER (?val > 15) .
+	OPTIONAL { ?s1 <http://user.it.uu.se/~udbl/sard/person#tel_of_person> ?s . } .
+	OPTIONAL { ?s1 <http://user.it.uu.se/~udbl/sard/person#tel/telnumber> ?val1 . 
+		   FILTER (?val1 > 999 ).  } }";
+
+
+eval("create function q()-> (Literal,Literal,Literal,Literal )
+	as " + sparql_translate(:q7,true));

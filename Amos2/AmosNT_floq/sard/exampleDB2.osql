@@ -1,0 +1,148 @@
+set :a = jdbc("myds", "com.mysql.jdbc.Driver");
+set :dburl = "jdbc:mysql://localhost:3306/";
+
+connect(:a, :dburl + "example", "sard", "sard");
+
+sql(:a, 'drop table if exists RELATEDSERVICES');
+sql(:a, 'drop table if exists AUTHORS');
+sql(:a, 'drop table if exists CUSTOMER');
+sql(:a, 'drop table if exists LIFEEVENT');
+sql(:a, 'drop table if exists BOOKS');
+sql(:a, 'drop table if exists ORDERS1');
+sql(:a, 'drop table if exists ORDER_ITEMS');
+sql(:a, 'drop table if exists FAQLISTS');
+sql(:a, 'drop table if exists BUS');
+sql(:a, 'drop table if exists CROSS_RATE');
+
+
+
+sql(:a, 'create table CUSTOMER(CUSTID integer not null,
+		      MKTSEGMENT varchar(10),
+		      primary key (CUSTID))') ;
+
+sql(:a, 'create table LIFEEVENT(EID varchar(25) not null,
+			LANG varchar(25),
+			DESCR varchar(25),
+			LAW varchar(25),
+			FORM varchar(50),
+			primary key (EID))');
+
+sql(:a, 'CREATE TABLE BOOKS(
+	BOOK_ID INTEGER  NOT NULL, 
+	AUTHOR_ID INTEGER, 
+	TITLE1 VARCHAR(200), 
+	DESCRIPTION VARCHAR(200), 
+	PRICE INTEGER, 
+	PAGES1 INTEGER, 
+	PRIMARY KEY(BOOK_ID))');
+
+sql(:a, 'CREATE TABLE ORDERS1(
+	ORDER_ID INTEGER NOT NULL,
+	BYER_NAME VARCHAR(100),
+	SHIPPING_ADRESS VARCHAR(100),
+	SHIPPING_ZIPCODE VARCHAR(10),
+	SHIPPING_CITY VARCHAR(30),
+	PRIMARY KEY(ORDER_ID))');
+
+sql(:a, 'CREATE TABLE ORDER_ITEMS(
+	ORDER_ITEM_ID INTEGER NOT NULL,
+	ORDER_ID INTEGER,
+	BOOK_ID INTEGER,
+	QUANTITY INTEGER,
+	PRIMARY KEY(ORDER_ITEM_ID))');
+
+sql(:a, 'CREATE TABLE cross_rate
+(
+    from_currency   VARCHAR(10) NOT NULL,
+    to_currency     VARCHAR(10) NOT NULL,
+    conv_rate       FLOAT NOT NULL,	
+    update_date     DATE,
+    snum	    INTEGER,
+    PRIMARY KEY (from_currency, to_currency))' );
+
+sql(:a, 'CREATE TABLE bus
+(
+    snum1   VARCHAR(10),
+    name   VARCHAR(10) NOT NULL,
+    PRIMARY KEY (name))');
+
+sql(:a, 'create table FAQLISTS(EID varchar(25) not null,
+			FAQNR integer not null,
+			QUESTION varchar(50),
+			NUMBER varchar(25),
+			primary key (EID,FAQNR))');
+
+
+sql(:a, 'create table RELATEDSERVICES (EID varchar(25) not null,
+				       SERVICENR integer not null,
+				       NAME varchar(50),
+				       constraint eid_pk primary key (EID))');
+
+sql(:a, 'CREATE TABLE AUTHORS(AUTHOR_ID INTEGER NOT NULL, 
+			      NAME VARCHAR(50),
+			      SURNAME VARCHAR(50),
+			      constraint id_pk PRIMARY KEY(AUTHOR_ID) )');
+
+sql(:a, "insert into RELATEDSERVICES  
+	(EID, SERVICENR, NAME) 
+	values
+	('ABC1234H', 1, 'Issuing a birth certificate');");
+
+sql(:a, "insert into RELATEDSERVICES  
+	(EID, SERVICENR, NAME) 
+	values
+	('ABC1234I', 2, 'Online payment');");
+
+sql(:a, "insert into LIFEEVENT 
+	(EID, LANG, DESCR, LAW, FORM) 
+	values 
+	('ABC1234H','EN','Getting married','FRC234','http://www.eGov.org/marriage.html'); ");
+
+sql(:a, "insert into LIFEEVENT 
+	(EID, LANG, DESCR, LAW, FORM) 
+	values 
+	('ABC1234H1','EN1','Getting married1','FRC2341','http://www.eGov.org/marriage.html1'); ");
+
+sql(:a, "insert into CUSTOMER (CUSTID, MKTSEGMENT) values (120,'AUTOMOBILE'); ");
+sql(:a, "insert into CUSTOMER (CUSTID, MKTSEGMENT) values (121,'AUTOMOB1'); ");
+sql(:a, "insert into CUSTOMER (CUSTID, MKTSEGMENT) values (122,'AUTOMOB2'); ");
+sql(:a, "insert into CUSTOMER (CUSTID, MKTSEGMENT) values (123,'AUTOMOB3'); ");
+
+sql(:a, "INSERT INTO cross_rate VALUES ('Dollar', 'CdnDlr',  1.3273,  '93-02-03',1);");
+sql(:a, "INSERT INTO cross_rate VALUES ('Dollar', 'FFranc',  5.9193,  '93-02-11',2);");
+sql(:a, "INSERT INTO cross_rate VALUES ('Dollar', 'Rupee',  38.0212,  '06-12-07',3);");
+sql(:a, "INSERT INTO cross_rate VALUES ('Dollar',  'sek',    6.8193,  '06-12-07',4);");
+
+sql(:a, "INSERT INTO bus VALUES ('123','TORG');");
+sql(:a, "INSERT INTO bus VALUES('1234','TORG2');");
+sql(:a, "INSERT INTO bus VALUES ('801','ARLANDA');");
+sql(:a, "INSERT INTO bus VALUES('859','STOCKHOLM');");
+
+sql(:a, "insert into FAQLISTS 
+	(EID, FAQNR, QUESTION, NUMBER) 
+	values
+	('ABC1234M',1,'Possibillity to get married online','Yes');
+");
+
+sql(:a, "insert into FAQLISTS 
+	(EID, FAQNR, QUESTION, NUMBER) 
+	values
+	('ABC1234M1',2,'Possibillity to get married online1','Yes1');");
+
+
+sql(:a, "INSERT INTO BOOKS(BOOK_ID,AUTHOR_ID, TITLE1, DESCRIPTION, PRICE, PAGES1) 
+	VALUES(1, 1, 'BUILDNING SCALABLE AND HIGH-PERFORMANCE JAVA WEB APPLICATIONS USING J2EE TECHNOLOGY', 'A BOOK ABOUT BUILDNING SCALABLE AND HIGH-PERFORMANCE JAVA WEB APPLICATIONS USING J2EE TECHNOLOGY. THE BOOKS DESCRIBES HOW TO USE THE DIFFERENT PARTS OF J2EE TO BUILD A WEB APPLICATION', 600, 392);");
+
+sql(:a, "INSERT INTO BOOKS(BOOK_ID,AUTHOR_ID, TITLE1, DESCRIPTION, PRICE, PAGES1) VALUES(2, 2, 'CLASSIC DATA STRUCTURES IN C++', 'BUDD EXPLAINS SEVERAL DATA STRUCTURES THAT ARE COMMIN IN C++', 550, 537);");
+
+sql(:a, "INSERT INTO BOOKS(BOOK_ID,AUTHOR_ID, TITLE1, DESCRIPTION, PRICE, PAGES1) VALUES(3, 2, 'CLASSIC DATA STRUCTURES IN JAVA', 'BUDD EXPLAINS SEVERAL DATA STRUCTURES THAT ARE COMMIN IN JAVA', 650, 437);");
+
+sql(:a, "INSERT INTO BOOKS(BOOK_ID,AUTHOR_ID, TITLE1, DESCRIPTION, PRICE, PAGES1) VALUES(4, 3, 'SPECIAL EDITION USING JAVA SERVER PAGES', 'A QUITE EXTENSIVE BOOK ABOUT WEB DEVELOPMENT USING JAVA SERVER PAGES AND JAVA SERVLETS', 400, 351);");
+
+
+sql(:a, "INSERT INTO AUTHORS(AUTHOR_ID,NAME, SURNAME) VALUES(1,'GREG', 'BARISH');");
+sql(:a, "INSERT INTO AUTHORS(AUTHOR_ID,NAME,SURNAME) VALUES(2,'TIMOTHY', 'BUDD');");
+sql(:a, "INSERT INTO AUTHORS(AUTHOR_ID,NAME,SURNAME) VALUES(3,'MARK', 'WUTKA');");
+sql(:a, "INSERT INTO AUTHORS(AUTHOR_ID,NAME,SURNAME) VALUES(4,'H.M', 'DIETEL');");
+
+quit;

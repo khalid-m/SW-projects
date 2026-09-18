@@ -1,0 +1,80 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Manivasakan Sabesan, UDBL
+ * $RCSfile: record.osql,v $
+ * $Revision: 1.9 $ $Date: 2013/12/18 13:11:43 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Record access functions
+ *
+ ****************************************************************************
+ * $Log: record.osql,v $
+ * Revision 1.9  2013/12/18 13:11:43  torer
+ * removed function record(), replaced with make_record()
+ * New function empty_record()
+ *
+ * Revision 1.8  2013/10/28 19:52:16  torer
+ * Removed record type SSRC
+ *
+ * Revision 1.7  2012/09/06 20:50:44  torer
+ * New function
+ * merge_records(Record x, Record y) -> Record
+ *
+ * Revision 1.6  2012/05/21 17:45:37  torer
+ * Integer -> Number to avoid coersion
+ *
+ * Revision 1.5  2012/02/21 07:02:25  torer
+ * Documentation of amos-functions
+ *
+ * Revision 1.4  2011/01/29 11:04:39  torer
+ * Base system uses (...) tuple notation, 'return' statement, and systematic indentation
+ *
+ * Revision 1.3  2010/06/18 14:34:36  zeitler
+ * added vref(Record, Vector)->Object
+ *
+ * Revision 1.2  2009/09/02 12:44:10  zeitler
+ * OSQL record/streamsrc printer
+ *
+ * Revision 1.1  2008/10/03 14:27:31  zeitler
+ * Added Sabesan's record access functions
+ *
+ *
+ ****************************************************************************/
+
+create function make_record(Vector) -> Record 
+  /* Construct a record from a vector of keys and values */
+  as foreign 'makerecord'; 
+
+create function empty_record() -> Record
+  as make_record({});
+
+create function put_record(Record r, Charstring k, Object v) -> Record 
+  /* Set value of key k in record r to value v */
+  as foreign 'put_record';
+
+create function merge_records(Record x, Record y) -> Record
+  /* Merge records X and Y */
+  as foreign 'merge-records--+';
+
+create function vref(Record, Charstring) -> Object
+  as multidirectional
+     ('bbf' foreign 'vref-bbf')
+     ('bff' foreign 'vref-bff');
+
+create function vref(Record, Vector) -> Object
+  as multidirectional
+     ('bbf' foreign 'vref-bbf')
+     ('bff' foreign 'vref-bff');
+
+create function vref(Record, Number) -> Object
+  as multidirectional
+     ('bbf' foreign 'vref_any_bbf')
+     ('bff' foreign 'vref_any_bff');
+
+create function all_value(Record R) -> Object
+  as foreign 'all_value';
+
+create function record_length(Record R) -> Integer
+  /* The number of key value pairs in a record */
+  as foreign 'record-length';

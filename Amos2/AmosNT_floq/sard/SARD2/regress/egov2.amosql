@@ -1,0 +1,598 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ 
+* Author: (c) 2013, 2011 Silvia Stefanova, UDBL
+ * 
+ * Description: 
+ *
+ *  *********************************
+*********************************************/
+/* Load regression setup  
+ */		
+<'egov_setup.amosql';
+/* Generate the UPV according to END-P
+ */
+ViewRDB("EGov");
+
+lisp;
+(setq _rewrite_filter_ t);;to put FILTER correct
+:osql
+
+/*
+lisp;
+(setq _gct_ t);;to apply GCT 
+(setq _unif_ t);;to normalize variable names in a DNF RDB predicate 
+(setq _elcon_ifnounif_ t);; to rewrite { * * ?s. ?s ?p ?o }
+(setq _rewrite_filter_ t);;to put FILTER correct
+(setq _is_Literal_ t);;to activate rewrite is_Literal 
+(setq _type_Match_ t);; to activate rewrite Type-match
+:osql
+*/
+
+/* SPARQL queries 
+ */
+set :sparql_schema_1 = 
+"SELECT ?lifeeventprop
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {?lifeeventprop <http://www.w3.org/2000/01/rdf-schema#domain> 
+		<http://udbl.it.uu.se/schemas/eGovern#LifeEvent> .
+ FILTER	(?lifeeventprop != <http://purl.org/dc/elements/1.1/identifier>) .
+ FILTER (?lifeeventprop != <http://udbl.it.uu.se/schemas/eGovern#lifeev_country> ).}";
+
+set :sparql_content_1 = 
+"SELECT ?val1 ?val2
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {?s1 <http://purl.org/dc/elements/1.1/title> ?val1 .
+        ?s1 <http://purl.org/dc/elements/1.1/description> ?val2 .}";
+
+set :sparql_content_11 = 
+"SELECT ?val1 ?s1
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {?s1 <http://purl.org/dc/elements/1.1/title> ?val1 .
+        ?s <http://udbl.it.uu.se/schemas/eGovern#Concern> ?s1 .}";
+
+
+
+set :sparql_hybrid_1 = 
+"SELECT ?s2 ?p ?val3
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {?s1 <http://purl.org/dc/elements/1.1/description> ?val1 .
+        ?s2 <http://udbl.it.uu.se/schemas/eGovern#Concern> ?s1 .
+        ?p <http://www.w3.org/2000/01/rdf-schema#domain> <http://udbl.it.uu.se/schemas/eGovern#Form> .
+        ?s2 ?p ?val3 .
+ FILTER (?p != <http://udbl.it.uu.se/schemas/eGovern#FormID>) .
+ FILTER (?p != <http://udbl.it.uu.se/schemas/eGovern#liveeventform>) .
+ FILTER (?p != <http://udbl.it.uu.se/schemas/eGovern#Concern>) .
+ FILTER REGEX (?val1, '.*move.*') .}";
+
+set :sparql_hybrid_2 = 
+"SELECT ?s2 ?p ?val3
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {?s1 <http://purl.org/dc/elements/1.1/description> ?val1 .
+        ?s2 <http://udbl.it.uu.se/schemas/eGovern#Concern> ?s1 .
+        ?p <http://www.w3.org/2000/01/rdf-schema#domain> 
+         <http://udbl.it.uu.se/schemas/eGovern#Form> .
+        ?s2 ?p ?val3 .
+ FILTER (?p != <http://udbl.it.uu.se/schemas/eGovern#parag>) .
+ FILTER (?p != <http://udbl.it.uu.se/schemas/eGovern#LifeEventID>) .
+ FILTER (?p != <http://purl.org/dc/elements/1.1/description>) .
+ FILTER REGEX (?val1, '.*move.*') .}";
+
+
+set :sparql_union1=
+"SELECT ?s1 ?val1 ?val2 
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE { {?s1 <http://purl.org/dc/elements/1.1/description> ?val1} 
+	 UNION
+	{?s1 <http://udbl.it.uu.se/schemas/eGovern#parag> ?val2 } }";
+
+
+set :sparql_union2=
+"SELECT ?s1 ?val1  
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE { {?s1 <http://purl.org/dc/elements/1.1/description> ?val1} 
+	 UNION
+	{?s1 <http://udbl.it.uu.se/schemas/eGovern#parag> ?val1 } }";
+
+
+
+set :sparql_union3=
+"SELECT ?s1 ?p ?val
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE { ?s1 ?p ?val.
+       {FILTER (?p = <http://purl.org/dc/elements/1.1/description> ) }
+        UNION
+       {FILTER (?p = <http://udbl.it.uu.se/schemas/eGovern#parag> ) }   }"; 
+
+
+set :sparql_union33=
+"SELECT ?s1 ?p ?val
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE { ?s1 ?p ?val.
+       {FILTER REGEX (str(?p), '*description') }
+        UNION
+       {FILTER REGEX (str(?p), '*parag') }   }"; 
+
+
+
+
+set :sparql_cont2 = 
+"SELECT ?s1 ?p2 ?val2
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {?s1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://udbl.it.uu.se/schemas/eGovern#LifeEvent> .
+	FILTER (?p2 != <http://udbl.it.uu.se/schemas/eGovern#country> ) .
+        ?s1 ?p2 ?val2 .}";
+
+
+
+set :sparql_cont22 = 
+"SELECT ?s1 ?p2 ?val2
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {{?s1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://udbl.it.uu.se/schemas/eGovern#LifeEvent> .
+         ?s1 ?p2 ?val2 .}
+	UNION
+	{?s1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://udbl.it.uu.se/schemas/eGovern#Form> .
+         ?s1 ?p2 ?val2 .} }";
+
+
+
+set :sparql_cont3 = 
+"SELECT ?s1 ?s2
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {?s1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://udbl.it.uu.se/schemas/eGovern#LifeEvent> .
+        ?s1 <http://udbl.it.uu.se/schemas/eGovern#lifeev_country> ?s2 .}";
+
+set :sparql_cont33 = 
+"SELECT ?s ?p ?s1
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {?s1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://udbl.it.uu.se/schemas/eGovern#EUcountry> .
+        ?s ?p ?s1 .}";
+
+
+
+set :sparql_cont4 = 
+"SELECT ?s1 ?p2 ?val2
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {?s1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://udbl.it.uu.se/schemas/eGovern#LifeEvent> .
+        ?s1 <http://udbl.it.uu.se/schemas/eGovern#lifeev_country> <http://udbl.it.uu.se/schemas/eGovern#EUcountry/_italy> .
+	?s1 ?p2 ?val2.
+ { FILTER (?p2=<http://udbl.it.uu.se/schemas/eGovern#lifeev_country>) }
+UNION
+ { FILTER (?p2=<http://udbl.it.uu.se/schemas/eGovern#parag> )} }";
+
+
+
+set :sparql_cont44 = 
+"SELECT ?s1 ?p2 ?val2
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {?s1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://udbl.it.uu.se/schemas/eGovern#LifeEvent> .
+        ?s1 <http://udbl.it.uu.se/schemas/eGovern#ResponsibleCountry> <http://udbl.it.uu.se/schemas/eGovern#EUcountry/_italy> .
+	?s1 ?p2 ?val2.
+ FILTER REGEX (?p2, '.*description.*'). }";
+
+
+
+
+
+set :sparql_content_6 = 
+"SELECT ?s1 ?p1 ?val1 
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {?s1 <http://purl.org/dc/elements/1.1/title> 'Job' .
+        ?s1 ?p1 ?val1 .}";
+
+
+
+set :sparql_cont7 = 
+"SELECT ?s ?p ?val 
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {?s ?p ?val .
+ FILTER REGEX (?s, '.*eGovern#EUcountry.*'). 
+ FILTER REGEX (?val, 'lev').}";
+
+
+set :sparql_cont7 = 
+"SELECT ?s ?p ?val 
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {?s ?p ?val .
+  FILTER REGEX (?val, 'lev').}";
+
+
+set :sparql_cont8 = 
+"SELECT ?s ?p ?val 
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {?s ?p ?val .
+ FILTER (?s = <http://udbl.it.uu.se/schemas/eGovern#EUcountry/_bulgaria>).}";
+
+
+set :sparql88 = 
+"CONSTRUCT { ?s ?p ?s1 }
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {?s  ?p ?s1 .
+	?s1 <http://udbl.it.uu.se/schemas/eGovern#lifeev_country> ?o .
+	FILTER (?o= <http://udbl.it.uu.se/schemas/eGovern#EUcountry/_italy>). }";
+
+
+set :sparql_cont9 = 
+"SELECT ?s ?p ?val 
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {?s ?p ?val .}";
+
+
+set :sparql_10 = 
+"SELECT ?s1 ?s2
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {?s1 ?s2 <http://udbl.it.uu.se/schemas/eGovern#EUcountry/_germany> }";
+
+
+set :sparql11=
+"SELECT ?s1 ?val1
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {?s1  <http://purl.org/dc/elements/1.1/title> ?val1 . 
+	 FILTER (?val1 != 'Job') } ";
+
+set :sparql11_2= "SELECT ?s1 ?p1 ?val1
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {?s1  ?p1 ?val1 . 
+	 FILTER REGEX (?val1, 'Job') } ";
+
+
+set :sparql12=
+"SELECT ?s1 ?val1
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {?s1  <http://udbl.it.uu.se/schemas/eGovern#NumberOfFields> ?val1 . 
+	 FILTER (?val1 > 25) } ";
+
+
+set :sparql133=
+"SELECT ?s1 ?p1 ?val1
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {?s1  ?p1 ?val1 . 
+	 FILTER (?s1 = <http://udbl.it.uu.se/schemas/eGovern#Form/_fid0> ).
+	FILTER REGEX (?val1, 'Sweden') }";
+
+set :sparql134=
+"CONSTRUCT {?s ?p ?o }
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {<http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse>  ?rel ?s .
+	?s ?p ?o . } ";
+
+
+
+set :sparql13=
+"SELECT ?s1 ?p1 ?val1
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {?s1  ?p1 ?val1 . 
+	FILTER REGEX (?val1, '*Sweden*') }";
+
+set :sparql14=
+"SELECT ?s ?p ?o
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {?s  <http://udbl.it.uu.se/schemas/eGovern#NumberOfFields> 129 . 
+	?s ?p ?o .
+	FILTER (?p != <http://udbl.it.uu.se/schemas/eGovern#liveeventform> ) } ";
+
+set :sparql15=
+"CONSTRUCT { ?s ?p ?o }
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {<http://udbl.it.uu.se/schemas/eGovern#Form/_fid0> ?rel ?s .
+	?s ?p ?o .} ";
+
+
+
+/* Defining the results of and evaluating the example queries
+ */
+lisp;
+
+(defglobal _schema_1_res_ 
+  (sorttuples  '((#(#[URI "http://purl.org/dc/elements/1.1/description"]))
+		(#(#[URI "http://purl.org/dc/elements/1.1/language"]))
+ 		(#(#[URI "http://purl.org/dc/elements/1.1/title"]))
+ 		(#(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEventID"]))
+ 		(#(#[URI "http://udbl.it.uu.se/schemas/eGovern#country"]))
+ 		(#(#[URI "http://udbl.it.uu.se/schemas/eGovern#parag"])))))
+
+
+ 
+(defglobal _hybrid_1_res_ 
+  '((#(#[URI "http://udbl.it.uu.se/schemas/eGovern#Form/_fid0"] #[URI "http://udbl.it.uu.se/schemas/eGovern#forms_of_thelifeevents"] #[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse"]))
+ (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#Form/_fid0"] #[URI "http://udbl.it.uu.se/schemas/eGovern#NumberOfFields"] 25))
+ (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#Form/_fid1"] #[URI "http://udbl.it.uu.se/schemas/eGovern#NumberOfFields"] 129))
+ (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#Form/_fid2"] #[URI "http://udbl.it.uu.se/schemas/eGovern#NumberOfFields"] 59))
+ (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#Form/_fid0"] #[URI "http://www.egov_project.org/GovMLSchema#Creator"] #[USTR "National Tax Board of Sweden"]))
+ (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#Form/_fid1"] #[URI "http://www.egov_project.org/GovMLSchema#Creator"] #[USTR "National Tax Board of Sweden"]))
+ (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#Form/_fid2"] #[URI "http://www.egov_project.org/GovMLSchema#Creator"] #[USTR "http://www.workpermit.com"]))
+ (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#Form/_fid0"] #[URI "http://udbl.it.uu.se/schemas/eGovern#URL"] #[USTR "http://www.skatteverket.se/etjanster/skrivutpersonbevis.4.18e1b10334ebe8bc80001262.html"]))
+ (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#Form/_fid1"] #[URI "http://udbl.it.uu.se/schemas/eGovern#URL"] #[USTR "http://www.skatteverket.se/download/18.3dfca4f410f4fc63c86800010627/7665B5.pdf"]))
+ (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#Form/_fid2"] #[URI "http://udbl.it.uu.se/schemas/eGovern#URL"] #[USTR "http://www.workpermit.com/uk/employer_form.htm"]))))
+  
+
+(defglobal _cont2_
+  '(	(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_adaptpn"] #[URI "http://purl.org/dc/elements/1.1/title"] #[USTR "Adapt the personal number"]) 
+	(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_adaptpn"] #[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEventID"] #[USTR "adaptpn"]) 
+	(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_adaptpn"] #[URI "http://udbl.it.uu.se/schemas/eGovern#lifeev_country"] #[URI "NIL"]) 
+	(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_adaptpn"] #[URI "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"] #[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent"]) 
+	(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob"] #[URI "http://purl.org/dc/elements/1.1/description"] #[USTR "A citizen from one EU country intends to look for a job in another EU country ."]) 
+	(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob"] #[URI "http://purl.org/dc/elements/1.1/language"] #[USTR "EN"]) 
+	(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob"] #[URI "http://purl.org/dc/elements/1.1/title"] #[USTR "Job"]) 
+	(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob"] #[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEventID"] #[USTR "eujob"]) 
+	(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob"] #[URI "http://udbl.it.uu.se/schemas/eGovern#lifeev_country"] #[URI "http://udbl.it.uu.se/schemas/eGovern#EUcountry/_germany"]) 
+	(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob"] #[URI "http://udbl.it.uu.se/schemas/eGovern#parag"] #[USTR "JEU1023"]) 
+	(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob"] #[URI "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"] #[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent"]) (#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse"] #[URI "http://purl.org/dc/elements/1.1/description"] #[USTR "A citizen intends to move from one EU country to another."]) 
+	(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse"] #[URI "http://purl.org/dc/elements/1.1/language"] #[USTR "EN"]) 
+	(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse"] #[URI "http://purl.org/dc/elements/1.1/title"] #[USTR "Moving House"]) 
+	(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse"] #[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEventID"] #[USTR "movinghouse"]) 
+	(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse"] #[URI "http://udbl.it.uu.se/schemas/eGovern#lifeev_country"] #[URI "http://udbl.it.uu.se/schemas/eGovern#EUcountry/_italy"]) 
+	(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse"] #[URI "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"] #[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent"]))
+  )
+
+(defglobal _cont2_GCT_ 
+  '((#("http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob" "http://purl.org/dc/elements/1.1/description" "A citizen from one EU country intends to look for a job in another EU country ."))
+    (#("http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob" "http://purl.org/dc/elements/1.1/language" "EN"))
+    (#("http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob" "http://purl.org/dc/elements/1.1/title" "Job"))
+    (#("http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob" "http://udbl.it.uu.se/schemas/eGovern#LifeEventID" "eujob"))
+    (#("http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob" "http://udbl.it.uu.se/schemas/eGovern#parag" "JEU1023"))
+    (#("http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob" "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" "http://udbl.it.uu.se/schemas/eGovern#LifeEvent"))
+    (#("http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse" "http://purl.org/dc/elements/1.1/description" "A citizen intends to move from one EU country to another."))
+    (#("http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse" "http://purl.org/dc/elements/1.1/language" "EN"))
+    (#("http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse" "http://purl.org/dc/elements/1.1/title" "Moving House"))
+    (#("http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse" "http://udbl.it.uu.se/schemas/eGovern#LifeEventID" "movinghouse"))
+    (#("http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse" "http://udbl.it.uu.se/schemas/eGovern#parag" "sql null"))
+    (#("http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse" "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" "http://udbl.it.uu.se/schemas/eGovern#LifeEvent")))
+  )
+
+
+(defglobal _cont3_
+  '((#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_adaptpn"] #[URI "NIL"]) (#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob"] #[URI "http://udbl.it.uu.se/schemas/eGovern#EUcountry/_germany"]) (#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse"] #[URI "http://udbl.it.uu.se/schemas/eGovern#EUcountry/_italy"])))
+
+(defglobal _cont33_
+  '((#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob"] #[URI "http://udbl.it.uu.se/schemas/eGovern#lifeev_country"] 
+    #[URI "http://udbl.it.uu.se/schemas/eGovern#EUcountry/_germany"])
+ (#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse"] 
+    #[URI "http://udbl.it.uu.se/schemas/eGovern#lifeev_country"] #[URI "http://udbl.it.uu.se/schemas/eGovern#EUcountry/_italy"])
+  ))
+	
+(defglobal _cont4_
+  '((#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse"] 
+    #[URI "http://udbl.it.uu.se/schemas/eGovern#lifeev_country"] #[URI "http://udbl.it.uu.se/schemas/eGovern#EUcountry/_italy"])
+ (#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse"] 
+    #[URI "http://udbl.it.uu.se/schemas/eGovern#parag"] NIL))
+  )
+
+(defglobal _cont7_
+  '((#(#[URI "http://udbl.it.uu.se/schemas/eGovern#EUcountry/_bulgaria"] #[URI "http://udbl.it.uu.se/schemas/eGovern#EUcurrency"] #[USTR "lev"])))
+  )
+
+
+
+(defglobal _cont8_
+   '((#(#[URI "http://udbl.it.uu.se/schemas/eGovern#EUcountry/_bulgaria"] #[URI "http://udbl.it.uu.se/schemas/eGovern#EUcurrency"] #[USTR "lev"])) (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#EUcountry/_bulgaria"] #[URI "http://udbl.it.uu.se/schemas/eGovern#countryoftheevent"] #[USTR "bulgaria"])) (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#EUcountry/_bulgaria"] #[URI "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"] #[URI "http://udbl.it.uu.se/schemas/eGovern#EUcountry"]))))
+   
+ 
+
+(defglobal _cont8nogct_
+  '((#("http://udbl.it.uu.se/schemas/eGovern#EUcountry/_bulgaria" "http://udbl.it.uu.se/schemas/eGovern#EUcurrency" "lev"))
+    (#("http://udbl.it.uu.se/schemas/eGovern#EUcountry/_bulgaria" "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" "http://udbl.it.uu.se/schemas/eGovern#EUcountry")))
+  )
+
+(defglobal _cont88_
+ '((#(#[URI "http://udbl.it.uu.se/schemas/eGovern#Form/_fid0"] #[URI "http://udbl.it.uu.se/schemas/eGovern#Concern"] #[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse"])) (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#Form/_fid0"] #[URI "http://udbl.it.uu.se/schemas/eGovern#forms_of_thelifeevents"] #[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse"])) (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#Form/_fid1"] #[URI "http://udbl.it.uu.se/schemas/eGovern#Concern"] #[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse"])) (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#Form/_fid2"] #[URI "http://udbl.it.uu.se/schemas/eGovern#Concern"] #[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse"])))
+  )
+	
+
+
+(defglobal _union1_
+  '((#(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_adaptpn"] NIL NIL))
+    (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_adaptpn"] NIL NIL))
+    (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob"] NIL #[USTR "JEU1023"]))
+    (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob"] #[USTR "A citizen from one EU country intends to look for a job in another EU country ."] NIL))
+    (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse"] NIL NIL))
+    (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse"] #[USTR "A citizen intends to move from one EU country to another."] NIL)))
+  )
+
+
+(defglobal _union2_
+  '((#(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_adaptpn"] NIL))
+    (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_adaptpn"] NIL))
+    (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob"] #[USTR "A citizen from one EU country intends to look for a job in another EU country ."]))
+    (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob"] #[USTR "JEU1023"]))
+    (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse"] NIL))
+    (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse"] #[USTR "A citizen intends to move from one EU country to another."])) ))
+  
+	
+
+(defglobal _union_3
+  '((#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob"] #[URI "http://purl.org/dc/elements/1.1/description"] 
+     #[USTR "A citizen from one EU country intends to look for a job in another EU country ."])
+    (#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob"] #[URI "http://udbl.it.uu.se/schemas/eGovern#parag"] 
+     #[USTR "JEU1023"])
+    (#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse"] #[URI "http://purl.org/dc/elements/1.1/description"] 
+     #[USTR "A citizen intends to move from one EU country to another."]))
+  )
+
+(defglobal _q10_
+ '((#(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob"] #[URI "http://udbl.it.uu.se/schemas/eGovern#lifeev_country"]))))
+ 
+
+(defglobal _sparql11_
+ '((#(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_adaptpn"] #[USTR "Adapt the personal number"])) (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse"] #[USTR "Moving House"])))
+)
+
+(defglobal _sparql112_
+  '((#(#[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob"] #[URI "http://purl.org/dc/elements/1.1/title"]  #[USTR "Job"])))
+  )
+
+(defglobal _sparql12_
+  '((#(#[URI "http://udbl.it.uu.se/schemas/eGovern#Form/_fid1"] 129)) (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#Form/_fid2"] 59))))
+
+(defglobal _sparql13_
+  '((#(#[URI "http://udbl.it.uu.se/schemas/eGovern#Form/_fid0"] #[URI "http://www.egov_project.org/GovMLSchema#Creator"] #[USTR "National Tax Board of Sweden"])) (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#Form/_fid1"] #[URI "http://www.egov_project.org/GovMLSchema#Creator"] #[USTR "National Tax Board of Sweden"]))))
+
+(defglobal _sparql14_
+  '((#(#[URI "http://udbl.it.uu.se/schemas/eGovern#Form/_fid1"] #[URI "http://udbl.it.uu.se/schemas/eGovern#Concern"] #[URI "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse"])) (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#Form/_fid1"] #[URI "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"] #[URI "http://udbl.it.uu.se/schemas/eGovern#Form"])) (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#Form/_fid1"] #[URI "http://udbl.it.uu.se/schemas/eGovern#NumberOfFields"] 129)) (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#Form/_fid1"] #[URI "http://www.egov_project.org/GovMLSchema#Creator"] #[USTR "National Tax Board of Sweden"])) (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#Form/_fid1"] #[URI "http://udbl.it.uu.se/schemas/eGovern#URL"] #[USTR "http://www.skatteverket.se/download/18.3dfca4f410f4fc63c86800010627/7665B5.pdf"])) (#(#[URI "http://udbl.it.uu.se/schemas/eGovern#Form/_fid1"] #[URI "http://udbl.it.uu.se/schemas/eGovern#FormID"] #[USTR "fid1"]))))
+
+
+(defglobal _SPO_OPT1_
+  '(("http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_adaptpn" "http://purl.org/dc/elements/1.1/title" 
+     "Adapt the personal number")
+     ("http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_adaptpn" "http://udbl.it.uu.se/schemas/eGovern#LifeEventID" "adaptpn")
+    ("http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_adaptpn" "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" 
+     "http://udbl.it.uu.se/schemas/eGovern#LifeEvent")
+    ("http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob" "http://purl.org/dc/elements/1.1/description" 
+     "A citizen from one EU country intends to look for a job in another EU country .")
+    ("http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob" "http://purl.org/dc/elements/1.1/language" 
+     "EN")
+    ("http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob" "http://purl.org/dc/elements/1.1/title" 
+     "Job")
+    ("http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob" "http://udbl.it.uu.se/schemas/eGovern#LifeEventID" "eujob" )
+    ("http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob" "http://udbl.it.uu.se/schemas/eGovern#lifeev_country" 
+     "http://udbl.it.uu.se/schemas/eGovern#EUcountry/_germany")
+    ("http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob" "http://udbl.it.uu.se/schemas/eGovern#parag" 
+     "JEU1023")
+    ("http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_eujob" "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" 
+     "http://udbl.it.uu.se/schemas/eGovern#LifeEvent"))
+  )
+
+(defglobal  _CONS_OPT1_
+  '(("http://udbl.it.uu.se/schemas/eGovern#Form/_fid0" "http://udbl.it.uu.se/schemas/eGovern#Concern" 
+     "http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse")
+    ("http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse" "http://purl.org/dc/elements/1.1/description" 
+     "A citizen intends to move from one EU country to another.")
+    ("http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse" "http://purl.org/dc/elements/1.1/title" 
+     "Moving House")
+    ("http://udbl.it.uu.se/schemas/eGovern#LifeEvent/_movinghouse" "http://udbl.it.uu.se/schemas/eGovern#parag" 
+     NIL))
+  )
+	
+
+
+:osql
+/* Regression test
+ */
+lisp;
+(checkequal "SparQL schema query 1 with END-P"
+	    ((sorttuples (osql "sparql(:sparql_schema_1);"))
+	     _schema_1_res_))
+
+
+(checkequal "SparQL hybrid query 1 with END-P"
+	    ((sorttuples (osql "sparql(:sparql_hybrid_1);"))
+	     (sorttuples _hybrid_1_res_)))
+
+
+(checkequal "Schemaless unbound-property query 2 (with REGEX on s  ) "
+	    ((sorttuples (osql "sparql(:sparql_cont8);"))
+	     (sorttuples _cont8_)))
+
+
+
+(checkequal "Union query 1, 2 blocks, diff variables "
+	    ((sorttuples (osql "sparql(:sparql_union1);"))
+	    (sorttuples _union1_)))
+
+
+(checkequal "Union query 2, 2 blocks, same variables "
+	    ((sorttuples (osql "sparql(:sparql_union2);"))
+	     (sorttuples _union2_)))
+
+
+:osql
+eval("create function sparql_cont2()-><Literal,Literal,Literal> as " + sparql_translate(:sparql_cont2)); 
+eval("create function sparql_cont3()-><Literal,Literal> as " + sparql_translate(:sparql_cont3)); 
+eval("create function sparql_cont33()->(Literal,Literal,Literal) as " + sparql_translate(:sparql_cont33)); 
+eval("create function sparql_cont4()-><Literal,Literal,Literal> as " + sparql_translate(:sparql_cont4)); 
+eval("create function sparql_cont8()-><Literal,Literal,Literal> as " + sparql_translate(:sparql_cont8)); 
+eval("create function sparql_union3()-><Literal,Literal,Literal> as " + sparql_translate(:sparql_union3)); 
+eval("create function sparql_union33()-><Literal,Literal,Literal> as " + sparql_translate(:sparql_union33)); 
+
+
+lisp;
+
+
+(checkequal "SparQL unbound-property query 1 - GCT"  
+	    ((sorttuples (osql "remove_null(sparql_cont2());"))
+	     (sorttuples _cont2_)))
+
+
+(checkequal "SparQL query with FK"
+	    ((sorttuples (osql "sparql_cont3();"))
+	     (sorttuples _cont3_)))
+
+
+(checkequal "SparQL query- test rewrite for (* * ?s1. ?s ?p ?s1)"
+	    ((sorttuples (osql "sparql_cont33();"))
+	     (sorttuples _cont33_)))
+
+
+(checkequal "SparQL unbound-property query 2 (with FK) "
+	    ((sorttuples (osql "sparql_cont4();"))
+	     (sorttuples _cont4_)))
+
+
+(checkequal "SparQL unbound-property query 1 with GCT" 
+	    ((sorttuples (osql "remove_null(sparql_cont2());"))
+	     (sorttuples _cont2_)))
+
+
+(checkequal "Schema-less unbound-property query 1 (with REGEX on s and val )-with GCT "
+	    ((sorttuples (osql "sparql(:sparql_cont7);"))
+	     (sorttuples _cont7_)))
+
+
+(checkequal "Construct unbound-property query 1 "
+	    ((sorttuples (osql "sparql(:sparql88);"))
+	     (sorttuples _cont88_)))
+
+
+(checkequal "Union unbound-property query 3, 2 blocks with FILTER, GCT " 
+	    ((sorttuples (osql "remove_null(sparql_union3());"))
+	      (sorttuples _union_3)))
+
+
+(setq _rewrite_filter_ nil);;TO DO:need extra processing to put the FILTER correct
+(checkequal "Union unbound-property query 3, 2 blocks with FILTER, GCT " 
+	    ((sorttuples (osql "remove_null(sparql_union33());"))
+	      (sorttuples _union_3)))
+
+
+(setq _rewrite_filter_ t);;to put FILTER correct
+(checkequal "Unbound-property query 4 with bound to an URI object, ?s ?p <URI>"
+	((sorttuples (osql "sparql(:sparql_10);"))
+	 (sorttuples _q10_)))
+
+
+(setq _rewrite_filter_ nil);;to put FILTER correct
+(checkequal "Query to test rewrite 'valueid and !='"
+	((sorttuples (osql "sparql(:sparql11);"))
+	 (sorttuples _sparql11_)))
+
+(setq _rewrite_filter_ t)
+
+(checkequal "Query to test rewrite 'valueid(rowid) and like'"
+	((sorttuples (osql "sparql(:sparql11_2);"))
+	 (sorttuples _sparql112_)))
+
+
+(checkequal "Query to test rewrite 'valueid and > '"
+	((sorttuples (osql "sparql(:sparql12);"))
+	 (sorttuples _sparql12_)))
+
+
+(checkequal "Query to test rewrite both 'rowid,valueid and like'"
+	((sorttuples (osql "sparql(:sparql13);"))
+	 (sorttuples _sparql13_)))
+
+
+(checkequal "Query for GCT"
+	((sorttuples (osql "sparql(:sparql14);"))
+	 (sorttuples _sparql14_)))
+
+
+   
+
+  
+
+
+:osql
+
+DSDisconnect("eGov");

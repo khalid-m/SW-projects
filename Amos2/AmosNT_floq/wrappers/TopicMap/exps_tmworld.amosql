@@ -1,0 +1,59 @@
+count(tm_rdfdata_triples());
+/* The result 5990 */
+
+set :rdql_content11 = "SELECT ?basenamestring
+			FROM <http://user.it.uu.se/~udbl/TMRDF/>
+			WHERE (?tmo , <http://user.it.uu.se/~udbl/TMRDF/Schema#BASENAMESTRING> ?basenamestring)";
+
+rdql(:rdql_content11);
+
+count(rdql(:rdql_content11));
+318
+
+set :rdql_content3 = "SELECT ?occurrence 
+		       	FROM <http://user.it.uu.se/~udbl/TMRDF/>
+			WHERE (?tm0 , <http://user.it.uu.se/~udbl/TMRDF/Schema#BASENAME>, ?tm1)
+			      (?tm1 , <http://user.it.uu.se/~udbl/TMRDF/Schema#BASENAMESTRING>, 'Topologi Schematron Validator') 
+			      (?tm0 , <http://user.it.uu.se/~udbl/TMRDF/Schema#OCCURRENCE>, ?tm2)
+        		      (?tm2 , <http://user.it.uu.se/~udbl/TMRDF/Schema#REFERENCE>, ?occurrence)";
+rdql(:rdql_content3);
+
+/*With partial evaluation
+{"http://www.topologi.com/validator/"}
+{"http://www.topologi.com/validator/help/Other3.htm"}
+1.75 s
+*/
+
+set :rdql_content4  = "SELECT ?iofoc 
+		       	FROM <http://user.it.uu.se/~udbl/TMRDF/>
+			WHERE (?tm0 , <http://user.it.uu.se/~udbl/TMRDF/Schema#BASENAME>, ?tm1)
+			      (?tm1 , <http://user.it.uu.se/~udbl/TMRDF/Schema#BASENAMESTRING>, 'Topologi Schematron Validator') 
+			      (?tm0 , <http://user.it.uu.se/~udbl/TMRDF/Schema#OCCURRENCE>, ?tm2)
+        		      (?tm2 , <http://user.it.uu.se/~udbl/TMRDF/Schema#REFERENCE>, ?occurrence)
+			      (?tm2 , <http://user.it.uu.se/~udbl/TMRDF/Schema#INSTANCEOFOCCURRENCE>, ?iofoc)
+			AND ?occurrence  != <http://www.topologi.com/validator/> ";
+
+rdql(:rdql_content4);
+/*With partial evaluation
+[Expanding image to 6309588]
+Image moved in PUTHASH
+{"http://udbl.it.uu.se/TopicMap#1471"}
+2.813 s
+*/
+
+set :rdql_hybrid = "SELECT ?iofoc, ?tm3 
+		       	FROM <http://user.it.uu.se/~udbl/TMRDF/>
+			WHERE (?tm0 , <http://user.it.uu.se/~udbl/TMRDF/Schema#BASENAME>, ?tm1)
+			      (?tm1 , <http://user.it.uu.se/~udbl/TMRDF/Schema#BASENAMESTRING>, 'Topologi Schematron Validator') 
+			      (?tm0 , <http://user.it.uu.se/~udbl/TMRDF/Schema#OCCURRENCE>, ?tm2)
+        		      (?tm2 , <http://user.it.uu.se/~udbl/TMRDF/Schema#REFERENCE>, ?occurrence)
+			      (?tm2 , <http://user.it.uu.se/~udbl/TMRDF/Schema#INSTANCEOFOCCURRENCE>, ?iofoc)
+                              (<http://user.it.uu.se/~udbl/TMRDF/Schema#INSTANCEOFOCCURRENCE>, <http://www.w3.org/2000/01/rdf-schema#domain>,?tm3)
+			AND ?occurrence  != <http://www.topologi.com/validator/> ";
+
+rdql(:rdql_hybrid);
+
+/*With partial evaluation
+{"http://udbl.it.uu.se/TopicMap#1471","http://user.it.uu.se/~udbl/TMRDF/Schema#TM_OCCURRENCE"}
+2.906 s
+*/

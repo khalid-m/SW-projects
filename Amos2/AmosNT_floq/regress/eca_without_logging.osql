@@ -1,0 +1,160 @@
+logging off;
+
+
+<  'base_sample.osql';
+
+/* ECA rules with priority numbers*/
+
+
+/* composite event as a disjunction of two simple events*/
+
+create rule rule7() as
+	from employee e
+	on updated(taxes(e)) or updated(income(e))
+	when employee.netincome->number(e) > netincome(mgr(e))
+	do set income(e) = 10000;
+
+activate rule rule7();
+set taxes(:e1) = .3;
+set income(:e2) = 16000;
+set income(:e3) = 11000;
+
+rulecheck();
+deactivate rule rule7();
+
+/*composite event as conjunction of two simple events*/
+
+create rule rule8(department d) as
+	from employee e
+	on updated(dept(e)) and updated(addr(e))
+	when dept(e) = d 
+	     and city(addr(e)) != city(addr(d))
+	do set income(e) = income(e) + 900;
+
+activate rule rule8(:shoes) priority 3;
+set addr(:e4) = :addr8;
+set dept(:e4) = :shoes;
+set dept(:e5) = :shoes;
+
+rulecheck();
+deactivate rule rule8(:shoes);
+
+create employee (name, income, dept, addr, taxes) instances 
+	:e6 ("employee6", 14000, :toys, :addr6, .25),
+	:e7 ("employee7", 14000, :toys, :addr7, .25),
+	:e8 ("employee8", 10000, :toys, :addr8, .25);
+
+/*composite event as a disjunction of a simple event and another composite event*/
+
+create rule rule9(department d, manager m) as
+	from employee e
+	on (updated(income(e)) and updated(dept(e))) or added(dept(e))
+	when (dept(e) != d or mgr(e) != m) and income(e) < 20000
+	do begin
+		set income(e) = 20000;
+		set dept(e) = d;
+		set mgr(d) = m;
+ 	  end;
+
+activate rule rule9(:shoes, :harold);
+
+
+set income(:e6) = 15000;
+set dept(:e6) = :toys;
+set income(:e7) = 15000;
+add dept(:e8) = :cloths;
+
+rulecheck();
+deactivate rule rule9(:shoes, :harold);
+
+lisp;
+(checkequal
+	"ECA rules with composite events "
+	((osql "income(:e1);") '((10000)))
+	((osql "income(:e2);") '((10000)))
+	((osql "income(:e3);") '((11000)))
+	((osql "income(:e4);") '((10900)))
+	((osql "income(:e5);") '((10000)))
+	((osql "income(:e6);") '((20000)))
+	((caar (osql "dept(:e6);")) amos_shoes)
+	((caar (osql "mgr(:e6);")) amos_harold)
+	((osql "income(:e7);") '((20000)))
+	((osql "income(:e8);") '((20000)))
+	((caar (osql "dept(:e8);")) amos_shoes)
+	((caar (osql "mgr(:e8);")) amos_harold))
+:osql
+
+
+set income(:e3) = 10000;
+set taxes(:e3) = .25;
+
+
+
+/* example of rule termination*/
+
+create rule rule12() as
+	from employee e
+	on updated(income(e))
+	when income(e) > 20000
+	do set taxes(e) = .2;
+
+create rule rule13() as
+	from employee e
+	on updated(taxes(e))
+	when employee.netincome->number(e) < 10000
+	do set income(e) = 25000;
+
+activate rule rule12();
+activate rule rule13();
+
+set income(:e1) = 22000;
+
+rulecheck();
+deactivate rule rule12();
+deactivate rule rule13();
+
+lisp;
+(checkequal
+	"Rule termination "
+	((osql "income(:e1);") '((25000))))
+:osql
+
+set income(:e1) = 10000;
+
+
+
+/* a simple EA rule*/
+
+create rule rule14() as
+	from employee e
+	on updated(dept(e))
+	do set income(e) = income(e) - 1000;
+
+activate rule rule14();
+set dept(:e2) = :cloths;
+
+rulecheck();
+deactivate rule rule14();
+
+
+/*  A parameterized EA rule */
+
+create rule rule15(department d) as
+	from employee e
+	on updated(dept(e))
+	do set dept(e) = d;
+
+activate rule rule15(:toys);
+set dept(:e3) = :cloths;
+
+rulecheck(4);
+deactivate rule rule15(:toys);
+
+lisp;
+(checkequal
+	"EA rules "
+	((osql "income(:e2);") '((9000)))
+	((caar (osql "dept(:e3);")) amos_toys))
+:osql
+
+logging on;

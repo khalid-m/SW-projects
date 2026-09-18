@@ -1,0 +1,16 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2001 Timour Katchaounov, UDBL
+ * $RCSfile: mbtree.osql,v $
+ * $Revision: 1.1 $ $Date: 2003/07/14 07:11:44 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: All functions operating on the type MBTree.
+ * 
+ * To do: move all functions regarding mbtrees here, f ex creating indexes etc
+ *       
+ *
+ ****************************************************************************/
+create function mbtree() -> mbtree
+as foreign 'mbtree+';

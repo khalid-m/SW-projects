@@ -1,0 +1,120 @@
+/***************************************************************************** * AMOS2 - GSDM  
+* Author: (c) 2005 Milena Ivanova, UDBL 
+* $RCSfile: start.osql,v $ 
+* $Revision: 1.8 $ $Date: 2005/12/19 18:18:47 $ 
+* $State: Exp $ $Locker:  $ 
+* * Description: Example scenarios for GSDM
+****************************************************************************/
+
+/* Common part for all scenarios */
+/* 1. Set your user name. It should be a valid user name on the servers to be used for GSDM working nodes. Your RSA/DSA public keys (in \.ssh\id_rsa.pub) should also be installed on the server (i.e. appended to ~/.ssh/authorized_keys2 ) in order to avoid entering your password when starting the gsdm servers. E.g.
+set username()="milena"; */
+
+set username()="replace this";
+
+
+/* 2. Specify resources to be used. It should be a valid user name on
+the servers to be used for GSDM working nodes */
+
+/* to run on the local host */
+set resources()="LOCAL";
+
+/* OR to run on a remote cluster, e.g.
+set resources()="hagrid.it.uu.se";  */
+
+set resources()="replace this";
+
+/* In the second case the function cluster_nodes() needs to be set, e.g.
+set cluster_nodes("hagrid.it.uu.se")=
+	vector of charstring("hagrid084.hagrid.it.uu.se",
+	"hagrid099.hagrid.it.uu.se");
+*/
+
+/* Register the Coordinator in the name server. The current architecture runs both on the same host */
+register_at("COORDINATOR",getenv("NAMESERVER_HOST"));
+
+/* start statistics collector on the same host */
+start_statsrv("LOCAL"); 
+
+/***************CQ Specification **************************************/
+
+/* Register input stream. In the example it is a stored signal in a
+file TEST256.osql */ 
+declare mstream :ins;
+set :ins=register_input_stream("TESTSIGNAL","TEST256","PLAY");
+
+/* To run on the UDP radio streams use instead
+declare mstream :ins;
+set :ins=register_input_stream("TESTSIGNAL","130.238.30.114","UDPRADIO");
+*/
+
+
+/* Register output stream. In the examples STDOUT prints on the screen, and LATENCY measures the processing latency. */ 
+
+declare mstream :outs;
+set :outs= register_result_stream("","STDOUT");
+
+/* or
+set :outs= register_result_stream("","LATENCY"); */
+
+/*** End of the common part. Different execution plans start here *******/
+
+
+/***** Central: FFT executed on 1 node *****/
+declare dataflow :d;
+set :d=central("fft3",{});
+set id(:d)="central";
+set_exp_params(:d,256,0.1,100);
+
+
+/*****RR2: Parallel execution in 2 by Round Robin partitioning *****/
+declare dataflow :d;
+set :d= pipe(central("ts_it",{}),
+	     PCC(2,"round_robin_part","fft3",{},"S-Merge",{0.1}));
+set id(:d)="RR2";
+set_exp_params(:d,256,0.1,100);
+
+
+/*****WS2: Parallel execution in 2 by Window Split partitioning*****/
+declare dataflow :d;
+set :d= pipe(central("ts_it",{}),
+	     PCC(2,"fft3part","fft3",{},"OS-Join",{"fft3combine"}));
+set id(:d)="WS2";
+set_exp_params(:d,256,0.1,100);
+
+
+/******** COMMON part for all scenarios: CQ execution **********/
+declare cq :cq;
+set :cq=cq(:d,vector of mstream(:ins), vector of mstream(:outs));
+
+compile(:cq);
+
+/* start execution for stream segment of 10 windows */
+run(:cq,"CNT",10);
+
+/* OR start execution for 2 minutes 
+run(:cq,"TIME",2); */
+
+/* OR start unconditionally:
+run(:cq);
+
+and stop later on explicitly:
+
+stop(:cq);   */
+
+/* Wait for completion of the query. When working nodes are finished,
+execution statistics can be stored in a file by: */
+report(:cq);
+
+/* Stop working nodes: */
+clean(:cq);
+
+/* Stop coordinator: */
+kill_peer("STATSRV");
+quit;
+
+/* Stop the name server if not needed any more */
+
+
+
+

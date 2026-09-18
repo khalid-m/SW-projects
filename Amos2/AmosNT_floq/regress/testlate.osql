@@ -1,0 +1,262 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 1993-2003 Staffan Flodin, Tore Risch, 
+                         Martin Hansson EDSLAB, UDBL
+ * $RCSfile: testlate.osql,v $
+ * $Revision: 1.11 $ $Date: 2011/04/01 17:57:27 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Testing late binding
+ ****************************************************************************
+ * $Log: testlate.osql,v $
+ * Revision 1.11  2011/04/01 17:57:27  torer
+ * testing late bound update
+ *
+ * Revision 1.10  2011/01/27 11:26:16  torer
+ * Changed from <...> to SQL's (...) notation for tuples (much nicer)
+ *
+ * Revision 1.9  2006/04/14 10:02:43  torer
+ * Strict function result tuple declarations using <...>
+ *
+ ****************************************************************************/
+
+/* Paralell types are there to check that they can be sorted out and dont */
+/* interfere in execution */
+create type person;
+create type employee under person;
+create type manager under employee;
+create type paralell_person;
+create type paralell_employee under paralell_person;
+create type paralell_manager under paralell_employee;
+create function income(person p)->integer as select 0;
+create function income (paralell_employee p)->integer i as stored;
+create function income (paralell_manager m)->integer i
+		 as select paralell_employee.income->integer(m) * 2;
+create function income (employee p)->integer i as stored;
+create function income (manager m)->integer i
+		 as select employee.income->integer(m) * 2;
+create function incomes ()->integer i
+	as select i
+        from person e
+        where i = income(e);
+create employee (income) instances :tore (50);
+create employee (income) instances :ulla (50);
+create type p properties (f integer);
+create type q under p properties (f integer);
+declare q :a;
+create q (f)instances :a (1);
+
+lisp;
+(checkequal "late binding"
+	    ((osql "income(:tore);") '((50)))
+	    ((osql "add type manager to :tore;") nil)
+	    ((osql "select income (:tore);") '((100)))
+	    ((osql "select employee.income->integer(:tore);") '((50)))
+	    ((osql "income(:tore);") '((100)))
+	    ((sorttuples(osql "incomes();")) '((50) (100)))
+            ((osql "f(:a);") '((1))))
+:osql
+rollback;    
+
+/* The follwing section tests object createtion for types with overloaded */
+/* properties.                                                            */
+
+create type Employee properties (name charstring);
+create function tax(employee)->integer;
+create function tax(employee)->real;
+
+create type Manager under Employee properties (bonus integer);
+create function manager(Employee)->Manager;
+create function Manager()->Manager as select m from Manager m;
+
+create Employee(name,manager) instances :a('Adam', nil), :e('Eva', :a);
+create employee(tax) instances :e1(3.0);
+
+create type a properties (f bag of integer);
+create a(f) instances :a1(bag(1,2,3)), :a2(bag(4,5,6)); 
+
+lisp;
+(checkequal "object creation for types with overloaded properties"
+	((osql "name(manager(:e));") '(("Adam")))
+	((osql "name(manager(:a));"))
+;	((osql "employee.tax->integer(:e1);") '((3)))
+	((osql "employee.tax->real(:e1);") '((3.0)))	
+)
+:osql	
+rollback;
+
+/* The following section is a test of function overloading which do not   */
+/* lead to late binding. A former bug                                     */
+
+create type employee;
+create type dept;
+create function name(employee)->charstring as stored;
+create function name(dept)->charstring as stored;
+create function employees(dept)->bag of employee as stored;
+create employee(name) instances :tore("Tore"), :staffan("Surf Staffan");
+create dept instances :d1;
+set employees(:d1)=:tore;
+add employees(:d1)=:Staffan;
+lisp;
+(checkequal "A bug that has ceased to be"
+   ((sorttuples(osql "name(employees(:d1));")) '( ("Surf Staffan")("Tore"))))
+:osql
+rollback;
+
+/* the following should work with dtr */
+create function foo(number i, number j)-> number as stored;
+create function foo(number i, integer j)-> integer as stored;
+set number.number.foo->number(1,2.0)=3;
+set number.integer.foo->integer(1,2)=3;
+create function test(number a, number b)->number as select j from number j 
+       where foo(a,j)=b;
+
+
+create function fie(number j)-> number as stored;
+create function fie(integer j)-> integer as stored;
+create function test2(number b)->number as select j from number j where fie(j)=b;
+set number.fie->number(1.0)=1;
+set integer.fie->integer(2)=1;
+
+
+create function fum(number i, number j, number k)-> number as stored;
+create function fum(number i, integer j, number k)-> integer as stored;
+set number.number.number.fum->number(1,2.0,3)=4;
+set number.integer.number.fum->integer(1,2,3)=4;
+create function test3(number a, number k, number b)->number as select j 
+       from number j where fum(a,j,k)=b;
+create function test4()->(Number, Number) as 
+       select i,j from number i, number j, number k, number l 
+       where fum(i,j,l)=k  and k=4 and l=3;
+
+
+
+
+/* Testing overloading of foreign functions */
+lisp;
+(defun testfn1--+ (obj a b r) (osql-result a b (+ a b)))
+(defun testfn1-+- (obj a b r) (osql-result a (- r a) r))
+(defun testfn1+-- (obj a b r) (osql-result (- r b) b r))
+
+(defun testfn2--+ (obj a b r) (osql-result a b (+ a b)))
+(defun testfn2-+- (obj a b r) (osql-result a (- r a) r))
+(defun testfn2+-- (obj a b r) (osql-result (- r b) b r))
+
+(bind-foreign 'number.number.testa1->number '(- - +) 'testfn1--+)
+(bind-foreign 'number.number.testa1->number '(- + -) 'testfn1-+-)
+(bind-foreign 'number.number.testa1->number '(+ - -) 'testfn1+--)
+(create-function testa1 ((number a) (number b)) ((number c)) as foreign)
+(bind-foreign 'integer.integer.testa1->integer '(- - +) 'testfn2--+)
+(bind-foreign 'integer.integer.testa1->integer '(- + -) 'testfn2-+-)
+(bind-foreign 'integer.integer.testa1->integer '(+ - -) 'testfn2+--)
+(create-function testa1 ((integer a) (integer b)) ((integer c)) as foreign)
+:osql
+create function testit (number a) -> number as select b from number b where testa1(b,a)=a;
+
+
+/* To test that removal of unneccessary resolvents is done */
+create type udt1; /* user defined type 1 */
+create type udt2 under udt1;
+create type udt3 under udt1;
+create type udt4 under udt3;
+create type udt5 under udt4;
+
+create function name(udt1)->charstring as stored;
+create function arbop(udt2 v1, udt3 v2)->udt3 as stored;
+create function arbop(udt2 v1, udt4 v2)->udt4 as stored;
+
+create udt2 instances :i1;
+create udt3 instances :i2;
+create udt4 instances :i3;
+create udt5 instances :i4;
+
+set name(:i2)="The right one";
+set name(:i3)="The wrong one";
+
+set UDT2.UDT3.ARBOP->UDT3(:i1, :i2)=:i2;
+set UDT2.UDT4.ARBOP->UDT4(:i1, :i3)=:i3;
+
+create function allarbops(udt3 v1)->udt3 as select arbop(v2, v1) from udt2 v2;
+
+lisp;
+(checkequal "arbitrary overloading with late bound calls"
+   ((sorttuples (osql "test(1,3);")) '((2.) (2)))
+   ((sorttuples (osql "test2(1);")) '((1.) (2)))
+   ((sorttuples (osql "test3(1,3,4);")) '((2.) (2)))
+   ((sorttuples (osql "test4();")) '((1 2.) (1 2)))
+   ((osql "testit(3);")'((0)))
+   ((osql "name(allarbops(:i2));") '(("The right one"))))
+:osql
+rollback;
+
+create type testtype properties (name charstring);
+create type person under testtype;
+create type employee under person;
+create type house under testtype;
+create type villa under house;
+create type vehicle under testtype;
+
+create person(name) instances :p('Peter');
+create employee(name) instances :e('Ellinor');
+create house(name) instances :s('Slottet');
+create villa(name) instances :v('Villerkulla');
+create vehicle(name) instances :c('Christine');
+
+create function related(person p, house h)->charstring as stored;
+create function related(person p, villa v)->charstring as stored;
+create function related(person p, vehicle v)->charstring as stored;
+
+set related(:p,:s) = 'Has visited';
+set related(:e,:v) = 'Has painted';
+set related(:e,:c) = 'Has driven';
+
+create function testfn()-> (Charstring,Charstring,Charstring) as
+select name(p), name(h),related( p, h) from person p, house h;
+
+lisp;
+(checkequal "More arbitrary overloading tests"
+ ((sorttuples (osql "testfn();"))
+   '(("Ellinor" "Villerkulla" "Has painted")("Peter" "Slottet" "Has visited")))
+ ((osql "select name(p),related(p,v) from person p, vehicle v;")
+   '(("Ellinor" "Has driven")))
+ ((osql "select name(p),person.house.related->charstring(p,v) from person p, house v;") '(("Peter" "Has visited")))
+ )
+
+:osql
+
+create type a;
+create type b under a;
+create function namn(a nonkey)->(Charstring, Charstring);
+create function namn(b nonkey)->(Charstring, Charstring);
+create a instances :aa;
+add namn(:aa)=('bill','larsson');
+add namn(:aa)=('bull','persson');
+create b instances :bb;
+add namn(:bb)=('pelle','persson');
+add namn(:bb)=('lars','larsson');
+create function perssons(a ainstans)->charstring fornamn as select fornamn
+where namn(ainstans)=(fornamn,'persson');
+
+lisp;
+(checkequal "Tuple result DTR"
+  ((osql "perssons(:bb);") '(("pelle"))) 
+  ((osql "perssons(:aa);") '(("bull")))
+)
+:osql
+create type MyType; 
+
+create function date(MyType mt) -> Date; 
+
+create MyType instances :mt1; 
+
+set date(:mt1) = |2011-03-01|; 
+
+lisp;
+(checkequal "Late bound update"
+ ((osql "date(:mt1);") '((#[DATE 2011 3 1])))
+)
+:osql
+
+rollback;
+

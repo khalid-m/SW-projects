@@ -1,0 +1,11 @@
+(checkequal "topk and leastk"
+ ((osql "topk((select i, 0 from integer i where i in iota(-20, 10)), 5);")
+ '((6 0) (7 0) (8 0) (9 0) (10 0)))
+ ((osql "leastk((select i, 10 from integer i where i in iota(-20, 10)), 5);")
+ '((-16 10) (-17 10) (-18 10) (-19 10) (-20 10)))
+ ((osql "topk((select i, i + 1 from integer i where i in iota(0, 5)), 10);")
+ '((0 1) (1 2) (2 3) (3 4) (4 5) (5 6)))
+ ((osql "topk((select false), 10);")
+ 'nil)
+ ((osql "leastk((select 10, 'hej' from integer i where i in iota(1, 10)), 5);")
+ '((10 "hej") (10 "hej") (10 "hej") (10 "hej") (10 "hej"))))

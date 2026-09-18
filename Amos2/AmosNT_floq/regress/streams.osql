@@ -1,0 +1,128 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2006 Tore Risch, UDBL
+ * $RCSfile: streams.osql,v $
+ * $Revision: 1.14 $ $Date: 2013/11/23 08:42:16 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Test stream collections
+ *
+ ****************************************************************************
+ * $Log: streams.osql,v $
+ * Revision 1.14  2013/11/23 08:42:16  torer
+ * removed playbacks() and forever()
+ * kepr playback2()->Bag and forever2()->Bag, which are allowed only on the top level (no in())
+ *
+ * Revision 1.13  2013/11/22 13:46:35  torer
+ * Regression testing playbacks()
+ *
+ * Revision 1.12  2013/04/11 02:40:10  torer
+ * Regression testing very large integers
+ *
+ * Revision 1.11  2013/04/04 05:43:51  torer
+ * Reentrant fast CSV reader
+ *
+ * Revision 1.10  2013/03/27 19:51:41  torer
+ * More CSV cases tested
+ *
+ * Revision 1.9  2013/03/25 20:57:03  torer
+ * extract() -> Tuples()
+ *
+ * Revision 1.8  2013/03/23 16:38:42  torer
+ * Changed name run(Stream)->Bag of Object
+ *   into       extract(Stream) -> Bag of Object
+ *
+ * Revision 1.7  2013/03/23 16:17:13  torer
+ * Added CSV file reader
+ *
+ * Revision 1.6  2011/12/14 20:31:32  torer
+ * *** empty log message ***
+ *
+ * Revision 1.5  2011/12/14 20:30:31  torer
+ * Testing scans over streams
+ *
+ * Revision 1.4  2009/11/16 21:54:56  torer
+ * Strict use of in over bag (not =)
+ *
+ * Revision 1.3  2008/08/13 21:27:48  torer
+ * Testing bag assignment
+ *
+ * Revision 1.2  2006/11/25 15:25:16  zeitler
+ * siota
+ *
+ * Revision 1.1  2006/11/24 23:03:39  torer
+ * Datatype STREAM (of type) instroduced
+ *
+ ****************************************************************************/
+
+set :b = (select iota(1,4));
+set :s = streamof(iota(1,4));
+
+create function siota(integer i, integer j)
+                    ->stream
+  as streamof(iota(i,j));
+
+lisp;
+
+(checkequal 
+ "Datatype STREAM"
+ ((osql "name(typeof(:b));") '(("BAG-INTEGER")))
+ ((osql "name(typeof(:s));") '(("STREAM-INTEGER")))
+ ((osql "select i+1 from integer i where i in :s;")
+  '((2) (3) (4) (5)))
+ ((osql "select in(:s)+2;") '((3) (4) (5) (6)))
+ ((osql "sum(:b);") '((10)))
+ ((osql "select in(s) from stream s
+          where s = streamof(select iota(1,4));")
+  '((1)(2)(3)(4)))
+ ((osql "select in(s) from stream s, integer n
+          where s = streamof(iota(1,n))
+          and n in iota(3,4);")
+  '((1) (2) (3) (1) (2) (3) (4)))
+ ((osql "select i from stream s, integer i where s = siota(1,5) and i in s;")
+  '((1) (2) (3) (4) (5)))
+ )
+:osql
+
+/*** Scans over streams ***/
+
+open :c1 for siota(1,100);
+
+open :c2 for bag(siota(1,2),siota(4,5));
+
+lisp;
+
+(checkequal "Scans over streams"
+	    ((osql "next(:c1);") '((#(1))))
+	    ((osql "next(:c2);" )'((#(1))))
+	    ((osql "next(:c2);") '((#(2))))
+	    ((osql "next(:c2);") '((#(4))))
+	    ((osql "next(:c2);") '((#(5))))
+	    )
+(defglobal _csv-result_)
+
+(setq _csv-result_ 
+      '((#(1.2 2.3)) (#(1.3 4)) (#(1.062934249E+016  5)) 
+	(#(2.3 6)) (#(6.7 7.7)) 
+	(#(8.3)) (#(5 6 7 8 9 10 11)) (#(5 "hej du" 6 7)) 
+	(#(5 "  hej" "ab,c\"d")) (#(5 "hej" nil)) (#("hej")) 
+	(#("hej" NIL)) (#("abc
+de"))))
+
+(checkequal 
+ "CSV file stream"
+ ((osql "tuples(csv_file_stream('CSVfile.csv'));") _csv-result_)
+ ((osql "tuples(csv_file_stream('CSVfile.csv'));") _csv-result_)
+   )
+
+(checkequal 
+ "Playbacks"
+ ((osql "playback2(streamof(select iota(1,3)/4,'a'));")
+  '((0.25 "a") (0.5 "a") (0.75 "a")))
+ )
+
+:osql
+
+
+rollback;

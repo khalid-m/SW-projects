@@ -1,0 +1,21 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2004 Maryam Ladjvardi, UDBL
+ * $RCSfile: test2.amosql,v $
+ * $Revision: 1.2 $ $Date: 2005/01/27 20:37:43 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Test transactions through ABKW
+ *
+ ****************************************************************************/
+bk_connect("DB1");
+set :h=bk_handle("DB1","Person");
+bk_set(:h,{2487},{"ulf",1.2}); 
+bk_get(:h,{2487}); /* {"ulf",1.2} */
+bk_rollback();
+bk_get(:h,{2487}); /* {"ulf",1.79} */
+bk_disconnect();
+
+
+

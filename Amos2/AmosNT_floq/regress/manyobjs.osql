@@ -1,0 +1,27 @@
+/*****************************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 1993 Tore Risch, EDSLAB
+ * $RCSfile: manyobjs.osql,v $
+ * $Revision: 1.2 $ $Date: 2011/01/27 11:26:15 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ ****************************************************************************/
+
+create type manyobjs;
+create function intcharkey(manyobjs)-> (integer,charstring);
+declare integer :i, charstring :x;
+lisp;
+(defun createobjs (n)
+  (let ((amos_x  "xxx" ))
+    (dotimes (amos_i n)
+      (osql "create manyobjs (intcharkey)instances ((:i,:x));")))
+  )
+
+(checkequal "Creating 10000 objects..."
+	((createobjs 10000) nil))
+:osql
+select o from manyobjs o, integer i, charstring s where
+    intcharkey(o) = (i,s) and intcharkey(o) = (100,s);
+rollback; 

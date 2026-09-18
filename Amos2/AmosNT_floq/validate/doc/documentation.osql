@@ -1,0 +1,184 @@
+3/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Cheng Xu, UDBL
+ * $RCSfile: documentation.osql,v $
+ *
+ * Description: documentation of svali
+ *
+ ****************************************************************************
+ * $Log: documentation.osql,v $
+ * Revision 1.3  2012/02/15 14:45:40  chexu484
+ * namespace for functions svali:
+ *
+ * Revision 1.2  2012/02/09 11:05:31  chexu484
+ * window process added
+ *
+ * Revision 1.1  2012/02/06 15:15:07  chexu484
+ * doc of svali
+ *
+ *
+ ****************************************************************************/
+
+/* 1. COUNT BASED WINDOW */    
+
+/* create a stream of ten integer */
+set :s = siota(1,10);        
+
+/* looking at the stream */
+in(:s);        
+
+/* create tumbling windows of size 3 */
+set :ctw = svali:winagg(:s, 3, 3);        
+
+/* three windows created */
+count(in(:ctw));        
+
+/* create sliding windows of size 3, sliding 2 */
+set :csw = svali:winagg(:s, 3, 2);        
+
+/* four windows created */
+count(in(:csw));        
+
+/* helper function to retrieve object from each window */
+create function retrieve_w(Stream of Window sw) -> Bag of Object
+  as select o
+     from Object o, Window w
+     where w in sw and o in w;        
+
+/* looking at the tumbling window we created */
+retrieve_w(:ctw);        
+
+/* and the sliding window */
+retrieve_w(:csw);        
+
+
+/* 2. TIME BASED WINDOW */        
+
+/* stream generator generates stream of vectors */
+create function tstream0(Integer j) -> Bag of Vector
+  as for each Integer i where i in iota(1, j)
+    begin
+      for each Integer k where k in iota(1, i)
+      return {i, k};
+    end;
+create function tstream(Integer j) -> Stream of Vector
+  as streamof(tstream0(j));         
+
+/* the first dimension of the vector is the time stamp */
+create function ts(Vector v) -> Number as v[0];        
+
+/* stream of vectors */
+set :v = tstream(10);        
+
+/* look at the stream */
+in(:v);       
+
+/* create time based tumbling windows (size = slide = 3) */
+set :ttw = svali:twinagg(:v, #'ts', 3, 3);       
+
+/* three windows in total */
+count(in(:ttw));       
+
+/* create time based sliding windows (size = 3, slide = 2) */
+set :tsw = svali:twinagg(:v, #'ts', 3, 2);       
+
+/* four windows */
+count(in(:tsw));       
+
+/* all the events in the windows*/
+retrieve_w(:ttw);       
+
+/* and the sliding windows */
+retrieve_w(:tsw);       
+
+
+/* 3. PREDICATE BASED WINDOW */       
+
+/* the start predicate */
+/* for the simplest case the events in the stream are integers */
+create function istartp1(Integer i) -> Integer
+  as select i where mod(i, 10) = 0;       
+
+/* the stop predicate */
+/* notice stop function takes two arguments */
+create function istopp1(Integer i, Integer j) -> Boolean
+  as j - i = 10;       
+
+/* stream of 100 integers */
+set :s = siota(1, 100);       
+
+/* predicate based windows */
+set :pw = svali:pinagg(:s, #'istartp1', #'istopp1');       
+
+/* retreive all events in the window */
+retrieve_w(:pw);     
+
+
+/* 4. MODEL BASED VALIDATION*/   
+
+/* Load the Corenet model */    
+
+< 'src/corenet.osql';      
+
+load_lisp("src/json_wrapper.lsp"); 
+
+/* Start corenet server on port 1337 looping forever */
+/* The sample input are in dir ./data/ */ 
+
+/* Bind a variable :s to a stream from the corenet server: */    
+
+set :s = json_stream_wrapper("python corenet_streamer.py", "localhost", 1337); 
+
+/* Look at the 10 first Corenet JSON events in :s : */           
+
+in(first_n(:s, 10));         
+
+/* validate the power consumption according to the power validation model */ 
+/* note: in the configuration of CoreNetServer csv plugins */
+/* untick "send date and timestamp" */
+in(first_n(svali:validate(:s, #'invalid_r', 1), 100));   
+
+
+/* 5. RECORDING BASED VALIDATION */     
+
+/* the record function takes a vector of n elements */
+/* each element is a vector of number in this case */
+/* returns mean vector */
+create function recordf(Vector of Vector of Number vv) -> Vector of Number
+  as sumvectors(in(vv)) / dim(vv);         
+
+/* validate function takes reference and the orginal vector and threshold */
+/* returns (1, v) if the difference of sum is greater than threshold */
+/* (0, v) otherwise */
+create function validatef(Vector of Number r, Vector of Number v, Number threshold)
+       				    	      	     	       	  -> (Integer, Vector)
+  as begin
+       if abs(vsum(v) - vsum(r)) > threshold
+       then return (1, v)
+       else return (0, v);
+     end;      
+
+/*the simplest two start and stop predicates */
+create function istartp(Integer i) -> Boolean
+  as select mod(i, 10) = 0;              
+
+create function istopp(Boolean started, Integer i) -> Boolean
+  as select mod(i, 10) = 5 and started;      
+
+/* the stream s */
+set :s = siota(1, 40); 
+
+/* first form predicate based windows from s using istartp and istopp */
+/* then build models out of the first 2 windows from the derived stream (of window) */
+/* the threshold is set to zero */
+set :vs = svali:p_record_n_validate(:s, #'istartp', #'istopp', #'recordf', 2, #'validatef', 0);  
+
+/* what's in it... */
+in(:vs);       
+
+/* set the threshold to 100 */
+set :vs = svali:p_record_n_validate(:s, #'istartp', #'istopp', #'recordf', 2, #'validatef', 100);   
+
+/* then */
+in(:vs);  

@@ -1,0 +1,1 @@
+pscp data/*.out %1@hagrid.it.uu.se:lr/data

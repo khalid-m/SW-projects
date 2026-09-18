@@ -1,0 +1,235 @@
+
+/*Insert operation consists of Stored Function.*/
+
+create function CleanDatabase(JDBC a,Charstring baseURI)->Boolean
+as begin
+	/* Drop all the created tables. */
+		dropTables_mod(a);
+
+	/* Drop all the created Procedures for Row Order data.*/
+		dropProceduresRowOrder(a,baseURI);
+
+	/* Drop all the created Procedures.*/
+		dropProceduresColOrder(a,baseURI);
+end;
+
+create function CleanDatabase(JDBC a)->Boolean
+as begin
+	/* Drop all the created tables. */
+		dropTables_mod(a);
+
+	/* Drop all the created Procedures for Row Order data.*/
+		dropProceduresRowOrderNoURI(a);
+
+	/* Drop all the created Procedures.*/
+		dropProceduresColOrderNoURI(a);
+end;
+
+		
+
+create function BulkInsertATST(JDBC a,Charstring filename,Charstring baseURI)->Boolean
+as begin
+declare Number t;
+/*Drops the table and procedures if already exists in the database.*/
+	CleanDatabase(a,baseURI);
+
+/*Create all the tables.*/
+	set t=real(now());
+	makeAllTable(a,baseURI);
+	set t=real(now())-t;
+	print ("time to create table="+t);
+/*Insert data in relational database.*/
+
+	BulkInsertLoaderATST(a,filename,baseURI);
+/*Create all the Constraints.*/
+	set t=real(now());
+	makeAllConstraint(a,baseURI);
+	set t=real(now())-t;
+	print ("time for adding constraint="+t);
+end;
+
+
+create function PlainInsertST(JDBC a,Charstring filename,Charstring baseURI)->Boolean
+as begin
+declare Number t;
+
+/*Drops the table and procedures if already exists in the database.*/
+	CleanDatabase(a,baseURI);
+
+/*Create all the Procedures.*/
+	ProcedureRowOrderPIL(a,baseURI);
+
+/*Create all the tables.*/
+	set t=real(now());
+	makeAllTable(a,baseURI);
+	set t=real(now())-t;
+	print ("time to create table="+t);
+
+/*Insert data in relational database.*/
+
+	PlainInsertLoaderST(a,filename,baseURI);
+	set t=real(now());
+/*Create all the Constraints.*/
+	makeAllConstraint(a,baseURI);
+	set t=real(now())-t;
+	print ("time for adding constraint="+t);
+
+end;
+
+
+create function FKInsertST(JDBC a,Charstring filename,Charstring baseURI)->Boolean
+as begin
+declare Number t;
+
+/*Drops the table and procedures if already exists in the database.*/
+	CleanDatabase(a,baseURI);
+
+/*Create all the Procedures.*/
+	ProcedureRowOrder(a,baseURI);
+
+/*Create all the tables.*/
+	set t=real(now());
+	makeAllTable(a,baseURI);
+	set t=real(now())-t;
+	print ("time to create table="+t);
+	set t=real(now());
+/*Create all the Constraints.*/
+	makeAllConstraint(a,baseURI);
+	set t=real(now())-t;
+	print ("time for adding constraint="+t);
+/*Insert data in relational database.*/
+	FKInsertLoaderST(a,filename,baseURI);
+end;
+
+
+
+
+
+/*Insert operation consists of vectors manipulation(concat and sorting vector).*/
+create function loadSQLFKInsert(Jdbc a,Charstring datafile,Charstring baseURI) ->Boolean
+  as begin
+	declare Number t;
+	CleanDatabase(a,baseURI);
+        ProcedureRowOrder(a,baseURI);
+	set t=real(now());
+	makeAllTable(a,baseURI);
+	set t=real(now())-t;
+	print ("time to create table="+t);
+	set t=real(now());
+		makeAllConstraint(a,baseURI);
+	set t=real(now())-t;
+	print ("time for adding constraint="+t);
+	FKInsertLoader(a,datafile,baseURI);
+end;
+
+create function loadSQLBulkInsert(Jdbc a,Charstring datafile,Charstring baseURI) ->Boolean
+  as begin
+	declare Number t;
+	CleanDatabase(a,baseURI);
+	set t=real(now());
+	makeAllTable(a,baseURI);
+	set t=real(now())-t;
+	print ("time to create table="+t);
+	BulkInsertLoader(a,datafile,baseURI);
+	set t=real(now());
+		makeAllConstraint(a,baseURI);
+	set t=real(now())-t;
+	print ("time for adding constraint="+t);
+end;
+
+
+create function loadSQLPlainInsert(Jdbc a,Charstring datafile,Charstring baseURI) ->Boolean
+  as begin
+	declare Number t;
+	CleanDatabase(a,baseURI);
+        ProcedureRowOrderPIL(a,baseURI);
+	set t=real(now());
+	makeAllTable(a,baseURI);
+	set t=real(now())-t;
+	print ("time to create table="+t);
+	PlainInsertLoader(a,datafile,baseURI);
+	set t=real(now());
+		makeAllConstraint(a,baseURI);
+	set t=real(now())-t;
+	print ("time for adding constraint="+t);
+
+end;
+
+create function loadSQLNoCheckColOrderInsert(JDBC a,Charstring filename,Charstring baseURI)->Boolean
+as begin
+	declare Number t;
+/*Drops the table and procedures if already exists in the database.*/
+	CleanDatabase(a,baseURI);
+
+/*Create all the Procedures.*/
+	ProcedureColOrder(a,baseURI);
+
+/*Create all the tables.*/
+	set t=real(now());
+	makeAllTable(a,baseURI);
+	set t=real(now())-t;
+	print ("time to create table="+t);
+
+/*Insert data in relational database.*/
+	NoCheckColOrderInsertLoader(a,filename,baseURI);
+
+	set t=real(now());
+/*Create all the Constraints.*/
+		makeAllConstraint(a,baseURI);
+	set t=real(now())-t;
+	print ("time for adding constraint="+t);
+end;
+
+create function loadSQLColOrderInsert(JDBC a,Charstring filename,Charstring baseURI)->Boolean
+as begin
+	declare Number t;
+/*Drops the table and procedures if already exists in the database.*/
+	CleanDatabase(a,baseURI);
+
+/*Create all the Procedures.*/
+	ProcedureColOrder(a,baseURI);
+
+/*Create all the tables.*/
+	set t=real(now());
+	makeAllTable(a,baseURI);
+	set t=real(now())-t;
+	print ("time to create table="+t);
+
+	set t=real(now());
+/*Create all the Constraints.*/
+		makeAllConstraint(a,baseURI);
+	set t=real(now())-t;
+	print ("time for adding constraint="+t);
+/*Insert data in relational database.*/
+	ColOrderInsertLoader(a,filename,baseURI);
+end;
+
+/*****************Reloading Archivals having no fixed BaseURIs***********/
+
+create function importS2(Charstring filename)->Boolean
+as begin
+importS(filename);
+addMapVal();
+end;
+/*****************RowOrder data*****************************************/
+
+create function loadSQLRowInsertNoURI(Jdbc a,Charstring datafile)->Boolean
+  as begin
+	CleanDatabase(a);
+	ProcedureRowOrderNoURI(a);
+	makeAllTableNoURI(a);
+	makeAllConstraintNoURI(a);
+	FKInsertLoader(a,datafile);
+end;
+
+/*****************Column Order data*****************************************/
+
+create function loadSQLColInsertNoURI(Jdbc a,Charstring datafile)->Boolean
+  as begin
+	CleanDatabase(a);
+	ProcedureColOrderNoURI(a);
+	makeAllTableNoURI(a);
+	makeAllConstraintNoURI(a);
+	ColOrderInsertLoader(a,datafile);
+end;
+

@@ -1,0 +1,333 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wsdl:definitions xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tm="http://microsoft.com/wsdl/mime/textMatching/" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:mime="http://schemas.xmlsoap.org/wsdl/mime/" xmlns:tns="http://ripedev.com/xsd/ZipCodeResults.xsd" xmlns:s="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://schemas.xmlsoap.org/wsdl/soap12/" xmlns:http="http://schemas.xmlsoap.org/wsdl/http/" targetNamespace="http://ripedev.com/xsd/ZipCodeResults.xsd" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+  <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Provides information on zip codes, area codes, and city/state combinations.</wsdl:documentation>
+  <wsdl:types>
+    <s:schema elementFormDefault="qualified" targetNamespace="http://ripedev.com/xsd/ZipCodeResults.xsd">
+      <s:element name="ZipCodeToCityState">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="ZipCode" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ZipCodeToCityStateResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="ZipCodeToCityStateResult" type="tns:ArrayOfAnyType" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="ArrayOfAnyType">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="anyType" type="s:string" nillable="true" />
+        </s:sequence>
+      </s:complexType>
+      <s:element name="CityToZipCode">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="City" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CityToZipCodeResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CityToZipCodeResult" type="tns:ArrayOfAnyType" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CityToAreaCode">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="City" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CityToAreaCodeResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CityToAreaCodeResult" type="tns:ArrayOfAnyType" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CityStateToZipCode">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="City" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="State" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CityStateToZipCodeResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CityStateToZipCodeResult" type="tns:ArrayOfAnyType" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ZipCodeToAreaCode">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="ZipCode" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ZipCodeToAreaCodeResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="ZipCodeToAreaCodeResult" type="tns:ArrayOfAnyType" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ZipCodeToTimeZone">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="ZipCode" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ZipCodeToTimeZoneResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="ZipCodeToTimeZoneResult" type="tns:ArrayOfAnyType" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CityStateToAreaCode">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="City" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="State" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CityStateToAreaCodeResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CityStateToAreaCodeResult" type="tns:ArrayOfAnyType" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+    </s:schema>
+  </wsdl:types>
+  <wsdl:message name="ZipCodeToCityStateSoapIn">
+    <wsdl:part name="parameters" element="tns:ZipCodeToCityState" />
+  </wsdl:message>
+  <wsdl:message name="ZipCodeToCityStateSoapOut">
+    <wsdl:part name="parameters" element="tns:ZipCodeToCityStateResponse" />
+  </wsdl:message>
+  <wsdl:message name="CityToZipCodeSoapIn">
+    <wsdl:part name="parameters" element="tns:CityToZipCode" />
+  </wsdl:message>
+  <wsdl:message name="CityToZipCodeSoapOut">
+    <wsdl:part name="parameters" element="tns:CityToZipCodeResponse" />
+  </wsdl:message>
+  <wsdl:message name="CityToAreaCodeSoapIn">
+    <wsdl:part name="parameters" element="tns:CityToAreaCode" />
+  </wsdl:message>
+  <wsdl:message name="CityToAreaCodeSoapOut">
+    <wsdl:part name="parameters" element="tns:CityToAreaCodeResponse" />
+  </wsdl:message>
+  <wsdl:message name="CityStateToZipCodeSoapIn">
+    <wsdl:part name="parameters" element="tns:CityStateToZipCode" />
+  </wsdl:message>
+  <wsdl:message name="CityStateToZipCodeSoapOut">
+    <wsdl:part name="parameters" element="tns:CityStateToZipCodeResponse" />
+  </wsdl:message>
+  <wsdl:message name="ZipCodeToAreaCodeSoapIn">
+    <wsdl:part name="parameters" element="tns:ZipCodeToAreaCode" />
+  </wsdl:message>
+  <wsdl:message name="ZipCodeToAreaCodeSoapOut">
+    <wsdl:part name="parameters" element="tns:ZipCodeToAreaCodeResponse" />
+  </wsdl:message>
+  <wsdl:message name="ZipCodeToTimeZoneSoapIn">
+    <wsdl:part name="parameters" element="tns:ZipCodeToTimeZone" />
+  </wsdl:message>
+  <wsdl:message name="ZipCodeToTimeZoneSoapOut">
+    <wsdl:part name="parameters" element="tns:ZipCodeToTimeZoneResponse" />
+  </wsdl:message>
+  <wsdl:message name="CityStateToAreaCodeSoapIn">
+    <wsdl:part name="parameters" element="tns:CityStateToAreaCode" />
+  </wsdl:message>
+  <wsdl:message name="CityStateToAreaCodeSoapOut">
+    <wsdl:part name="parameters" element="tns:CityStateToAreaCodeResponse" />
+  </wsdl:message>
+  <wsdl:portType name="ZipCodeSoap">
+    <wsdl:operation name="ZipCodeToCityState">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Returns a list of City+State for a supplied zip code.</wsdl:documentation>
+      <wsdl:input message="tns:ZipCodeToCityStateSoapIn" />
+      <wsdl:output message="tns:ZipCodeToCityStateSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="CityToZipCode">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Returns a list of City+State for a supplied zip code.</wsdl:documentation>
+      <wsdl:input message="tns:CityToZipCodeSoapIn" />
+      <wsdl:output message="tns:CityToZipCodeSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="CityToAreaCode">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Returns a list of area codes for a supplied city.</wsdl:documentation>
+      <wsdl:input message="tns:CityToAreaCodeSoapIn" />
+      <wsdl:output message="tns:CityToAreaCodeSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="CityStateToZipCode">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Returns a list of zip codes for a supplied City and State.</wsdl:documentation>
+      <wsdl:input message="tns:CityStateToZipCodeSoapIn" />
+      <wsdl:output message="tns:CityStateToZipCodeSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="ZipCodeToAreaCode">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Returns a list of area codes for a supplied zip code.</wsdl:documentation>
+      <wsdl:input message="tns:ZipCodeToAreaCodeSoapIn" />
+      <wsdl:output message="tns:ZipCodeToAreaCodeSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="ZipCodeToTimeZone">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Returns a list of time zones for a supplied zip code.</wsdl:documentation>
+      <wsdl:input message="tns:ZipCodeToTimeZoneSoapIn" />
+      <wsdl:output message="tns:ZipCodeToTimeZoneSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="CityStateToAreaCode">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Returns a list of area codes for a supplied City and State.</wsdl:documentation>
+      <wsdl:input message="tns:CityStateToAreaCodeSoapIn" />
+      <wsdl:output message="tns:CityStateToAreaCodeSoapOut" />
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="ZipCodeSoap" type="tns:ZipCodeSoap">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="ZipCodeToCityState">
+      <soap:operation soapAction="http://ripedev.com/xsd/ZipCodeResults.xsd/ZipCodeToCityState" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CityToZipCode">
+      <soap:operation soapAction="http://ripedev.com/xsd/ZipCodeResults.xsd/CityToZipCode" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CityToAreaCode">
+      <soap:operation soapAction="http://ripedev.com/xsd/ZipCodeResults.xsd/CityToAreaCode" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CityStateToZipCode">
+      <soap:operation soapAction="http://ripedev.com/xsd/ZipCodeResults.xsd/CityStateToZipCode" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ZipCodeToAreaCode">
+      <soap:operation soapAction="http://ripedev.com/xsd/ZipCodeResults.xsd/ZipCodeToAreaCode" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ZipCodeToTimeZone">
+      <soap:operation soapAction="http://ripedev.com/xsd/ZipCodeResults.xsd/ZipCodeToTimeZone" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CityStateToAreaCode">
+      <soap:operation soapAction="http://ripedev.com/xsd/ZipCodeResults.xsd/CityStateToAreaCode" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:binding name="ZipCodeSoap12" type="tns:ZipCodeSoap">
+    <soap12:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="ZipCodeToCityState">
+      <soap12:operation soapAction="http://ripedev.com/xsd/ZipCodeResults.xsd/ZipCodeToCityState" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CityToZipCode">
+      <soap12:operation soapAction="http://ripedev.com/xsd/ZipCodeResults.xsd/CityToZipCode" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CityToAreaCode">
+      <soap12:operation soapAction="http://ripedev.com/xsd/ZipCodeResults.xsd/CityToAreaCode" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CityStateToZipCode">
+      <soap12:operation soapAction="http://ripedev.com/xsd/ZipCodeResults.xsd/CityStateToZipCode" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ZipCodeToAreaCode">
+      <soap12:operation soapAction="http://ripedev.com/xsd/ZipCodeResults.xsd/ZipCodeToAreaCode" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ZipCodeToTimeZone">
+      <soap12:operation soapAction="http://ripedev.com/xsd/ZipCodeResults.xsd/ZipCodeToTimeZone" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CityStateToAreaCode">
+      <soap12:operation soapAction="http://ripedev.com/xsd/ZipCodeResults.xsd/CityStateToAreaCode" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="ZipCode">
+    <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">Provides information on zip codes, area codes, and city/state combinations.</wsdl:documentation>
+    <wsdl:port name="ZipCodeSoap" binding="tns:ZipCodeSoap">
+      <soap:address location="http://www.ripedev.com/webservices/ZipCode.asmx" />
+    </wsdl:port>
+    <wsdl:port name="ZipCodeSoap12" binding="tns:ZipCodeSoap12">
+      <soap12:address location="http://www.ripedev.com/webservices/ZipCode.asmx" />
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

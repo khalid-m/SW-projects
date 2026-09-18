@@ -1,0 +1,4 @@
+register("me");
+
+ship("wsmos","deploy_wsdl({'login','registerstudent','registerstudentgroup','updategroup','listStudents','listLonelyStudents','listGroupMembers','studentAssignmentStatus','checkauthority','listStudentsFull','selectstudentInfoFull','assignmentInfo','updateStudentAssignmentExp','updateGroupAssignmentExp','listStudentsFullAss','executesql','existcourse'},'CMWS.wsdl','cm');");
+quit;

@@ -1,0 +1,20 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2005 Johan Tysklind
+ * $RCSfile: twrapper.amosql,v $
+ * $Revision: 1.2 $ $Date: 2005/08/16 21:00:03 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Just some tests of the wrapper
+ *
+ ****************************************************************************/ 
+ root_generate_wrapper("t.root","ATLFAST","h51");
+/*commit;*/
+select Kfele(p),Nele(p) from H51_ATLFAST p where Id(p)=3;
+select Nele(p) from h51_atlfast p where Id(p)=3;
+
+ vectorof(root_columnnames_all("t.root","ATLFAST","h51"));  
+ create_root_ccfn("t.root","ATLFAST","h51");
+select Nele(p),Id(q) from h51_atlfast p, h51_atlfast q 
+       where Id(p)=3 and Nele(p)<Nele(q);

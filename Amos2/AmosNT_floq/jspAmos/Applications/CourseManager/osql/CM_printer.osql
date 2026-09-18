@@ -1,0 +1,243 @@
+/*****************************************************************************
+ * AMOS2- Course Manager
+ *
+ * Author: (c) 2004, Milena Koparanova, UDBL
+ * $RCSfile: CM_printer.osql,v $
+ * $Revision: 1.2 $ $Date: 2007/03/17 16:15:00 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Supplementary print functions for Course Manager system
+ * print_student_status(charstring coursename);
+ *	creates a text file with student list containing pn, name
+ *	and assignment status for all the assignments. The list is sorted on
+ * 	the family name. The created file name consist of course name and 
+ *	current time.
+ * print_report(charstring coursename);
+ *	creates a text file with students passed the lab course. 
+ *	The list contains pn and name and is sorted on family name. 
+ ****************************************************************************/
+
+create function nows()-> charstring s
+as begin
+	declare timeval tnow, charstring tnows;
+
+	set tnow = now();
+
+	set tnows =
+	concat(concat(concat(concat(concat(concat(concat(concat(itoa(year(tnow)),	'-'), itoa(month(tnow))), '-'), itoa(day(tnow))), '-'),
+	itoa(hour(tnow))), '-'), itoa(minute(tnow)));
+	result tnows;
+end;
+
+
+
+create function print_student_status(charstring coursename)-> boolean
+as begin
+	declare charstring out_file,  charstring row,
+	integer cnt,  vector slist, vector of charstring vrow;
+
+	set out_file= concat(concat(concat(coursename,"_status-"),nows()),".txt");
+	println("Student status by "+ nows(),out_file,"w");
+	println("",out_file,"a");
+
+	set slist = 
+         sortbagby((select pn(s),  lastname(s)+' '+ firstname(s), workson(s,a),
+	            workson(s,a1), workson(s,a3), workson(s,a4) from student s,
+	            assignment a, assignment a1, assignment a3, assignment a4
+	            where assno(a)=1 and 
+                          assno(a1)=2 and  
+                          assno(a3)=3 and  
+                          assno(a4)=4)
+                   ,2,'asc');
+	
+	set cnt=dim(slist);
+	set cnt= cnt-1;
+	
+	for each integer i where i=iota(0,cnt)
+	begin 
+		set vrow = slist[i];
+		set row="";	
+		for each integer j where j= iota(0,5)
+		set row=concat(row,concat(cast(vrow[j] as charstring)," "));
+	
+		println(row,out_file,"a");
+	end;
+
+end;
+
+/* print only students passed all the assignments */
+
+create function print_report(charstring coursename)-> boolean
+as begin
+	declare charstring out_file,  charstring row,
+	integer cnt,  vector slist, vector of charstring vrow;
+
+
+	set out_file= concat(concat(concat(coursename,"_report-"),nows()),".txt");
+
+	println("Students passed the lab course "+ coursename,out_file,"w");
+	println(nows(),out_file,"a");
+	println("",out_file,"a");
+
+	set slist= sortbagby((select pn(s), lastname(s)+' '+ firstname(s)
+	                      from student s 
+                              where coursestatus(s)="PASSED")
+                             ,2,'asc');
+
+	set cnt=dim(slist);
+	set cnt= cnt-1;
+	
+	for each integer i where i=iota(0,cnt)
+	begin 
+		set vrow = slist[i];
+		set row="";	
+		for each integer j where j= iota(0,1)
+		set row=concat(row,concat(cast(vrow[j] as charstring)," "));
+	
+		println(row,out_file,"a");
+	end;
+end;
+
+create function print_student_status_oop(charstring coursename)-> boolean
+as begin
+	declare charstring out_file,  charstring row,
+	integer cnt,  vector slist, vector of charstring vrow;
+
+	set out_file= concat(concat(concat(coursename,"_status-"),nows()),".txt");
+	println("Student status by "+ nows(),out_file,"w");
+	println("",out_file,"a");
+
+	set slist= sortbagby((select pn(s),  
+                                     lastname(s)+' '+ firstname(s), 
+                                     workson(s,a0), workson(s,a1), 
+                                     workson(s,a2), workson(s,a3), 
+                                     workson(s,a4), workson(s,a5) 
+                              from student s, assignment a0, assignment a1, 
+                                   assignment a2, assignment a3, 
+                                   assignment a4, assignment a5
+	                      where assno(a0)=0 and 
+                                    assno(a1)=1 and 
+                                    assno(a2)=2 and 
+                                    assno(a3)=3 and 
+                                    assno(a4)=4 and 
+                                    assno(a5)=5)
+                             ,2,'asc');
+	
+	set cnt=dim(slist);
+	set cnt= cnt-1;
+	
+	for each integer i where i=iota(0,cnt)
+	begin 
+		set vrow = slist[i];
+		set row="";	
+		for each integer j where j= iota(0,7)
+		set row=concat(row,concat(cast(vrow[j] as charstring)," "));
+	
+		println(row,out_file,"a");
+	end;
+
+end;
+
+create function print_student_status()-> boolean
+as select print_student_status(name(currCourse()));
+
+create function print_report()-> boolean
+as select print_report(name(currCourse()));
+
+create function print_student_status_2(charstring coursename)-> boolean
+as begin
+	declare charstring out_file,  charstring row,
+	integer cnt,  vector slist, vector of charstring vrow;
+
+	set out_file= concat(concat(concat(coursename,"_status-"),nows()),".txt");
+	println("Student status by "+ nows(),out_file,"w");
+	println("",out_file,"a");
+
+	set slist= sortbagby((select substring(pn(s),0,5), workson(s,a), 
+                                     workson(s,a1) 
+                              from student s, assignment a, assignment a1
+                              where assno(a)=1 and assno(a1)=2 )
+                             ,1,'asc');
+	
+	set cnt=dim(slist);
+	set cnt= cnt-1;
+	
+	for each integer i where i=iota(0,cnt)
+	begin 
+		set vrow = slist[i];
+		set row="";	
+		for each integer j where j= iota(0,2)
+		set row=concat(row,concat(cast(vrow[j] as charstring)," "));
+	
+		println(row,out_file,"a");
+	end;
+
+end;
+
+create function print_student_status_3(charstring coursename)-> boolean
+as begin
+	declare charstring out_file,  charstring row,
+	integer cnt,  vector slist, vector of charstring vrow;
+
+	set out_file= concat(concat(concat(coursename,"_status-"),nows()),".txt");
+	println("Student status by "+ nows(),out_file,"w");
+	println("",out_file,"a");
+
+	set slist= sortbagby((select substring(pn(s),0,5), workson(s,a), 
+                                     workson(s,a1), workson(s,a2) 
+                              from student s, assignment a, assignment a1, 
+                                   assignment a2
+                              where assno(a)=1 and 
+                                    assno(a1)=2 and 
+                                    assno(a2)=3)
+                             ,1,'asc');
+	
+	set cnt=dim(slist);
+	set cnt= cnt-1;
+	
+	for each integer i where i=iota(0,cnt)
+	begin 
+		set vrow = slist[i];
+		set row="";	
+		for each integer j where j= iota(0,3)
+		set row=concat(row,concat(cast(vrow[j] as charstring)," "));
+	
+		println(row,out_file,"a");
+	end;
+
+end;
+
+create function print_student_status_4(charstring coursename)-> boolean
+as begin
+	declare charstring out_file,  charstring row,
+	integer cnt,  vector slist, vector of charstring vrow;
+
+	set out_file= concat(concat(concat(coursename,"_status-"),nows()),".txt");
+	println("Student status by "+ nows(),out_file,"w");
+	println("",out_file,"a");
+
+	set slist= sortbagby((select substring(pn(s),0,5), workson(s,a), 
+                                     workson(s,a1), workson(s,a2), 
+                                     workson(s,a3) 
+                              from student s, assignment a, assignment a1, 
+                                   assignment a2, assignment a3
+                              where assno(a)=1 and 
+                                    assno(a1)=2 and 
+                                    assno(a2)=3 and 
+                                    assno(a3)=4)
+                              ,1,'asc');
+	
+	set cnt=dim(slist);
+	set cnt= cnt-1;
+	
+	for each integer i where i=iota(0,cnt)
+	begin 
+		set vrow = slist[i];
+		set row="";	
+		for each integer j where j= iota(0,4)
+		set row=concat(row,concat(cast(vrow[j] as charstring)," "));
+	
+		println(row,out_file,"a");
+	end;
+
+end;

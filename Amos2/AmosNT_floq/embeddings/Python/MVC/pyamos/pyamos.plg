@@ -1,0 +1,46 @@
+<html>
+<body>
+<pre>
+<h1>Build Log</h1>
+<h3>
+--------------------Configuration: pyamos - Win32 Release--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "C:\Users\Silvia\AppData\Local\Temp\RSP60E1.tmp" with contents
+[
+/nologo /MT /W3 /GX /O2 /I "C:\Python27\Include" /I "C:\Python27\Lib\site-packages\numpy\core\include\numpy" /I "C:\AmosNT\C" /I "C:\AmosNT\system\include" /I "C:\AmosNT\embeddings\Python\include" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "PYAMOS_EXPORTS" /Fp"Release/pyamos.pch" /YX /Fo"Release/" /Fd"Release/" /FD /c 
+"C:\AmosNT\embeddings\Python\C\amosmodule.c"
+"C:\AmosNT\embeddings\Python\C\pyamos_init.c"
+"C:\AmosNT\embeddings\Python\C\pycallout.c"
+"C:\AmosNT\embeddings\Python\C\pymodule.c"
+"C:\AmosNT\embeddings\Python\C\pyobj.c"
+]
+Creating command line "cl.exe @C:\Users\Silvia\AppData\Local\Temp\RSP60E1.tmp" 
+Creating temporary file "C:\Users\Silvia\AppData\Local\Temp\RSP60E2.tmp" with contents
+[
+kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /incremental:no /pdb:"Release/python_ext.pdb" /machine:I386 /out:"../../../../bin/python_ext.dll" /implib:"Release/python_ext.lib" /libpath:"C:\Python27\libs" /libpath:"C:\AmosNT\embeddings\Python\libs" 
+.\Release\amosmodule.obj
+.\Release\pyamos_init.obj
+.\Release\pycallout.obj
+.\Release\pymodule.obj
+.\Release\pyobj.obj
+..\..\..\..\bin\amos2.lib
+]
+Creating command line "link.exe @C:\Users\Silvia\AppData\Local\Temp\RSP60E2.tmp"
+<h3>Output Window</h3>
+Compiling...
+amosmodule.c
+pyamos_init.c
+pycallout.c
+pymodule.c
+pyobj.c
+Linking...
+   Creating library Release/python_ext.lib and object Release/python_ext.exp
+
+
+
+<h3>Results</h3>
+python_ext.dll - 0 error(s), 0 warning(s)
+</pre>
+</body>
+</html>

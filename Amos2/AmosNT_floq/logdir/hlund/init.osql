@@ -1,0 +1,16 @@
+loadsystem('../src/amosql','init.osql');
+lisp;
+(load-extension "svali" t)
+:osql
+loadsystem('../../validate/amosql','init.amosql');
+
+load_lisp('copier.lsp');
+load_lisp('sync.lsp');
+< 'sync.osql';
+lisp;
+(clear-dir (dircsv (concat (getenv 'amos_home) "/logdir/hlund/testdata/")))
+(make-simlogs (concat (getenv 'amos_home) "/logdir/hlund/testdata/"))
+(clear-dir (dircsv (concat (getenv 'amos_home) "/logdir/hlund/testdata/skew/1/")))
+(clear-dir (dircsv (concat (getenv 'amos_home) "/logdir/hlund/testdata/skew/2/")))
+(make-simlogs2 (concat (getenv 'amos_home) "/logdir/hlund/testdata/skew/"))
+:osql

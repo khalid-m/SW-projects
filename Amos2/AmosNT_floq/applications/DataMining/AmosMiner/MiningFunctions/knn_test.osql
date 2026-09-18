@@ -1,0 +1,214 @@
+/*-*-sql-*-******************************************************************/
+
+/*****************************************************************************
+LOADING TRUE DATA
+This part is used to validate student's solution...
+******************************************************************************/
+create function truth_data(Number cid) -> Bag of (Vector of Number v)
+  as stored;
+
+add_dfn("data/truth.nt",#'truth_data', :cidpos, :valpos);
+
+/*Validation on truth_data*/
+create function normalized_truth_data(Number cid)->Bag of (Vector of Number v)
+  as stored;
+
+/*Function returning all vector values of the data model.*/
+create function values_of_truth_data()-> Bag of Vector of Number
+  as select ww
+     from vector of number ww, number cid
+     where ww in truth_data(cid);
+
+/**/
+create function distance_weighted_vote(Number distance) -> Number 
+  as (1/ (distance * distance) + 1);
+
+/*Redefine k_votes to use distance weighted voting. Student is asked to 
+make change on this*/
+create function k_votes(Vector of Number x, Integer k, Function disfn,
+                         Bag of (Number, Vector of Number) cp)
+                       -> Bag of (Integer class, Number count)
+  /* Function voting classes among K nearest neighbours of a query point x */
+  as groupby((select cl, distance_weighted_vote(dist)
+		from Number cl, Real dist
+		where (dist, cl) in k_nearest(x, k, disfn, cp))
+	     ,#'sum');
+
+create function minkowski0372(Vector of Number a, Vector of Number b) 
+                        -> Real 
+  as minkowski(a, b, 0.372);
+
+select count(invalid_classifications(k, #'minkowski', #'known_glass_data')),
+       k from Integer k where k in iota(1, 10);
+
+set :k = 3;
+
+lisp;
+
+;;--------------------------------------------------------------------------
+;; The best k
+;;--------------------------------------------------------------------------
+
+(checkequal "Test number of K "
+	    ((osql ":k;")
+	     '((3))))
+
+;;----------------------------------------------------------------------------
+;;Classification -Euclid, min, max
+;;-----------------------------------------------------------------------------
+
+:osql
+
+dropfunction(#'classified_glass_data', 1);
+
+dropfunction(#'normalized_known_glass_data', 1);
+
+dropfunction(#'normalized_unknown_glass_data', 1);
+
+dropfunction(#'normalized_truth_data', 1);
+
+set :substract = aggv(all_known_glass_data(), #'minagg');
+
+set :divide = aggv(all_known_glass_data(), #'maxagg') - :substract;
+
+normalize_iddata(#'known_glass_data', :substract, :divide, 
+                 #'normalized_known_glass_data');
+
+normalize_data(#'unknown_glass_data', :substract, :divide,
+               #'normalized_unknown_glass_data');
+
+normalize_iddata(#'truth_data', :substract, :divide,
+		 #'normalized_truth_data');
+
+knn_classify(#'normalized_unknown_glass_data', :k, #'euclid',
+	    #'normalized_known_glass_data', #'classified_glass_data');
+
+lisp;
+
+(checkequal 
+ "KNN Classifier-(Euclid, minmax) is "
+ ((osql "roundto(count(select v, c from Number c , Vector of Number v
+	where  v in classified_glass_data(c)
+	and v in normalized_truth_data(c)) / 30.0, 3);")
+  '((0.667))))
+
+;;----------------------------------------------------------------------------
+;;Classification -Euclid,mean, standard deviation
+;;-----------------------------------------------------------------------------
+
+:osql
+
+dropfunction(#'classified_glass_data', 1);
+
+dropfunction(#'normalized_known_glass_data', 1);
+
+dropfunction(#'normalized_unknown_glass_data', 1);
+
+dropfunction(#'normalized_truth_data', 1);
+
+set :substract = aggv(all_known_glass_data(), #'avg');
+
+set :divide = aggv(all_known_glass_data(), #'stdev');
+
+normalize_iddata(#'known_glass_data', :substract, :divide, 
+		 #'normalized_known_glass_data');
+
+normalize_data(#'unknown_glass_data', :substract, :divide,
+	       #'normalized_unknown_glass_data');
+
+normalize_iddata(#'truth_data', :substract, :divide,
+		 #'normalized_truth_data');
+
+
+knn_classify(#'normalized_unknown_glass_data', :k, #'euclid',
+	    #'normalized_known_glass_data', #'classified_glass_data');
+
+lisp;
+
+(checkequal 
+ "KNN Classifier-(Euclid, mean, stdev) is "
+ ((osql "roundto(count(select v, c from Number c , Vector of Number v
+	where  v in classified_glass_data(c)
+	and v in normalized_truth_data(c)) / 30.0, 3);")
+  '((0.733))))
+
+;;----------------------------------------------------------------------------
+;;Classification -Minkowski, min ,max
+;;-----------------------------------------------------------------------------
+
+:osql
+
+dropfunction(#'classified_glass_data', 1);
+
+dropfunction(#'normalized_known_glass_data', 1);
+
+dropfunction(#'normalized_unknown_glass_data', 1);
+
+dropfunction(#'normalized_truth_data', 1);
+
+set :substract = aggv(all_known_glass_data(), #'minagg');
+
+set :divide = aggv(all_known_glass_data(), #'maxagg') - :substract;
+
+normalize_iddata(#'known_glass_data', :substract, :divide, 
+		 #'normalized_known_glass_data');
+
+normalize_data(#'unknown_glass_data', :substract, :divide,
+	       #'normalized_unknown_glass_data');
+
+normalize_iddata(#'truth_data', :substract, :divide,
+		 #'normalized_truth_data');
+
+knn_classify(#'normalized_unknown_glass_data', :k, #'minkowski0372',
+	    #'normalized_known_glass_data', #'classified_glass_data');
+
+lisp;
+
+(checkequal 
+ "KNN Classifier-(Minkowski, min , max) is "
+ ((osql "roundto(count(select v, c from Number c , Vector of Number v
+	where  v in classified_glass_data(c)
+	and v in normalized_truth_data(c)) / 30.0, 3);")
+  '((0.8))))
+
+
+;;----------------------------------------------------------------------------
+;;Classification -Minkowski,mean, standard deviation
+;;-----------------------------------------------------------------------------
+
+:osql
+
+dropfunction(#'classified_glass_data', 1);
+
+dropfunction(#'normalized_known_glass_data', 1);
+
+dropfunction(#'normalized_unknown_glass_data', 1);
+
+dropfunction(#'normalized_truth_data', 1);
+
+set :substract = aggv(all_known_glass_data(), #'avg');
+
+set :divide = aggv(all_known_glass_data(), #'stdev');
+
+normalize_iddata(#'known_glass_data', :substract, :divide, 
+		 #'normalized_known_glass_data');
+
+normalize_data(#'unknown_glass_data', :substract, :divide,
+	       #'normalized_unknown_glass_data');
+
+normalize_iddata(#'truth_data', :substract, :divide,
+		 #'normalized_truth_data');
+
+knn_classify(#'normalized_unknown_glass_data', :k, #'minkowski0372',
+	    #'normalized_known_glass_data', #'classified_glass_data');
+
+lisp;
+
+(checkequal 
+ "KNN Classifier-(Minkowski, mean, stdev) is "
+ ((osql "roundto(count(select v, c from Number c , Vector of Number v
+	where  v in classified_glass_data(c)
+	and v in normalized_truth_data(c)) / 30.0, 3);")
+  '((0.8))))
+
+:osql

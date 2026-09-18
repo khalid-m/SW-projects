@@ -1,0 +1,52 @@
+<html>
+<body>
+<pre>
+<h1>Build Log</h1>
+<h3>
+--------------------Configuration: ssdm - Win32 Release--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "C:\Users\Silvia\AppData\Local\Temp\RSP65B1.tmp" with contents
+[
+/nologo /MT /W3 /GX /O2 /I "C:\AmosNT\C" /I "C:\AmosNT\system/include" /I "C:\AmosNT\scsq/include" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "JAVAAMOS_EXPORTS" /Fp"Release/ssdm.pch" /YX /Fo"Release/" /Fd"Release/" /FD /c 
+"C:\AmosNT\SQoND\MVC\nma.c"
+"C:\AmosNT\SQoND\MVC\nma_chunks.c"
+"C:\AmosNT\SQoND\MVC\nma_fns.c"
+"C:\AmosNT\scsq\C\numarray.c"
+"C:\AmosNT\SQoND\MVC\sqond.c"
+"C:\AmosNT\scsq\C\w.c"
+]
+Creating command line "cl.exe @C:\Users\Silvia\AppData\Local\Temp\RSP65B1.tmp" 
+Creating temporary file "C:\Users\Silvia\AppData\Local\Temp\RSP65B2.tmp" with contents
+[
+kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /incremental:no /pdb:"Release/ssdm.pdb" /machine:I386 /out:"../../bin/ssdm.dll" /implib:"Release/ssdm.lib" 
+.\Release\nma.obj
+.\Release\nma_chunks.obj
+.\Release\nma_fns.obj
+.\Release\numarray.obj
+.\Release\sqond.obj
+.\Release\w.obj
+..\..\bin\amos2.lib
+]
+Creating command line "link.exe @C:\Users\Silvia\AppData\Local\Temp\RSP65B2.tmp"
+<h3>Output Window</h3>
+Compiling...
+nma.c
+nma_chunks.c
+nma_fns.c
+C:\AmosNT\SQoND\MVC\nma_fns.c(509) : warning C4113: 'unsigned int (__cdecl *)(struct bindenv *,unsigned int )' differs in parameter lists from 'unsigned int (__cdecl *)(struct bindenv *,unsigned int ,unsigned int )'
+numarray.c
+C:\AmosNT\scsq\C\numarray.c(79) : warning C4273: 'NUMARRAYTYPE' : inconsistent dll linkage.  dllexport assumed.
+C:\AmosNT\scsq\C\numarray.c(1001) : warning C4244: 'initializing' : conversion from 'double ' to 'float ', possible loss of data
+sqond.c
+w.c
+Linking...
+   Creating library Release/ssdm.lib and object Release/ssdm.exp
+
+
+
+<h3>Results</h3>
+ssdm.dll - 0 error(s), 3 warning(s)
+</pre>
+</body>
+</html>

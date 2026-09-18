@@ -1,0 +1,125 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Silvia Stefanova UDBL
+ * $RCSfile: ddescribe.amosql,v 
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Deep DESCRIBE experiemnts
+ ******************************************************************************/
+
+defineDS("personDS",
+         "jdbc:microsoft:sqlserver://localhost;DatabaseName=person",
+        "com.microsoft.jdbc.sqlserver.SQLServerDriver",
+         "person",
+         "person",
+         "sard2",
+         "sard2");
+
+
+defineUPV("personDS","per", "http://user.it.uu.se/~udbl/sard/person");
+
+DSConnect("per");	
+
+
+wrapRDB(jdbcOfDS("personDS"), "person", "person", "person");
+
+set cMap("person","per")="http://user.it.uu.se/~udbl/sard/person#person";
+set cMap("tel","per")="http://user.it.uu.se/~udbl/sard/person#tel";
+set cMap("region","per")="http://user.it.uu.se/~udbl/sard/person#region";
+
+set pMap("person","age","per")="http://user.it.uu.se/~udbl/sard/person#person/age";
+set pMap("person","name","per")="http://user.it.uu.se/~udbl/sard/person#person/name";
+set pMap("tel","region","per")="http://user.it.uu.se/~udbl/sard/person#tel/region";
+set pMap("tel","telnumber","per")="http://user.it.uu.se/~udbl/sard/person#tel/telnumber";
+set pMap("region","r_name","per")="http://user.it.uu.se/~udbl/sard/person#region/name";
+set pMap("region","r_comment","per")="http://user.it.uu.se/~udbl/sard/person#region/comment";
+
+set rMap("person","friend","person","per")="http://user.it.uu.se/~udbl/sard/person#friend_of_person";
+set rMap("tel","person","person","per")="http://user.it.uu.se/~udbl/sard/person#tel_of_person";
+set rMap("tel","region","region","per")="http://user.it.uu.se/~udbl/sard/person#region_of_tel";
+
+assign_typeMap("per","person","person");
+
+ViewRDB("per");
+
+parteval('pmap');
+parteval('cmap');
+parteval('rowid');
+parteval('like');
+parteval('rmap');
+parteval('rmmMap');
+parteval('typeMap');
+parteval('xsd_Shortmap');
+parteval("valueid");
+parteval("OBJECT.OBJECT.!=->BOOLEAN");
+lisp;
+(setq _rewrite_row_and_like_ T)
+(setq _sq_always_return_vectors_ nil) 
+;;(setq _unif_ t)
+;;(setq _gct_ t)
+(setq _el-corcl_ t)
+:osql  
+
+make_def("per");
+
+describeObject2("http://user.it.uu.se/~udbl/sard/person#person/_131");
+
+
+describeObject2("http://user.it.uu.se/~udbl/sard/person#tel/_3");
+		   
+
+
+/*****************  180 MB database (product 10 000)   ********/
+
+defineDS("producer180mDS",
+         "jdbc:microsoft:sqlserver://localhost;DatabaseName=producer180m",
+        "com.microsoft.jdbc.sqlserver.SQLServerDriver",
+         "producer180m",
+         "producer180m",
+         "product180m",
+         "product180m");
+
+
+defineUPV("producer180mDS","prod180m", "http://user.it.uu.se/~udbl/sard/producer180m");
+
+DSConnect("prod180m");	
+
+wrapRDB(jdbcOfDS("producer180mDS"), "producer180m", "producer180m", "producer180m");
+
+assignIDs("prod180m","producer180m", "producer180m");
+
+ViewRDB("prod180m");
+
+parteval('pmap');
+parteval('cmap');
+parteval('rowid');
+parteval('like');
+parteval('rmap');
+parteval('rmmMap');
+parteval('typeMap');
+parteval('xsd_Shortmap');
+parteval("valueid");
+parteval("OBJECT.OBJECT.!=->BOOLEAN");
+lisp;
+(setq _rewrite_row_and_like_ T)
+(setq _sq_always_return_vectors_ nil) 
+;;(setq _unif_ t)
+;;(setq _gct_ t)
+(setq _el-corcl_ t)
+:osql  
+
+make_def("prod180m");
+/*set_bijective_function("rowid",true);*/
+
+
+describeObject2("http://user.it.uu.se/~udbl/sard/producer180m#offer/_8");
+
+count(nodes2("http://user.it.uu.se/~udbl/sard/producer180m#offer/_8"));
+109654
+443.551 s
+
+count(nodes2("http://user.it.uu.se/~udbl/sard/producer180m#offer/_8"));
+20977
+1740.65 s
+

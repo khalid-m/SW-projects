@@ -1,0 +1,20 @@
+debugging(true);
+set :a = jdbc("ibds", getenv("DRIVERDB") );
+set :dburl =  getenv("URLDB");
+connect(:a, :dburl, getenv("USERDB"), getenv("PASSWORDDB"));
+
+sql(:a, "drop table if exists SERVICE;");
+sql(:a, "drop table if exists FORM;");
+sql(:a, "drop table if exists LIFEEVENT;");
+sql(:a, "drop table if exists EUCOUNTRY;");
+
+
+
+read_sql(:a, "egov.sql");
+
+sql(:a, "drop table if exists LINEITEM;");
+sql(:a, "drop table if exists ORDERS;");
+sql(:a, "drop table if exists CUSTOMER;");
+read_sql(:a, "company.sql");
+disconnect(:a);
+quit;

@@ -1,0 +1,44 @@
+/*-*-sql-*-*******************************************************************/
+
+/* ARCHIVE testcases */
+
+set :archiveq_old = "
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX db: <http://user.it.uu.se/~udbl/sard/prod#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+ARCHIVE AS 'q1.nt', 'schema1.nt'
+ TRIPLES { ?subject ?property ?value }
+   WHERE { ?subject rdf:type db:product .
+          db:product rdf:type rdfs:Class }
+ UNION
+ TRIPLES { ?subject ?property ?value }
+   WHERE { ?subject rdf:type db:offer .
+           db:offer rdf:type rdfs:Class } 
+";
+
+set :archiveq_construct = "
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX db: <http://user.it.uu.se/~udbl/sard/prod#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+CONSTRUCT { ?subject ?property ?value }
+   WHERE { { ?subject ?property ?value .
+             ?subject rdf:type db:product }
+           UNION
+           { ?subject ?property ?value .
+             ?subject rdf:type db:offer } } 
+";
+
+set :archiveq = "
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX db: <http://user.it.uu.se/~udbl/sard/prod#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+ARCHIVE AS 'q1.nt', 'schema1.nt'
+ TRIPLES  { ?subject ?property ?value }
+   WHERE { ?subject rdf:type db:product }
+ UNION
+ TRIPLES { ?subject ?property ?value }
+   WHERE { ?subject rdf:type db:offer } 
+";

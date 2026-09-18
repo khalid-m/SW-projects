@@ -1,0 +1,92 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: mappings.osql,v $
+ * $Revision: 1.1 $ $Date: 2013/08/01 12:47:32 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: LOcal multi-SQL scenario
+ ****************************************************************************
+ ****************************************************************************/
+
+/* SENSORINSTALLATION table */
+set cMap("SENSORINSTALLATION","prod")="http://user.it.uu.se/~udbl/regress#SENSORINSTALLATION";
+set pMap("SENSORINSTALLATION","si","prod")="http://user.it.uu.se/~udbl/regress#SENSORINSTALLATION/si";
+set pMap("SENSORINSTALLATION","ie","prod")="http://user.it.uu.se/~udbl/regress#SENSORINSTALLATION/ie";
+set pMap("SENSORINSTALLATION","sm","prod")="http://user.it.uu.se/~udbl/regress#SENSORINSTALLATION/sm";
+set pMap("SENSORINSTALLATION","ev","prod")="http://user.it.uu.se/~udbl/regress#SENSORINSTALLATION/ev";
+set pMap("SENSORINSTALLATION","th","prod")="http://user.it.uu.se/~udbl/regress#SENSORINSTALLATION/th";
+set pMap("SENSORINSTALLATION","calibrationtime","prod")="http://user.it.uu.se/~udbl/regress#SENSORINSTALLATION/calibrationtime";
+set pMap("SENSORINSTALLATION","producerds","prod")="http://user.it.uu.se/~udbl/regress#SENSORINSTALLATION/producerds";
+set pMap("SENSORINSTALLATION","samplefrequency","prod")="http://user.it.uu.se/~udbl/regress#SENSORINSTALLATION/samplefrequency";
+set pMap("SENSORINSTALLATION","sensorplace","prod")="http://user.it.uu.se/~udbl/regress#SENSORINSTALLATION/sensorplace";
+set pMap("SENSORINSTALLATION","serialnumber","prod")="http://user.it.uu.se/~udbl/regress#SENSORINSTALLATION/serialnumber";
+
+set typemap("SENSORINSTALLATION","serialnumber","prod")="http://www.w3.org/2001/XMLSchema#string";
+set typeMap("SENSORINSTALLATION","ie","prod")="http://www.w3.org/2001/XMLSchema#integer";
+set typeMap("SENSORINSTALLATION","sm","prod")="http://www.w3.org/2001/XMLSchema#integer";
+set typeMap("SENSORINSTALLATION","ev","prod")='http://www.w3.org/2001/XMLSchema#float';
+set typeMap("SENSORINSTALLATION","th","prod")='http://www.w3.org/2001/XMLSchema#float';
+set typeMap("SENSORINSTALLATION","calibrationtime","prod")='http://www.w3.org/2001/XMLSchema#dateTime';
+set typeMap("SENSORINSTALLATION","producerds","prod")="http://www.w3.org/2001/XMLSchema#integer";
+set typeMap("SENSORINSTALLATION","samplefrequency","prod")="http://www.w3.org/2001/XMLSchema#integer";
+set typeMap("SENSORINSTALLATION","sensorplace","prod")= "http://www.w3.org/2001/XMLSchema#string";
+set typemap("SENSORINSTALLATION","si","prod")="http://www.w3.org/2001/XMLSchema#integer";
+
+/* SITE table */
+set cMap("SITE","prod")="http://user.it.uu.se/~udbl/regress#SITE";
+set pMap("SITE","site","prod")="http://user.it.uu.se/~udbl/regress#SITE/site";
+set pMap("SITE","location","prod")="http://user.it.uu.se/~udbl/regress#SITE/location";
+set pMap("SITE","country","prod")="http://user.it.uu.se/~udbl/regress#SITE/country";
+set pMap("SITE","region","prod")="http://user.it.uu.se/~udbl/regress#SITE/region";
+set pMap("SITE","latitude","prod")="http://user.it.uu.se/~udbl/regress#SITE/latitude";
+set pMap("SITE","longitude","prod")="http://user.it.uu.se/~udbl/regress#SITE/longitude";
+set pMap("SITE","climatezone","prod")="http://user.it.uu.se/~udbl/regress#SITE/climatezone";
+set pMap("SITE","continent","prod")="http://user.it.uu.se/~udbl/regress#SITE/continent";
+set pMap("SITE","logdbid","prod")="http://user.it.uu.se/~udbl/regress#SITE/logdbid";
+
+set typeMap("SITE","site","prod")="http://www.w3.org/2001/XMLSchema#integer";
+set typeMap("SITE","location","prod")="http://www.w3.org/2001/XMLSchema#string";
+set typeMap("SITE","country","prod")="http://www.w3.org/2001/XMLSchema#string";
+set typeMap("SITE","region","prod")="http://www.w3.org/2001/XMLSchema#string";
+set typeMap("SITE","latitude","prod")="http://www.w3.org/2001/XMLSchema#float";
+set typeMap("SITE","longitude","prod")="http://www.w3.org/2001/XMLSchema#float";
+set typeMap("SITE","climatezone","prod")="http://www.w3.org/2001/XMLSchema#string";
+set typeMap("SITE","continent","prod")="http://www.w3.org/2001/XMLSchema#string";
+set typeMap("SITE","logdbid","prod")="http://www.w3.org/2001/XMLSchema#integer";
+
+
+/* INSTALLEDEQUIPMENT table */
+set cMap('INSTALLEDEQUIPMENT',"prod")="http://user.it.uu.se/~udbl/regress#INSTALLEDEQUIPMENT";
+set pMap('INSTALLEDEQUIPMENT',"ie","prod")="http://user.it.uu.se/~udbl/regress#INSTALLEDEQUIPMENT/ie";
+set pMap('INSTALLEDEQUIPMENT',"e","prod")="http://user.it.uu.se/~udbl/regress#INSTALLEDEQUIPMENT/e";
+set pMap('INSTALLEDEQUIPMENT',"site","prod")="http://user.it.uu.se/~udbl/regress#INSTALLEDEQUIPMENT/site";
+
+set typeMap('INSTALLEDEQUIPMENT',"ie","prod")="http://www.w3.org/2001/XMLSchema#integer";
+set typeMap('INSTALLEDEQUIPMENT',"e","prod")="http://www.w3.org/2001/XMLSchema#integer";
+set typeMap('INSTALLEDEQUIPMENT',"site","prod")="http://www.w3.org/2001/XMLSchema#integer";
+
+/* EQUIPMENTMODEL table */
+set cMap('EQUIPMENTMODEL',"prod")="http://user.it.uu.se/~udbl/regress#EQUIPMENTMODEL";
+set pMap('EQUIPMENTMODEL',"e","prod")="http://user.it.uu.se/~udbl/regress#/EQUIPMENTMODEL/e";
+set pMap('EQUIPMENTMODEL',"ename","prod")="http://user.it.uu.se/~udbl/regress#/EQUIPMENTMODEL/ename";
+set pMap('EQUIPMENTMODEL',"description","prod")="http://user.it.uu.se/~udbl/regress#/EQUIPMENTMODEL/description";
+set pMap('EQUIPMENTMODEL',"manufacturer","prod")="http://user.it.uu.se/~udbl/regress#/EQUIPMENTMODEL/manufacturer";
+
+set typeMap('EQUIPMENTMODEL',"e","prod")="http://www.w3.org/2001/XMLSchema#integer";
+set typeMap('EQUIPMENTMODEL',"ename","prod")="http://www.w3.org/2001/XMLSchema#string";
+set typeMap('EQUIPMENTMODEL',"description","prod")="http://www.w3.org/2001/XMLSchema#string";
+set typeMap('EQUIPMENTMODEL',"manufacturer","prod")="http://www.w3.org/2001/XMLSchema#string";
+
+/* MEASUREMENT table */
+set cMap('MEASUREMENT',"prod")="http://user.it.uu.se/~udbl/regress#MEASUREMENT";
+set pMap('MEASUREMENT',"si","prod")="http://user.it.uu.se/~udbl/regress#/MEASUREMENT/si";
+set pMap('MEASUREMENT',"ts","prod")="http://user.it.uu.se/~udbl/regress#/MEASUREMENT/ts";
+set pMap('MEASUREMENT',"mv","prod")="http://user.it.uu.se/~udbl/regress#/MEASUREMENT/mv";
+set pMap('MEASUREMENT',"logdbid","prod")="http://user.it.uu.se/~udbl/regress#/MEASUREMENT/logdbid";
+
+set typeMap('MEASUREMENT',"si","prod")="http://www.w3.org/2001/XMLSchema#integer";
+set typeMap('MEASUREMENT',"ts","prod")="http://www.w3.org/2001/XMLSchema#float";
+set typeMap('MEASUREMENT',"mv","prod")="http://www.w3.org/2001/XMLSchema#float";
+set typeMap('MEASUREMENT',"logdbid","prod")="http://www.w3.org/2001/XMLSchema#integer";

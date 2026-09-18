@@ -1,0 +1,32 @@
+This directory contains include files for running Amos II embedded in
+C applications using Borland C++:
+
+storage.h   Include file defining Amos II basic storage interfaces.
+callin.h    Include file for callin interface.
+callout.h   Include file for callout interface. 
+
+---------------
+The following files contain demonstration C programs embedded
+with Amos II:
+
+amosdemo.c  Demonstrates callin interface from C to Amos II.
+calloutdemo.c   
+callout.amosql
+            Demonstrates callout interface from Amos II to C.
+
+---------------
+The following files contain Borland C++ Builder project definitions for
+running the C demo applications:
+
+demo.cpp
+demo.mak    Project definition for callin demo.
+
+callout.cpp
+callout.mak Project definitions for callout demo.
+
+To compile all demo programs run the command procedure
+   compile.cmd
+
+---------------
+The MicroSoft Visual Studio definitions for the above projects 
+are in the subdirectory ../demo.

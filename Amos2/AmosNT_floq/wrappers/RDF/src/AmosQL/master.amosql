@@ -1,0 +1,24 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2003 Tore Risch, Johan Petrini UDBL
+ * $RCSfile: master.amosql,v $
+ * $Revision: 1.8 $ $Date: 2009/04/07 19:11:04 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Master script to load RDFAmos subsystem
+ *
+ ****************************************************************************/
+					
+< 'src/AmosQL/alias.amosql';		/* Load alias for RDF resources */
+					
+< 'src/AmosQL/rdf.amosql';		/* Load basic RDF model */	
+lisp;					;Bootstrap RDFS model		
+
+(load "src/lsp/rdf.lsp")	
+(load "src/lsp/initrdfs.lsp")
+
+:osql					/* Load RDFAmos subset of RDFS model */
+
+< 'src/AmosQL/rdfs.amosql';
+

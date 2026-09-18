@@ -1,0 +1,153 @@
+/*****************************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2004 Ruslan Fomkin, UDBL
+ * $RCSfile: signalEvents.osql,v $
+ * $Revision: 1.1 $ $Date: 2004/05/25 08:17:02 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Simple test data for schema and cuts. Contains parameters and 2 events.
+ *
+ ****************************************************************************/
+
+create Parameters instances :g;
+set minPtL(:g)=7.0;
+set hardPtL(:g)=20.0;
+set etaL(:g)=2.4;
+set zMass(:g)=91.1882;
+set minZMass(:g)=10.0;
+set etaJ(:g)=4.5;
+set minPtJ(:g)=20.0;
+set forBJet(:g)=5;
+set wMass(:g)=80.419;
+set allowedWMass(:g)=15.0;
+set tMass(:g)=174.3;
+set allowedTMass(:g)=35.0;
+set ptOJets(:g)=70.0;
+set maxPtAll(:g)=150.0;
+set maxPtSoft(:g)=40.0;
+set minTransEe(:g)=40.0;
+set maxEfMass(:g)=150.0;
+
+/**********************************************************/
+create Event instances :ev1;
+
+set PxMiss(:ev1)=-198.237;
+set PyMiss(:ev1)=181.605;
+
+create Electron instances :el1;
+set Kf(:el1)=-11;
+set Px(:el1)=-96.3295;
+set Py(:el1)=55.0114;
+set Pz(:el1)=-336.974;
+set Ee(:el1)=354.764;
+
+set particles(:ev1)=:el1;
+
+create Muon instances :mu1, :mu2;
+set Kf(:mu1)=-13;
+set Kf(:mu2)=13;
+set Px(:mu1)=-24.6514;
+set Px(:mu2)=-6.23232;
+set Py(:mu1)=-18.9128;
+set Py(:mu2)=-10.2039;
+set Pz(:mu1)=-91.4735;
+set Pz(:mu2)=-38.1292;
+set Ee(:mu1)=96.6065;
+set Ee(:mu2)=39.9601;
+
+add particles(:ev1)=:mu1;
+add particles(:ev1)=:mu2;
+
+create JetB instances :jb1, :jb2, :jb3, :jb4;
+set Kf(:jb1)=2;
+set Kf(:jb2)=2;
+set Kf(:jb3)=5;
+set Kf(:jb4)=5;
+set Px(:jb1)=197.085;
+set Px(:jb2)=141.008;
+set Px(:jb3)=-35.3334;
+set Px(:jb4)=31.1251;
+set Py(:jb1)=8.94369;
+set Py(:jb2)=-86.3656;
+set Py(:jb3)=-45.2087;
+set Py(:jb4)=-84.9691;
+set Pz(:jb1)=-165.14;
+set Pz(:jb2)=-205.205;
+set Pz(:jb3)=29.3406;
+set Pz(:jb4)=-342.232;
+set Ee(:jb1)=257.281;
+set Ee(:jb2)=263.536;
+set Ee(:jb3)=64.4449;
+set Ee(:jb4)=353.993;
+
+add particles(:ev1)=:jb1;
+add particles(:ev1)=:jb2;
+add particles(:ev1)=:jb3;
+add particles(:ev1)=:jb4;
+
+/*************************************************************/
+create Event instances :ev2;
+
+set PxMiss(:ev2)=40.9296;
+set PyMiss(:ev2)=27.4967;
+
+create Electron instances :el2_1;
+set Kf(:el2_1)=-11;
+set Px(:el2_1)=3.38155;
+set Py(:el2_1)=12.2436;
+set Pz(:el2_1)=2.70979;
+set Ee(:el2_1)=12.9878;
+
+set particles(:ev2)=:el2_1;
+
+create Muon instances :mu2_1, :mu2_2;
+set Kf(:mu2_1)=13;
+set Kf(:mu2_2)=-13;
+set Px(:mu2_1)=95.2666;
+set Px(:mu2_2)=20.9349;
+set Py(:mu2_1)=52.7055;
+set Py(:mu2_2)=8.60843;
+set Pz(:mu2_1)=78.0378;
+set Pz(:mu2_2)=-1.86766;
+set Ee(:mu2_1)=133.953;
+set Ee(:mu2_2)=22.7129;
+
+add particles(:ev2)=:mu2_1;
+add particles(:ev2)=:mu2_2;
+
+create JetB instances :jb2_1, :jb2_2, :jb2_3, :jb2_4, :jb2_5;
+set Kf(:jb2_1)=5;
+set Kf(:jb2_2)=2;
+set Kf(:jb2_3)=2;
+set Kf(:jb2_4)=2;
+set Kf(:jb2_5)=2;
+set Px(:jb2_1)=-166.623;
+set Px(:jb2_2)=-48.7318;
+set Px(:jb2_3)=26.6256;
+set Px(:jb2_4)=10.8123;
+set Px(:jb2_5)=19.3168;
+set Py(:jb2_1)=-64.1637;
+set Py(:jb2_2)=-64.3664;
+set Py(:jb2_3)=7.29593;
+set Py(:jb2_4)=20.0805;
+set Py(:jb2_5)=-10.0654;
+set Pz(:jb2_1)=686.889;
+set Pz(:jb2_2)=207.336;
+set Pz(:jb2_3)=88.8994;
+set Pz(:jb2_4)=171.322;
+set Pz(:jb2_5)=147.739;
+set Ee(:jb2_1)=709.716;
+set Ee(:jb2_2)=222.499;
+set Ee(:jb2_3)=93.0873;
+set Ee(:jb2_4)=172.834;
+set Ee(:jb2_5)=149.336;
+
+add particles(:ev2)=:jb2_1;
+add particles(:ev2)=:jb2_2;
+add particles(:ev2)=:jb2_3;
+add particles(:ev2)=:jb2_4;
+add particles(:ev2)=:jb2_5;
+
+/***************************************************************/

@@ -1,0 +1,42 @@
+create function soaphiterate(Operation op, vector inele)-> record rs 
+		as 
+		begin
+		 set value(ve5)=inele from Vecele5 ve5 where name(ve5)='ele5';
+		 
+		  for each Element p, Vecele5 ve5  where p=in( authentication(op)) and name(ve5)='ele5'
+		   begin
+			if subelements(p)then 
+			begin
+			 
+			  set temprec(ve5)=iterate2(subelements(p),value(ve5)); 
+			   if rs=nil then
+			     set rs= make_record({name(p),temprec(ve5)})
+			  else
+                           set rs= put_record(rs,name(p),temprec(ve5));
+			end
+		       else
+			 begin
+		           if rs=nil then
+				set rs= make_record({name(p),value(ve5)[0]})
+			   else
+			       set rs= put_record(rs,name(p),value(ve5)[0]);
+
+                           if (value(ve5)!={}) then
+			      set value(ve5)=remove_ele(value(ve5));
+			end
+		   end;
+		   
+		  if  rs=nil then
+			set rs=make_record({});
+	
+		   return rs;
+		   set value(ve5)=make_record({}) from Vecele5 ve5 where name(ve5)="ele5";	
+		  						 	
+	       end;
+
+create function soaphdecode(Operation op,vector inele)
+                ->record rs as
+begin
+   set rs =soaphiterate(op,inele);
+   return rs;
+end;

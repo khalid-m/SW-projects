@@ -1,0 +1,69 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2005 Johan Petrini, UDBL
+ * $RCSfile: edutella.amosql,v $
+ * $Revision: 1.4 $ $Date: 2012/01/10 07:35:25 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Regression test execution of QEL queries over PSELO 
+ *              with default stmt source.
+ ****************************************************************************
+ * $Log: edutella.amosql,v $
+ * Revision 1.4  2012/01/10 07:35:25  torer
+ * New tuple format
+ *
+ * Revision 1.3  2006/02/23 07:43:16  torer
+ * Readable code indentation
+ *
+ ****************************************************************************/
+
+loadRDFSchema("file:/" + getenv("AMOS_HOME") + 
+              "/wrappers/RDF/regress/bookschema.xml");
+loadRDFSchema("file:/" + getenv("AMOS_HOME") + 
+              "/wrappers/RDF/regress/bookdata.xml");
+
+ /****************************************************************************
+ * Create default dummy RDF data source, Source, and 
+ * abstract function tSpace on Source.	*
+ ****************************************************************************/
+make_rdf_type(the_persistent({"http://www.sward.se/meta-data-schema#", 
+              "Source"}),{typenamed("RDF_RESOURCE")});
+
+create function tSpace(rdf_source)
+                ->Bag of (rdf_resource s, rdf_resource p, rdf_resource o)
+  as foreign 'abstract-function';
+
+ /*****************************************************************************
+ * Define filebased RDF data source, FileBased, and tSpace fn on FileBased.
+ *****************************************************************************/
+
+< "src/amosql/filebased.amosql";
+
+/******************************************************************************
+ * Define stmt fn over tSpace(FileBased f).
+ *****************************************************************************/
+create function stmt(rdf_resource s, rdf_resource p, rdf_resource o)
+                ->Boolean
+  as
+	select true 
+	from rdf_filebased f 
+	where tSpace(f) = (s, p, o);
+
+ /*****************************************************************************
+ * Load bookquery.xml for regression testing PSELO.
+ *****************************************************************************/
+
+loadRDFSchema("file:/" + getenv("AMOS_HOME") + 
+              "/embeddings/Edutella/regress/eduq.xml");
+
+select q into :q1 from rdf_query q;        
+
+lisp;
+(checkequal "Book query"
+ ((caar (osql "eval_query(:q1);")) (vector "http://www.xyz.com/ai.html")))
+
+:osql
+
+rollback;
+quit;

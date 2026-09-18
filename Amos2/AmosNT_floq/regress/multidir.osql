@@ -1,0 +1,157 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2006 Tore Risch, UDBL
+ * $RCSfile: multidir.osql,v $
+ * $Revision: 1.12 $ $Date: 2011/01/27 11:26:15 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Multi-directional derived functions
+ *
+ ****************************************************************************
+ * $Log: multidir.osql,v $
+ * Revision 1.12  2011/01/27 11:26:15  torer
+ * Changed from <...> to SQL's (...) notation for tuples (much nicer)
+ *
+ * Revision 1.11  2010/03/13 16:29:02  torer
+ * _default-foreign-fanout_ set to 0.99
+ *
+ * Revision 1.10  2009/11/16 21:54:56  torer
+ * Strict use of in over bag (not =)
+ *
+ * Revision 1.9  2009/10/03 11:18:05  torer
+ * Regression test of default cost model
+ *
+ * Revision 1.8  2008/11/17 20:28:59  torer
+ * Testing general functional expressions
+ *
+ * Revision 1.7  2008/05/19 13:14:02  torer
+ * Bug fixed that prohibited computing costs of non-DNF TBR predicates
+ *
+ * Revision 1.6  2008/05/12 21:09:09  torer
+ * Correct cost model for complex multidirectional derived functions
+ *
+ * Revision 1.5  2008/04/02 13:26:38  torer
+ * Fixed bug in covering binding patterns for multidirectional derived functions
+ *
+ * Revision 1.4  2007/11/05 11:11:04  torer
+ * from and where did not work for multi-directional derived functions
+ *
+ * Revision 1.3  2007/03/01 08:16:30  torer
+ * Testing bug in mixed derived / foreign capability definition
+ *
+ * Revision 1.2  2007/02/18 10:22:37  torer
+ * SQRT(x) now returns only the positive root rather than both roots
+ *
+ * Revision 1.1  2006/05/22 14:31:48  torer
+ * Testing multi-directional derived functions
+ *
+ ****************************************************************************/
+
+create function square(Number x)->Number 
+  as select x*x;
+
+create function mdf(Integer i)->Integer j
+  as multidirectional("bf" select sqrt(i)+1)("fb" select square(j-1));
+
+create function positive(Number x)-> Number
+  as select x where x>=0;
+
+create function mod(vector v key) -> real
+  as multidirectional ("bf" select r from number r where r = sqrt(v*v));
+
+lisp;
+(checkequal "multidirectional"
+  ((osql "mdf(1);") '((2.0)))
+  ((osql "select i from integer i where mdf(i)=2;") '((1)))
+)
+:osql
+
+/* User defined cost models */
+
+create function ctest(integer)-> integer as
+  multidirectional
+  ("bf" foreign "ctestbf")
+  ("ff" foreign "ctestff" cost {0.3,0.3});
+
+lisp;
+
+(defun dflt (x)(if (eq x '*) 0 x))
+(defun ctestbf (fno x r)(osql-result x 1))
+(defun ctestff (fno x r)(osql-result (dflt x) 2))
+
+(checkequal "Cost functions"
+	    ((osql "select ctest(x) 
+                    from integer x
+                    where x=1;") '((1)))
+	    ((osql "select ctest(x) 
+                    from integer x;") '((2)))
+	    )
+
+:osql
+create function data1(integer)->integer as stored;
+
+set data1(1)=10;
+set data1(2)=20;
+
+create function mderived(Integer i)->Integer j
+  as multidirectional ("bf" select data1(i))
+                      ("fb" select data1(j))
+                      ("ff" select i,j where data1(i)=j);
+
+create function der1(Integer i)->Integer
+  as select data1(i)+iota(1,i);
+
+create function mderived2(Integer i)->Integer j
+  as multidirectional ("bf" select der1(i))
+                      ("ff" select i,j where der1(i)=j);
+
+create function myplus(Number x, Number y) -> Number r
+as multidirectional
+('bbf' key foreign 'plusbbf' cost {1,1})
+('bfb' key foreign 'plusbfb' cost {0.9,1})
+ ('fbb' key select x where y+x=r);
+
+lisp;
+
+(checkequal "Multidirectional derived functions"
+   ((osql "mderived(1);") '((10)))
+   ((osql "select i from integer i where mderived(i)=2;") '((20)))
+   ((osql "select data1(i) from integer i;") '((10) (20)))
+   ((osql "select mderived2(i) from integer i;") '((11) (21) (22)))
+   ((osql "myplus(1,2)=3;") '((true)))
+)
+:osql
+
+create function bug1(integer i)->integer j
+as multidirectional("bf" select i+2)("fb" foreign "bug1fb");
+
+create function square(Number x)->Number r
+as multidirectional ("bf" select x*x)("fb" select sqrt(r));
+
+create function square2(Number x)->Number r
+as multidirectional ("bf" select y*y from number y where x=y+0*1)
+                    ("fb" select sqrt(y) from number y where r=y+0);
+
+create function multor(Number n) -> Number r
+  as multidirectional
+     ("bf" select r where r=n+1 or r=n+2)
+     ("fb" select n where n=r-2 or n=r-3);
+
+create function q1()->Number
+  as select i from number i where i in iota(1,2) and multor(0)=i;
+
+create function rt2(number x, number y)-> (Number, Number)
+  as select roundto(x,2),roundto(y,2);
+
+lisp;
+(checkequal "Costs of multidirectional derived functions"
+  ((osql "plan_cost('square','bf');") '((0.5 0.99)))
+  ((osql "plan_cost('square','fb');") '((2 1)))
+  ((osql "rt2(plan_cost('square2','bf'));") '((1.49 0.97)))
+  ((osql "plan_cost('square2','fb');") '((2.48 0.99)))
+  ((osql "plan_cost('q1');") '((199.0 0.792)))
+)
+:osql
+
+rollback;

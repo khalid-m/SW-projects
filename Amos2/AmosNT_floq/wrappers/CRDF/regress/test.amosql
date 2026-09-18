@@ -1,0 +1,26 @@
+parseRDF_cache("regress/test1.rdf");
+
+lisp;
+
+(checkequal "parseRDF queries"
+ (
+  (osql "sort(select lid(name) from Resource name 
+   where parseRDF(\"regress/test1.rdf\")=<uri(\"http://example.org/book/book1\"),
+   uri(\"http://purl.org/dc/elements/1.1/title\"),name>);")
+  '((#("SPARQL Tutorial")))
+ )
+)
+
+(checkequal "rdf_triple_cache queries"
+ (
+  (osql "sort(select lid(name) from Resource name 
+   where rdf_triple_cache(\"regress/test1.rdf\")=<uri(\"http://example.org/book/book1\"),
+   uri(\"http://purl.org/dc/elements/1.1/title\"),name>);")
+  '((#("SPARQL Tutorial")))
+ )
+)
+
+
+:osql
+
+quit;

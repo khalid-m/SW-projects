@@ -1,0 +1,77 @@
+/* Make a new connection and store in temporary (transient) variable :c */
+set :c = mongo_connect("127.0.0.1");
+
+/* Empty old collection 'person' in  database 'tutorial': */
+mongo_del(:c, "tutorial", "person", empty_record()); 
+
+/* Populate the database with some new records. */ 
+mongo_add(:c, "tutorial", "person", {"Name": "Ville", "age": 54});
+/* mongo_put() returns the unique MongDB OID for the record */
+
+/* Populate more: */
+mongo_add(:c, "tutorial", "person", {"Name": "George", "age": 27});
+mongo_add(:c, "tutorial", "person", {"Name": "Johan", "age": 27});
+mongo_add(:c, "tutorial", "person", {"Name": "Kalle", "age": 13});
+
+/* Query the database to find specific records: */
+mongo_get(:c, "tutorial", "person", {"age": 27});
+/* Notice the field "_id" holding the OIDs */
+
+/* You can also associate your own OIDs with records as numbers or strings: */
+mongo_add(:c, "tutorial", "person", {"_id":1, "Name": "Olle", 
+                                               "age": 55});
+mongo_add(:c, "tutorial", "person", {"_id":"abc", "Name": "Ulla", 
+                                               "age": 55});
+mongo_add(:c, "tutorial", "person", {"_id":1.3, "Name": "Kalle", 
+                                               "age": 55});
+
+/* Get the new objects with your manually added OIDs: */
+mongo_get(:c, "tutorial", "person", {"_id":1});
+mongo_get(:c, "tutorial", "person", {"age":55});
+
+/* Delete some objects: */
+mongo_del(:c, "tutorial", "person", {"age": 27});
+mongo_del(:c, "tutorial", "person", {"Name": "Olle"});
+
+/* Check who is left: */
+mongo_get(:c, "tutorial", "person", empty_record());
+
+/* Store first encountered object named "Kalle" in variable :kalle */
+select r into :kalle
+from Record r
+where r in mongo_get(:c, "tutorial", "person", {"Name":"Kalle"});
+
+/* Inspect variable :kalle */
+:kalle;
+
+/* Set :id_kalle to the Mongodb identifier of :kalle: */
+set :id_kalle = :kalle["_id"];
+
+/* Inspect :id_kalle */
+:id_kalle;
+
+/* Use :id_kalle to retrieve the record: */
+mongo_get(:c, "tutorial", "person", {"_id": :id_kalle});
+
+/* Do a bulk insert of several records: */
+mongo_bulk_add(:c, "tutorial", "person", {{"Name":"Carl", "age":38},
+                                          {"Name":"Eve", "age":65},
+                                          {"Name":"Adam", "age":68}});
+
+/* Look at the database: */
+mongo_get(:c, "tutorial", "person", empty_record());
+
+/* Non-existing databases or collections: */
+mongo_get(:c, "tutorial", "xxx", {"age": 55});
+mongo_get(:c, "yyy", "person", {"age": 55});
+
+/* Get all the collections in database "tutorial": */
+mongo_collections(:c, "tutorial");
+
+/* Error handling: */
+
+/* Not a legal connection: */
+set :c = mongo_connect("127");
+
+/* Make sure errors with proper error messages are raised when 
+   mongodb raises error */

@@ -1,0 +1,33 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Cheng Xu, UDBL
+ * $RCSfile: HagglundsSHDDemo.osql,v $
+ *
+ * Description: Demostration script for validating SHD of Hagglunds stream
+ *
+ ****************************************************************************
+ * $Log: HagglundsSHDDemo.osql,v $
+ * Revision 1.1  2012/12/18 17:35:00  chexu484
+ * hagglunds validation
+ *
+ *
+ ****************************************************************************/
+
+svali
+
+< '../schema/SmartVortexSchema.osql'; /* The generic Smart Vortex schema 
+                                         based on D3.1 */
+
+< 'HagglundsWrapper.osql'; /* The general Hagglunds stream wrapper that handles
+                              streams that logged in logdirectory from Hagglund */
+
+< 'HagglundsSHDModel.osql'; /* The Specefic Heat Dissipation Model from Hagglunds */
+
+< 'HagglundsSHDValidator.osql'; /* validate Specefic Heat Dissipation using 
+                                   model and validate */
+
+< 'HagglundsMetaData.osql'; /* Populate the Smart Vortex database with hagglunds metadata */
+
+
+playback(validateHagglundsSHD("hs"));

@@ -1,0 +1,62 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2013, Andrej Andrejev, UDBL
+ * $RCSfile: propad_coordinator_nocache.osql,v $
+ * $Revision: 1.1 $ $Date: 2013/07/04 10:54:22 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Example implementation of parallel k-Means clustering: coordinator code
+ *
+ ****************************************************************************
+ * $Log: propad_coordinator_nocache.osql,v $
+ * Revision 1.1  2013/07/04 10:54:22  andan342
+ * Added simple purely declarative parallel version of PROPAD frequent itemset mining algorithm
+ * (without caching intermediate projections)
+ *
+ * Revision 1.1  2013/06/21 21:01:55  andan342
+ * Added example implementation of Parallel k-Means clustering
+ *
+ *
+ ****************************************************************************/
+
+create function minsupp() -> Integer as stored;
+
+/* Distribute transactions randomly into P1 .. P<nodes> nodes */
+create function load_distribute(Integer nodes, Bag of Vector of Integer transactions) -> Boolean
+  as begin
+    for each Vector of Integer tr where tr in transactions
+      call_function(concat("P", stringify(rand(nodes)+1)), 'load_transaction', {tr}, 0);
+  end;
+
+/* Make a vector containing K instances of X */
+create function replicate(Object x, Integer k) -> Vector
+as vectorize(select i, x from Integer i where i in iota(0,k-1));
+
+/* A simplified wrapper around multicastreceive - same function, same args to all other peers */
+create function castreceive(Charstring fn, Object args) -> Bag of Object
+as select multicastreceive(vpeers, fn, replicate(args, dim(vpeers)))
+     from Vector of Charstring vpeers
+    where vpeers = vectorof(other_peers());
+
+/* Returns (item, support) for given prefix, where item > prefix[0] and support >= minsupp */
+create function frequent_items_supp(Vector of Integer prefix) -> Bag of (Integer item, Integer supp)
+as select item, supp
+    where (item, supp) in groupby((select i, s from Integer i, Integer s 
+                                    where {i, s} in castreceive('items_supp',{prefix})), #'sum')
+      and supp >= minsupp();
+
+/* A functional argument to traverse() - return frequent supersets (with items bigger than prefix[0])
+   and their support values, given freqent set */
+create function propad_level(Vector of Integer prefix, Integer supp) -> Bag of (Vector of Integer p, Integer s)
+  as select p, s from Integer i
+      where p = concat({i}, prefix) 
+        and (i, s) in  frequent_items_supp(prefix);
+
+/* Run the PROPAD on transactions() data stored on nodes */
+create function propad(Integer minsupp) -> Bag of (Vector of Integer p, Integer s)
+  as begin
+    set minsupp() = minsupp;
+    return traverse(#'propad_level',{},1000);
+  end;
+

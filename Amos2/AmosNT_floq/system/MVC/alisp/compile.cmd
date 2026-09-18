@@ -1,0 +1,2 @@
+msdev alisp.dsw /make
+

@@ -1,0 +1,123 @@
+<html>
+    <head>
+        <title>Deploy</title>
+        <SCRIPT LANGUAGE="JavaScript" src="Soap_Client.js"></SCRIPT> 
+        <SCRIPT LANGUAGE="JavaScript" src="functions.js"></SCRIPT> 
+        <script type="text/javascript" language="javascript">
+            var error,wsname,oname1,oname2;       
+            
+            function deployoperation() {
+                error = null;
+                var soapParams=[oname2,wsname];
+                SOAPClient.invoke("DEPLOY_SERVICE", soapParams, false, deployoperation_callBack, error_callBack);
+            }
+
+            function deployoperation_callBack(o,xmlDoc)
+            {
+                  if (o == "true"){
+                    document.getElementById("deployDiv").style.display='none';
+                    document.getElementById("showDiv").style.display='none';
+                    document.getElementById("resultDiv").innerHTML=
+                        "<h>You have deployed the functions:</h><br><br>" +
+                        "<table>" +
+                        "<tr><td>Function name(s):</td><td>"+oname1+"</td></tr>"+
+                        "<tr><td>Web Service Name:</td><td>"+wsname+"</td></tr>"+
+                        "</table>";               
+                    }
+                    
+                   else{
+                    document.getElementById("deployDiv").style.display='none';
+                    document.getElementById("showDiv").style.display='none';
+                    document.getElementById("resultDiv").innerHTML = "Some error existend in the operations you are deploying!";
+                    }
+             }
+
+            function error_callBack(e, errorCode){
+                if (e != null){
+                    error = e;
+                    document.getElementById("deployDiv").style.display='none';
+                    document.getElementById("showDiv").style.display='none';
+                    document.getElementById("resultDiv").innerHTML="Error callBack:<br>" + error + "<br><br>Error code:<br>" + errorCode;
+                }
+            }
+            
+
+            function btndeploy_onclick(){
+                oname1 = document.getElementById("txt_oname1").value;   
+                wsname = document.getElementById("txt_wsname").value;                
+                oname2 =change(oname1);
+                
+                var v = deployForm();
+                if (v == true){
+                    deployoperation();
+                }
+            }
+
+              
+            function deployForm(){
+                var va = true;
+                document.getElementById("oname1Div").style.display='none';
+                document.getElementById("wsnameDiv").style.display='none';
+                
+               
+                if (oname1 == null||oname1 == ""){
+                    document.getElementById("oname1Div").style.display='block';
+                    va = (va && false);
+                }
+                
+                if (wsname == null||wsname == ""){
+                    document.getElementById("wsnameDiv").style.display='block';
+                    va = (va && false);
+                }
+
+                return va;
+            }    
+           
+            
+            function btnReset1_onclick(){
+                document.getElementById("txt_oname1").value="";
+                document.getElementById("txt_wsname").value="";
+                
+            }
+                        
+            function btnClose_onclick(){
+                window.close();
+            }
+
+
+        </script>
+    </head>
+    <body>
+        <h1>Deploy the functions you want to use.</h1><br>
+        <div id="showDiv" style="display:block;">
+         <A HREF="http://localhost/information/user_defined.txt" target="_blank">Information about the existing functions.</A> <br \> 
+        </div>
+        <br>
+         <div id="deployDiv" style="display:block;">
+            <p>Please enter the parameters about the functions you want to deploy.</p>
+            <table width="90%" border="1" cellspacing="0">
+                <tr>
+                    <td>Names of Functions:</td>
+                    <td><input type="text" value="" id="txt_oname1" size="15">
+                        <div id="oname1Div" style="display:none;"><font color="red">Name of Operation should not be empty.</font></div>
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td>Name of Web Service:<br></td>
+                    <td><input type="text" value="" id="txt_wsname" size="15">
+                        <div id="wsnameDiv" style="display:none;"><font color="red">Name of Web service should not be empty.</font></div>
+                    </td>
+                </tr>       
+            </table><br>
+
+            <input type="button" value="Deploy" name="btndeploy" onclick="return btndeploy_onclick();">
+            <input type="button" id="reset" value="Reset form" onclick="return btnReset1_onclick();">
+            <input type="button" id="close" value="Close" onclick="return btnClose_onclick();">
+         </div>
+        
+         <div align="center" id="resultDiv"></div>
+        
+  
+    </body>
+</html>

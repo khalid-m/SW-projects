@@ -1,0 +1,1 @@
+%AMOS_HOME%\bin\amos2.exe %AMOS_HOME%\bin\amos2.dmp -L lsp/grm-reader.lsp -o "save 'grmGUI.dmp'; quit;"

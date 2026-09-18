@@ -1,0 +1,1 @@
+java -cp $AMOS_HOME/bin/javaamos.jar:$AMOS_HOME/jarlib/mysql-connector-java-5.1.6-bin.jar -Djava.library.path=$AMOS_HOME/bin JavaAMOS ssdm.dmp -o "loadSystem(getenv(\"AMOS_HOME\")+\"/SQoND/storage/sql\",\"settings.osql\");" -o "loadSystem(getenv(\"AMOS_HOME\")+\"/SQoND/storage/sql\",\"master.osql\");" -q AmosQL $1 $2 $3 $4 $5 $6 $7 $8 $9

@@ -1,0 +1,59 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2007 Ruslan Fomkin, UDBL
+ * $RCSfile: cost_model.udfs.osql,v $
+ * $Revision: 1.7 $ $Date: 2010/09/09 08:12:14 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Cost hints for numerical udfs. For the loaded approach.
+ ****************************************************************************
+ * $Log: cost_model.udfs.osql,v $
+ * Revision 1.7  2010/09/09 08:12:14  torer
+ * Integer -> Number
+ *
+ * Revision 1.6  2010/02/02 20:59:10  torer
+ * Integer overflow errors fixed
+ *
+ * Revision 1.5  2008/03/05 14:22:19  ruslan
+ * cost model for vref is implemented as cost function with using bindings for vector varibles, which are set to statistics collected for sobject slots containing vectors
+ *
+ * Revision 1.4  2007/12/11 12:48:43  ruslan
+ * rearranging cost hints between files
+ *
+ * Revision 1.3  2007/12/11 12:21:52  ruslan
+ * comment is added
+ *
+ * Revision 1.2  2007/12/11 12:18:24  ruslan
+ * cost model for old implementation of operations based on their execution performance
+ *
+ * Revision 1.1  2007/12/11 12:16:17  ruslan
+ * cost hints for udfs. first initial version, which was written on thoughts without udfs evaluation. for old imlementation of operations.
+ *
+ ****************************************************************************/
+
+costhint("NUMBER.NUMBER.PLUS->NUMBER","bbf",{1.0,1.0});
+costhint("NUMBER.NUMBER.PLUS->NUMBER","bfb",{1.0,1.0});
+costhint("NUMBER.NUMBER.TIMES->NUMBER","bbf",{1.0,1.0});
+costhint("NUMBER.NUMBER.TIMES->NUMBER","bfb",{1.0,1.0});
+costhint("NUMBER.ABS->NUMBER","bf",{1.0,1.0});
+
+costhint("VECTOR.NUMBER.VREF->OBJECT","bbf",{1.0,1.0});
+/* costhint("VECTOR-INTEGER.INTEGER.VREF->INTEGER","bbf",{1.0,1.0});
+costhint("VECTOR-REAL.NUMBER.VREF->REAL","bbf",{1.0,1.0});*/
+costhint("VECTOR.VECTOR.TIMES->NUMBER","bbf",{1.3,1.0});
+costhint("NUMBER.SQRT->NUMBER","bf",{1.3,1.0});
+
+costhint("VECTOR.VECTOR.PLUS->VECTOR","bbf",{6.7,1.0});
+costhint("VECTOR.NULL_VECTOR->VECTOR","bf",{4.3,1.0});
+costhint("NUMBER.LOG->REAL","bf",{2.0,1.0});
+costhint("NUMBER.NUMBER.ATAN2->REAL","bbf",{1.7,1.0});
+costhint("NUMBER.CEILING->INTEGER","bf",{1.3,1.0});
+costhint("NUMBER.COS->REAL","bf",{1.3,1.0});
+
+costhint("VECTOR.MAGNITUDE->REAL","bf",{3.7,1.0});
+costhint("VECTOR.ETA->REAL","bf",{5.0,1.0});
+costhint("VECTOR.PT->REAL","bf",{2.6,1.0});
+
+costhint("BAG-VECTOR.SUM->VECTOR","bf",{63.0,1.0});

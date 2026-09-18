@@ -1,0 +1,119 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2002 Martin Hansson, UDBL
+ * $RCSfile: relational_typemap.osql,v $
+ * $Revision: 1.11 $ $Date: 2012/10/23 18:34:59 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: The type map from native relational data type names to amos
+ *              type names and vice verse. The functions amos_type are 
+ *              overloaded for relational so that if no type mapping exists
+ *              for a particular instance of relational, amos_type will resort
+ *              to finding generic types instead. The function
+ *              amos_type_from_generic_relational will be called if we query
+ *              for an amos type given a generic relational type, for example
+ *              VARCHAR, which maps to charstring.
+ *              There exists a similar function in the opposite direction
+ *              called generic_relational_from_amos_type if we wish to create
+ *              a table from an amos relation.
+ *              Of course these functions will be overridden if the original 
+ *              functions datasource.charstring.amos_type->type or
+ *              datasource.type.wrapped_type->charstring are updated.
+ *
+ ****************************************************************************
+ * $Log: relational_typemap.osql,v $
+ * Revision 1.11  2012/10/23 18:34:59  torer
+ * *** empty log message ***
+ *
+ * Revision 1.10  2012/10/23 18:33:01  torer
+ * Introduced procedural functions to decare mappings between SQL and Amos
+ * types:
+ *   sql_to_amos_type(Charstring sqlType, Charstring amosType)->Boolean
+ *   amos_type_to_sql(Charstring amosType, Charstring sqlType)->Boolean
+ *
+ ****************************************************************************/
+
+create function amos_type_from_generic_relational(Charstring native_type_name) 
+                                                -> Type
+  as stored;
+
+create function sql_to_amos_type(Charstring sqlType, Charstring amosType)
+                               -> Boolean
+  /* Map SQL type to Amos type */
+  as set amos_type_from_generic_relational(sqlType) = theType(amosType);
+ 
+create function generic_relational_from_amos_type(Type t)
+                                                -> Charstring native_type_name
+  as stored;
+
+create function amos_type_to_sql(Charstring amosType, Charstring sqlType)
+                               -> Boolean
+  /* Map Amos type to SQL type */
+  as set generic_relational_from_amos_type(theType(amosType)) = sqlType;
+
+create function amos_type(Relational r, Charstring native_type_name) -> Type
+  as begin
+       if  datasource.charstring.amos_type->type(r, native_type_name)
+       then return datasource.charstring.amos_type->type(r, native_type_name)
+       else return amos_type_from_generic_relational(native_type_name);
+     end;
+
+create function add_amos_type(Relational r,Charstring native_type_name, Type t)
+                          -> Boolean
+  as add datasource.charstring.amos_type->type(r, native_type_name)=t;
+
+set_addfunction(theresolvent('RELATIONAL.CHARSTRING.AMOS_TYPE->TYPE'),
+            theresolvent('RELATIONAL.CHARSTRING.TYPE.ADD_AMOS_TYPE->BOOLEAN'));
+
+create function wrapped_type(Relational r, Type t) -> Charstring typename
+  as begin
+       if datasource.type.wrapped_type->charstring(r,t)
+       then return datasource.type.wrapped_type->charstring(r,t)
+       else return generic_relational_from_amos_type(t)
+     end;
+
+create function add_wrapped_type(Relational r, Type t, Charstring typename)
+                               -> Boolean
+  as add datasource.type.wrapped_type->charstring(r, t)=typename;
+
+set_addfunction(theresolvent('RELATIONAL.TYPE.WRAPPED_TYPE->CHARSTRING'),
+    theresolvent('RELATIONAL.TYPE.CHARSTRING.ADD_WRAPPED_TYPE->BOOLEAN'));
+
+
+amos_type_to_sql('INTEGER','INTEGER');
+amos_type_to_sql('BOOLEAN','INTEGER');
+amos_type_to_sql('CHARSTRING','VARCHAR');
+amos_type_to_sql('REAL','FLOAT');
+
+sql_to_amos_type('INTEGER','INTEGER');
+sql_to_amos_type('BIGINT','INTEGER');
+sql_to_amos_type('SMALLINT','INTEGER');
+sql_to_amos_type('SMALLINT UNSIGNED','INTEGER');
+sql_to_amos_type('TINYINT','INTEGER');
+sql_to_amos_type('TINYINT UNSIGNED','INTEGER');
+sql_to_amos_type('INT','INTEGER');
+sql_to_amos_type('INT IDENTITY','INTEGER');
+sql_to_amos_type('INT UNSIGNED','INTEGER');
+sql_to_amos_type('BOOL','INTEGER');
+sql_to_amos_type('BOOLEAN','INTEGER');
+sql_to_amos_type('BIT','INTEGER');
+sql_to_amos_type('VARCHAR','CHARSTRING');
+sql_to_amos_type('DATE','CHARSTRING');
+sql_to_amos_type('TIMESTAMP','CHARSTRING');
+sql_to_amos_type('TIME','CHARSTRING');
+sql_to_amos_type('CHAR','CHARSTRING');
+sql_to_amos_type('CHARACTER','CHARSTRING');
+sql_to_amos_type('CLOB','CHARSTRING');
+sql_to_amos_type('SMALLDATETIME','CHARSTRING');
+sql_to_amos_type('UNIQUEIDENTIFIER','CHARSTRING');
+sql_to_amos_type('NVARCHAR','CHARSTRING');
+sql_to_amos_type('DATETIME','CHARSTRING');
+sql_to_amos_type('FLOAT','REAL');
+sql_to_amos_type('DOUBLE','REAL');
+sql_to_amos_type('REAL','REAL');
+sql_to_amos_type('DECIMAL','REAL');
+sql_to_amos_type('DEC','REAL');
+sql_to_amos_type('NUMERIC','NUMBER');
+sql_to_amos_type('DOUBLE PRECISION','REAL');
+sql_to_amos_type('LONGTEXT','CHARSTRING');

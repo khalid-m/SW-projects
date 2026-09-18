@@ -1,0 +1,225 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2005 Johan Tysklind, Ruslan Fomkin
+ * $RCSfile: wrapper3.amosql,v $
+ * $Revision: 1.30 $ $Date: 2012/05/15 19:27:16 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Functions that makes the ROOT wrapper interface.
+ *              
+ *
+ ****************************************************************************
+ * $Log: wrapper3.amosql,v $
+ * Revision 1.30  2012/05/15 19:27:16  torer
+ * result -> return
+ *
+ * Revision 1.29  2008/12/25 15:05:32  torer
+ * Added missing declarations
+ *
+ * Revision 1.28  2008/11/11 07:46:15  torer
+ * Stricter checking of conformance with result types in function definitions
+ * Can be turned off with
+ *    (setq _strict-resulttypes_ nil)
+ *
+ * Revision 1.27  2008/11/10 17:42:02  torer
+ * Commenting removed so regression works again
+ *
+ * Revision 1.26  2008/11/10 12:40:16  ruslan
+ * unused old interface functions are commented
+ *
+ * Revision 1.25  2008/08/20 09:14:10  ruslan
+ * root wrapper returns stream, which is alias of bag
+ *
+ * Revision 1.24  2008/05/25 15:06:44  ruslan
+ * cost hint for wrapper functions
+ *
+ * Revision 1.23  2008/05/15 15:27:05  ruslan
+ * multidirection particle-event relationship. interface of root_scan_project_addslots is improved
+ *
+ * Revision 1.22  2008/05/10 13:05:35  ruslan
+ * wrapper returns only sobject without the key vector, names of wrapper functions in correspondance with the Thesis
+ *
+ * Revision 1.21  2008/04/10 15:15:30  ruslan
+ * one interface function for scan and get_interval
+ *
+ * Revision 1.20  2008/04/10 11:46:40  ruslan
+ * interval get
+ *
+ * Revision 1.19  2008/03/06 08:56:22  ruslan
+ * wrapper operator for 0 additional slots
+ *
+ * Revision 1.18  2008/02/28 13:11:31  ruslan
+ * using sobject
+ *
+ * Revision 1.17  2007/12/17 15:52:15  ruslan
+ * types are corrected at the struct
+ *
+ * Revision 1.16  2007/12/05 16:28:35  ruslan
+ * meta-data about struct is an object, not type
+ *
+ * Revision 1.15  2007/11/09 15:08:55  ruslan
+ * C implementation of UDFs
+ *
+ * Revision 1.14  2007/11/03 10:10:10  ruslan
+ * returning structs
+ *
+ ****************************************************************************/
+
+lisp;
+
+(setq _strict-restypes_ nil) ;; sqisle uses non-strict typing
+
+:osql
+
+<'structs.amosql';
+<'aleh_udfs.amosql';
+
+/**
+ * Foreign functions to get information about ROOT file. Such as directories,
+ * tree objects and attributes of the tree object.
+ */
+create function root_dirs(charstring dataSource) -> bag of charstring 
+		as foreign "root_dirs";
+create function root_trees(charstring dataSource, charstring dirName) -> 
+	bag of charstring as foreign 'root_files';
+create function root_columns(charstring dataSource, charstring rootDir, 
+	charstring rootTable) -> bag of <charstring cname,charstring datatype> as 
+	foreign 'root_columns';
+create function root_columns_all(charstring dataSource, charstring rootDir, 
+	charstring rootTable) -> bag of <charstring cname,charstring datatype> as 
+	foreign 'root_columns_all';
+
+/**
+ * General scan, get and get interval foreign functions. Source is specified
+ * by file name, ROOT directory and tree object. The key is vector containing
+ * source and id of tree object. The result vector is rest non key attributes.
+ */
+create function root_scan(charstring dataSource, charstring rootDir, 
+	charstring rootTable) -> bag of <Vector key,Vector> as foreign 'root_scan';
+create function root_get(charstring dataSource, charstring rootDir, 
+	charstring rootTable, vector key) -> Vector as foreign 'root_get';
+create function root_get_interval(charstring dataSource, charstring rootDir, 
+	charstring rootTable, integer low, integer high) -> bag of <vector key,Vector> as 
+	foreign 'root_get_interval';
+
+/**
+ * Foreign functions to scan and get with projection.
+ */
+create function root_scan_project(charstring dataSource, charstring rootDir, 
+	charstring rootTable, vector AttrsProjection) 
+       -> bag of <vector key,Vector>
+ as foreign 'root_scan_project';
+create function root_get_project(charstring dataSource, charstring rootDir, 
+	charstring rootTable, vector AttrsProjection, vector key) -> Vector as 
+	foreign 'root_get_project';
+create function root_get_interval_project(charstring dataSource, 
+	charstring rootDir, charstring rootTable, vector AttrsProjection, 
+	integer low, integer high) -> bag of <vector key,Vector> as 
+	foreign 'root_get_interval_project';
+
+create function root_attr_i(charstring dataSource, charstring rootDir, 
+	charstring rootTable, charstring attrName key) -> Integer as 
+	foreign 'root_attr_i';
+
+/* Foreign functions to scan with projection returning struct */
+create function root_scan_project_addslots(charstring dataSource, 
+	charstring rootDir, charstring rootTable, vector AttrsProjection, 
+	type StructType, integer AdditionalSlots) -> stream of sobject as 
+		foreign 'root_scan_sobjects_project';
+costhint("ROOT_SCAN_PROJECT_ADDSLOTS","bbbbbbf",{2000.0,1000.0});
+
+create function root_scan_project(charstring dataSource, 
+	charstring rootDir, charstring rootTable, vector AttrsProjection, 
+	type StructType) -> stream of sobject as 
+select root_scan_project_addslots(dataSource, rootDir, rootTable,
+	AttrsProjection,StructType,0);
+
+create function root_get_interval_sobjects_project(charstring dataSource, 
+	charstring rootDir, charstring rootTable, vector AttrsProjection, 
+	type StructType, integer AdditionalSlots, integer firstEvent,
+	integer lastEvent) -> stream of sobject as 
+		foreign 'root_scan_sobjects_project';
+costhint("CHARSTRING.CHARSTRING.CHARSTRING.VECTOR.TYPE.INTEGER.INTEGER.INTEGER.ROOT_GET_INTERVAL_SOBJECTS_PROJECT->BAG-SOBJECT","bbbbbbbbf",{200.0,100.0});
+
+create function root_get_interval_sobjects_project(charstring dataSource, 
+	charstring rootDir, charstring rootTable, vector AttrsProjection, 
+	type StructType, integer firstEvent,integer lastEvent) 
+		-> stream of sobject as 
+select root_get_interval_sobjects_project(dataSource, rootDir, rootTable,
+	AttrsProjection,StructType,0,firstEvent,lastEvent);
+
+load_lisp("wrapper3.lsp");
+
+/* Returns name and type name of attributes with space in between for 
+the given TTree object under the given path in the given file. */
+create function root_column_declarations(charstring src,charstring dir, 
+		charstring tbl) -> Bag of Charstring as 
+	select col+ " " + tpn 
+	from Charstring tpn, Charstring col 
+	where <tpn,col> = root_columns(src,dir,tbl);
+
+/* Takes bag of strings and returns string with all strings concatinated and comma in between */
+create function commalist(Bag b)->Charstring
+  as select concatagg(inject(b,","));
+
+/* Names of all columns except ID of table */
+create function root_columnnames(Charstring src, charstring dir, 
+		Charstring tbl) ->Bag of Charstring col
+  as select col
+     from Charstring tp
+     where root_columns(src,dir,tbl) = <col,tp>;  
+  
+  
+/* Names of all columns of table */
+create function root_columnnames_all(Charstring src, charstring dir, 
+		Charstring tbl) ->Bag of Charstring col
+  as select col
+     from Charstring tp
+     where root_columns_all(src,dir,tbl) = <col,tp>;       
+
+/* Names of all attributes to the given table under given path in the given file
+starting with attribute Filename */
+create function root_columnnames_alls(charstring file, charstring dir,
+	charstring rootfile) -> bag of charstring as
+begin
+	return "filename";
+	return root_columnnames_all(file,dir,rootfile);
+end;
+
+/* Multidirectional foreign function used by the wrapper to get data from ROOT files*/
+create function root_access(charstring file, charstring dir,
+	charstring tbl)->bag of <vector key, vector>
+as multidirectional
+	('bbbff' foreign 'root_scan' cost {1000,25000}) 
+	('bbbbf' foreign 'root_get' cost {10,1});
+
+create function root_access_project(charstring file, charstring dir,
+	charstring tbl, vector projection) -> bag of <vector key, vector> as
+multidirectional
+	('bbbbff' foreign 'root_scan_project' cost {1000,25000}) 
+	('bbbbbf' foreign 'root_get_project' cost {10,1});
+declare_type_container("root_access_project");
+/* Generates CC function for given sample file and generates mapped type. 
+Mapped type can be used for any ROOT files where TTree objects has same 
+names and placed under the same path */
+/** Needs to be rewritten.
+create function root_generate_wrapper(Charstring samplefile,  Charstring dir, 
+	Charstring tbl, charstring mappedtypename) -> type as 
+begin 
+	eval(
+		"create function "+mappedtypename+"_cc()-><charstring filename, 
+		Integer ID,"+commalist(root_column_declarations(samplefile, dir,tbl))
+		+">	as select filename, ID, "+
+		commalist(root_columnnames(samplefile,dir,tbl))+"
+	    where root_access(filename,'"+dir+"','"+tbl+"') =
+              <{filename,'"+dir+"','"+tbl+"',ID},
+               {"+commalist(root_columnnames(samplefile,dir,tbl))+"}>;"); 	
+	return create_mapped_type(mappedtypename, 
+		{"FILENAME","ID"}, 
+		vectorof(root_columnnames_alls(samplefile,dir,tbl)),
+		mappedtypename+"_cc");
+end;
+*/
+
+save "rootwrap.dmp";

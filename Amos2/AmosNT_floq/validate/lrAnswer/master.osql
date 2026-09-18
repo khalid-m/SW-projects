@@ -1,0 +1,16 @@
+
+<'historical.osql';
+
+loadhistory(cast(readfile("C:\\AmosNT\\scsq\\lr\\data\\hist_lite.out") as Vector of Integer));
+
+load_lisp("lrMain.lsp");
+load_lisp("visited.lsp");
+<'timeClock.osql';
+<'accidentAnswer.osql';
+<'accountBalAnswer.osql';
+<'segmentStat.osql';
+<'tollAnswer.osql';
+<'lrMain.osql';
+
+save "../lrVali/answer.dmp";
+quit;

@@ -1,0 +1,50 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 Erik Zeitler, UDBL
+ * $RCSfile: exp.osql,v $
+ * $Revision: 1.3 $ $Date: 2010/03/17 16:07:05 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Distributed splitstream experiments 
+ *
+ ****************************************************************************
+ * $Log: exp.osql,v $
+ * Revision 1.3  2010/03/17 16:07:05  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.2  2010/03/04 17:33:11  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.1  2010/02/24 18:32:24  zeitler
+ * *** empty log message ***
+ *
+ *
+ ****************************************************************************/
+
+clear_function("tresult");
+
+add tresult("exp") = scale_exp(100, 4, 5);
+add tresult("fsplit") = scale_fsplit(100, 4, 5);
+add tresult("max") = scale_max(100, 4, 5);
+add tresult("tosno") = scale_tos(100, 4, 5, #'tosno');
+add tresult("tos") = scale_tos(100, 4, 5, #'tos');
+
+write_ntuples(report(), "scaleupreport_100_" + timestamp());
+
+sleep(2);
+
+clear_function("tresult");
+select c, tresult(c) from charstring c;
+
+add tresult("exp") = robust_exp(100, 3);
+add tresult("fsplit") = robust_fsplit(100, 3);
+add tresult("max") = robust_max(100, 3);
+add tresult("tosno") = robust_tos(100, 3, #'tosno');
+add tresult("tos") = robust_tos(100, 3, #'tos');
+
+write_ntuples(report(), "robustness_8_" + timestamp());
+
+sleep(2);
+
+q();

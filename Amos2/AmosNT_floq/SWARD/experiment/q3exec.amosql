@@ -1,0 +1,121 @@
+ /*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Johan Petrini, UDBL
+ * 
+ * Description: We measure execution time for strategy END-P, DPS, DVS-P and BE
+ *
+ * ID: Q3exec
+ *
+ * Parameters:
+ * The database used is the TPC-H Company database. 
+ * The number of mapped properties from class Customer in the UPV 'Comp' is fixed to 8.
+ * Number of mapped properties from class Orders is fixed to 3.
+ * Since we discard the CustID property of class Customer this means that we 
+ * retrieve 1-7 properties from Customer.
+ * We increase the size of TPC-H database to 2 GB  
+ *
+ * As DBMS we use MSSQL Server 2005 SP2.
+ * Buffer size is 100 MB.
+ *
+ * All measurements are done with a cold database, that is, 
+ * the SQL server is restarted for every new test.
+ *
+ * Database compatibility level set to 90 (to handle pivot and unpivot 
+ * operation)for all TPC-H databases with the MSSQL Server command:
+ *    
+ * EXEC sp_dbcmptlevel 'TPCH2', '90';
+ * GO 
+ *
+ * Interbase/Firebird is stopped.
+ *****************************************************************************/
+/* Experiment steps
+ */
+
+/* Using END-P
+ */
+set :f = compileQuery(:dcalc);
+count(select call_function(:f,{}));
+
+/* Experiment pre-settings 
+ */
+set :scenario = "END";			/* Scenario */
+set :pe = true;				/* Partial evaluation */
+
+/* Define DS for TPC-H Company relational database.
+ */
+defineDS("COMPANYDS",
+         "jdbc:microsoft:sqlserver://localhost;DatabaseName=tpch00625",
+         "com.microsoft.jdbc.sqlserver.SQLServerDriver",
+         "tpch00625",
+         "dbo",
+         "sa",
+         "12345");
+
+/* Define UPV 'sq' associated with data source 'SQDS'. 
+ */
+defineUPV("COMPANYDS","Comp","http://upv/com/comp/");
+
+/* Connect to predefined data source assigned to UPV 'eGov'. 
+ */
+DSConnect("Comp");	
+
+/* End of experiment pre-settings 
+ */
+
+/* Speed up UPV generation 
+ */
+lisp;
+(defglobal get-columnscache)
+(memo 'get-columnscache 'get-columns (list 'ds 'table))
+:osql
+
+/* Populate SWARD system tables 
+ */
+
+/* Set property and class mappings
+ */
+assignPropID("ORDERS","O_ORDERKEY","Comp","http://upv.com/schemas/company#OrderID");
+assignPropID("ORDERS","O_CUSTKEY","Comp","http://upv.com/schemas/company#OrderCustomer");
+assignPropID("ORDERS","O_CLERK","Comp","http://upv.com/schemas/company#Clerk");
+assignPropID("CUSTOMER","C_CUSTKEY","Comp","http://upv.com/schemas/company#CustID");
+assignPropID("CUSTOMER","C_NAME","Comp","http://upv.com/schemas/company#Name");
+assignPropID("CUSTOMER","C_ADDRESS","Comp","http://upv.com/schemas/company#Address");
+assignPropID("CUSTOMER","C_NATIONKEY","Comp","http://upv.com/schemas/company#NationID");
+assignPropID("CUSTOMER","C_PHONE","Comp","http://upv.com/schemas/company#Phone");
+assignPropID("CUSTOMER","C_ACCTBAL","Comp","http://upv.com/schemas/company#Balance");
+assignPropID("CUSTOMER","C_MKTSEGMENT","Comp","http://upv.com/schemas/company#Market");
+assignPropID("CUSTOMER","C_COMMENT","Comp","http://upv.com/schemas/company#Comment");
+
+assignClassID("CUSTOMER","Comp","http://upv.com/schemas/company#Customer");
+assignClassID("ORDERS","Comp","http://upv.com/schemas/company#Orders");
+
+/* End of populating SWARD system tables 
+ */
+
+/* Autogenerate UPV
+ */
+dispatch(:scenario,"Comp");
+
+/* Define exemple hybrid query Q3
+ */
+set :Q3 = 
+"SELECT ?cust,?custprop,?val
+FROM <http://upv/com/comp/>	
+WHERE (?order,<http://upv.com/schemas/company#OrderID>,1),
+      (?order,<http://upv.com/schemas/company#OrderCustomer>,?cid),
+      (?cust,<http://upv.com/schemas/company#CustID>,?cid),
+      (?custprop,<http://www.w3.org/2000/01/rdf-schema#domain>,<http://upv.com/schemas/company#Customer>),      
+      (?cust,?custprop,?val)
+AND ?custprop != <http://upv.com/schemas/company#CustID>";
+
+/* Parse Q3
+ */
+set :dcalc = parse_rdql(:Q3);
+
+/* Experiment post-settings 
+ */
+enable_parteval(:pe);
+
+/* End of experiment post-settings 
+ */

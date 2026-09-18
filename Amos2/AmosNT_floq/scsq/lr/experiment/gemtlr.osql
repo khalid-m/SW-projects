@@ -1,0 +1,56 @@
+/*-*-sql-*-*******************************************************************/
+
+/* This file contains experiments for parallel fsplit on multiarrays,
+   parallel execution of LR, as well as merge and tree shaped zipstreams on
+   multiarrays. */
+
+/*
+rr_fsplit_lr_mrg_opt({getenv('HOME') + "/glob/ezgen/output/64m4/cdpm0"},
+64, 2, 4, "mul2_rr4");
+
+rr_fsplit_lrcnt_opt({getenv('HOME') + "/glob/ezgen/output/64m4/cdpm0"},
+64, 2, rrfo(), "mul2_rr" + stringify(rrfo()));
+
+*/
+
+sp_ts_freq(5.0);
+sp_proctime_freq(5.0);
+sp_report_freq(12.5);
+
+sp_ts(0);
+sp_proctime(0);
+sleep(0.1);
+select "setting basehostnum";
+sp_basehostnum(1);
+select "cpus_per_host:";
+cpus_per_host();
+
+create function mul()->integer as 4;
+create function rrfo()->integer as 4*mul();
+create function postmsz()->integer as 16;
+
+create function inputfiles()->vector of charstring as
+{getenv('HOME') + "/glob/ezgen/output/64m4/cdpm0"};
+
+create function outputfname()->charstring as
+"mul" + stringify(mul()) + "_rr" + stringify(rrfo()) + "_pm" + postmsz();
+
+rr_fsplit_lrmulti_mrg_tzip_tcount(inputfiles(), 64, mul(), rrfo(), postmsz(),
+outputfname());
+
+sleep(1);
+
+writefile("dprofile-" + outputfname(), {dprofile()});
+
+sleep(1);
+
+q();
+
+/*
+
+select c, r['nsub'], r['proctime']
+from charstring c, record r, vector v
+where c=v[0] and r=v[1]
+and v in readfile("dprofile-mul2_rr8"); 
+
+*/

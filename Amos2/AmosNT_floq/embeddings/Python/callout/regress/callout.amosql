@@ -1,0 +1,44 @@
+/* Initialization script for pyamos2.c to define foreign functions
+   by the symbolic bindings to their C code and make image. */
+
+create function py_reloadf(Charstring foreignName) -> Boolean b
+  as foreign 'pycallout_reload_foreign';
+
+lisp;
+(if (not (gettypenamed 'pyobj t))
+    (createliteraltype 'pyobj (list _collection_) 'pyobj))
+:osql;
+
+create function pyminus(Real a, Real b) -> Real x
+	as foreign 'py:regress.callout.minus';
+
+create function pyinvert(Real a) -> Real x
+	as foreign 'py:regress.callout.invert';
+
+create function pyiota(Integer start, Integer stop) -> Bag items
+	as foreign 'py:regress.callout.iota';
+
+create function pyiota_list(Integer start, Integer stop) -> Vector items
+	as foreign 'py:regress.callout.iota_list';
+
+create function pyiota_dict(Integer start, Integer stop) -> Record items
+	as foreign 'py:regress.callout.iota_dict';
+
+create function pypow(Integer i) -> Bag items 
+  as foreign 'py:regress.callout.pow'; 
+
+
+create function pylib_range(Integer a, Integer b) -> Bag items 
+  as foreign 'py:range';
+
+create function pylib_xrange(Integer a, Integer b) -> Bag items 
+  as foreign 'py:xrange';
+
+create function pybounce(Function oid) -> Function oid2
+  as foreign 'py:regress.callout.bounce';
+
+
+
+
+
+/*py_reloadf('py:regress.callout.pow');*/

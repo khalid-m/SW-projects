@@ -1,0 +1,30 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2002 Martin Hansson, UDBL
+ * $RCSfile: updates.osql,v $
+ * $Revision: 1.2 $ $Date: 2003/03/10 14:32:38 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: A user-level interface for declarinf custom udpate functions
+ *              for any function.
+ *
+ ****************************************************************************/
+
+create function add_function   (function f)->function as 
+  foreign 'get_addfunction--';
+
+create function remove_function(function f)->function as
+  foreign 'get_remfunction--';
+
+create function set_function   (function f)->function as
+  foreign 'get_setfunction--';
+
+create function set_addfunction(function f, function uf) -> boolean as
+  foreign 'set_addfunction--';
+
+create function set_remfunction(function f, function uf) -> boolean as
+  foreign 'set_remfunction--';
+
+create function set_setfunction(function f, function uf) -> boolean as
+  foreign 'set_setfunction--';

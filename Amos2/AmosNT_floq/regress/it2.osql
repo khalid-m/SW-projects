@@ -1,0 +1,48 @@
+create type EE_Emp;
+create function id(ee_emp e key)-> charstring id key;
+create function name(ee_emp e key)-> charstring name;
+create function pay(ee_emp e key)-> integer pay;
+create function wplace(ee_emp e key)-> integer wplace;
+
+declare charstring :x, integer :s, charstring :n, integer :wp;
+lisp;
+(defvar xo) ; used in remote test
+(let* (
+       (TOTAL 100)
+       (OFFSET 20)
+       (ls (/ OFFSET 2))
+       (le (+ OFFSET (/ OFFSET 2))))
+  (dotimes (i TOTAL)
+    (setq amos_n (concat "ee_emp" (mkstring i)))
+    (setq amos_wp (if (and (> i ls) (<= i le)) 1 0))
+    (setq amos_x (mkstring i))
+    (setq amos_s (* 1 i))
+    (create-userobjects EE_Emp (id      name    pay     wplace) 
+			((:x  :n  :s  :wp))))
+  )
+
+(foreign-lispfn id_to_ssn ((charstring id))((integer ssn))
+	(foreign-result (mkatom id)))
+
+
+:osql;
+
+/* select id(e), wplace(e), name(e), pay(e) from ee_emp e; */
+/*
+odbcsource("testdb", "", "");
+lisp;
+
+(setq nf (osql "
+create function myssnsal(integer s)-> (integer, integer) as
+ select atoi(empno), atoi(salary)  from charstring salary, charstring empno
+ where {salary, empno}=
+       sql('testdb', 'select salary, empno from employee where empno=?',
+                     {itoa(s)});"))
+(setq nsb (getobject nf 'selectbody))
+
+(defun dodemo (fno)
+ (putobject fno 'selectbody nsb))
+
+;(dodemo of)
+:osql
+*/

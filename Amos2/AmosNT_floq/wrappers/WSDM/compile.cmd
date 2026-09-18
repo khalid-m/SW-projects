@@ -1,0 +1,2 @@
+mkdir classes
+javac -Xlint -classpath %AMOS_HOME%\wrappers\WSDM\lib\xercesImpl.jar;%AMOS_HOME%\wrappers\WSDM\lib\jdom.jar;%AMOS_HOME%\wrappers\WSDM\lib\qname.jar;%AMOS_HOME%\wrappers\WSDM\lib\wsdl4j.jar;%AMOS_HOME%\wrappers\WSDM\lib\castor-0.9.7-xml.jar;%AMOS_HOME%\wrappers\WSDM\lib\saaj-api.jar;%AMOS_HOME%\wrappers\WSDM\lib\saaj-impl.jar;%AMOS_HOME%\wrappers\WSDM\lib\jaxm-api.jar;C:\AmosNT\bin\javaamos.jar;  -d %AMOS_HOME%\wrappers\WSDM\classes %AMOS_HOME%\wrappers\WSDM\src\*.java

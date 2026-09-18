@@ -1,0 +1,19 @@
+<rdf:RDF xml:lang="en" 
+  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" 
+  xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#" 
+  xmlns:sch="http://user.it.uu.se/~udbl/RDFAmos/Schema/schema#" 
+  >
+
+<sch:Book about="http://www.xyz.com/sw.html">
+  <sch:Title>Software Engineering</sch:Title>
+</sch:Book>
+
+<sch:Book about="http://www.xyz.com/ai.html">
+  <sch:Title>Artificial Intelligence</sch:Title>
+</sch:Book>
+
+<sch:AI_Book about="http://www.xyz.com/pl.html">
+  <sch:Title>Prolog</sch:Title>
+</sch:AI_Book>
+
+</rdf:RDF>

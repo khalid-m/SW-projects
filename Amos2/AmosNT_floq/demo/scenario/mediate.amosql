@@ -1,0 +1,102 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2005 Tore Risch, UDBL
+ * $RCSfile: mediate.amosql,v $
+ * $Revision: 1.4 $ $Date: 2005/01/04 16:27:13 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: OO mediator integrating two other mediators
+ *
+ ****************************************************************************/
+
+register('mediator1');
+
+import_types({"student","course","teacher","attendance"}
+             ,"uppsala");
+
+import_types({"student","teaches_ibds","course_ibds","takes_ibds"}
+             ,"stockholm");
+
+latebinding("OR"); /* IUT optimization needs expanded late binding */
+
+/*
+ type Student
+  function pnr(Student) -> Integer
+  function name(Student) -> Character
+  type Course 
+  function name(Course) -> Character
+  type Takes
+  function student(Takes) -> Student
+  function course(Takes) -> Course
+  function score(Takes) -> Integer 
+*/     
+
+create derived type Student
+   key integer ssn
+   supertype of 
+     Student@Stockholm s=ssn(s), 
+     Student@Uppsala u=ssn(u)
+   functions
+     (name charstring, pnr integer)
+   case s:
+      name = name(s);
+      pnr = ssn(s);
+   case u:
+      name = name(u);
+      pnr = ssn(u);
+   case u,s:
+      name = name(s);
+      pnr = ssn(u);
+   end functions; 
+
+create derived type Course 
+   key charstring dummy
+   supertype of
+     course_ibds@stockholm st = name(st),
+     course@uppsala u = title(u)
+   functions
+   (subject charstring)
+   case st:
+    subject = name(st);
+   case u:
+    subject = title(u);
+   case u,st:
+    subject = name(st);
+   end functions;
+
+create function theStudent(Integer ssn) -> Student s
+  as select s where pnr(s)=ssn;
+
+create function theCourse(Charstring nm) -> Course c
+  as select c where subject(c) = nm;
+
+create function takeKey(Takes_ibds@Stockholm s) -> Vector
+  as select {ssn(s),name(c)} 
+     from Course_ibds@Stockholm c
+     where cid(s) = cid(c);
+
+create function takeKey(Attendance@Uppsala u) -> Vector
+  as select {ssn(student(u)), title(course(u))};
+
+create derived type Takes
+    key vector dummy
+    supertype of
+      Takes_ibds@stockholm s = takeKey(s),
+      Attendance@uppsala u = takeKey(u)
+    functions
+    (student Student, course Course, score Integer)
+    case s:
+     student = student(s);
+     course = course(s);
+     score = score(s);
+    case u:
+     student = student(u);
+     course = course(u);
+     score = score(u);
+    case s,u:
+     student = student(u);
+     course = course(u);
+     score = min(score(u),score(s));
+    end functions
+;

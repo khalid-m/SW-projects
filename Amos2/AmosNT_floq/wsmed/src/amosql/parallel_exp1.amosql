@@ -1,0 +1,125 @@
+
+/* importing metadata from WSDL */
+importwsdl("wsdl/TerraService2.wsdl");
+importwsdl("wsdl/PlaceLookup.wsdl");
+
+
+/* importing values for soapheaders */
+putsoaphvalue( 'wsdl/PlaceLookup.wsdl', 'GeoPlaces', 'GetPlaceDetails', {'5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'});
+
+putsoaphvalue( 'wsdl/PlaceLookup.wsdl', 'GeoPlaces', 'GetAllStates',{'5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'});
+
+
+putsoaphvalue( 'wsdl/PlaceLookup.wsdl', 'GeoPlaces', 'GetPlacesInside',{'5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'});
+
+putsoaphvalue( 'wsdl/PlaceLookup.wsdl', 'GeoPlaces', 'GetPlacesWithin', {'5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'});
+
+
+/* Wrapper function s*/
+
+create function GetState( bag b,charstring stn)-> charstring  sn as 
+                                                          select snv[2]  
+                                                          from vector snv 
+                                                          where snv in b and snv[0]=stn;
+
+
+
+create function GetAllStates_w0()-> charstring state as
+                         select state  
+                         from  charstring statename, Charstring types, real latDegrees, real lonDegrees, real latRadians, real lonRadians 
+                         where GetAllStates()=<statename ,types ,state, latDegrees , lonDegrees , latRadians , lonRadians>;
+
+
+create function GetAllStates_GetPlaceList_w0(charstring kw,integer notuple, charstring imagepresence)->  <charstring kw1,charstring state, integer notuple1, charstring imagepresence1> as 
+				select kw, state, notuple, imagepresence
+                                where GetAllStates_w0()=state;
+
+create function GetAllStates_GetPlaceList_w1(charstring kw,integer notuple, charstring imagepresence, bag bg)-> Vector as 
+                                                 select {kw,state,notuple,imagepresence}  
+                                                 from charstring state , vector ve
+                                                 where ve in bg and state=ve[2];
+
+
+
+create function GetPlacesWithin_GetPlaceList_w0(integer notuple, charstring imagepresence, bag bg)-> <charstring kw, charstring state ,integer notuple1, charstring imagepresence1> as 
+                                        select kw,state,notuple,imagepresence 
+                                        from vector ve 
+                                        where ve in bg and state=ve[1] and kw= ve[0];
+
+create function GetPlaceList_w( charstring kw,charstring state,integer notuple, charstring imagepresence)-> <charstring pn,charstring statename, charstring country, real lon1, real lat1,integer theme, charstring pid, integer pop> as 
+                                              select pn,statename,country,lon1,lat1,theme,pid,pop 
+                                              where GetPlaceList(kw+", "+state, notuple, imagepresence)=<pn,statename,country,lon1,lat1,theme,pid,pop>;
+
+
+create function GetAllStates_GetPlacesWithin_w0(charstring city, real distance, charstring pint)-> <charstring city1, charstring state, real distance1, charstring pint1> as 
+                                           select city,state,distance,pint  
+                                           where GetAllStates_w0()=state;
+
+/*create function GetPlaceList_GetPlacesWithin_w0(real distance, charstring pint, bag of vector bg, bag of vector st)-> Vector as
+                                                                       select {city, state, distance,pint}
+                                                                       from vector v, charstring city,charstring statename, charstring state
+                                                                       where v in bg and
+                                                                             city=v[0] and statename=v[1] and 
+                                                                             state=GetState(st,statename);*/
+                                                                             
+
+
+
+
+
+save "wsmed.dmp";
+
+
+
+
+/* parallel queries */
+
+/*
+
+create function q1()->   select where GetAllStates()=<
+
+
+
+
+create function q1(vector peers)-> object as 
+                                      select rr_receive(peers, functionnamed("CHARSTRING.CHARSTRING.INTEGER.CHARSTRING.GETPLACELIST_W->CHARSTRING.CHARSTRING.CHARSTRING.REAL.REAL.INTEGER.CHARSTRING.INTEGER"),  GetAllStates_GetPlaceList_w0('Atlanta',100,'true'));
+
+
+
+
+create function q2(vector peers)-> object as 
+                                      select rr_receive(peers,functionnamed("CHARSTRING.CHARSTRING.REAL.CHARSTRING.GETPLACESWITHIN->CHARSTRING.CHARSTRING.REAL"),GetAllStates_GetPlacesWithin_w0("Atlanta",5.0,"City"));
+
+
+create function q3()-> object  as 
+				 select  rr_receive({"p2","p3"},functionnamed("CHARSTRING.CHARSTRING.INTEGER.CHARSTRING.GETPLACELIST_W->CHARSTRING.CHARSTRING.CHARSTRING.REAL.REAL.INTEGER.CHARSTRING.INTEGER"), GetPlacesWithin_GetPlaceList_w0(100,'true',ve))
+                                 from bag ve
+				 where rr_receive({"p0","p1"},functionnamed("CHARSTRING.CHARSTRING.REAL.CHARSTRING.GETPLACESWITHIN->CHARSTRING.CHARSTRING.REAL"),GetAllStates_GetPlacesWithin_w0("Atlanta",5.0,"City"))=ve;
+
+*/
+
+                                    
+/*create function q4()->  vector as 
+				 select {pn,pn1}
+                                 from bag of vector st,bag of vector ve, vector rv, bag of vector ve1, bag of vector ve2, vector rv1, vector rv2, charstring pn, charstring pn1, charstring pn2
+                                 where st=GetAllStates_v() and
+                                       ve=rr_receive({"p0","p1"},"GetPlaceList_v",GetAllStates_GetPlaceList_w1('Atlanta',100,'true',st)) and
+                                        rv in ve and
+                                        pn= rv[0] and 
+                                        rv[6]="OtherLandFeature" and 
+                                        ve1= rr_receive({"p2","p3"},"GetPlacesWithin_v", GetPlaceList_GetPlacesWithin_w0(5.0,'City',ve,st)) and
+                                        rv1 in ve1 and
+                                        pn1= rv1[0] and
+                                        ve2=rr_receive({"p4","p5"},"GetPlaceList_v",GetPlacesWithin_GetPlaceList_w0(100,'true',ve1)) and
+                                        rv2 in ve2 and
+                                        pn2= rv2[0] and 
+                                        pn2=pn1 and  
+                                        rv2[6]="OtherLandFeature" ; */
+
+
+                                      
+
+
+
+
+

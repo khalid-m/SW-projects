@@ -1,0 +1,218 @@
+
+create function dropProceduresRowOrder(JDBC jd,Charstring baseURI)
+->Boolean
+/*Generates DROP PROCEDURE Statements to drop all the procedure in database*/
+as
+begin
+	declare Charstring proc_name1,Charstring proc_name2;
+	for each Charstring ch where ret_tableURIs()=ch
+	begin
+		set proc_name1="SP_"+str_exp1(clearURI(ch,baseURI),'/');
+		set proc_name2="SP_FK_"+str_exp1(clearURI(ch,baseURI),'/');
+		sql(jd,"DROP PROCEDURE IF EXISTS "+ proc_name1+";");
+		sql(jd, "DROP PROCEDURE IF EXISTS "+ proc_name2+";");
+	end;
+end;
+
+
+create function procedureRowOrder1(Charstring baseURI)->Charstring
+as begin
+	declare Charstring a,Charstring b,Charstring c,Charstring tname,Vector pkname,Charstring t1, 
+		Charstring t2,Charstring t3,Charstring t4,Charstring pk1,Integer z,Vector cn,Vector ct,Vector cs;
+	set t1="";set t2="";set t3="";set t4="";set cn={};set ct={};set cs={};set pkname={};set pk1="";set z=0;
+
+	for each Charstring tableURI where ret_tableURIs()=tableURI
+	begin	set tname=clearURI(tableURI,BaseURI);
+		for each Charstring ch where ret_pkname(tableURI,baseURI)=ch 
+		begin 	set pkname=concat(pkname,{ch});
+			set pk1=pk1+" and "+ch+"=C_"+ch;
+		end;
+		set pk1=substring(pk1,4,char_length(pk1));
+		for each Charstring col,Charstring colURI where ret_columnURIs(tableURI,baseURI)=<colURI,col>
+		begin 	set cn=concat(cn,{str_exp(col,'/')});set ct=concat(ct,{ret_Coldatatype(colURI)});
+			if(ret_ColSize(colURI)!="") then set cs=concat(cs,{ret_ColSize(colURI)})
+			else set cs=concat(cs,{""});
+		end;			
+		for each integer i where i in iota(1,dim(cn))
+		begin 	set a=cn[i-1];set b=ct[i-1];set c=cs[i-1];
+			if (c!="") then	set t1=t1+",IN C_"+a+" "+b+"("+c+")"
+			else set t1=t1+",IN C_"+a+" "+b;set t2=t2+","+a;
+			set t3=t3+","+"C_"+a;
+			if(cn[i-1] in pkname) then set z=1
+			else set t4=t4+","+a+"=C_"+a;
+		end;
+		set t1=substring(t1,1,char_length(t1));	set t2=substring(t2,1,char_length(t2));
+		set t3=substring(t3,1,char_length(t3));	set t4=substring(t4,1,char_length(t4));
+		if(t4!="") then
+			return "CREATE PROCEDURE SP_"+tname+"("+t1+")
+				IF EXISTS(SELECT * FROM "+tname+" WHERE "+pk1+") THEN
+					UPDATE "+tname+" SET "+t4+" WHERE "+pk1+";
+				ELSE 
+					INSERT INTO "+tname+"("+t2+") VALUES ("+t3+");
+				END IF;"
+		else
+			return "CREATE PROCEDURE SP_"+tname+"("+t1+")
+				IF NOT EXISTS(SELECT * FROM "+tname+" WHERE "+pk1+") THEN
+					INSERT INTO "+tname+"("+t2+") VALUES ("+t3+");
+				END IF;";
+		set cn={};set cs={};set ct={};set pkname={};
+		set t1="";set t2="";set t3="";set t4="";set pk1="";
+	end;
+end;
+
+create function procedureRowOrder2(Charstring baseURI)->Charstring
+as
+/* Also Generates CREATE PROCEDURE statements for the table corresponding to the foreign key.*/
+begin
+	declare Charstring tname,Vector pkname,Vector pktype,Vector pksize,Charstring pk1,Charstring pk2,Charstring pk3,Charstring pk4,Charstring a,Charstring b,Charstring c;
+	set pk1="";set pk2="";set pk3="";set pk4="";set pkname={};set pktype={};set pksize={};
+	for each Charstring tableURI where ret_tableURIs()=tableURI
+	begin
+		set tname=clearURI(tableURI,BaseURI);
+		for each Charstring ch where ret_pkURIs(tableURI)=ch 
+		begin 	set pkname=concat(pkname,{str_exp(clearURI(ch,baseURI),'/')});
+			set pktype=concat(pktype,{ret_Coldatatype(ch)});
+			if(ret_ColSize(ch)!="") then set pksize=concat(pksize,{ret_ColSize(ch)})
+			else set pksize=concat(pksize,{""});
+		end;
+		
+		for each Integer i where i in iota(1,dim(pkname))
+		begin	
+			set a=pkname[i-1];set b=pktype[i-1];set c=pksize[i-1];
+			set pk1=pk1+" and "+a+"=C_"+a;
+			set pk2=pk2+","+"IN C_"+a+" "+b+"("+c+")";
+			set pk3=pk3+","+a;set pk4=pk4+",C_"+a;
+		end;
+		set pk1=substring(pk1,4,char_length(pk1));set pk2=substring(pk2,1,char_length(pk2));
+		set pk3=substring(pk3,1,char_length(pk3));set pk4=substring(pk4,1,char_length(pk4));
+	
+	
+		return "CREATE PROCEDURE SP_FK_"+tname+"("+pk2+")
+			IF NOT EXISTS(SELECT * FROM "+tname+" WHERE "+pk1+") THEN
+				INSERT INTO "+tname+"("+pk3+") VALUES ("+pk4+");
+			END IF;";
+	
+		set pkname={};set pktype={};set pksize={};
+                set pk1="";set pk2="";set pk3="";set pk4="";
+	end;
+end;
+
+
+create function procedureRowOrder(JDBC jd,Charstring baseURI)
+->Boolean
+as
+begin
+	sql(jd,procedureRowOrder1(baseURI));
+	sql(jd,procedureRowOrder2(baseURI));
+end;
+
+
+create function procedureRowOrderPIL(JDBC jd,Charstring baseURI)->Boolean
+as begin
+	declare Charstring a,Charstring b,Charstring c,Charstring tname,Vector pkname,Charstring t1, 
+		Charstring t2,Charstring t3,Charstring t4,Charstring pk1,Integer z,Vector cn,Vector ct,Vector cs;
+	set t1="";set t2="";set t3="";set t4="";set cn={};set ct={};set cs={};set pkname={};set pk1="";set z=0;
+
+	for each Charstring tableURI where ret_tableURIs()=tableURI
+	begin	
+		set tname=clearURI(tableURI,BaseURI);
+		for each Charstring ch where ret_pkname(tableURI,baseURI)=ch 
+		begin 	
+			set pkname=concat(pkname,{ch});
+			set pk1=pk1+" and "+ch+"=C_"+ch;
+		end;
+		set pk1=substring(pk1,4,char_length(pk1));
+		for each Charstring col,Charstring colURI where ret_columnURIs(tableURI,baseURI)=<colURI,col>
+		begin 	
+			set cn=concat(cn,{str_exp(col,'/')});
+			set ct=concat(ct,{ret_Coldatatype(colURI)});
+			if(ret_ColSize(colURI)!="") then 
+				set cs=concat(cs,{ret_ColSize(colURI)})
+			else 
+				set cs=concat(cs,{""});
+		end;			
+		for each integer i where i in iota(1,dim(cn))
+		begin 	
+			set a=cn[i-1];
+			set b=ct[i-1];
+			set c=cs[i-1];
+			if (c!="") then	
+				set t1=t1+",IN C_"+a+" "+b+"("+c+")"
+			else 
+				set t1=t1+",IN C_"+a+" "+b;set t2=t2+","+a;
+			set t3=t3+","+"C_"+a;
+		end;
+		set t1=substring(t1,1,char_length(t1));	
+		set t2=substring(t2,1,char_length(t2));
+		set t3=substring(t3,1,char_length(t3));	
+
+		sql(jd, "CREATE PROCEDURE SP_"+tname+"("+t1+") INSERT INTO "+tname+"("+t2+") VALUES ("+t3+");");
+		
+		set cn={};set cs={};set ct={};set pkname={};
+		set t1="";set t2="";set t3="";set pk1="";
+	end;
+end;
+
+/*Sorting the values in the vector according to the original column order.*/
+create function sorting1(Vector cn,Vector t3,Vector t4)->Charstring
+as begin
+	declare Charstring col1,Charstring c;
+	set col1="";
+	for each integer i where i in iota(1,dim(cn))
+	begin	if(cn[i-1] in t3) then 
+		begin	for each integer j where j in iota(1,dim(t3))
+			begin	if cn[i-1]=t3[j-1] then 
+				begin	set c=t4[j-1];
+					set col1=col1+","+c;
+				end;
+			end;
+		end
+		else set col1=col1+','+'\N';
+	end;
+	return col1;
+end;
+
+
+/*Sorting the values in the vector according to the original column order.*/
+create function sorting(Vector cn,Vector t3,Vector t4)->Charstring
+as begin
+	declare Charstring col1,Charstring c;
+	set col1="";
+	for each integer i where i in iota(1,dim(cn))
+	begin	if(cn[i-1] in t3) then 
+		begin	for each integer j where j in iota(1,dim(t3))
+			begin	if cn[i-1]=t3[j-1] then 
+				begin	set c=t4[j-1];
+					set col1=col1+","+c;
+				end;
+			end;
+		end
+		else set col1=col1+","+"NULL";
+			
+	end;
+	return col1;
+end;
+
+/*Retreives respective vector of primary key name and its corresponding values.*/
+create function get_pkValRow(Charstring baseURI,Charstring t)->(Vector,Vector)
+as begin
+	declare Vector pkname,Vector pkVal;
+	set pkname={};set pkVal={};
+	for each Charstring ch where ret_pkNameFromRowID(baseURI,t)=ch 
+		set pkname=concat(pkname,{ch});
+	set pkVal=row_ident(t,ret_TableURIfromRowID(baseURI,t));
+	return (pkName,pkVal);
+end;
+
+/*Retrieves respective vector of foreign key name and its corresponding values.*/
+create function get_fkValRow(Charstring baseURI,Charstring v,Charstring p)->(Vector,Vector,Charstring)
+as  begin
+	declare Vector fkname,Vector fkVal,Charstring fkV,Vector fkVal1;
+	set fkVal=row_ident(v,ret_tableURIFromrowID(baseURI,v));
+	for each Charstring ch where ret_fkMap(p)=ch
+		set fkname=concat(fkname,{str_exp(clearURI(ch,baseURI),'/')});
+	for each integer i where i in iota(1,dim(fkVal)) 
+		set fkVal1=concat(fkVal1,{fkVal[dim(fkVal)-i]});
+	set fkV=concatagg(inject(vectorbag(fkVal1),','));
+	return (fkname,fkVal,fkV);
+end;	

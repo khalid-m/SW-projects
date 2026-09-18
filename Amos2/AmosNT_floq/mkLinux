@@ -1,0 +1,11 @@
+echo Making image...
+pushd bin
+export releasing=1
+source install.sh
+popd
+
+echo Removing old amosx.zip ...
+rm amox.zip
+
+echo Building new amox.zip ...
+zip amox README bin/README bin/amos2 bin/amos2.dmp bin/alisp bin/alisp.dmp bin/libamos.so bin/libJavaAmos.so bin/bt.so bin/xt.so bin/javaamos bin/javaamos.jar demo/tutorial.amosql demo/wcdata.amosql demo/Foreign.java demo/mydbdef.amosql demo/foreign.c demo/myCdbdef.amosql demo/README doc/tut.pdf doc/javaapi.pdf doc/alisp.pdf C/callin.h C/callout.h C/storage.h C/alisp.h C/complex.h C/environ.h C/main.c demo/clientdemo.c demo/Makefile demo/ClientDemo.java lsp/init.el 

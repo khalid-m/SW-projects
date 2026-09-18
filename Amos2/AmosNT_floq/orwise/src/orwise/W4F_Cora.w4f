@@ -1,0 +1,94 @@
+OPTIONS {
+        package orwise;
+        Recursive(1): get(nextpage){
+	concat title;
+	concat subject;
+	concat bibtex;
+        concat url;     
+	concat relatedDoc;
+	concat relatedPage;
+	concat authors;
+	concat relevance;
+	
+        };
+}
+
+SCHEMA {
+
+        String[] title;
+        String[] subject;
+        String[] bibtex;
+        String[] url;
+        String[] relatedDoc;
+        String[] relatedPage;
+        String[] authors;
+        String[] relevance;
+        String nextpage;
+        String check;
+}
+
+EXTRACTION {
+
+        title = html->dt[*].b[0].txt;
+        subject = html.body[0].dl[0].dd[*].font[0].txt;
+        bibtex = html.body[0].dl[0].dd[i:*].table[0].tr[0].td[3].font[0].a[0]@+href where html.body[0].dl[0].dd[i].table[0].tr[0].td[3].font[0].a[0].txt ="BibTeX Entry";
+        url = html.body[0].dl[0].dd[j:*].table[0].tr[0].td[2].font[0].a[0]@+href where html.body[0].dl[0].dd[j].table[0].tr[0].td[2].font[0].a[0].txt = "Details";
+        relatedDoc =  html->dd[k:*]->a@+href where html->dd[k]->a.txt="Postscript";	//'only the first Postscript will be retrieved'
+        relatedPage = html.body[0].dl[0].dd[l:*].table[0].tr[0].td[1].font[0].a[0]@+href  where html.body[0].dl[0].dd[l].table[0].tr[0].td[1].font[0].a[0].txt="Referring Page" ;	//'Referring Page'
+        authors = html.body[0].dl[0].dd[*].pcdata[0].txt;
+        relevance = html.body[0].dl[0].dd[*].table[0].tr[0].td[5].font[0].pcdata[0].txt,match(":(.*)"); 
+        nextpage = html.body[0].table[0].tr[0].td[2].a[0]@+href;
+        check = html.body[0].p[1].pcdata[0].txt,match(":(.*)");
+
+}
+
+RETRIEVAL {
+        search(int entries, String keyword, String first) {
+                METHOD: GET;
+                URL: "http://cora.whizbang.com/cgi-bin/cora_query.cgi";
+        PARAM:          "first"=$first$,
+                        "scope"="all",
+                        "numlinks"=$entries$,
+                        "description"="long",
+			"session"="cora_query.cgi",
+                        "from"="",
+                        "sara"="",
+                        "keywords"=$keyword$;
+             }
+
+        get(String url) {
+               GET "$url$" ;
+        }
+}
+
+JAVACODE {
+
+    public static void main(String args[]) throws Exception {
+
+      int pages=1;
+      int entriesPerPage=10;
+      try {
+                pages = Integer.parseInt(args[0].trim());
+                entriesPerPage = Integer.parseInt(args[1].trim());
+                }
+      catch (NumberFormatException nfe) {
+                System.out.println("NumberFormatException: " + nfe.getMessage());
+             }
+
+      try{
+      String keyword=args[2];
+      String first=args[3];
+
+      System.out.println("Pages: " + pages);
+      System.out.println("Entries per page: " + entriesPerPage);
+      System.out.println("Keyword: " + keyword);
+      System.out.println("First entry: "+first);
+      System.out.println(searchRecursive(pages,entriesPerPage, keyword, first));
+
+
+      }
+      catch(Error mae){
+        System.out.println("java cora [Pages] [Entries Per Page] [Keyword][Start at entry number]");
+      }
+    }
+}

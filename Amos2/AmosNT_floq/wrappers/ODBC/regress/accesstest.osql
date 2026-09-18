@@ -1,0 +1,24 @@
+set :o = odbc('ads');
+connect(:o,'ODBCTEST');
+tables(:o);
+
+lisp;
+
+(checkequal "tables function"
+  ((mapcar (function car) (osql "tables(:o);"))
+   '("IDAEMP" "foo")))
+
+(checkequal "tables function"
+  ((osql "columns(:o,'IDAEMP');")
+   '(("VARCHAR" "dept") ("INTEGER" "age") ("VARCHAR" "hobby")
+     ("INTEGER" "ssn") ("INTEGER" "salary") ("VARCHAR" "name"))))
+
+(checkequal "primary keys function"
+  ((osql "primary_keys(:o,'IDAEMP');") '(("ssn" "constr"))))
+
+(checkequal "sql function"
+  ((osql "sql(:o,'select name, age from IDAEMP');")
+   '((#("EmpNAME0" 66))(#("EmpNAME5" 21))(#("EmpNAME2" 28))(#("EmpNAME3" 53)) 
+     (#("EmpNAME4" 25))(#("EmpNAME5" 35))(#("EmpNAME6" 52))(#("EmpNAME7" 63)))))
+
+(quit)

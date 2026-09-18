@@ -1,0 +1,28 @@
+/*-*-sql-*-*******************************************************************/
+
+/*
+dropfunction(#'DEF',1);
+add DEF() = turtle('data/udfs/1.ttl');
+*/
+
+set :udf_d1 = "DEFINE FUNCTION pyplus(?x ?y) AS PYTHON 'regress.callout.plus'";
+
+set :udf_q1 = " # calling UDF of 2 args
+PREFIX  : <http://example.org/>
+SELECT ?x ?y (pyplus(?x,?y) AS ?sum)
+WHERE {
+  [] :x ?x ;
+     :y ?y .
+}
+";
+
+set :udf_d2 = "DEFINE AGGREGATE pysum(?xs) AS PYTHON 'regress.callout.mysum'";
+
+set :udf_q2 = " # calling aggregate UDF over an expression
+PREFIX  : <http://example.org/>
+SELECT (pysum(?x*?y) AS ?sum)
+WHERE {
+  [] :x ?x ;
+     :y ?y .
+}
+";

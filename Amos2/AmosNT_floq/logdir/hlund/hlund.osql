@@ -1,0 +1,312 @@
+/*-*-sql-*-*******************************************************************/
+
+create type Logdirectory;
+
+create function folder(Logdirectory) -> Charstring 
+ /* The filesystem folder for this Logdirectory, should end with a '/' */
+ as stored;
+
+create function name(Logdirectory d key) -> Charstring n key
+ /* A unique name (arbitrary identifier) for this Logdirectory */
+ as stored;
+
+create_index(#'logdirectory.name->charstring','charstring','hash','unique');
+
+create function timeout(Logdirectory) -> Integer
+ /* How long to wait before emitting out-of-sequence data */
+ as stored;
+
+create function startseq(Logdirectory) -> Object
+ /* Starting sequence number for this Logdirectory */
+ as stored;
+
+create function dirnamed(charstring dirname) -> Logdirectory dir 
+ /* Find the Logdirectory with a given name */
+ as select dir where name(dir)=dirname;
+
+create function dir(Logdirectory d) -> Bag of Charstring 
+ /* List files in a Logdirectory */
+ as select folder(d) + filename from charstring filename
+           where filename in dir(folder(d));
+
+create function dir(Logdirectory d, Charstring regex) -> Bag of Charstring 
+ /* List files in a Logdirectory that match a given regex */
+ as select folder(d) + filename from Charstring filename
+           where filename in dir(folder(d),regex);
+
+
+create type Logfile;
+
+create function directory(Logfile) -> Logdirectory 
+ /* The Logdirectory that produced this Logfile */
+ as stored;
+
+create function filename(Logfile lf key) -> Charstring x key 
+ /* Full path + filename of this Logfile */
+ as stored;
+
+create_index(#'logfile.filename->charstring','charstring','hash','unique');
+
+create function sysTimestamp(Logfile) -> Timeval
+ /* Time when the logfile arrived to the system */
+ as stored;
+
+create function initValue(Logfile, Charstring variable) -> Number 
+ /* Settings (S block) of a Logfile */
+ as stored;
+
+create function property(Logfile, Charstring propname) -> Literal 
+ /* Properties (H block) of a Logfile */
+ as stored;
+
+create function logStartTime(Logfile lf) -> Timeval 
+ as property(lf,"LogStartTime");
+
+create function logPeriod(Logfile lf) -> Integer 
+ as initValue(lf,"FileTime");
+
+create function logfileNamed(Charstring filename key) -> Logfile lf key as
+ /* Find the Logfile with a given filename */
+ select lf where filename(lf)=filename;
+
+create function logFiles(Logdirectory d) -> Vector
+ /* Find all Logfiles in a given Logdirectory, sorted by LogStartTime */
+ as sort(select logStartTime(lf),lf 
+         from Logfile lf
+       	 where filename(lf) in dir(d,"*.csv"));
+
+create function file_at_time(Logdirectory d, Real ts) -> Logfile lf
+ /* Select the Logfile spanning the time ts in Logdirectory d */
+ as select lf from timeval lst
+    where {lst,lf} in logFiles(d) and 
+          ts>=real(lst) and ts<real(lst)+logPeriod(lf);
+
+
+create type Logevent;
+
+create function logfile(Logevent) -> Logfile 
+ /* The Logfile that produced this Logevent */
+ as foreign 'logevent-logfile';
+
+create function timestamp(Logevent) -> Number 
+ /* The timestamp (LogStartTime + t_offset) for this Logevent */
+ as foreign 'logevent-timestamp';
+
+create function prevEvent(Logevent) -> Logevent 
+ /* The previous Logevent with the same variable as the input event */
+ as foreign 'logevent-prev';
+
+create function measurement(Logevent) -> Vector
+ /* The measurement that this event represents */
+ as foreign 'logevent-measurement';
+
+create function variable(Logevent e) -> Charstring var 
+ /* The variable of this event's measurement */
+ as select v[0] from Vector v
+    where v = measurement(e);
+
+create function t_offset(Logevent e) -> Number toff 
+ /* The time offset of this event's measurement */
+ as select v[1] from Vector v
+    where v = measurement(e);
+
+create function value(Logevent e) -> Number val 
+ /* The value of this event's measurement */
+ as select v[2] from Vector v
+    where v = measurement(e);
+
+
+create function stream_ntuples_b(Charstring filename) -> Bag of Vector
+ as foreign 'stream-ntuples-+';
+
+create function stream_ntuples(Charstring filename) -> Stream of Vector
+ /* Stream a CSV file as vectors */
+ as streamof(stream_ntuples_b(filename));
+
+create function measurementLogEvents(Stream of Logfile) -> Bag of Logevent
+ as foreign 'measurement-logevents';
+
+create function logEvents(Stream of Logfile lfs) -> Stream of Logevent
+ /* Stream Logevents from a stream of Logfiles */
+ as streamof(measurementLogevents(lfs));
+
+create function logEvents(Logfile lf) -> Stream of Logevent
+ /* Stream Logevents from a single Logfile */
+ as streamof(measurementLogevents(streamof(lf)));
+
+create function curLogevents(Logdirectory d) -> Stream of Logevent
+ /* Snapshot stream of all Logevents currently in Logdirectory d */
+ as logevents(streamof(select lf from timeval tv, logfile lf 
+                       where {tv,lf} in logFiles(d)));
+
+
+create function read_fileseq0(Charstring logfile) -> Bag of Integer
+ as for each Vector v where v in stream_ntuples(logfile)
+  if v[0]="H" and v[1]="FileSequence" then return v[2];
+
+create function read_fileseq(Charstring logfile) -> Integer
+ /* Read the sequence number from a logfile */
+ as first(read_fileseq0(logfile));
+
+create function read_header(Charstring logfile) -> Bag of Vector
+ /* Read the header part of a logfile */
+ as begin
+  declare Scan s, Vector v, Integer i;
+  set i = 0;
+  open s for stream_ntuples(logfile);
+  while more(s) and i=0 do
+   fetch s into v;
+   if v[0]="H" or v[0]="S" then return v;
+   if v[0]="L" then set i=1;
+  end while;
+  close s;
+ end;
+
+create function mklogfile(Charstring) -> Logfile as foreign 'mklogfile-+';
+
+create function looks_like_timeval(Object o) -> Boolean
+ as like(stringify(o),"\"[1234567890][1234567890][1234567890][1234567890]-[1234567890][1234567890]-[1234567890][1234567890] [1234567890][1234567890]:[1234567890][1234567890]:[1234567890][1234567890]\"");
+
+create function timevalize(Charstring) -> Timeval
+  as foreign 'timevalize-+';
+
+create function create_logfile(Charstring logfile, Logdirectory dir) -> Logfile
+ /* Create a logfile object from the specified filename */
+ as begin
+  declare Logfile lf;
+  set lf = mklogfile(logfile);
+  set filename(lf)=logfile;
+  set directory(lf)=dir;
+  set systimestamp(lf)=now();
+  for each Vector v where v in read_header(logfile)
+   if v[0]="H" then begin
+    if looks_like_timeval(v[2]) then
+     set property(lf,cast(v[1] as Charstring))=
+                  timevalize(cast(v[2] as Charstring))
+    else
+     set property(lf,cast(v[1] as Charstring))=v[2]
+    end
+   else 
+    set initValue(lf,cast(v[1] as Charstring))=v[2];
+  return lf;
+ end;
+
+create function load_lfdir(Logdirectory d) -> Boolean
+ /* Create a new log file as local meta-data for each CSV 
+    file in directory D */
+ as for each Charstring filename
+  where filename in dir(d,"*.csv")
+   create_logfile(filename,d);
+
+create function clear_lfdir(Logdirectory d) -> Boolean
+ /* Erase all meta-data log files for D */
+ as for each Logfile lf
+  where lf in (select lf from Logfile lf, Timeval tv 
+               where {tv,lf} in logfiles(d))
+   delete lf;
+
+create function meta_stream0(Stream of Charstring s, Logdirectory dir)
+                           -> Bag of Logfile
+ as for each Charstring filename where filename in s
+     return create_logfile(filename,dir);
+
+create function meta_stream(Stream of Charstring s, Logdirectory dir) 
+                          -> Stream of Logfile
+ /* Create a stream of logfile objects from stream s of new filenames */
+ as streamof(meta_stream0(s,dir));
+
+create function next_seq(Integer prev) -> Integer next
+ /* Next sequence number. According to docs goes from 1-9999 
+    and wraps around. */
+ as max(mod(prev+1,10000),1);
+
+create function logFilenameStream(Logdirectory d) -> Stream of Charstring
+ as streamof(remove_null(order_stream(logdir(folder(d)),#'<',#'next_seq',
+                                      #'read_fileseq',timeout(d),
+                                      startseq(d))));
+
+create function logFileStream(Logdirectory d) -> Stream of Logfile
+ /* Emit stream of newly arriving log files in sequence order */
+ as meta_stream(logFilenameStream(d),d);
+
+create function logEventStream(Logdirectory d) -> Stream of Logevent
+ /* Continuously stream Logevents from a Logdirectory */
+ as logEvents(logFileStream(d));
+
+
+/* Record_agg */
+
+create function record_agg(Stream of Logevent,Function tsfn) -> Bag of Record
+ as foreign 'record-agg--+';
+
+create function record_agg(Stream of Logevent s) -> Stream of Record
+ /* Emits a stream of records r where each r has a timestamp r['TS']
+    along with the current values of each variables VAR at TS 
+    represented as r['VAR']. 
+    The attribute r['VAR-EVENT'] points to the latest log event
+    representing VAR. Its time stamp represents the time point where VAR 
+    was last changed */
+ as streamof(record_agg(s,#'logevent.timestamp->number'));
+
+
+/* Stream filter functions */
+
+create function filter_stream0(Stream of Object s, Function filterfn)
+                             -> Bag of Object
+ as for each Object o where o in s
+  if apply(filterfn,{o}) then
+   return o;
+
+create function filter_stream(Stream of Object s, Function filterfn)
+                            -> Stream of Object
+ /* Filter a stream to only contain the elements for which 'filterfn' 
+    returns true. */
+ as streamof(filter_stream0(s,filterfn));
+
+create function filter_stream0(Stream of Object s, Function filterfn, 
+                               Object param) -> Bag of Object
+ as for each Object o where o in s
+  if apply(filterfn,{o,param}) then
+   return o;
+
+create function filter_stream(Stream of Object s, Function filterfn, 
+                              Object param) -> Stream of Object
+ /* Filter a stream to only contain the elements for which 'filterfn' 
+    returns true.
+    Allows an extra parameter to be passed to 'filterfn'. */
+ as streamof(filter_stream0(s,filterfn,param));
+
+create function logevent_with_var(Logevent e, Vector vars) -> Boolean
+ /* Is the variable of the logevent in the vector 'vars'? */
+ as select true where variable(e) in vars;
+
+create function filter_vars(Stream of Logevent s, Vector vars)
+                          -> Stream of Logevent
+ /* Filter a stream of logevents to only contain logevents with variables 
+    found in 'vars'. */
+ as filter_stream(s,#'logevent_with_var',vars);
+
+create function filter_record_agg(Stream of Logevent s, Vector vars)
+                                -> Stream of Record
+ /* Stream records that only contain variables found in 'vars'. 
+    See record_agg for more details. */
+ as record_agg(filter_vars(s,vars));
+
+
+/* Functions to simulate a stream of logevents (for testing) */
+/* The simulator emits the files in a directory by emitting each
+   file name with 0.2 s time intervals */
+
+create function sim_logdir(Charstring) -> Bag of Charstring
+ as foreign 'sim-logdir-+';
+
+create function simLogFilenameStream(Logdirectory d) -> Stream of Charstring
+ as streamof(remove_null(order_stream(sim_logdir(folder(d)),#'<',
+                                      #'next_seq',#'read_fileseq',
+                                      timeout(d),startseq(d))));
+
+create function simLogFileStream(Logdirectory d) -> Stream of Logfile
+ as meta_stream(simLogFilenameStream(d),d);
+
+create function simLogeventStream(Logdirectory d) -> Stream of Logevent
+ as logEvents(simLogFileStream(d));

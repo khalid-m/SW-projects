@@ -1,0 +1,31 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Tore Risch, UDBL
+ * $RCSfile: multicast.osql,v $
+ * $Revision: 1.1 $ $Date: 2007/08/27 19:28:22 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Test multicasting functions
+ *
+ ****************************************************************************
+ * $Log: multicast.osql,v $
+ * Revision 1.1  2007/08/27 19:28:22  torer
+ * Regression testing multicasting
+ *
+ ****************************************************************************/
+sleep(1); /* To be sure peer started. Fix later */
+register("me");
+/* NOTICE: Nameserver CANNOT be peer! */
+lisp;
+(checkequal "multicasting"
+   ((osql "count(multicastReceive({'s1','s2'},      /* The peers */
+                                   'iota',          /* Function to apply */
+                                  {{1,5},{10,20}})) /* Arguments for peers */
+                                  ;")
+    '((16))))
+:osql
+kill_peer("s1");
+kill_peer("s2");
+quit;
+

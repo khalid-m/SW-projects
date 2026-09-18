@@ -1,0 +1,8 @@
+/*-*-sql-*-*******************************************************************/
+
+create function tw(vector t)->integer
+	as foreign 'tsattr';
+
+create function twinagg(stream t, 
+  real size, real stride, integer emit_empty, integer emit_tail)->vector 
+        as foreign 'twinaggbf';

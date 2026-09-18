@@ -1,0 +1,103 @@
+LOAD('family.ttl');
+
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>;
+
+# 1. Find the person named "Adam"
+
+SELECT ?person
+WHERE { ?person foaf:name 'Adam' };
+
+
+# 2. Get the name of Adam's wife
+
+PREFIX e: <http://udbl.uu.se/examples/family/>;
+PREFIX person: <http://udbl.uu.se/examples/family/persons#>;
+
+SELECT ?name
+WHERE { ?husband foaf:name 'Adam' ;
+                 e:married ?wife .
+        ?wife foaf:name ?name };
+
+
+# 3. Get the age of Eve's husband
+
+SELECT ?age
+WHERE { ?wife foaf:name 'Eve' .
+        ?husband e:married ?wife ;
+                 foaf:age ?age . };
+
+
+# 4. Get Adam's children
+
+SELECT ?name
+WHERE { ?child e:childOf ?parent ;
+               foaf:name ?name .
+        ?parent foaf:name 'Adam' . };
+
+
+# 5. Get all criminals and their crime details
+
+SELECT ?criminalName ?crimeLabel ?victimName
+WHERE { ?criminal a e:Criminal ;
+                  foaf:name ?criminalName ;
+                  foaf:made ?crime .
+        ?crime a e:Crime ;
+               e:label ?crimeLabel ;
+               e:victim ?victim .
+        ?victim foaf:name ?victimName };
+
+# 6. SPARQL Views 
+
+# Siblings
+
+DEFINE FUNCTION siblings(?p) AS
+SELECT DISTINCT ?sibling
+WHERE { ?p e:childOf ?parent .
+        ?sibling e:childOf ?parent .
+        FILTER (?sibling != ?p) };
+
+# Get all Cain's siblings (address cain by URI)
+
+siblings(person:Cain);
+
+# Or, alternatively, by name:
+
+SELECT (siblings(?cain) AS ?result)
+WHERE { ?cain foaf:name 'Cain' };
+
+# Or, alternatively, get their names also!
+# (Daplex semantics)
+
+SELECT ?siblingName 
+WHERE { ?cain foaf:name 'Cain' .
+        BIND (siblings(?cain) AS ?sibling) .
+        ?sibling foaf:name ?siblingName };
+
+# Grandparents
+
+DEFINE FUNCTION grandparents(?x) AS 
+SELECT ?gp
+WHERE { ?x e:childOf ?p .
+        ?p e:childOf ?gp };
+
+grandparents(person:Shem);
+
+# Grandchildren
+
+DEFINE FUNCTION grandchildren(?x) AS 
+SELECT ?gc
+WHERE { ?gc e:childOf ?c .
+        ?c e:childOf ?x };
+
+grandchildren(person:Adam);
+
+# Siblings
+
+DEFINE FUNCTION cousins(?x) AS
+SELECT ?c
+WHERE { ?c e:childOf ?s .
+        BIND (siblings(?p) AS ?s) .
+        ?x e:childOf ?p };
+
+cousins(person:Noah);
+

@@ -1,0 +1,55 @@
+/*-*-sql-*-*******************************************************************/
+
+create function emitcap(integer tplsize, integer rep, charstring host1, 
+                        charstring host2) -> vector of number as
+select in(mergestreams(
+mapflex({s}, #'stcount', make_record({"hostname", host2}))))
+from stream s
+where s = ostream(
+newspflex(na_stream(tplsize, rep), make_record({"hostname", host1})), 0);
+
+create function intra_mbps(integer rep) -> <integer bytes, real thruput> as
+select bytes, 1.0 * bytes * rep * 8 / (time*1e6)
+from vector of number emitexp, real time, integer tplsize
+where bytes = tplsizes(tplsize)
+and emitexp = emitcap(tplsize, rep, "localhost", "localhost")
+and time = emitexp[2];
+
+create function inter_mbps(integer rep) -> <integer bytes, real thruput> as
+select bytes, 1.0 * bytes * rep * 8 / (time*1e6)
+from vector of number emitexp, real time, integer tplsize
+where bytes = tplsizes(tplsize)
+and emitexp = emitcap(tplsize, rep, prephosts()[0], prephosts()[1])
+and time = emitexp[2]
+and some(prephosts()[1]);
+
+lisp;
+
+(let ((meas (osql "intra_mbps(5e3);")))
+ (checkequal "intra_mbps"
+  ((length meas)
+   10)
+  ((< (second (nth 0 meas)) (second (nth (- (length meas) 1) meas)))
+   t)))
+
+(let ((meas (osql "inter_mbps(5e3);")))
+ (if (> (length (caar (reval@nameserver '(getfunction 'prephosts ())))) 1)
+  (checkequal "inter_mbps"
+   ((length meas)
+    10)
+   ((< (second (nth 0 meas)) (second (nth (- (length meas) 1) meas)))
+    t))
+  (checkequal "inter_mbps (should be nil)"
+   ((length meas) 0))))
+
+:osql
+
+/*
+
+select write_ntuples({intra_mbps(1e6)}, "intra" + stringify(i))
+from integer i where i in iota(3,5);
+
+select write_ntuples({inter_mbps(1e6)}, "inter" + stringify(i))
+from integer i where i in iota(1,5);
+
+*/

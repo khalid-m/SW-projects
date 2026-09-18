@@ -1,0 +1,82 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2006 Tore Risch, UDBL
+ * $RCSfile: disjunctions.osql,v $
+ * $Revision: 1.7 $ $Date: 2012/06/14 06:03:12 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Testing disjunctive queries
+ *
+ ****************************************************************************
+ * $Log: disjunctions.osql,v $
+ * Revision 1.7  2012/06/14 06:03:12  torer
+ * Testing disjunction with normalization turned off
+ *
+ * Revision 1.6  2012/05/21 20:56:21  torer
+ * Testing OR-optimization without DNF
+ *
+ * Revision 1.5  2011/01/27 11:26:14  torer
+ * Changed from <...> to SQL's (...) notation for tuples (much nicer)
+ *
+ * Revision 1.4  2009/11/16 21:54:55  torer
+ * Strict use of in over bag (not =)
+ *
+ * Revision 1.3  2008/11/21 15:16:31  torer
+ * Signature error
+ *
+ * Revision 1.2  2006/11/11 15:28:59  torer
+ * Bug in unification of nested ORs
+ *
+ * Revision 1.1  2006/11/07 22:13:55  torer
+ * Added tests for disjunctive queries
+ *
+ ****************************************************************************/
+
+create function pivoted()-> Bag of (Integer i, Integer j);
+create function unpivoted()-> (Integer, Charstring, Integer)
+  as select s, p, v
+     from integer i, integer j, Integer s, Charstring p, Integer v
+     where (i,j) in pivoted() and
+           ((s=i and p="i" and v=i)or
+            (s=i and p="j" and v=j));
+add pivoted()= (1,10);
+add pivoted()= (2,20);
+
+lisp;
+
+(checkequal "unification of or in and"
+	    ((osql "sort(unpivoted());") 
+	     '((#(#(1 "i" 1) #(1 "j" 10) #(2 "i" 2) #(2 "j" 20)))))
+	    ((osql "
+select s,v from integer s, integer v 
+where (s,'i',v) = unpivoted() and 
+      (s,'j',v) = unpivoted();")
+	     nil)
+	    )
+
+(checkequal "No DNF normalization"
+	    ((osql "normalization(false);") '(("No normalization")))
+            ((osql "
+select i from number i where i > 0 and (i=sqrt(1) or i=sqrt(4));")
+             '((1.0) (2.0)))
+
+	    )
+
+:osql
+normalization(false);
+
+lisp;
+
+(checkequal "No DNF normalization"
+	    ((osql "
+select i from number i where i > 0 and (i=sqrt(1) or i=sqrt(4));")
+		   '((1.0)(2.0)))
+	    )
+
+:osql
+
+rollback;
+
+
+

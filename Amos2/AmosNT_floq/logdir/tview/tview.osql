@@ -1,0 +1,22 @@
+/*-*-sql-*-*******************************************************************/
+
+create function baseuri() -> Charstring as stored;
+set baseuri() = 'http://www.foo.org/';
+
+create function uri_suffix(Charstring str) -> Charstring suffix
+  as  select suffix where concat(baseuri(),suffix) = str;
+
+create function resource(Object o key) -> Literal l key
+  as multidirectional ("bf" foreign "resource-+")
+                      ("fb" foreign "resource+-");
+
+set_bijective_function("resource",true);
+
+create function triple_view(Charstring) -> Boolean
+  as foreign 'make-triple-view';
+
+parteval("baseuri");
+parteval("resource");
+
+load_lisp(getenv("AMOS_HOME")+"/sqond/lsp/rdf-types.lsp");
+load_lisp("tview.lsp");

@@ -1,0 +1,10 @@
+create function Connect_jdbc() -> boolean as
+begin
+
+  set my_jdbc() = jdbc("lrdb", "com.mysql.jdbc.Driver");
+  select connect(my_jdbc(), "jdbc:mysql://" + hostname() + ":" + port + "/" 
+					    + dbname, dbuser, dbpass ) 
+  from Charstring dbname, Charstring dbuser, 
+       Charstring dbpass, Integer port , Integer i
+  where mysql_nodes(i) = <hostname(), dbname, dbuser, dbpass, port>;
+end;

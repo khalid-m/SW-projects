@@ -1,0 +1,33 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2003 Tore Risch, UDBL
+ * $RCSfile: pselo.amosql,v $
+ * $Revision: 1.2 $ $Date: 2005/05/18 13:35:04 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Regression test execution of QEL queries over PSELO with stmt sources:
+ * 1. rdf_filebased stmt sources.
+ * 2. rdf_relational stmt sources.
+ ****************************************************************************/
+
+lisp;
+(load-amosql "src/amosql/pselo.amosql")	;Load rdf_filebased(default) + rdf_relational tSpace fns
+:osql
+
+ /*******************************************************************************
+ * Load Museum query for regression testing PSELO over union of stmt sources	*
+ * rdf_filebased and rdf_relational. 						*
+ *******************************************************************************/
+
+loadRDFSchema("file:/" + getenv("AMOS_HOME") + "/embeddings/Edutella/regress/pseloq.xml");
+
+select q into :q1 from rdf_query q;        
+
+lisp;
+(checkequal "Museum query"
+ ((aref (caar (osql "eval_query(:q1);")) 1) "Energy from Matter"))
+
+:osql
+rollback;
+quit;

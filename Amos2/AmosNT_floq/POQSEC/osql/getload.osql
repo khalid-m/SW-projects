@@ -1,0 +1,73 @@
+/*****************************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2005 Ruslan Fomkin, UDBL
+ * $RCSfile: getload.osql,v $
+ * $Revision: 1.2 $ $Date: 2005/03/21 12:19:31 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Functions that communicate with NG/ARC-client and parse result files for 
+ * different data. 
+ *
+ ****************************************************************************/
+/*load_lisp("../lsp/getload.lsp");*/
+
+create function openldapfile(charstring file) -> boolean as foreign 
+	'open-ldapfile';
+create function readldapfile() -> charstring as foreign 'read-ldapfile';
+create function closeldapfile() -> boolean as foreign 'close-ldapfile';
+create function streamldapfile(charstring file) -> charstring as foreign 'stream-ldapfile';
+
+create function intval(charstring str) -> integer as
+	select i from integer i where itoa(i)=str;
+
+create function parseldapresult(charstring file) -> vector of integer as
+begin
+	declare charstring curstr, integer totalcpus, integer usedcpus, integer queuedjobs, integer totaljobs;
+	openldapfile(file);
+	set curstr = readldapfile();
+	if like_i(curstr,"nordugrid-cluster-totalcpus:")
+	then begin
+		set totalcpus = intval(readldapfile());
+		set curstr = readldapfile();
+/*		print(totalcpus);*/
+		if like_i(curstr,"nordugrid-cluster-usedcpus:")
+		then begin
+			set usedcpus = intval(readldapfile());
+			set curstr = readldapfile();
+/*			print(usedcpus);*/
+			if like_i(curstr, "nordugrid-cluster-queuedjobs:")
+			then begin
+				set queuedjobs = intval(readldapfile());
+				set curstr = readldapfile();
+/*				print(queuedjobs);*/
+				if like_i(curstr,"nordugrid-cluster-totaljobs:")
+				then begin
+					set totaljobs = intval(readldapfile());
+/*					print(totaljobs);*/
+					result {totalcpus,usedcpus,queuedjobs,totaljobs};
+				end;
+			end;
+		end;
+	end;
+	closeldapfile();
+end;
+
+create function currentload(cluster site) -> vector of integer v as
+/*{integer freecpus, 
+	integer queuedjobs} as*/
+begin
+	declare charstring ldapquery, charstring datafile, charstring ldapfile;
+	set datafile="data.dat";
+	set ldapfile="ldap.dat";
+	set ldapquery = "ldapsearch \'(|(objectclass=nordugrid-cluster)(norudgird-cluster-name="+name(site)+"))\' -h "+name(site)+"  -x -p 2135 -b \'mds-vo-name=local,o=grid\' \'nordugrid-cluster-queuedjobs\' \'nordugrid-cluster-totaljobs\' \'nordugrid-cluster-totalcpus\' \'nordugrid-cluster-usedcpus\'";
+	tosystem(ldapquery+" > "+ ldapfile);
+/*	print(ldapquery+" > "+ ldapfile);*/
+	tosystem("cat "+ldapfile+" | grep nordugrid-cluster-totalcpus: > "+datafile);
+	tosystem("cat "+ldapfile+" | grep nordugrid-cluster-usedcpus: >> "+datafile);
+	tosystem("cat "+ldapfile+" | grep nordugrid-cluster-queuedjobs: >> "+datafile);
+	tosystem("cat "+ldapfile+" | grep nordugrid-cluster-totaljobs: >> "+datafile);
+/*	print("cat "+ldapfile+" | grep nordugrid-cluster-totaljobs: >> "+datafile);*/
+	result parseldapresult(datafile);
+end;

@@ -1,0 +1,33 @@
+/*-*-sql-*-*******************************************************************/
+
+< "experiment/tree_comm_setup.osql";
+
+declare integer :exp;
+sp_ts(1);
+sp_ts_freq(0.1);
+sp_report_freq(2.0);
+sp_flush_freq(0.0001);
+sp_imgsize(100000000);
+sp_proctime_freq(1.0);
+sleep(1);
+print({"flush freq", sp_flush_freq()});
+sleep(1);
+lisp;
+;"
+
+(checkequal "HYB bcast" ((osql "set :exp = experiment();
+set experimentdir() = pbasedir() + '/bc/hyb';
+add tresult(15) = hyb_bc(2000, :exp);") nil))
+
+;"
+:osql
+
+dumpinst(tbasedir() + "/commtrees");
+
+select process_delay(pbasedir() + "/bc/hyb/" + stringify(i) + "/delay", 
+                     tbasedir() + "/hyb" + stringify(i))
+from integer i where i in {0,5,10,50,100,500,1000};
+
+massdelaystat_bc(tbasedir(), "hyb", tbasedir() + "/hybdelaystat.vec");
+
+< "experiment/tree_comm_post.osql";

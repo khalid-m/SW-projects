@@ -1,0 +1,23 @@
+create function foo(integer)->integer;
+set foo(1)=2;
+set foo(3)=nil;
+create function fie(integer)->Charstring;
+set fie(2)="abc\"d\\e";
+create function fum(integer)->boolean;
+set fum(4)=true;
+unload("temp.osql");
+rollback;
+create function foo(integer)->integer;
+create function fie(integer)->Charstring;
+create function fum(integer)->boolean;
+<'temp.osql';
+lisp;
+(checkequal "unload"
+  ((osql "foo(1);") '((2)))
+  ((osql "foo(2);") nil)
+  ((osql "fie(2);") '(("abc\"d\\e")))
+  ((osql "fum(4);") '((true)))
+)
+
+:osql
+rollback;

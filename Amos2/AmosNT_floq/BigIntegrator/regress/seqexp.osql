@@ -1,0 +1,187 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: multisql.osql,v $
+ * $Revision: 1.7 $ $Date: 2013/09/10 08:00:12 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: script for FLOQ runs in sequence experiment set up
+ ****************************************************************************
+ *
+ ****************************************************************************/
+
+
+javaamos
+
+/* maps logdburi to jdbc object and used in query in sequence */
+create function logdburi_js(Object)->JDBC as stored; 
+
+
+/* create n jdbc connection objects and used in query in sequence */
+create function jdbcSet(Number n, Charstring driver)
+                       -> Bag of Jdbc
+  as jdbc("C"+iota(1,n), driver);
+
+/* connect to jdbc datasource and map the uri to jdbc datasource */
+/* and used in query in sequence */
+create function connect2(Jdbc ds1, Charstring uri, 
+                           Charstring user_name, Charstring password)->Jdbc ds2
+  as begin 
+          connect(ds1, uri, user_name, password);
+          set logdburi_js(uri)=ds1;
+     end;
+
+
+/* connect each jdbc object with a data source with different db name */
+/* and used in query in sequence */
+create function openJdbcSet(Bag of Jdbc js,
+                            Charstring dburl, Bag of Charstring dbs,
+                            Charstring user, Charstring pw)
+                          -> Bag of Jdbc
+  as for each Jdbc j, Charstring db 
+     where j in js and db in dbs 
+     begin
+         return connect(j, dburl+db, user, pw);
+     end;
+
+
+/* disconnect given database connections */
+/* and used in query in sequence */
+create function closeJdbcSet(Bag of Jdbc js) -> Bag of Jdbc
+  as for each Jdbc j where j in js 
+     begin disconnect(j);
+           return j;
+     end;
+
+
+/**************************** this part of the functions are not needed to
+                              run FLOQ in sequence, but load them in order not
+                              to make error in loading sql_finalizer_new.lsp
+*****************************/
+/* utility functions */
+create function transformvec(vector inputvarsvec)->(object, vector) as foreign 'transinvec-++';
+
+create function formargfrombag(bag)->vector as foreign 'formargfrombag-+';
+
+create function vectorBag(Vector v) -> Bag of Charstring
+  as select v[i] 
+     from Integer i;
+
+/* mapping database uri to peer name */
+/* and used in query in parallel */
+create function mappinguri_peer(Charstring uri)->Charstring as stored;
+
+set mappinguri_peer("jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB")='u';
+
+set mappinguri_peer("jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB")='v';
+
+/* and used in query in parallel */
+/* mapping logdb uri to peer name and forming peer vector and query argument 
+   vector for multicastreceive */
+create function multicastreceive3(Vector uris, Charstring fn, Charstring query, 
+                                         Vector args)->Bag of Object
+  as begin
+     declare vector peervec, vector argvec, Charstring pe, Charstring logdburi;
+     set peervec={};
+     set argvec={};
+     for each integer i where i in iota(0, dim(uris)-1)
+       begin
+       set logdburi=uris[i];
+       set pe=mappinguri_peer(logdburi);
+        if pe then
+          begin
+          set peervec=concat(peervec, {pe}); 
+          set argvec=concat(argvec, {{logdburi, query, args[i]}});
+          end;
+       end;
+     if dim(peervec) >= 1 then
+     return multicastreceive(peervec, fn, argvec);
+     end;
+
+/*************************************************************************/
+
+
+/* multi_sql_union is the same as sql */
+/* for query logdb in sequence, takes logdbid, query, and parameters */ 
+create function multi_sql_union(Object logdburi, Charstring query, 
+                                Vector params) -> Vector
+  as select sql(logdburi_js(logdburi), query, params);
+
+
+/* set url of meta-database */ 
+set :dburl = "jdbc:mysql://localhost:3306/";
+
+trace("connect");
+
+/* set up connection to access small meta database (100 machine installations 
+   and 200 sensors) at local mysql */
+set :metas = jdbc("metas", "com.mysql.jdbc.Driver");
+
+connect(:metas, :dburl + "metadb_s", "regress", "regress");
+
+
+/* set up two jdbc connection objects to logDBs at SQLserver*/
+/* one logDB is located at udblserver1 and another resides at udbl-station */
+set :js = jdbcSet(2,"com.microsoft.jdbc.sqlserver.SQLServerDriver");
+
+/****************************** for sequence execution ***************************/
+/* connect each jdbc object with a database connection */
+/* openJdbcSet(:js,:dburl,dbnames(2, "logdb"), "regress", "regress"); */
+set :logdb1url = "jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB";
+
+set :logdb2url = "jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB";
+
+
+
+connect2(first(:js), :logdb1url, "udbl", "udbl");
+
+connect2(last(:js), :logdb2url, "udbl", "udbl");
+
+
+
+/* testing multi_sql_union */
+count(multi_sql_union(:logdb1url, "select * from measuresA where mv>359", {}));
+
+count(multi_sql_union(:logdb2url, "select * from measuresA where mv>359", {}));
+
+
+< 'patch.osql';
+
+
+/* import source predicate SENSORINSTALLATION, SITE, INSTALLEDEQUIPMENT, 
+   EQUIPMENTMODEL, SENSORMODEL from small meta database */
+import_table(:metas, 'SENSORINSTALLATION');
+
+import_table(:metas, 'LOCATION');
+
+import_table(:metas, 'MACHINEINSTALLATION');
+
+import_table(:metas, 'MACHINE');
+
+import_table(:metas, 'SENSOR');
+
+
+/* import source predicate Measurement from one logdb */
+/* import_sourceset_table(:js, 'MEASURESA'); */
+import_table2(first(:js),'MEASURESA',:js);
+
+
+/* What equipment has failed? with small meta database (100 machine installations and 200 sensors) */
+/* 40 bindings to each udblserver1 and udblserver3 */
+/* query to metadb returns 40 rows for udblserver1, 40 rows for udblserver3, 120 rows for unknown */
+create function newq4s()->(Integer, Number, Number) as
+select m(ma), bt(ma), et(ma)
+from SensorInstallation@metas si, Location@metas l, MeasuresA ma, 
+     MachineInstallation@metas mi, Machine@metas m
+where mv(ma)> ev(si) + th(si) and
+      lid(l)=locatedat(mi) and
+      mi(mi)=mi(si) and
+      m(mi)=m(m) and
+      s(ma)=si(si) and 
+      m(ma)=mi(si) and 
+      uri(l)=jdbcuri(ma);
+
+pc("newq4s");
+
+count(newq4s());

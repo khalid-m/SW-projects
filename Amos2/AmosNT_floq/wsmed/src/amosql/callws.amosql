@@ -1,0 +1,244 @@
+/****************************************************/
+	/* Decode functions  */
+/****************************************************/
+
+create function elementOf(Sequence s)-> Object
+  as select s[i] from integer i;
+
+create type foundele properties(value integer);
+create foundele instances :fe;
+set value(:fe)=0;
+
+
+create function iterate1(vector  r, record re)-> record rs
+		as 
+		begin
+		 set rs=re;
+			
+		 for each Element e where e=in(r)
+		  begin
+		   
+		     if ((cast(e as Charstring)) in  all_value(rs)) then
+                                begin
+                                end  
+                     else
+                       set rs =put_record(rs,cast(e as Charstring),make_record({'maxoccurs',maxoccurs(e),'wsmedtype',wsmedtype(e),'wsdltype',wsdltype(e)}));
+                        
+		    /*if (subelements(e) and notany((like(wsdltype(e),"Vectorof*")))) then*/
+                      if (subelements(e)) then
+			 set rs=iterate1(subelements(e),rs);
+		  end;
+	        return rs;
+		
+		end;
+
+
+
+create function iterate(vector v)-> record sr as 
+		begin
+		for each  Element e  where e=in(v)
+		   begin
+		      if sr=nil then
+			 set sr=make_record({cast(e as Charstring),make_record({'maxoccurs',maxoccurs(e),'wsmedtype',wsmedtype(e),'wsdltype',wsdltype(e)})})
+        	     else
+                       begin
+                      
+                       if ((cast(e as Charstring)) in  all_value(sr)) then
+                            begin
+                            end
+                       else
+		        set sr=put_record(sr,cast(e as Charstring),make_record({'maxoccurs',maxoccurs(e),'wsmedtype',wsmedtype(e),'wsdltype',wsdltype(e)}));
+		      end;
+                 
+	       	    /* if (subelements(e) and notany((like(wsdltype(e),"Vectorof*")))) then*/
+			if (subelements(e))  then
+			 set sr=iterate1(subelements(e),sr);
+		   end;
+
+		 if sr=nil then
+			set sr=make_record({});
+		 return sr;
+		
+	       end;
+
+
+
+
+
+create function info_elements(Operation op,charstring eleclass)
+                ->record rs as
+begin
+   if eleclass='in' then
+	begin
+	   if input(op) then
+		set rs =iterate(input(op))
+	  else
+	       set rs=make_record({});
+        end
+   else
+     if eleclass='out' then
+	begin
+	  if output(op) then
+		set rs =iterate(output(op))
+	  else
+	       set rs=make_record({});	
+		
+	end
+     else
+	if  authentication(op) then
+		set rs =iterate( authentication(op))
+	else
+		set rs=make_record({});
+
+	
+   return rs;
+end;
+
+create function concat_obj(Object a, Object b)-> vector as
+					begin
+					 return {a,b};
+					end;
+
+create function resultele(Charstring wsdluri,charstring wsname,charstring opname)->Charstring as 
+					select name(cast(ve[0] as Element))
+					from Operation op, Service ws, vector ve
+					where name(op)=opname and name(ws)=wsname  and wsdluri(ws)=wsdluri and op in port(ws) and output(op)=ve;
+
+
+/* Always get the 1st value */
+create function get_element(record r, integer i)-> record s as begin 
+							if (record_length(r)>(i/2))  then return r[i+1]
+							else return make_record({});
+                                                        end;
+
+
+create function get_ele_properties(record r, charstring elename)->charstring as foreign "find-record-value";
+
+
+create function find_WSDLtype(record r, charstring elename)->Record  as foreign "find-WSDLtype";
+
+create function get_wsdltype(record r, charstring elename)->charstring as select get_ele_properties(find_WSDLtype(r,elename),"wsdltype");
+							 
+				
+	
+create function countsubelement(element e, charstring elename)->integer r as
+					begin
+					  if (name(e)!=elename) then
+					   begin
+						
+					     for each element f where  f=in(subelements(e))
+					      begin
+						
+						if (name(f)=elename)then
+						  begin	
+						    if ((count(in(subelements(f)))>0) and notany((like(wsdltype(f),"Vectorof*")))) then
+						    	return count(in(subelements(f)))
+						    else
+							return 0;
+						  end
+						else
+						   return countsubelement(f,elename);
+					      end;
+					    end
+					  else
+					    begin
+                                             if ((count(in(subelements(e)))>0) and notany((like(wsdltype(e),"Vectorof*")))) then
+						 return count(in(subelements(e)))
+                                             else
+						return 0;
+					    end
+					
+					end;	
+
+create function findoutput_element(element e, charstring elename)->integer r as
+				       begin
+					
+					  if (like_i(name(e),elename)) then
+					     return 1
+					  else
+					   begin
+					    if (subelements(e)) then
+						begin	
+					          for each element f where  f=in(subelements(e))
+					           begin
+						     return findoutput_element(f,elename);
+					           end;
+					         end
+					    
+					   end
+					end;
+
+
+
+
+	
+create function find_element(record r, integer eleind)->charstring as select name(cast(r[eleind] as Element));
+/*create function member_of(record r, charstring eleind)->boolean as select(r[i]=eleind) from integer i where i=iota(0,record_length(r)-1);*/
+create function subelements(Operation op,charstring elename)->integer as select countsubelement(e,elename) from Element e where e in output(op); 
+create function  findoutput_duplicate(Operation op, charstring elename)->integer as select findoutput_element(e,elename) from Element e where e in input(op);
+
+
+/*****************************************************************************/
+		/* callwebservice  functions  */
+/*****************************************************************************/
+
+
+create function initoperation(charstring opname, charstring soapactionuri, 
+                                charstring style ,charstring encodingstyle, 
+                                charstring namespaceuri, charstring targeturl,
+                                Record ip,Record sh,Record inele,Record outele, Record soaph,Operation op, integer coid, integer level)
+                 -> (Object r, real t) as foreign  "JAVA:webservicewrapper/initoperation";
+
+
+create function callwebserviceoperation(charstring wsdluri,charstring wsname,charstring opname, 
+                               vector ip,integer coid, integer level)->(Object r, real t) as 
+                               select initoperation(opname,soapactionuri(op),style(op),encodingstyle(op), namespaceuri(ws),targeturl(op),decode(op,ip),soaphdecode(op,getsoaphvalue(op)),info_elements(op,'in'),info_elements(op,'out'),info_elements(op,'authentication'),op,coid,level)
+                               from Operation op, Service ws 
+                               where wsdluri(ws)=wsdluri and name(ws)=wsname  and  op in port(ws) and name(op)=opname and   findsignature(ip)=input_elementtype(wsdluri,wsname,op);
+
+
+
+create function find_output_ele_at_pos(operation op, integer pos)->charstring elename as foreign "find-output-ele-at-pos"; 
+create function find_output_ele_wsdltype_at_pos(operation op, integer pos)->charstring wsdlt as foreign "find-output-ele-wsdltype-at-pos"; 
+create function co_busy()->charstring  as foreign "co-busy";
+create function cwo(charstring wsdluri,charstring wsname,charstring opname, 
+                               vector ip)->object r as foreign "cwo";
+
+
+
+/****************************************************************************/
+/*set fanout of the process tree*/
+/****************************************************************************/
+
+create function setfanout(vector fanout)->boolean as foreign "setfanout";
+
+
+
+/****************************************************************************/
+/*calculate the excution time of query*/
+/****************************************************************************/
+create function testsql(Charstring sql)->Real c 
+as begin set c = clock();
+         sql(sql);
+         return clock()-c;
+   end;
+ 
+
+/*****************************************************************************/
+/* Coucurrent web service call statistics*/
+/****************************************************************************/
+
+create type  Maxwscall properties( wsdluri charstring ,wsname charstring ,opname charstring ,nocall integer );
+create function setmaxc(charstring wsdluriv,charstring wsnamev,charstring opnamev,integer maxcv)-> Maxwscall m  as 
+									begin
+									 create Maxwscall instances m;                   
+									 set wsdluri(m)=wsdluriv; 
+									 set wsname(m)=wsnamev; 
+								         set opname(m)=opnamev;
+									 set nocall(m)=maxcv;
+									 end;
+create function getmaxc(charstring wsdluriv, charstring wsnamev,charstring opnamev)-> integer i as 
+								select nocall(m) from Maxwscall m 
+								where wsdluri(m)=wsdluriv and wsname(m)=wsnamev and 
+								      opname(m)=opnamev;
+

@@ -1,0 +1,102 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2002 Martin Hansson, UDBL
+ * $RCSfile: relational_typemap.osql,v $
+ * $Revision: 1.3 $ $Date: 2012/10/22 19:56:53 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: The type map from native relational data type names to amos
+ *              type names and vice verse. The functions amos_type are 
+ *              overloaded for relational so that if no type mapping exists
+ *              for a particular instance of relational, amos_type will resort
+ *              to finding generic types instead. The function
+ *              amos_type_from_generic_relational will be called if we query
+ *              for an amos type given a generic relational type, for example
+ *              VARCHAR, which maps to charstring.
+ *              There exists a similar function in the opposite direction
+ *              called generic_relational_from_amos_type if we wish to create
+ *              a table from an amos relation.
+ *              Of course these functions will be overridden if the original 
+ *              functions datasource.charstring.amos_type->type or
+ *              datasource.type.wrapped_type->charstring are updated.
+ *
+ ****************************************************************************/
+create function amos_type_from_generic_relational(Charstring native_type_name) 
+                                              -> Type;
+
+create function generic_relational_from_amos_type(Type t)
+                                              -> Charstring native_type_name;
+
+create function amos_type(Relational r, Charstring native_type_name) -> Type
+  as begin
+     if  datasource.charstring.amos_type->type(r, native_type_name)
+     then return datasource.charstring.amos_type->type(r, native_type_name)
+     else return amos_type_from_generic_relational(native_type_name);
+     end;
+
+create function add_amos_type(Relational r,Charstring native_type_name, Type t)
+                          -> Boolean
+  as add datasource.charstring.amos_type->type(r, native_type_name)=t;
+
+set_addfunction(theresolvent('RELATIONAL.CHARSTRING.AMOS_TYPE->TYPE'),
+            theresolvent('RELATIONAL.CHARSTRING.TYPE.ADD_AMOS_TYPE->BOOLEAN'));
+
+create function wrapped_type(Relational r, Type t) -> Charstring typename
+  as begin
+     if datasource.type.wrapped_type->charstring(r,t)
+     then return datasource.type.wrapped_type->charstring(r,t)
+     else return generic_relational_from_amos_type(t)
+  end;
+
+create function add_wrapped_type(Relational r, Type t, Charstring typename)
+                             -> Boolean
+  as add datasource.type.wrapped_type->charstring(r, t)=typename;
+
+set_addfunction(theresolvent('RELATIONAL.TYPE.WRAPPED_TYPE->CHARSTRING'),
+    theresolvent('RELATIONAL.TYPE.CHARSTRING.ADD_WRAPPED_TYPE->BOOLEAN'));
+
+set generic_relational_from_amos_type(typenamed('INTEGER')) = 'INTEGER';
+set generic_relational_from_amos_type(typenamed('BOOLEAN')) = 'INTEGER';
+set generic_relational_from_amos_type(typenamed('CHARSTRING')) = 'VARCHAR';
+set generic_relational_from_amos_type(typenamed('REAL'))    = 'FLOAT';
+
+add amos_type_from_generic_relational('INTEGER')      = typenamed('INTEGER');
+add amos_type_from_generic_relational('BIGINT')       = typenamed('INTEGER');
+add amos_type_from_generic_relational('SMALLINT')     = typenamed('INTEGER');
+add amos_type_from_generic_relational('SMALLINT UNSIGNED')
+                                                      = typenamed('INTEGER');
+add amos_type_from_generic_relational('TINYINT')      = typenamed('INTEGER');
+add amos_type_from_generic_relational('TINYINT UNSIGNED')
+                                                      = typenamed('INTEGER');
+add amos_type_from_generic_relational('INT')          = typenamed('INTEGER');
+add amos_type_from_generic_relational('INT IDENTITY') = typenamed('INTEGER');
+add amos_type_from_generic_relational('INT UNSIGNED') = typenamed('INTEGER');
+add amos_type_from_generic_relational('BOOL')         = typenamed('INTEGER');
+add amos_type_from_generic_relational('BOOLEAN')      = typenamed('INTEGER');
+
+add amos_type_from_generic_relational('BIT') = typenamed('INTEGER');
+
+add amos_type_from_generic_relational('VARCHAR')     = typenamed('CHARSTRING');
+add amos_type_from_generic_relational('DATE')        = typenamed('CHARSTRING');
+add amos_type_from_generic_relational('TIMESTAMP')   = typenamed('CHARSTRING');
+add amos_type_from_generic_relational('TIME')        = typenamed('CHARSTRING');
+add amos_type_from_generic_relational('CHAR')        = typenamed('CHARSTRING');
+add amos_type_from_generic_relational('CHARACTER')   = typenamed('CHARSTRING');
+add amos_type_from_generic_relational('CLOB')        = typenamed('CHARSTRING');
+add amos_type_from_generic_relational('SMALLDATETIME')=typenamed('CHARSTRING');
+
+add amos_type_from_generic_relational('UNIQUEIDENTIFIER')=typenamed('CHARSTRING');
+add amos_type_from_generic_relational('NVARCHAR')=typenamed('CHARSTRING');
+add amos_type_from_generic_relational('DATETIME')=typenamed('CHARSTRING');
+
+add amos_type_from_generic_relational('FLOAT')            = typenamed('REAL');
+add amos_type_from_generic_relational('DOUBLE')           = typenamed('REAL');
+add amos_type_from_generic_relational('REAL')             = typenamed('REAL');
+add amos_type_from_generic_relational('DECIMAL')          = typenamed('REAL');
+add amos_type_from_generic_relational('DEC')              = typenamed('REAL');
+add amos_type_from_generic_relational('NUMERIC')          = typenamed('NUMBER');
+add amos_type_from_generic_relational('DOUBLE PRECISION') = typenamed('REAL');
+
+add amos_type_from_generic_relational('LONGTEXT') = typenamed('CHARSTRING');
+

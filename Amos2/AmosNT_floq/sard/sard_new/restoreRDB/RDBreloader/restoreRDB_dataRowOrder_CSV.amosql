@@ -1,0 +1,443 @@
+create function dropProceduresRowOrder(JDBC jd,Charstring baseURI)
+->Boolean
+/*Generates DROP PROCEDURE Statements to drop all the procedure in database*/
+as
+begin
+	declare Charstring proc_name1,Charstring proc_name2;
+	for each Charstring ch where ret_tableURIs()=ch
+	begin
+		set proc_name1="SP_"+str_exp1(clearURI(ch,baseURI),'/');
+		set proc_name2="SP_FK_"+str_exp1(clearURI(ch,baseURI),'/');
+		sql(jd,"DROP PROCEDURE IF EXISTS "+ proc_name1+";");
+		sql(jd, "DROP PROCEDURE IF EXISTS "+ proc_name2+";");
+	end;
+end;
+
+create function procedureRowOrder1(Charstring baseURI)
+->Charstring
+as
+begin
+	declare Charstring a,Charstring b,Charstring c,Charstring tname,Vector pkname,Charstring t1, Charstring t2,Charstring t3,Charstring t4,Charstring pk1,Integer z,Vector cn,Vector ct,Vector cs;
+	set t1="";
+	set t2="";
+	set t3="";
+	set t4="";
+	set cn={};
+	set ct={};
+	set cs={};
+	set pkname={};
+	set pk1="";
+	set z=0;
+	for each Charstring tableURI where ret_tableURIs()=tableURI
+	begin
+		set tname=clearURI(tableURI,BaseURI);
+		for each Charstring ch where ret_pkname(tableURI,baseURI)=ch 
+		begin 
+			set pkname=concat(pkname,{ch});
+			set pk1=pk1+" and "+ch+"=C_"+ch;
+		end;
+		set pk1=substring(pk1,4,char_length(pk1));
+		for each Charstring col,Charstring colURI where ret_columnURIs(tableURI,baseURI)=<colURI,col>
+		begin 
+			set cn=concat(cn,{str_exp(col,'/')});
+			set ct=concat(ct,{ret_Coldatatype(colURI)});
+			if(ret_ColSize(colURI)!="") then
+				set cs=concat(cs,{ret_ColSize(colURI)})
+			else
+				set cs=concat(cs,{""});
+		end;			
+		for each integer i where i in iota(1,dim(cn))
+		begin 
+			set a=cn[i-1];
+			set b=ct[i-1];
+			set c=cs[i-1];
+			if (c!="") then
+				set t1=t1+",IN C_"+a+" "+b+"("+c+")"
+			else
+				set t1=t1+",IN C_"+a+" "+b;
+			set t2=t2+","+a;
+			set t3=t3+","+"C_"+a;
+			if(cn[i-1] in pkname) then 
+				set z=1
+			else 
+				set t4=t4+","+a+"=C_"+a;
+		end;
+		set t1=substring(t1,1,char_length(t1));
+		set t2=substring(t2,1,char_length(t2));
+		set t3=substring(t3,1,char_length(t3));
+		set t4=substring(t4,1,char_length(t4));
+		if(t4!="") then
+			result "CREATE PROCEDURE SP_"+tname+"("+t1+")
+				IF EXISTS(SELECT * FROM "+tname+" WHERE "+pk1+") THEN
+					UPDATE "+tname+" SET "+t4+" WHERE "+pk1+";
+				ELSE 
+					INSERT INTO "+tname+"("+t2+") VALUES ("+t3+");
+				END IF;"
+		else
+			result "CREATE PROCEDURE SP_"+tname+"("+t1+")
+				IF NOT EXISTS(SELECT * FROM "+tname+" WHERE "+pk1+") THEN
+					INSERT INTO "+tname+"("+t2+") VALUES ("+t3+");
+				END IF;";
+		set cn={};
+		set cs={};
+		set ct={};
+		set pkname={};
+		set t1="";
+		set t2="";
+		set t3="";
+		set t4="";
+		set pk1="";
+	end;
+end;
+
+create function procedureRowOrder2(Charstring baseURI)
+->Charstring
+as
+/* Also Generates CREATE PROCEDURE statements for the table corresponding to the foreign key.*/
+begin
+	declare Charstring tname,Vector pkname,Vector pktype,Vector pksize,Charstring pk1,Charstring pk2,Charstring pk3,Charstring pk4,Charstring a,Charstring b,Charstring c;
+	set pk1="";
+	set pk2="";
+	set pk3="";
+	set pk4="";
+	set pkname={};
+	set pktype={};
+	set pksize={};
+	for each Charstring tableURI where ret_tableURIs()=tableURI
+	begin
+		set tname=clearURI(tableURI,BaseURI);
+		for each Charstring ch where ret_pkURIs(tableURI)=ch 
+		begin 
+			set pkname=concat(pkname,{str_exp(clearURI(ch,baseURI),'/')});
+			set pktype=concat(pktype,{ret_Coldatatype(ch)});
+			if(ret_ColSize(ch)!="") then
+				set pksize=concat(pksize,{ret_ColSize(ch)})
+			else
+				set pksize=concat(pksize,{""});
+		end;
+		
+		for each Integer i where i in iota(1,dim(pkname))
+		begin
+			set a=pkname[i-1];
+			set b=pktype[i-1];
+			set c=pksize[i-1];
+			set pk1=pk1+" and "+a+"=C_"+a;
+			set pk2=pk2+","+"IN C_"+a+" "+b+"("+c+")";
+		end;
+		set pk3=concatagg(inject(pkname,",");
+		set pk4=concatagg(inject(pktype,",C_");
+		set pk1=substring(pk1,4,char_length(pk1));
+		set pk2=substring(pk2,1,char_length(pk2));
+	
+	
+		result "CREATE PROCEDURE SP_FK_"+tname+"("+pk2+")
+			IF NOT EXISTS(SELECT * FROM "+tname+" WHERE "+pk1+") THEN
+				INSERT INTO "+tname+"("+pk3+") VALUES ("+pk4+");
+			END IF;";
+	
+		set pkname={};
+		set pktype={};
+		set pksize={};
+		set pk1="";
+		set pk2="";
+		set pk3="";
+		set pk4="";
+	end;
+end;
+
+create function procedureRowOrder(JDBC jd,Charstring baseURI)
+->Boolean
+as
+begin
+	sql(jd,procedureRowOrder1(baseURI));
+	sql(jd,procedureRowOrder2(baseURI));
+end;
+
+create function get_pkValRow(Charstring baseURI,Charstring t)
+->(Vector,Vector)
+as
+/*Retreives respective vector of primary key name and its corresponding values.*/
+begin
+	declare Vector pkname,Vector pktype,Vector pkVal,Vector t3,Vector t4,
+		Charstring a,Charstring b,Charstring pk;
+	set pkname={};
+	set pktype={};
+	set pkVal={};
+	set t3={};
+	set t4={};
+	for each Charstring ch where ret_pkURIs(ret_TableURIfromRowID(baseURI,t))=ch 
+	begin 
+		set pkname=concat(pkname,{clearURI(ch,baseURI)});
+     		set pktype=concat(pktype,{ret_coldatatype(ch)});
+	end;
+	set pk=substring(str_exp(clearURI(t,baseURI),"/"),1,char_length(str_exp(clearURI(t,baseURI),"/")));
+	set pkVal=str_exp3(pk,"_");
+	for each integer i where i in iota(1,dim(pkname))
+	begin
+		set a=pkname[i-1];	
+		set t3=concat(t3,{str_exp(a,'/')});
+		set b=pkVal[i-1];
+		if(pktype[i-1]='varchar') then  				
+			set t4=concat(t4,{"'"+b+"'"})
+		else if(pktype[i-1]='varchar') then  				
+			set t4=concat(t4,{"'"+b+"'"})
+		else 
+			set t4=concat(t4,{b});
+	end;	
+	result (t3,t4);
+end;
+
+create function get_fkValRow(Charstring baseURI,Charstring v,Charstring p)
+->(Vector,Vector,Charstring)
+as
+/*Retrieves respective vector of foreign key name and its corresponding values.*/
+begin
+	declare Vector fkname,Vector fktype,Vector fkVal,Vector f1,Vector f2,
+		Charstring a,Charstring b,Charstring c,Charstring fk,Charstring fkV,Charstring fkN;
+	set fkN="";
+	set fkV="";
+	set fkName={};
+	set fkType={};	
+	set fkType={};	
+	set f1={};	
+	set f2={};	
+	set fk=substring(str_exp(clearURI(v,baseURI),"/"),1,char_length(str_exp(clearURI(v,baseURI),"/")));
+	set fkVal=str_exp3(fk,"_");
+	for each Charstring ch where ret_fkMap(p)=ch
+	begin
+		set fkname=concat(fkname,{str_exp(clearURI(ch,baseURI),'/')});
+		set fktype=concat(fktype,{ret_coldatatype(ch)});
+	end;
+	for each integer i where i in iota(1,dim(fkname))
+	begin 
+		set a=fkname[i-1];
+		set f1=concat(f1,{a});
+                set fkN=a+","+fkN;
+		set b=fkVal[dim(fkname)-i];
+		if(fktype[i-1]='varchar') then
+		begin 
+			set fkV=fkV+","+"'"+b+"'";
+			set f2=concat(f2,{"'"+b+"'"});
+		end
+		else if(fktype[i-1]='datetime') then
+		begin 
+			set fkV=fkV+","+"'"+b+"'";
+			set f2=concat(f2,{"'"+b+"'"});
+		end
+	
+		else
+		begin 
+			set fkV=b+","+fkV;
+	                set f2=concat(f2,{b});
+		end;
+	end;
+	result (f1,f2,fkV);
+end;	
+
+create function sorting(Vector cn,Vector t3,Vector t4)
+->Charstring
+as
+/*Sorting the values in the vector according to the original column order.*/
+begin
+	declare Charstring col1,Charstring c;
+	set col1="";
+	for each integer i where i in iota(1,dim(cn))
+	begin
+		if(cn[i-1] in t3) then 
+		begin 
+			for each integer j where j in iota(1,dim(t3))
+			begin
+				if cn[i-1]=t3[j-1] then 
+				begin
+					set c=t4[j-1];
+					set col1=col1+","+c;
+				end;
+			end;
+		end
+		else 
+			set col1=col1+","+"NULL";
+	end;
+	result col1;
+end;
+
+create function createCSVfile(Charstring filename2, charstring baseURI)
+->(Charstring,Charstring)
+/*Generates CALL PROCEDURE statements to call the corresponding procedures to insert data ,given in Row order in NT, into the table.*/
+
+as
+begin
+	declare Charstring c,Charstring d, Charstring col1,Vector cn,Vector cv,Vector ct,Vector cnt,Vector cnt1,Vector cnt2,
+		Vector v1, Vector v2,Vector v3,Vector v4,Vector t3,Vector t4,
+		Charstring z,Charstring tname,Charstring t,Charstring fkV,Charstring c1,Charstring c2;
+	set t="";
+	set c1="";
+	set c2="";
+	set col1="";
+	set t3={};
+	set t4={};
+	set v1={};
+	set v2={};
+	set v3={};
+	set v4={};
+	set cnt={};
+	set cnt1={};
+	set cnt2={};
+	set cv={};
+	set cn={};
+	set ct={};
+	set tname="";
+	
+	for each charstring ch where ret_tableURIs_CT()=ch
+	/*Retrieves all connecting tables from the NT file and stores in a vector.*/
+	begin
+		set cnt=concat(cnt,{ch});
+	end;
+
+	for each charstring s, charstring p,charstring v, Charstring i where readtuples1(filename2)=<s,p,v,i>
+	begin
+		if (p in cnt) then
+		
+		/* Generatig CALL Procedure statements for connecting tables.*/
+		begin
+			set cnt1=str_exp3(str_exp(clearURI(v,baseURI),'/'),'_');
+			set cnt2=str_exp3(str_exp(clearURI(s,baseURI),'/'),'_');
+			
+			for each integer i where i in iota(1,dim(cnt1))
+			begin
+				if (cnt1[i-1]!="") then
+					set c1=c1+","+cnt1[i-1];
+			end;
+			for each integer i where i in iota(1,dim(cnt2))
+			begin
+				if (cnt2[i-1]!="") then
+					set c2=c2+","+cnt2[i-1];
+			end;
+			
+			result (clearURI(p,baseURI),substring(c1,1,char_length(c1))+","+substring(c2,1,char_length(c2)));	
+			set cnt1={};
+			set cnt2={};
+			set c1="";
+			set c2="";
+		end
+		else
+		/* Generatig CALL Procedure statements for regular tables.*/
+		begin
+			if(s!=t) then
+	    		begin 		
+				if (t!="")then
+				begin 	
+					for each Vector ch1, Vector ch2 where get_pkValRow(baseURI,t)=<ch1,ch2>
+					begin
+						set t3=concat(t3,ch1);
+						set t4=concat(t4,ch2);
+					end;		
+					set col1=sorting(cn,t3,t4);
+					result (tname,substring(col1,1,char_length(col1)));	
+				end;
+				set t3={};
+				set t4={};
+				set t=s;
+				if(tname!=ret_tableNamefromRowID(baseURI,t)) then 
+				begin 
+					set cn={};
+					set ct={};
+					for each Charstring col,Charstring colURI where ret_columnURIs(ret_tableURIfromRowID(baseUri,t),baseURI)=<colURI,col>
+					begin
+						set cn=concat(cn,{str_exp(col,'/')});
+						for each Integer i where i in iota(1,dim(v4))
+						begin
+							if(colURI=v4[i-1]) then
+								set d=v2[i-1];
+						end;
+						set ct=concat(ct,{d});
+					end;
+				end; 	
+	 			set tname=ret_tableNamefromRowID(baseURI,t);
+			end;		
+			if(v!="" and p!="<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>") then
+			begin 
+				set z=clearURI(p,baseURI);
+				if(like(z,"*/*")) then 
+				begin 
+					set t3=concat(t3,{str_exp(clearURI(p,baseURI),'/')});	
+					if(ret_colDatatype(p)='varchar')then 
+					begin
+						set v="'"+v+"'";
+                                        	set t4=concat(t4,{v});
+					end
+					else if(ret_colDatatype(p)='varchar')then 
+					begin
+						set v="'"+v+"'";
+                                        	set t4=concat(t4,{v});
+					end
+					else
+                                	       	set t4=concat(t4,{v});
+				end
+				else
+				begin	
+					for each Vector ch1, Vector ch2,Charstring ch3 where get_fkValRow(baseURI,v,p)=<ch1,ch2,ch3>
+					begin	
+						set fkV=ch3;
+						set t3=concat(t3,ch1);
+						set t4=concat(t4,ch2);
+					end;
+				end;
+			end;
+		end;
+	end;
+	
+	for each Vector ch1, Vector ch2 where get_pkValRow(baseURI,t)=<ch1,ch2>
+	begin
+		set t3=concat(t3,ch1);
+		set t4=concat(t4,ch2);
+	end;
+	set col1=sorting(cn,t3,t4);
+	result (tname,substring(col1,1,char_length(col1)));	
+end;
+
+
+create function print_to_file(Charstring x)->boolean
+as
+ begin
+     print(x);
+end;
+
+create function write_to_file(Charstring filename2, Charstring baseURI)
+->Boolean
+as
+begin
+	declare Charstring filename,Charstring tname1;
+	set tname1="";
+	for each Charstring ch1, Charstring ch2 where createCSVfile(filename2,baseURI)=(ch1,ch2)
+	begin
+		if ch1!=tname1 then 
+		begin
+			/*closewritefile();*/
+			set filename=ch1+".csv";
+			openwritefile(filename);
+		end;			
+		print_to_file(ch2);
+		set tname1=ch1;
+	end;
+	closewritefile();
+end;
+
+create function bulkload_data(JDBC jd,Charstring baseURI)
+->Boolean
+as
+begin
+	declare Charstring tname;
+	for each Charstring tableURI where ret_tableURIs()=tableURI
+	begin
+		set tname=clearURI(tableURI,baseURI);
+		sql(jd, "LOAD DATA LOCAL INFILE "+"'"+ tname+".csv'"+" INTO TABLE  '"+ tname+"' FIELDS TERMINATED BY  ',' LINES TERMINATED BY  '\\r\\n';");
+	end;	
+end;
+
+create function insertCSV(JDBC jd,Charstring filename2,Charstring baseURI)
+->Boolean
+as
+begin 
+	write_to_file(filename2,baseURI);
+	bulkload_data(jd,baseURI);
+end;

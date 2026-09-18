@@ -1,0 +1,263 @@
+
+  This file contains all parameters which control the TreeCut program
+  and define the run conditions.
+
+  Notes:
+    1)Comments don't disturb the reading of the parameters by the program.
+    2)Parameter may be changed without removing of its previous value. Put *, #
+      or something else before "<". For instance, parameter *< Sigma = 56. >
+      won't be read in.
+
+
+**********************************************************************************
+  0. Process Options:
+
+#0      < Luminosity = 100 >
+#1      < TypeOfProcess = 0 >                0, 2, 3, 1, 9, 17, 25, 33, 41
+#2      < TypeOfMCGenerator = 2 >            1, 2 
+#3      < NbrOfEventsToAnalyse = 25000 >   1000000, 100000
+#4      < CrossSectionForSignal = 37.50 >
+#5      < CrossSectionForBkg1 = 456200.0 >
+#6      < CrossSectionForBkg2 = 427.8 >
+#7      < CrossSectionForBkg3 = 1. >
+#8      < CrossSectionForBkg4 = 1. >
+#9      < CrossSectionForBkg5 = 1. >
+#10     < CrossSectionForBkg6 = 1. >
+
+
+ Notes:
+      0) #0  - Assumed LHC Luminosity in fb^(-1). Now we are running with low
+               luminosity, i.e. 10 fb^(-1) per year (see in the joboption file
+               GlobalEventDataMaker.Luminosity = 1 ). So if we assume 3 years
+               run we get a luminosity of 30 fb^(-1). If we assume high 
+	       Luminosity, i.e. 100 fb^(-1) per year, we should change 
+	       GlobalEventDataMaker.Luminosity = 2 to produce events.
+      1) #1  - 0 -> tH- & tbarH+    (signal)
+	       1 -> ttbar           (bkg1) 
+	       2 -> ttbarZ          (bkg2)
+	       3 -> ttbargamma      (bkg3)
+	       4 -> ttbarh	    (bkg4)
+	       5 -> XinoXino        (bkg5)
+	       6 -> quarkinogluino  (bkg6)
+
+		0 -> t.root
+		2 -> all bkgs
+		3 -> signal
+		1,9,17,25,33,41 -> scaling bkg files
+		1437,2874,4311,5748,7185,8622 -> scaling events in signal file
+      2) #2  - 1 -> PYTHIA, ntuples produced with PYTHIA is read in and results
+                    saved in ALL_PS_FILES/PYTHIA
+               2 -> HERWIG, ntuples produced with HERWIG is read in and results
+                    saved in ALL_PS_FILES/HERWIG
+      3) #3    Number of events to analys. For now only possible 1000000 or 100000.
+      4) #4  - The cross section of the signal according to 
+	       PYTHIA : sigma     =  19.40 fb      (with Br included ?)
+                        sigma_max = 193.47 fb	   (without Br ?)
+               HERWIG : sigma_1   = 185.60 fb      (don't know what's
+                        sigma_2   = 218.20 fb       the differences)
+	       T.PLEHN: sigma_LO  =  27.50 fb      (reading from table with 
+			sigma_NLO =  37.50 fb       tanBeta=10 and mH=350)
+	       Pythia's and Herwig's values is given in two different places in
+               their run.log. T.Plehn's table is to be found at
+		http://pheno.physics.wisc.edu/~plehn/charged_higgs/
+      5) #5  - The cross section of the Bkg1 process ttbar is according
+               to herwig (see log file) 456.2 pb = 456200 fb.
+      6) #6  - The cross section of the Bkg2 process ttbarZ is according
+               to herwig (see log file) 0.4278 pb = 427.8 fb.
+
+**********************************************************************************
+  1. Program Run Options:
+
+#1      < MakeInvMassHist_Ok3lCut = 0 >      0, 1
+#2      < MakeInvMassHist_OkZCut = 0 >       0, 1
+#3      < MakeInvMassHist_OkTopCut = 0 >     0, 1
+#4      < MakeInvMassHist_OkBTagCut = 0 >    0, 1
+#5      < MakeInvMassHist_OkJetCut = 0 >     0, 1
+#6      < MakeInvMassHist_OkAllCut = 0 >     0, 1
+#7      < MakeAllHistInOnePlot = 0 >         0, 1
+#8      < MakePtHist_TopJets = 0 >           0, 1
+#9      < MakePtHist_LeftOverJets = 0 >      0, 1
+#10     < MakeMaxPtHist_LeftOverJets = 0 >   0, 1
+#11     < MakeNbrOfJetsWithOkPtHist = 0 >    0, 1
+#12     < MakeAllPtHistInOnePlot = 0 >       0, 1
+#13     < MakeInvMassHist_WJetsFromTop = 0 > 0, 1
+#14     < MakeInvMassHist_TopJets = 0 >      0, 1
+
+
+ Notes:
+      1) #1  - 1 -> 3 isolated lepton invariant mass histogram is produced 
+		    out of those events who survived the 3-lepton cut 
+      2) #2  - 1 -> 3 isolated lepton invariant mass histogram is produced
+	            out of those events that ALSO survived the Z-Veto cut	
+      3) #3  - 1 -> 3 isolated lepton invariant mass histogram is produced
+	            out of those events that ALSO survived the Top cut	
+      4) #4  - 1 -> 3 isolated lepton invariant mass histogram is produced
+	            out of those events that ALSO survived the B-Tag cut
+      5) #5  - 1 -> 3 isolated lepton invariant mass histogram is produced
+	            out of those events that ALSO survived the Jet-Veto cut
+      6) #6  - 1 -> 3 isolated lepton invariant mass histogram is produced
+	            out of those events that survived ALL cuts
+      7) #7  - 1 -> All histograms that are chosen above to me made are printed
+                    in one page, allHist.ps
+      8) #8  - 1 -> Pt histogram for all jets chosen as top jets are made
+      9) #9  - 1 -> Pt histogram for all jets NOT chosen as top jets are made
+                    if they managed the Pt and eta restrictions (see 5. below)
+      10)#10 - 1 -> Pt histogram for the jet with max Pt out of those  NOT chosen 
+		    as top jets are made if they managed the Pt and eta restrictions
+      11)#11 - 1 -> A histogram with the number of jets (following the Pt and 
+                    eta restrictions) for each event are made
+      12)#12 - 1 -> All Pt histograms that are chosen above to me made are printed
+                    in one page, allPtHist.ps
+      13)#13 - 1 -> Invariant mass histogram from the two jets chosen for jets 
+                    from the W from top decay is produced
+      14)#14 - 1 -> Invariant mass histogram from the three jets chosen for jets 
+                    from top is produced
+
+**********************************************************************************
+  2. Optional OutPuts:
+
+#1      < PrintListOfParameters = 0 >     0, 1 
+#2      < PrintEventNbr = 0 >             0, 1
+#3      < PrintEvery100000EventNbr = 0 >  0, 1
+#4      < PrintNbrLeptons = 0 >           0, 1
+
+
+ Notes:
+    1) #1  - 1 -> Prints the parameters in this management file	
+    2) #2  - 1 -> Prints the event number
+    3) #3  - 1 -> Prints every 100000 event number	
+    4) #4  - 1 -> Prints nbr of the isolated leptons following energy criterias	
+
+**********************************************************************************
+  3. Isolated Leptons Cut Parameters:
+
+#1    < MinPtOfTheHardestLepton = 20. >    (GeV)               
+#2    < MinPtOfAllThreeLeptons = 7. >      (GeV)       
+#3    < EtaRangeForAllThreeLeptons = 2.4 >   
+
+ Notes:
+    1) #1  - Minimal Energy (GeV) of the most energetic isolated lepton
+    2) #2  - Minimal Energy (GeV) of the other two isolated leptons
+    3) #3  - The three isolated leptons have to be within |eta|<EtaRange
+
+
+**********************************************************************************
+  4. Z-veto Cut Parameters:
+                    
+#1    < ZMass = 91.1882 >          (GeV)
+#2    < MinimumZMassDiff = 10. >   (GeV)
+
+ Notes: 
+    1) #1  - Z mass
+    2) #2  - If invariant mass of the two leptons is closer to the Z mass than
+             10 GeV it is too probable that there is a Z
+
+**********************************************************************************
+  5. Hadronic Top Cut Parameters:
+
+#1    < MinPtForJets = 20. >       (GeV)                 
+#2    < EtaRangeForJets = 4.5 >              
+#3    < TopMass = 174.3 >          (GeV)  (direct observation (+-5.1))   
+#4    < AllowedTopMassDiff = 35. > (GeV)
+#5    < WMass = 80.419 >           (GeV)  (+-0.056)   
+#6    < AllowedWMassDiff = 15. >   (GeV)
+
+#7    < TopCutType = 2 >            1, 2    
+
+ Notes:
+    1) #1  - Minimal Pt (GeV) of the three jets
+    2) #2  - The three jets have to be within |eta|<EtaRange
+    3) #3  - Top mass
+    4) #4  - The invariant mass of the three jets should be closer
+             to the top mass than 35 GeV
+    5) #5  - W mass
+    6) #6  - The invariant mass of the two jets should be closer
+             to the W mass than 15 GeV
+    7) #7  - 1 -> The Hadr.Top cut is performed the way suggested in
+                  the paper (from Stefano & ali). I.e. first select 3
+		  jets likely from Top, then two jets out of these, likely
+	 	  to come from W, and then check if the third jet is B-tagged.
+		  This way gives one more cut-coloumn compare to:
+             2 -> The Hadr.Top cut is performed the way suggested by Nils.
+		  I.e. first seperate b-tagged and none b-tagged jets 
+		  (assumed W-jets). Out of the W jets pick out all 
+		  possible 2-Jet-W combinations. Then see if any of these
+		  combine satisfactory with any of the b-tagged jets, to
+		  make a 2W-Jets-B-Jet combination, i.e. a 3Top-Jet comb. 
+  
+**********************************************************************************
+  6. B-tag Cut Paramters:
+
+#1   < TheIntegerForBTaggedJet = 5 >                 
+
+ Notes:
+    1) #1  - According to the source code of AtlfastB (search for
+             abs(pdgid)==5 in AtlfastB.cxx) Kfjetb is 5 for tagged jets
+    2) If TopCutType = 1 the b-cut is performed explicitely. But if 
+       TopCutType = 2 the b-cut is integrated in the top-cut (see above).	
+
+**********************************************************************************
+  7. Jet Veto Cut Parameters:
+
+#1   < MaxAllowedPtForOtherJets = 70. >    (GeV)      
+
+ Notes:
+    1) #1  - Those jets that are not choosed as top jets are not allowed to have
+	     Pt higher than 70 GeV
+
+**********************************************************************************
+  8. Other Cuts Parameters:
+
+#1  < MaxPtForAllThreeIsolatedLeptons = 150. >    (GeV)                  
+#2  < MaxPtForTheSoftestIsolatedLepton = 40. >     (GeV)              
+#3  < MinMissingTransverseEnergy = 40. >          (GeV)  
+#4  < MaxAllowedEffectiveMass = 150. >            (GeV) 
+
+ Notes:
+    1) #1  - For the three isolated leptons already selected Pt should be 
+             less than 150 GeV for the hardest lepton
+    2) #2  - For the three isolated leptons already selected Pt should be 
+             more than 40 GeV for the softest lepton
+    3) #3  - The missing transverse energy should be larger than 40 GeV
+    4) #4  - The effective mass is required to be lower than 150 GeV
+
+
+**********************************************************************************
+  9. Branching Ratio Calculation:
+
+#1   < TanBeta = 25. >             
+#2   < MA = 600. >        
+#3   < M2 = 210. >    
+#4   < Mu = 135. >
+#5   < BiggerStauMass = 1 >
+
+ Notes:
+    1) #1 & #2  - The TanBeta and MA values decides the point in the TanBetaVsMA 
+	          histogram where Branching Ratio for H --> 3l+N are picked out 
+    2) #2 & #3  - The M2 and MU values decide which TanBetaVsMa histogram to be used 
+    3) #5  - 1 -> Then the histogram where the Branching Ratios were calculated 
+	          whith stau masse higher than the other sleptons
+
+**********************************************************************************
+  10. Miscallenelous Parameters:
+
+#1                
+#2           
+#3       
+
+ Notes:
+    1) #1  - 
+    2) #2  - 
+    3) #3  - 
+
+
+**********************************************************************************
+  11. Writing to Files:
+
+#1    < Write1 = 1 >           0, 1
+#2    < Write2 = 0 >           0, 1
+
+    1) #1 - 
+    2) #2 -
+ 
+**********************************************************************************

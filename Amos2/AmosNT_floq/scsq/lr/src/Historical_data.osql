@@ -1,0 +1,172 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Mårten Svensson, UDBL
+ * $RCSfile: Historical_data.osql,v $
+ * $Revision: 1.16 $ $Date: 2012/05/15 20:41:13 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Historical data for Linear Road
+ ****************************************************************************
+ * $Log: Historical_data.osql,v $
+ * Revision 1.16  2012/05/15 20:41:13  torer
+ * result -> return
+ *
+ * Revision 1.15  2009/11/25 14:01:11  zeitler
+ * equality on bag valued functions removed
+ *
+ * Revision 1.14  2009/04/13 22:06:30  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.13  2009/03/10 18:12:28  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.12  2008/11/23 18:25:08  zeitler
+ * 1. Re-wrote SP in lisp.
+ *
+ * 2. Postfilter is replaced by routing function.
+ *    This affects all SCSQ applications.
+ *
+ * Revision 1.11  2008/11/09 21:21:27  torer
+ * Corrections for strict checking of result types of functions
+ *
+ * Revision 1.10  2008/10/09 16:10:45  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.9  2008/07/09 18:34:17  zeitler
+ * - get_nsport.sh: Automatically acquire a free nameserver TCP port
+ * - test scripts changed accordingly
+ *
+ * - NB: Some SCSQ tests currently fail due to changes in groupagg and Linear Road
+ *
+ * Revision 1.8  2008/04/22 12:22:37  zeitler
+ * - detailed time measurements
+ * - pre-emitting lread
+ *
+ * Revision 1.7  2008/04/16 10:29:00  zeitler
+ * better daily exp req filter
+ *
+ * Revision 1.6  2008/02/15 11:59:53  zeitler
+ * Enabling individual history .dmp files for each sp in lr
+ *
+ * Revision 1.5  2008/02/13 21:37:43  zeitler
+ * Portable LR
+ *
+ * Revision 1.4  2007/12/28 16:31:11  torer
+ * New file for scsq-lr system definition
+ *
+ * Revision 1.3  2007/12/01 12:41:52  torer
+ * Code polish
+ *
+ * Revision 1.2  2007/10/22 19:51:12  torer
+ * Simpler
+ *
+ * Revision 1.1  2007/10/19 11:30:02  torer
+ * New directory 'src' contains all Linear Road source code
+ * Master files cleaned up
+ *
+ ****************************************************************************/
+
+/* Functions for storing historical data */
+
+create function history() -> (Integer v, Integer d, Integer x, Integer t) 
+  as stored;
+create_index("history","v","hash","multiple");
+
+create function add_history(Integer v, Integer d, Integer x, Integer t)
+                            -> Boolean 
+  as add history()=(v,d,x,t);
+ 	
+create function loadhistory(Stream s) -> Boolean as
+select add_history(x[0],x[1],x[2],x[3])
+from Vector of Integer x 
+where x in s;
+
+/* returns the toll given a specific vid,day and xway*/
+create function hist_toll(Integer vid, Integer day, Integer xway) -> Integer 
+  as select t 
+     from  Integer v, Integer d, Integer x, Integer t 
+     where history()=(v,d,x,t) 
+       and v=vid 
+       and d=day  
+       and x=xway;
+
+/* lrollout is used to rollout from an SP */
+
+lisp;
+(defun lrolloutbf (fno filename res)
+ (resetvar _scsq-id_ nil
+  (resetvar _amosid_ nil
+   (resetvar _nameserver_ nil
+    (resetvar _debugging_ nil
+     (resetvar _to-coord-sock_ nil
+      (resetvar _prep-listen-sock_ nil
+       (resetvar _PORTNAMETBL_ (make-hash-table :test 'equal)
+       (osql-result fno filename (rollout filename))))))))))
+:osql
+
+create function lrollout(charstring filename)->Boolean
+  as foreign 'lrolloutbf';
+
+/* makepdmp makes a history dump from what the SP received */
+
+create function makepdump(stream s, charstring filename)->integer
+  as begin
+  clear_function("history");
+  loadhistory(s);
+  lrollout(filename);
+  return count(history());
+end;
+
+/* makepdmp makes a history dump from a "shard file" of historical data */
+
+create function mkdmp_shardfile(charstring infile, charstring outfile)->Integer
+  as begin
+  clear_function("history");
+  loadhistory(readintstream(infile));
+  lrollout(outfile);
+  return count(history());
+end;  
+
+/* distributed mkhist */
+
+create function dmkhist(integer L, charstring dir)->vector as
+select merge(p)
+from vector of sp p, vector of charstring shards
+where shards = vectorof(
+select dir + "/" +
+dir(dir, "ht" + stringify(L) + "*"))
+and p=spv(vectorof(
+  select streamof(
+    mkdmp_shardfile(shards[i], dir + "/shdmp" + stringify(L) +
+                    "-" + stringify(i) + ".dmp"))
+  from integer i where i in iota(0, dim(shards)))); 
+
+create function disthistd(integer L)->charstring as
+select exec(cmd)
+from charstring cmd, integer i
+where cmd = "/usr/bin/rcp /home/zeitler/lrdirhistory/shdmp" + stringify(L) +
+            "-" + stringify(i) + ".dmp compute-0-" + stringify(mod(i + 1, 9)) +
+            ":/scratch/zeitler/" + stringify(L) + "/bighist" +
+            stringify(i + 1) + "d.dmp"
+and i in iota(0, 2*L - 1);
+
+create function disthist(integer L)->charstring as
+select exec(cmd)
+from charstring cmd, integer i
+where cmd = "/usr/bin/rcp /home/zeitler/lrhistory/shdmp" + stringify(L) +
+            "-" + stringify(i) + ".dmp compute-0-" + stringify(mod(i + 1, 9)) +
+            ":/scratch/zeitler/" + stringify(L) + "/bighist" + 
+            stringify(i + 1) + ".dmp"
+and i in iota(0, L - 1);
+
+/* Make and replicate sharded history dumps for L = 2...5
+
+tentakel "rm /scratch/zeitler/[2345]/bighist*.dmp"
+select dmkhist(L) from integer L where L in iota(2, 5);
+
+select disthist(L) from integer L where L in iota(2, 5); 
+
+select disthistd(L) from integer L where L in iota(2, 5);
+
+*/

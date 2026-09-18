@@ -1,0 +1,168 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: floq.osql,v $
+ * $Revision: 1.2 $ $Date: 2013/12/16 14:37:29 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: LOcal multi-SQL scenario
+ ****************************************************************************
+ * $Log: floq.osql,v $
+ * Revision 1.2  2013/12/16 14:37:29  silvias
+ * FLOQ queries against multiple Log RDBs
+ *
+ * Revision 1.1  2013/12/11 16:30:28  silvias
+ * Queries on federated log databases
+ *
+ ****************************************************************************/
+
+
+/*RDF view of the meta data*/
+set :id="metaDS";
+set :url="jdbc:mysql://localhost:3306/metadb";
+set :driver="com.mysql.jdbc.Driver";
+set :dbname="metadb";
+set :usern="regress";
+set :passw="regress";
+set :catal="metadb";
+set :schem="";
+
+set :upv="meta";
+set :uriOfupv="http://user.it.uu.se/~udbl/machines/metaDB/";
+
+defineDS(:id,
+         :url,
+         :driver,
+         :catal,
+         :schem,
+         :usern,
+         :passw);
+
+
+defineUPV(:id,:upv, :uriofupv);
+DSConnect(:upv);
+assignIDs(:upv,:catal, :schem);
+ViewRDB(:upv);
+
+/*RDF view of the sensor data 2*/
+set :id_data="regressDS";
+set :url_data="jdbc:microsoft:sqlserver://udblserver3.it.uu.se;DatabaseName=bmsmall";
+set :driver_data="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname_data="bmsmall";
+set :usern_data="udbl";
+set :passw_data="udbl";
+set :catal_data="bmsmall"; 
+set :schem_data="udb";
+
+set :upv_data="prod";
+set :uriOfupv_data="http://user.it.uu.se/~udbl/prod";
+
+defineDS(:id_data,
+         :url_data,
+         :driver_data,
+         :catal_data,
+         :schem_data,
+         :usern_data,
+         :passw_data);
+
+defineUPV(:id_data,:upv_data, :uriofupv_data);
+DSConnect(:upv_data);
+/*wrapRDB(jdbcOfDS(:id_data), :dbname_data, :catal_data, :schem_data);*/
+assignIDs(:upv_data,:catal_data, :schem_data);
+
+ViewRDB(:upv_data);
+
+/*RDF view of the sensor data 1*/
+set :id_data1="regressDS1";
+set :url_data1="jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bmsmall";
+set :driver_data1="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname_data="bmsmall";
+set :usern_data1="udbl";
+set :passw_data1="udbl";
+set :catal_data1="bmsmall"; 
+set :schem_data1="dbo";
+
+/* The same as for the sensor data 2
+set :upv_data="prod";
+set :uriOfupv_data="http://user.it.uu.se/~udbl/prod";*/
+
+defineDS(:id_data1,
+         :url_data1,
+         :driver_data1,
+         :catal_data1,
+         :schem_data1,
+         :usern_data1,
+         :passw_data1);
+
+defineUPV(:id_data1,:upv_data, :uriofupv_data);
+
+lisp;
+
+(setq _rewrite_filter_ t)
+(setq _save-intermediates_ t)
+
+:osql
+
+
+/*TO DO: Temporary */
+create function mul()->(URI,URI,Literal)
+as select  s,p,o from URI s,URI p,Literal o 
+   where meta()=(s,p,o) or prod()=(s,p,o);
+
+set :upv_q="mul";
+set :uriOfupv_q="http://user.it.uu.se/~udbl/floq/";
+
+defineDS("query",
+         "",
+         "",
+         "",
+         "",
+         "",
+         "");
+
+defineUPV("query",:upv_q,:uriOfupv_q);
+
+
+set :q33 = 
+"select  ?ie ?ename ?val ?mv
+ from <http://user.it.uu.se/~udbl/floq/>
+ where { ?s <http://user.it.uu.se/~udbl/machines/metaDB/#site/location> 'Uppsala' .
+	 ?s <http://user.it.uu.se/~udbl/machines/metaDB/#site/site>  ?site .
+	 ?mi <http://user.it.uu.se/~udbl/machines/metaDB/#machineinstallation/site> ?site .
+	 ?mi <http://user.it.uu.se/~udbl/machines/metaDB/#machineinstallation/ie>  ?ie .
+	 ?si <http://user.it.uu.se/~udbl/machines/metaDB/#sensorinstallation/ie>   ?ie .
+	 ?ma <http://user.it.uu.se/~udbl/machines/metaDB/#machine/e> ?e .
+	 ?ma <http://user.it.uu.se/~udbl/machines/metaDB/#machine/ename> ?ename .
+	 ?mi <http://user.it.uu.se/~udbl/machines/metaDB/#machineinstallation/e> ?e .
+	 ?si <http://user.it.uu.se/~udbl/machines/metaDB/#sensorinstallation/ev>  ?ev .
+	 ?si <http://user.it.uu.se/~udbl/machines/metaDB/#sensorinstallation/th>  ?th .
+	 ?measa <http://user.it.uu.se/~udbl/prod#measuresA/logdbid> ?val .
+	 ?measa <http://user.it.uu.se/~udbl/prod#measuresA/mv> ?mv .
+	 ?s    <http://user.it.uu.se/~udbl/machines/metaDB/#site/logdbid> ?val .
+	FILTER (?mv - ?ev > ?th) . }";
+	 
+
+eval("create function q33()-><Literal,Literal,Literal,Literal> as " + sparql_translate(:q33, true));
+
+pc("q33");
+
+
+/*Q: new test query in new set up  */
+create function newq3()->(Integer, charstring, Integer, Number) as
+select ie(si), ename(e), logdbid(s), mv(m)
+from SENSORINSTALLATION@A si, SITE@A s, MEASURESA m, 
+     MachineInstallation@A ie, Machine@A e
+where location(s)='Uppsala' and
+      mv(m)-ev(si)>th(si) and
+      site(s)=site(ie) and
+      ie(ie)=ie(si) and
+      e(ie)=e(e) and
+      s(m)=si(si) and
+      logdbid(m)=logdbid(s);
+
+pc("newq3");
+
+count(newq3());
+
+;

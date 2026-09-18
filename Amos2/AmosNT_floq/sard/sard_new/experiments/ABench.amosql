@@ -1,0 +1,818 @@
+
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Silvia Stefanova UDBL
+ * $RCSfile: ABench.amosql,v 
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Queries corresponding to the generated queries  
+		for the archival queries in ABench
+ ******************************************************************************/
+
+/* Use MS SQL server to order by subject */
+
+set :id_a="archiveDS";
+set :url_a="jdbc:microsoft:sqlserver://localhost;DatabaseName=archive";
+set :driver_a="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :a=jdbc("arch", :driver_a);
+set :usern_a="archiver";
+set :passw_a="archiver2012";
+set :catalog_a="archive";
+set :schema_a="archive";
+
+defineDS(:id_a,
+         :url_a,
+         :driver_a,
+         :catalog_a,
+         :schema_a,
+         :usern_a,
+         :passw_a);
+
+set jdbcOfDS(:id_a)=:a;
+connect(:a, :url_a, :usern_a, :passw_a);
+
+sql(jdbcOfDS(:id_a),"delete from archive.archive.MyTriple;");
+
+/***********************************************************/
+On UDBLLab
+/* Use MS SQL server to order by subject */
+
+set :id_a="archiveDS";
+set :url_a="jdbc:microsoft:sqlserver://130.238.11.146;;DatabaseName=archive";
+set :driver_a="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :a=jdbc("arch", :driver_a);
+set :usern_a="archiver";
+set :passw_a="archiver";
+set :catalog_a="archive";
+set :schema_a="archive";
+
+defineDS(:id_a,
+         :url_a,
+         :driver_a,
+         :catalog_a,
+         :schema_a,
+         :usern_a,
+         :passw_a);
+
+set jdbcOfDS(:id_a)=:a;
+connect(:a, :url_a, :usern_a, :passw_a);
+
+sql(jdbcOfDS(:id_a),"delete from archive.archive.MyTriple;");
+
+/***************************************************************/
+
+CREATE NONCLUSTERED INDEX [product_propNum1] ON [producer180m].[product] 
+([product_propertyNum1] ASC
+)
+
+CREATE NONCLUSTERED INDEX [product_propNum3] ON [producer180m].[product] 
+([product_propertyNum1] ASC
+)
+
+CREATE NONCLUSTERED INDEX [review_rating4] ON [producer180m].[review] 
+([review_rating4] ASC
+)
+
+/*******************************************/
+
+
+set :id="producer1DS";
+set :url="jdbc:microsoft:sqlserver://130.238.11.146;DatabaseName=producer1";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="producer1";
+set :catalog="producer1";
+set :schema="producer1";
+set :usern="product1";
+set :passw="product1";
+
+
+set :id="producer180mDS";
+set :url="jdbc:microsoft:sqlserver://130.238.11.146;DatabaseName=producer180m";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="producer180m";
+set :catalog="producer180m";
+set :schema="producer180m";
+set :usern="product180m";
+set :passw="product180m";
+
+set :id="producer552mDS";
+set :url="jdbc:microsoft:sqlserver://130.238.11.146;DatabaseName=producer552m";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="producer552m";
+set :catalog="producer552m";
+set :schema="producer552m";
+set :usern="product552m";
+set :passw="product552m";
+
+
+
+set :id="producer20milDS";
+set :url="jdbc:microsoft:sqlserver://130.238.11.146;DatabaseName=producer20mil";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="producer20mil";
+set :catalog="producer20mil";
+set :schema="producer20mil";
+set :usern="product20mil";
+set :passw="product20mil";
+
+
+
+set :id="producer500MDS";
+set :url="jdbc:microsoft:sqlserver://130.238.11.146;DatabaseName=producer500M";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="producer500M";
+set :catalog="producer500M";
+set :schema="producer500M";
+set :usern="product500m";
+set :passw="product500m";
+
+
+
+/*nr triples (with NULL) :2608 , no NULLs:2588  ; schema : 374 triples  */
+/* MS SQL server */
+
+set :id="producer1DS";
+set :url="jdbc:microsoft:sqlserver://localhost;DatabaseName=producer1";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="producer1";
+set :catalog="producer1";
+set :schema="producer1";
+set :usern="product1";
+set :passw="product1";
+
+
+/*nr triples (with NULL) : , no NULLs :2255  ; schema : 384 triples  */
+/* MS SQL server */
+
+set :id="producer90mDS";
+set :url="jdbc:microsoft:sqlserver://localhost;DatabaseName=producer90m";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="producer90m";
+set :catalog="producer90m";
+set :schema="producer90m";
+set :usern="product90m";
+set :passw="product90m";
+
+
+
+/*nr triples no NULLs: 4 276 052 ; schema : 352 triples */
+/* MS SQL server */
+
+set :id="producer180mDS";
+set :url="jdbc:microsoft:sqlserver://localhost;DatabaseName=producer180m";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="producer180m";
+set :catalog="producer180m";
+set :schema="producer180m";
+set :usern="product180m";
+set :passw="product180m";
+
+
+/*nr triples no NULLs: 4 276 052 ; schema : 352 triples */
+/* MS SQL server */
+
+set :id="producer180mDS";
+set :url="jdbc:microsoft:sqlserver://udbl-station;DatabaseName=producer180m";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="producer180m";
+set :catalog="producer180m";
+set :schema="producer180m";
+set :usern="product180m";
+set :passw="product180m";
+
+
+/* nr triples (no NULLs): 42 475 529 ; 352 */
+/* MS SQL server */
+
+set :id="producer20milDS";
+set :url="jdbc:microsoft:sqlserver://localhost;DatabaseName=producer20mil";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="producer20mil";
+set :catalog="producer20mil";   
+set :schema="producer20mil";
+set :usern="product20mil";
+set :passw="product20mil";
+
+
+/* nr triples (no NULLs):211 397 995  ; 352; ~ 9.02 GB */
+/* MS SQL server */
+
+set :id="producer500MDS";
+set :url="jdbc:microsoft:sqlserver://localhost;DatabaseName=producer500M";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="producer500M";
+set :catalog="producer500M";
+set :schema="producer500M";
+set :usern="product500m";
+set :passw="product500m";
+
+
+/* nr triples (no NULLs): , ~18.1 GB */
+/* MS SQL server */
+
+set :id="producer1000MDS";
+set :url="jdbc:microsoft:sqlserver://localhost;DatabaseName=producer1000M";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="producer1000M";
+set :catalog="producer1000M";
+set :schema="producer1000M";
+set :usern="product1000m";
+set :passw="product1000m";
+
+
+
+set :upv="prod";
+set :uriOfupv="http://user.it.uu.se/~udbl/sard/prod";
+/*set :upv_fn="prod_fn";*/
+/*set :uriOfupv_fn="http://user.it.uu.se/~udbl/sard/prod_fn";*/
+
+
+defineDS(:id,
+         :url,
+         :driver,
+         :catalog,
+         :schema,
+         :usern,
+         :passw);
+
+
+defineUPV(:id,:upv, :uriofupv);
+/*defineUPV(:id,:upv_fn, :uriofupv_fn);*/
+
+DSConnect(:upv);	
+
+wrapRDB(jdbcOfDS(:id), :dbname, :catalog, :schema);
+assignIDs(:upv,:catalog, :schema);
+/*assignIDs(:upv_fn,:catalog, :schema);*/
+
+
+ViewRDB(:upv);
+lisp;
+(memo-function 'get-columns)
+:osql
+
+/* Query Q1: Archive the entire database */
+
+set :q1 =
+"CONSTRUCT { ?subject ?property ?value } 
+FROM <http://user.it.uu.se/~udbl/sard/prod>
+WHERE {?subject ?property ?value } " ;
+
+
+create function q1()-> (Charstring, Charstring, Literal)
+as
+remove_null(select _ss_, _pp_, _oo_
+  from Charstring subject, Charstring property, Charstring value, 
+       Charstring _ss_, Charstring _pp_, Charstring _oo_
+ where (subject, property, value) in prod()
+      and ((_ss_ = subject and _pp_ = property and _oo_ = value)));
+
+
+create function count1()-> Integer as 
+ count(q1());
+
+
+lisp;
+(setq _unif_ t)
+(setq _gct_ t)
+:osql
+
+
+/*************************/
+
+/*Query Q2: Archive the entire classes product and offer */
+
+set :q2 =
+"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+ PREFIX saq: <http://user.it.uu.se/~udbl/sard/prod#>
+ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+ CONSTRUCT { ?subject ?property ?value }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE {{ ?subject ?property ?value .
+          saq:product   rdf:type  rdfs:Class .
+          ?subject rdf:type  saq:product }
+       UNION
+       {  ?subject ?property ?value .
+ 	 saq:offer rdf:type  rdfs:Class .
+         ?subject rdf:type  saq:offer } } ";
+
+
+
+create function q2()-> (Charstring, Charstring, Literal)
+as
+remove_null( select _ss_, _pp_, _oo_
+  from Charstring property, Charstring value, Charstring subject, Charstring _ss_, Charstring _pp_, Charstring _oo_
+ where (((subject, property, value) in prod()
+     and ('http://user.it.uu.se/~udbl/sard/prod#product', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/2000/01/rdf-schema#Class') in prod()
+     and (subject, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://user.it.uu.se/~udbl/sard/prod#product') in prod())
+    or  ((subject, property, value) in prod()
+     and ('http://user.it.uu.se/~udbl/sard/prod#offer', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/2000/01/rdf-schema#Class') in prod()
+     and (subject, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://user.it.uu.se/~udbl/sard/prod#offer') in prod()))
+      and ((_ss_ = subject and _pp_ = property and _oo_ = value)) );
+
+create function count2()-> Integer as 
+ count(q2());
+
+archive_schemaNT_contentNT(:id_a,#'q2',"C:/AmosNT/sard/sard_new/q2.nt","q2s.nt");
+
+lisp;
+(setq _unif_ t)
+(setq _gct_ t)
+
+
+(setq _sch_ t)
+:osql
+
+
+/**********************/
+
+
+/*Query Q3: Archive all values of the specific properties producer_label,
+	     offer_price, offer_offerWebpage */
+
+set :q3 =
+"PREFIX offer: <http://user.it.uu.se/~udbl/sard/prod#offer/>
+ PREFIX prod: <http://user.it.uu.se/~udbl/sard/prod#producer/>
+ CONSTRUCT 
+{ ?subject1 prod:product_label ?value1 .
+  ?subject2 prod:product_price ?value2 .
+  ?subject3 offer:offer_webpage ?value3  }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE 
+ {{?subject1  prod:producer_label ?value1 .}
+   UNION
+  {?subject2  offer:offer_price ?value2 } 
+   UNION
+  {?subject3 offer:offer_offerWebpage ?value3 } } ";
+
+create function q3()-> (Charstring, Charstring, Literal)
+as remove_null(select _ss_, _pp_, _oo_
+  from Charstring value2, Charstring subject2, Charstring subject1, Charstring value1, Charstring subject3, Charstring value3, Charstring _ss_, Charstring _pp_, Charstring _oo_
+ where ( (subject1, 'http://user.it.uu.se/~udbl/sard/prod#producer/producer_label', value1) in prod()
+          and (_ss_ = subject1 and _pp_ = 'http://user.it.uu.se/~udbl/sard/prod#producer/producer_label' and _oo_ = value1) )
+         
+       or( (subject2, 'http://user.it.uu.se/~udbl/sard/prod#offer/offer_price', value2) in prod()
+    	  and (_ss_ = subject2 and _pp_ = 'http://user.it.uu.se/~udbl/sard/prod#offer/offer_price' and _oo_ = value2 ) )
+         
+        or ((subject3, 'http://user.it.uu.se/~udbl/sard/prod#offer/offer_offerWebpage', value3) in prod() 
+      	 and (_ss_ = subject3 and _pp_ = 'http://user.it.uu.se/~udbl/sard/prod#offer/offer_offerWebpage' and _oo_ = value3 ))) ;
+
+create function count3()-> Integer as 
+ count(q3());
+
+
+lisp;
+(setq _unif_ t)
+(setq _gct_ t)
+:osql
+
+
+/*******************/
+      
+
+/*Query Q4: Archive products' property pNum1for values > 214 
+	    and property pNum3 for values < 348, and 
+            reviews' property text for values matching the string 
+             'time' if the reviews have rating4 > 8 */
+
+set :q4 =
+"PREFIX prod: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ PREFIX rev: <http://user.it.uu.se/~udbl/sard/prod#review/>
+ CONSTRUCT 
+{ ?subject1 prod:product_propertyNum1 ?value1 .
+  ?subject2 prod:product_propertyNum3 ?value2 .
+  ?subject3 rev:review_text           ?value3  }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+WHERE 
+{{?subject1 prod:product_propertyNum1 ?value1 .
+  FILTER (?value1 > '214' ) }
+  UNION
+ {?subject2 prod:product_propertyNum3 ?value2 .
+  FILTER (?value2 < '348' ) } 
+  UNION
+ {?subject3 rev:review_text ?value3 .
+  ?subject3 rev:review_rating4 ?value4 .
+  FILTER REGEX(?value3, '%time%' ) .
+  FILTER (?value4 > '8' ) }       } ";
+
+
+lisp;
+(setq _rewrite_filter_ t);;to rewrite FILTER correct
+:osql
+
+create function q4()-> (Charstring, Charstring, Literal)
+as remove_null(select _ss_, _pp_, _oo_
+  from Charstring subject1, Charstring value2, Charstring value1, Charstring value3, Charstring subject3, Charstring value4, Charstring _ss_, Charstring _pp_, Charstring _oo_, Charstring subject2
+ where ((subject1, 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyNum1', value1) in prod()
+     	and value1 > '214'
+	and (_ss_ = subject1 and _pp_ = 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyNum1' and _oo_ = value1 ) )
+
+    or  ((subject2, 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyNum3', value2) in prod()
+     	and value2 < '348'
+     	and (_ss_ = subject2 and _pp_ = 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyNum3' and _oo_ = value2))
+
+    or  ((subject3, 'http://user.it.uu.se/~udbl/sard/prod#review/review_text', value3) in prod()
+     and (subject3, 'http://user.it.uu.se/~udbl/sard/prod#review/review_rating4', value4) in prod()
+     and like(value3, '%time%')
+     and value4 > '8'
+     and (_ss_ = subject3 and _pp_ = 'http://user.it.uu.se/~udbl/sard/prod#review/review_text' and _oo_ = value3))) ;
+
+create function count4()-> Integer as 
+ count(q4());
+
+
+/*******************************/
+
+
+/*Query Q5: Archive the class product except the  RDF properties 
+	    product_label and product_pNum1 */
+
+set :q5 =
+"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+ PREFIX prod: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ PREFIX saq: <http://user.it.uu.se/~udbl/sard/prod#>
+ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+ CONSTRUCT { ?subject ?property ?value }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE 
+{ ?subject ?property ?value .
+  ?subject rdf:type  saq:product .
+  saq:product rdf:type  rdfs:Class .
+  FILTER (?property != prod:product_label ).
+  FILTER (?property != prod:product_propertyNum1 ) } ";
+
+
+
+lisp;
+(setq _rewrite_filter_ nil);;to rewrite a FILTER on subject/object ????
+:osql
+
+
+create function q5()-> (Charstring, Charstring, Literal)
+as remove_null(select _ss_, _pp_, _oo_
+  from Charstring subject, Charstring property, Charstring value, Charstring _ss_, Charstring _pp_, Charstring _oo_
+ where (subject, property, value) in prod()
+   and (subject, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://user.it.uu.se/~udbl/sard/prod#product') in prod()
+   and ('http://user.it.uu.se/~udbl/sard/prod#product', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/2000/01/rdf-schema#Class') in prod()
+   and property != 'http://user.it.uu.se/~udbl/sard/prod#product/product_label'
+   and property != 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyNum1'
+      and ((_ss_ = subject and _pp_ = property and _oo_ = value)) );
+
+create function count5()-> Integer as 
+ count(q5());
+
+
+lisp;
+(setq _unif_ t)
+(setq _gct_ t)
+(setq _sch_ t)
+:osql
+
+
+
+/*******************************/
+
+
+
+/*Query Q6: Archive all classes whose URIs match the string 'product' */
+
+set :q6 =
+"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+ CONSTRUCT { ?subject ?property ?value }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE 
+{ ?class rdf:type  rdfs:Class .
+  ?subject rdf:type ?class .
+  ?subject ?property ?value .
+  FILTER REGEX (?class, '%product%' ) } " ;
+
+
+
+create function q6()-> (Charstring, Charstring, Literal)
+as remove_null(select _ss_, _pp_, _oo_
+  from Charstring value, Charstring property, Charstring subject, Charstring class, Charstring _ss_, Charstring _pp_, Charstring _oo_
+ where (subject, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', class) in prod()
+   and (subject, property, value) in prod()
+   and like(class, '*product*')
+      and ((_ss_ = subject and _pp_ = property and _oo_ = value)));
+
+
+create function count6()-> Integer as 
+ count(q6());
+
+
+archive_schemaNT_contentNT(:id_a,#'q6',"C:/AmosNT/sard/sard_new/q6.nt","q6s.nt");
+
+
+/* The elimination of the table columns that don't fulfill the condition is done at run time.
+   Disjuncts are not disappearing form the query plan. If the like condition is not fulfilled
+   an SQL query is not sent from a partiqular disjunct. 
+   The elimination happens beacuse the conjunction (AND (s-view) (like) ...) returns FALSE
+*/
+
+/*To see only the effect of GCT */
+
+(setq _unif_ t)
+(setq _gct_ t)
+
+
+(defun source-fetcher (l)
+  "returns list of terms to use as grouping key in L"
+  (subset l (f/l (x) (or (is-source-relation x)
+			 (is-like x)
+			 (and (string-like (mkstring (oid-name (first x))) "P_CHARSTRING.CHARSTRING.CHARSTRING.S*")
+			      (string-like (mkstring (oid-name (first x))) "*->BOOLEAN")) ;;if c is the schema view 
+			 (is-biggerlessthan x)))))
+
+
+(setq _sch_ t)
+
+
+
+
+/***************/
+
+
+/*Query Q7: Archive all subjects having a property with URI 
+              matching the string 'homepage' */
+
+set :q7 =
+"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+ CONSTRUCT {?subject ?property ?value }
+FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE 
+{ ?class rdf:type  rdfs:Class .
+  ?subject rdf:type ?class .
+  ?subject ?property1 ?value1 .
+  ?subject ?property  ?value .
+  FILTER REGEX (str(?property1), 'homepage')} ";
+
+create function q7()-> (Charstring, Charstring, Literal)
+as remove_null(select _ss_, _pp_, _oo_
+  from Charstring value, Charstring property, Charstring subject, 
+	Charstring property1, Charstring value1, Charstring _ss_, Charstring _pp_, Charstring _oo_
+   where (subject, property1, value1) in prod()
+   and (subject, property, value) in prod()
+   and like(property1, '*homepage')
+      and ((_ss_ = subject and _pp_ = property and _oo_ = value)));
+
+create function count7()-> Integer as 
+ count(q7());
+
+
+lisp;
+(setq _unif_ t)
+(setq _gct_ t)
+(setq _sch_ t)
+:osql
+
+
+
+
+
+/**********************/
+
+
+/*Query Q8: Archive all properties of the subjects from class product 
+           having productFeature 3 and 4, and pNum1 > 348 */
+
+set :q8 =
+"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+ PREFIX saq: <http://user.it.uu.se/~udbl/sard/prod#productfeature/>
+ PREFIX prod: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ PREFIX db: <http://user.it.uu.se/~udbl/sard/prod#>
+ CONSTRUCT { ?product ?property ?value } 
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE {?product ?property 	   ?value . 
+        ?product prod:product_label ?label .
+        ?product rdf:type          <http://user.it.uu.se/~udbl/sard/prod#product> .
+        ?product db:product_to_productfeature saq:_3 .
+        ?product db:product_to_productfeature  saq:_4 . 
+        ?product prod:product_propertyNum1 ?pn1 .
+        FILTER (?pn1 > '348') }";
+
+
+lisp;
+(setq _rewrite_filter_ t);;to rewrite FILTER correct
+:osql
+
+create function q8()-> (Charstring, Charstring, Literal)
+as remove_null(select _ss_, _pp_, _oo_
+  from Charstring pn1, Charstring product, Charstring label, Charstring property, Charstring value, Charstring _ss_, Charstring _pp_, Charstring _oo_
+ where (product, property, value) in prod()
+   and (product, 'http://user.it.uu.se/~udbl/sard/prod#product/product_label', label) in prod()
+   and (product, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://user.it.uu.se/~udbl/sard/prod#product') in prod()
+   and (product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_productfeature', 'http://user.it.uu.se/~udbl/sard/prod#productfeature/_3') in prod()
+   and (product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_productfeature', 'http://user.it.uu.se/~udbl/sard/prod#productfeature/_4') in prod()
+   and (product, 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyNum1', pn1) in prod()
+   and pn1 > '348'
+      and ((_ss_ = product and _pp_ = property and _oo_ = value)));
+
+create function count8()-> Integer as 
+ count(q8());
+
+
+lisp;
+(setq _unif_ t)
+(setq _gct_ t)
+(setq _sch_ t)
+:osql
+
+
+
+/********************/
+
+
+/*Query Q9: Archive all classes whose property values are literals 
+           contains the specific string 'symbols'    */
+
+
+set :q9 =
+"CONSTRUCT {?subject ?property ?value }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE { ?subject ?property ?value .
+         FILTER REGEX (?value, 'symbols') } ";
+
+
+lisp;
+(setq _rewrite_filter_ t);;to rewrite FILTER correct
+:osql
+
+create function q9()-> (Charstring, Charstring, Literal)
+as remove_null(select _ss_, _pp_, _oo_
+  from Charstring value, Charstring property, Charstring subject, Charstring _ss_, Charstring _pp_, Charstring _oo_
+ where (subject, property, value) in prod()
+   and like(value, '*symbols*')
+      and ((_ss_ = subject and _pp_ = property and _oo_ = value)));
+
+create function count9()-> Integer as 
+ count(q9());
+
+lisp;
+(setq _is_Literal_ t);;to activate rewrite is_Literal 
+
+(setq _type_Match_ t);; to activate rewrite Type-match
+
+:osql
+
+/*************************/
+
+
+/*Query Q10: Archive all subjects related by a property to 
+           another subject identified by the specific URI */
+
+
+set :q10 =
+"PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ CONSTRUCT {?subject ?property ?value }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE 
+{ product:_2549  ?relation   ?subject .
+  ?subject       ?property   ?value    } " ;
+
+
+create function q10()-> (Charstring, Charstring, Literal)
+as remove_null(select _ss_, _pp_, _oo_
+  from Charstring relation, Charstring subject, Charstring property, Charstring value, Charstring _ss_, Charstring _pp_, Charstring _oo_
+ where ('http://user.it.uu.se/~udbl/sard/prod#product/_2549', relation, subject) in prod()
+   and (subject, property, value) in prod()
+      and ((_ss_ = subject and _pp_ = property and _oo_ = value)));
+
+create function count10()-> Integer as 
+ count(q10());
+
+lisp;
+(setq _elcon_ifnounif_ t);;to rewrite FKR
+:osql 
+
+
+
+/*******************************************/
+
+
+/* Berlin Q4 : Find products (and their properties and values) matching two different sets of features */
+
+lisp;
+(setq _rewrite_filter_ t);;to rewrite FILTER correct
+:osql
+
+create function berlin4a()->(Charstring,Charstring,Charstring)
+as select ss,pp,oo from Charstring p1, Charstring product, Charstring p2, Charstring label,
+			Charstring ss, Charstring pp, Charstring oo, Charstring pred, Charstring obj
+	where (prod()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product/product_label', label)
+     and prod()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_producttype', 'http://user.it.uu.se/~udbl/sard/prod#producttype/_1')
+     and prod()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_productfeature', 'http://user.it.uu.se/~udbl/sard/prod#productfeature/_43')
+     and prod()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_productfeature', 'http://user.it.uu.se/~udbl/sard/prod#productfeature/_45')
+     and prod()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyNum1', p1)
+     and p1 > '348' and p2 = ''
+     and (prod()=(product,pred,obj) and (ss=product and pp=pred and oo=obj)))  or
+        (prod()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product/product_label', label)
+     and prod()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_producttype', 'http://user.it.uu.se/~udbl/sard/prod#producttype/_1')
+     and prod()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_productfeature', 'http://user.it.uu.se/~udbl/sard/prod#productfeature/_43')
+     and prod()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_productfeature', 'http://user.it.uu.se/~udbl/sard/prod#productfeature/_52')
+     and prod()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyNum2', p2)
+     and p2 > '400' and p1 = '' 
+     and (prod()=(product,pred,obj) and (ss=product and pp=pred and oo=obj)));
+
+
+create function count_berlin4a()->integer as select count(remove_null(berlin4a()));
+/* 5707 (no duplicates if col view with p keys) */
+/* 6323 ( with the duplicates if col view with pr keys); 6172 */
+
+create function berlin4a_arch()->(Charstring,Charstring,Charstring) as select remove_null(berlin4a());
+
+archive_content_new(#'berlin4a_arch',"berlin4_data.nt","berlin4_schema.nt","berlin4_stat.txt");
+
+archive_schemaNT_contentNT(:id_a,#'berlin4a_dup',"C:/AmosNT/sard/sard_new/berlin4data_ordered.nt","berlin4schema_o.nt");
+
+
+
+/*********************************************/
+set :q =
+"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+ CONSTRUCT {?s ?p ?o }
+  FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE {{?s rdf:type <http://user.it.uu.se/~udbl/sard/prod#product> .
+	 ?s ?p ?o . }
+	UNION
+	{?s rdf:type <http://user.it.uu.se/~udbl/sard/prod#person> .
+	 ?s ?p ?o .}
+	UNION
+	{?s rdf:type <http://user.it.uu.se/~udbl/sard/prod#producttype> .
+	 ?s ?p ?o .}
+	UNION
+	{?s rdf:type <http://user.it.uu.se/~udbl/sard/prod#vendor> .
+	 ?s ?p ?o .}
+	UNION
+	{ ?s rdf:type <http://user.it.uu.se/~udbl/sard/prod#review> .
+	?s ?p ?o .}
+	UNION
+	{?s rdf:type <http://user.it.uu.se/~udbl/sard/prod#producer> .
+	?s ?p ?o .}
+	UNION
+	{?s rdf:type <http://user.it.uu.se/~udbl/sard/prod#productfeature> .
+	?s ?p ?o . }
+	UNION
+	{?s rdf:type <http://user.it.uu.se/~udbl/sard/prod#offer> .
+	?s ?p ?o } }";	
+
+lisp;
+(setq _unif_ t)
+(setq _gct_ t)
+:osql
+
+eval("create function exec()->(Charstring,Charstring,Literal) as " + parse_sparql(:q)); 
+
+
+create function arch()->(Charstring,Charstring,Charstring)
+	as remove_null(select s,p,o from Charstring s, Charstring p, Charstring o where (s,p,o) in exec());
+
+logging off;
+
+archive_content_new(#'arch',"data552m_gct.nt","schema552m.nt","stat180.txt");
+
+
+
+
+
+lisp;
+(setq _unif_ nil)
+(setq _gct_ nil)
+:osql
+
+eval("create function exec2()->(Charstring,Charstring,Literal) as " + parse_sparql(:q)); 
+
+
+create function arch2()->(Charstring,Charstring,Charstring)
+	as remove_null(select s,p,o from Charstring s, Charstring p, Charstring o where (s,p,o) in exec2());
+
+
+/*Order by s */
+archive_schemaNT_contentNT(:id_a,#'arch2',"C:/AmosNT/sard/sard_new/producer180m_o.nt","schema180m_o.nt");
+
+orderByS(:id_a,"C:/AmosNT/sard/sard_new/producer180m_ord.nt");
+
+/*There aren't primary key views*/
+create function genPVs(Charstring up)->Bag of Charstring
+/*Defines a relational column view for column cn in table tn if:
+	- cn is a column of tn
+	- cn is a primary key in tn
+	- cn is not a foreign key column 
+	(neither in o-many nor in many-many relationship
+*/
+/* as  for each Charstring tn, Charstring cid where cMap(tn,up,cid)
+  begin */
+   as for each Charstring tn,Charstring cn,Charstring pid  where pMap(tn,cn,up,pid) 
+   begin
+       if (isColOf(JDBCOfDS(DSOfUPV(up)),tn,cn) 
+		and notany(isPrKOf(JDBCOfDS(DSOfUPV(up)),catalogOfDS(DSOfUPV(up)),schemaOfDS(DSOfUPV(up)),tn,cn))
+		and count(primary_keys(jdbcOfDS(DSOfUPV(up)),catalogOfDS(DSOfUPV(up)),schemaOfDS(DSOfUPV(up)),tn))>=1
+		and notany(isForKOf(jdbcOfDS(DSOfUPV(up)),catalogOfDS(DSOfUPV(up)),schemaOfDS(DSOfUPV(up)),tn,cn))
+		/*and notany(is_in_rMap(up,tn,cn))*/ ) then		
+     	return genPV(up,tn,cn)
+     else  if  notany(primary_keys(jdbcOfDS(DSOfUPV(up)),catalogOfDS(DSOfUPV(up)),schemaOfDS(DSOfUPV(up)),tn) ) then
+	return genPV_nokey(up,tn,cn);
+      end;

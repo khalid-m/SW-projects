@@ -1,0 +1,449 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Ruslan Fomkin, UDBL
+ * $RCSfile: stream.closed.osql,v $
+ * $Revision: 1.10 $ $Date: 2007/12/12 10:59:47 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Regression test for ALEH project for streamed approach with 
+ * ontology implemented with use of structs, which represent objects in
+ * transient way. The disjunctive call for retrieving particles of more
+ * general type is closed by using multidirectional with select stmt. 
+ * Static and profiled group cost model.
+ * Tests that some cut queries over entire file t.root located in ROOT wrapper
+ * home directory.
+ ****************************************************************************
+ * $Log: stream.closed.osql,v $
+ * Revision 1.10  2007/12/12 10:59:47  ruslan
+ * missing files
+ *
+ * Revision 1.9  2007/12/12 09:59:49  ruslan
+ * loading cost models removed from cuts script to making scripts to be able to have different cost model in parallel, e.g. for desktop and for Hagrid
+ *
+ * Revision 1.8  2007/09/28 07:37:28  ruslan
+ * meeting better randomization in randomopt
+ *
+ * Revision 1.7  2007/09/21 14:38:33  ruslan
+ * statistics on events collects sum of square also.
+ *
+ * Revision 1.6  2007/09/19 12:26:21  ruslan
+ * regression tests meet new changes
+ *
+ * Revision 1.5  2007/09/16 11:24:24  ruslan
+ * new costs after applying partial evaluation
+ *
+ * Revision 1.4  2007/09/12 13:00:14  ruslan
+ * regression test is updated to meet changes
+ *
+ * Revision 1.3  2007/07/27 07:35:15  ruslan
+ * tests corresponds recent changes
+ *
+ * Revision 1.2  2007/06/16 10:22:29  ruslan
+ * separate ROOT-based regression tests are updated to the abs implementation change (single direction)
+ *
+ * Revision 1.1  2007/06/13 14:20:50  ruslan
+ * stream approach, where union of subtype particles is closed
+ *
+ ****************************************************************************/
+
+/* Get statistics about cardinalities of the data in t.root */
+
+getstructstat("../wrappers/ROOTWrap/t.root",300);
+lisp;
+(setq _clock-profile_ 0.0) ; otherwise regression test is to slow
+
+(setq  *group-source-arg* (list "../../wrappers/ROOTWrap/t.root"))
+;(defglobal *struct-stat-fn* (getfunctionnamed 'struct_stat))
+(defglobal *event-type* (gettypenamed 'event))
+(defglobal *muon-type* (gettypenamed 'muon))
+(defglobal *electron-type* (gettypenamed 'electron))
+(defglobal *jetb-type* (gettypenamed 'jetb))
+;(defglobal *lepton-type* (gettypenamed 'lepton))
+;(defglobal *particle-type* (gettypenamed 'particle))
+(checkequal "Check collected statisics"
+	    ((callfunction *struct-stat-fn* (list *event-type* 0))
+	     '(#(300 300 300)))
+	    ((callfunction *struct-stat-fn* (list *event-type* 1))
+	     '(#(300 300 300)))
+	    ((callfunction *struct-stat-fn* (list *event-type* 2))
+	     '(#(300 300 300)))
+	    ((callfunction *struct-stat-fn* (list *event-type* 3))
+	     '(#(300 300 300)))
+	    ((callfunction *struct-stat-fn* (list *event-type* 4))
+	     '(#(300 91 121)))
+	    ((callfunction *struct-stat-fn* (list *event-type* 5))
+	     '(#(300 90 126)))
+	    ((callfunction *struct-stat-fn* (list *event-type* 6))
+	     '(#(300 2423 21175)))
+	    ((callfunction *struct-stat-fn* (list *electron-type* 0))
+	     '(#(91 91 91)))
+	    ((callfunction *struct-stat-fn* (list *electron-type* 1))
+	     '(#(91 91 91)))
+	    ((callfunction *struct-stat-fn* (list *electron-type* 2))
+	     '(#(91 91 91)))
+	    ((callfunction *struct-stat-fn* (list *electron-type* 3))
+	     '(#(91 91 91)))
+	    ((callfunction *struct-stat-fn* (list *electron-type* 4))
+	     '(#(91 91 91)))
+	    ((callfunction *struct-stat-fn* (list *muon-type* 0))
+	     '(#(90 90 90)))
+	    ((callfunction *struct-stat-fn* (list *muon-type* 1))
+	     '(#(90 90 90)))
+	    ((callfunction *struct-stat-fn* (list *muon-type* 2))
+	     '(#(90 90 90)))
+	    ((callfunction *struct-stat-fn* (list *muon-type* 3))
+	     '(#(90 90 90)))
+	    ((callfunction *struct-stat-fn* (list *muon-type* 4))
+	     '(#(90 90 90)))
+	    ((callfunction *struct-stat-fn* (list *jetb-type* 0))
+	     '(#(2423 2423 2423)))
+	    ((callfunction *struct-stat-fn* (list *jetb-type* 1))
+	     '(#(2423 2423 2423)))
+	    ((callfunction *struct-stat-fn* (list *jetb-type* 2))
+	     '(#(2423 2423 2423)))
+	    ((callfunction *struct-stat-fn* (list *jetb-type* 3))
+	     '(#(2423 2423 2423)))
+	    ((callfunction *struct-stat-fn* (list *jetb-type* 4))
+	     '(#(2423 2423 2423))))
+:osql
+cd("osql");
+commit;
+<'formulas.stream.osql';
+<'cost_model.udfs.stream.osql';
+<"cuts.const.stream.osql";
+
+create function TLC() -> integer i as
+select count(select ev from event ev where
+		ev=aleh_stream("../../wrappers/ROOTWrap/t.root") and
+		threeleptoncut(ev));
+
+create function LCs() -> integer i as
+select count(select ev from event ev where
+		ev=aleh_stream("../../wrappers/ROOTWrap/t.root") and
+		leptoncuts(ev));
+
+create function MECs() -> integer i as
+select count(select ev from event ev where
+		ev=aleh_stream("../../wrappers/ROOTWrap/t.root") and
+		misseecuts(ev));
+
+lisp;
+(checkequal "Greedy optimization with the static cost model, three lepton cut"
+	    ((lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'TLC->integer)) '(2 10))
+	     '(1175996138 1410065408))
+	    ((osql "TLC();")
+	     '((475))))
+(checkequal "Greedy optimization with the static cost model, lepton cuts"
+	    ((lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'LCs->integer)) '(2 10))
+	     '(1197712271 1410065408))
+	    ((osql "LCs();")
+	     '((5121))))
+(checkequal "Greedy optimization with the static cost model, miss ee cuts"
+	    ((lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'MECs->integer)) '(2 10))
+	     '(1199965027 1410065408))
+	    ((osql "MECs();")
+	     '((13693))))
+(checkequal "Greedy optimization with the static cost model, exp cuts"
+	    ((lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'expcuts->event)) '(2 10))
+	     '(1188585411 2990041))
+	    ((osql "id(expcuts('../../wrappers/ROOTWrap/t.root'));")
+	     '((19015) (24455))))
+:osql
+
+delete function TLC;
+delete function LCs;
+delete function MECs;
+
+optmethod('randomopt');
+optlevel(100,100);
+
+create function TLC() -> integer i as
+select count(select ev from event ev where
+		ev=aleh_stream("../../wrappers/ROOTWrap/t.root") and
+		threeleptoncut(ev));
+
+create function LCs() -> integer i as
+select count(select ev from event ev where
+		ev=aleh_stream("../../wrappers/ROOTWrap/t.root") and
+		leptoncuts(ev));
+
+create function MECs() -> integer i as
+select count(select ev from event ev where
+		ev=aleh_stream("../../wrappers/ROOTWrap/t.root") and
+		misseecuts(ev));
+
+create function idExpCuts() -> integer as
+select id(expcuts("../../wrappers/ROOTWrap/t.root"));
+
+lisp;
+(checkequal "Randomize optimization with the static cost model, 
+three lepton cut"
+	    ((lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'TLC->integer)) '(2 10))
+	     '(1173103138 1410065408))
+	    ((osql "TLC();")
+	     '((475))))
+(checkequal "Randomize optimization with the static cost model, lepton cuts"
+	    ((lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'LCs->integer)) '(2 10))
+	     '(1171205211 1410065408))
+	    ((osql "LCs();")
+	     '((5121))))
+(checkequal "Randomize optimization with the static cost model, miss ee cuts"
+	    ((lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'MECs->integer)) '(2 10))
+	     '(1194267402 1410065408))
+	    ((osql "MECs();")
+	     '((13693))))
+(checkequal "Randomize optimization with the static cost model, exp cuts"
+	    ((lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'idexpcuts->integer)) '(2 10))
+	     '(1171249294 2990041))
+	    ((osql "idexpcuts();")
+	     '((19015) (24455))))
+:osql
+
+
+rollback;
+<'formulas.stream.osql';
+<'cost_model.udfs.stream.osql';
+<"cuts.const.stream.osql";
+grouping(true);
+create function TLC() -> integer i as
+select count(select ev from event ev where
+		ev=aleh_stream("../../wrappers/ROOTWrap/t.root") and
+		threeleptoncut(ev));
+
+create function LCs() -> integer i as
+select count(select ev from event ev where
+		ev=aleh_stream("../../wrappers/ROOTWrap/t.root") and
+		leptoncuts(ev));
+
+create function MECs() -> integer i as
+select count(select ev from event ev where
+		ev=aleh_stream("../../wrappers/ROOTWrap/t.root") and
+		misseecuts(ev));
+
+create function idExpCuts() -> integer as
+select id(ev) from event ev where 
+	ev=expcuts("../../wrappers/ROOTWrap/t.root");
+
+lisp;
+(checkequal "Collected statistics about groups"
+	    ((osql "count(select print_aggstat());")
+	     '((14))))
+(checkequal "Greedy optimization with the profiled group cost model, three lepton cut"
+	    ((second 
+	      (lr2i10nl 
+	       (exec-cost-of-fn (getfunctionnamed 'TLC->integer)) '(2 10)))
+	     '1410065408)
+	    ((osql "TLC();")
+	     '((475))))
+(checkequal "Greedy optimization with the profiled group cost model, lepton cuts"
+	    ((second (lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'LCs->integer)) '(2 10)))
+	     '1410065408)
+	    ((osql "LCs();")
+	     '((5121))))
+(checkequal "Greedy optimization with the profiled group cost model, miss ee cuts"
+	    ((second (lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'MECs->integer)) '(2 10)))
+	     '1410065408)
+	    ((osql "MECs();")
+	     '((13693))))
+(checkequal "Greedy optimization with the profiled group cost model, exp cuts"
+	    ((second (lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'expcuts->event)) '(2 10)))
+	     '2990041)
+	    ((osql "idexpcuts();")
+	     '((19015) (24455))))
+:osql
+
+delete function TLC;
+delete function LCs;
+delete function MECs;
+delete function idExpCuts;
+
+group_optmethods('ranksort','randomopt');
+group_optlevels(100,20,100,100);
+
+create function TLC() -> integer i as
+select count(select ev from event ev where
+		ev=aleh_stream("../../wrappers/ROOTWrap/t.root") and
+		threeleptoncut(ev));
+
+create function LCs() -> integer i as
+select count(select ev from event ev where
+		ev=aleh_stream("../../wrappers/ROOTWrap/t.root") and
+		leptoncuts(ev));
+
+create function MECs() -> integer i as
+select count(select ev from event ev where
+		ev=aleh_stream("../../wrappers/ROOTWrap/t.root") and
+		misseecuts(ev));
+
+create function idExpCuts() -> integer as
+select id(ev) from event ev where 
+	ev=expcuts("../../wrappers/ROOTWrap/t.root");
+
+lisp;
+(checkequal "Collected statistics about groups"
+	    ((osql "count(select print_aggstat());")
+	     '((27))))
+(checkequal "Greedy optimization on top and randomize optimization inside 
+groups with the profiled group cost model, three lepton cut"
+	    ((second 
+	      (lr2i10nl 
+	       (exec-cost-of-fn (getfunctionnamed 'TLC->integer)) '(2 10)))
+	     '1410065408)
+	    ((osql "TLC();")
+	     '((475))))
+(checkequal "Greedy optimization on top and randomize optimization inside 
+groups with the profiled group cost model, lepton cuts"
+	    ((second (lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'LCs->integer)) '(2 10)))
+	     '1410065408)
+	    ((osql "LCs();")
+	     '((5121))))
+(checkequal "Greedy optimization on top and randomize optimization inside 
+groups with the profiled group cost model, miss ee cuts"
+	    ((second (lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'MECs->integer)) '(2 10)))
+	     '1410065408)
+	    ((osql "MECs();")
+	     '((13693))))
+(checkequal "Greedy optimization on top and randomize optimization inside 
+groups with the profiled group cost model, exp cuts"
+	    ((second (lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'expcuts->event)) '(2 10)))
+	     '2990041)
+	    ((osql "idexpcuts();")
+	     '((19015) (24455))))
+:osql
+
+delete function TLC;
+delete function LCs;
+delete function MECs;
+delete function idExpCuts;
+
+group_optmethods('randomopt','randomopt');
+
+create function TLC() -> integer i as
+select count(select ev from event ev where
+		ev=aleh_stream("../../wrappers/ROOTWrap/t.root") and
+		threeleptoncut(ev));
+
+create function LCs() -> integer i as
+select count(select ev from event ev where
+		ev=aleh_stream("../../wrappers/ROOTWrap/t.root") and
+		leptoncuts(ev));
+
+create function MECs() -> integer i as
+select count(select ev from event ev where
+		ev=aleh_stream("../../wrappers/ROOTWrap/t.root") and
+		misseecuts(ev));
+
+create function idExpCuts() -> integer as
+select id(ev) from event ev where 
+	ev=expcuts("../../wrappers/ROOTWrap/t.root");
+
+lisp;
+(checkequal "Collected statistics about groups"
+	    ((osql "count(select print_aggstat());")
+	     '((40))))
+(checkequal "Randomize optimization with the profiled group cost model, 
+three lepton cut"
+	    ((second 
+	      (lr2i10nl 
+	       (exec-cost-of-fn (getfunctionnamed 'TLC->integer)) '(2 10)))
+	     '1410065408)
+	    ((osql "TLC();")
+	     '((475))))
+(checkequal "Randomize optimization with the profiled group cost model, 
+lepton cuts"
+	    ((second (lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'LCs->integer)) '(2 10)))
+	     '1410065408)
+	    ((osql "LCs();")
+	     '((5121))))
+(checkequal "Randomize optimization with the profiled group cost model, 
+miss ee cuts"
+	    ((second (lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'MECs->integer)) '(2 10)))
+	     '1410065408)
+	    ((osql "MECs();")
+	     '((13693))))
+(checkequal "Randomize optimization with the profiled group cost model, 
+exp cuts"
+	    ((second (lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'expcuts->event)) '(2 10)))
+	     '2990041)
+	    ((osql "idexpcuts();")
+	     '((19015) (24455))))
+:osql
+
+delete function TLC;
+delete function LCs;
+delete function MECs;
+delete function idExpCuts;
+
+group_optmethods('randomopt','ranksort');
+
+create function TLC() -> integer i as
+select count(select ev from event ev where
+		ev=aleh_stream("../../wrappers/ROOTWrap/t.root") and
+		threeleptoncut(ev));
+
+create function LCs() -> integer i as
+select count(select ev from event ev where
+		ev=aleh_stream("../../wrappers/ROOTWrap/t.root") and
+		leptoncuts(ev));
+
+create function MECs() -> integer i as
+select count(select ev from event ev where
+		ev=aleh_stream("../../wrappers/ROOTWrap/t.root") and
+		misseecuts(ev));
+
+create function idExpCuts() -> integer as
+select id(ev) from event ev where 
+	ev=expcuts("../../wrappers/ROOTWrap/t.root");
+
+lisp;
+(checkequal "Collected statistics about groups"
+	    ((osql "count(select print_aggstat());")
+	     '((53))))
+(checkequal "Randomize optimization on top and greedy optimization inside 
+groups with the profiled group cost model, three lepton cut"
+	    ((second 
+	      (lr2i10nl 
+	       (exec-cost-of-fn (getfunctionnamed 'TLC->integer)) '(2 10)))
+	     '1410065408)
+	    ((osql "TLC();")
+	     '((475))))
+(checkequal "Randomize optimization on top and greedy optimization inside 
+groups with the profiled group cost model, lepton cuts"
+	    ((second (lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'LCs->integer)) '(2 10)))
+	     '1410065408)
+	    ((osql "LCs();")
+	     '((5121))))
+(checkequal "Randomize optimization on top and greedy optimization inside 
+groups with the profiled group cost model, miss ee cuts"
+	    ((second (lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'MECs->integer)) '(2 10)))
+	     '1410065408)
+	    ((osql "MECs();")
+	     '((13693))))
+(checkequal "Randomize optimization on top and greedy optimization inside 
+groups with the profiled group cost model, exp cuts"
+	    ((second (lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'expcuts->event)) '(2 10)))
+	     '2990041)
+	    ((osql "idexpcuts();")
+	     '((19015) (24455))))
+:osql

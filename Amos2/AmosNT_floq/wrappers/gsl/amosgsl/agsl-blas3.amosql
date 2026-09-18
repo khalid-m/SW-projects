@@ -1,0 +1,133 @@
+/**-*-sql-*-***********************************************
+ * BLAS 3
+ * 
+ * Various incarnations of DGEMM, DSYMM, DTRMM with default
+ * values for alpha, beta and matrices
+ * 
+ * @see agsl-blas3.lsp for the bindings to agsl dgemm
+ *
+ */
+
+/* DGEMM */
+
+
+/**
+ * \alpha A B + \beta C = D
+ */      
+create function dgemm (number alpha,
+                       matrix A,
+                       matrix B,
+                       number beta,
+                       matrix C)->matrix D
+  as multidirectional
+    ('bbbbbf' foreign 'gsl-blas-dgemm-alpha-ab-beta-c-----+' cost {2,2})
+    ('bbfbbb' foreign 'gsl-blas-dgemm-alpha-ab-beta-c--+---' cost {20,20});
+
+/* \alpha A B + C = D */
+create function dgemm (number alpha,
+                       matrix A, 
+                       matrix B, 
+                       matrix C)->matrix D
+             as dgemm (alpha, A, B, 1.0, C);
+
+/* A B + \beta C = D */
+create function dgemm (matrix A, 
+                       matrix B,
+                       number beta,
+                       matrix C)->matrix D
+             as dgemm (1.0, A, B, beta, C);
+
+/* A B + C = D */
+create function dgemm (matrix A, 
+                       matrix B,
+                       matrix C)->matrix D
+             as dgemm (1.0, A, B, 1.0, C);
+
+/**
+ * \alpha A B = C
+ *
+ */
+create function dgemm (number alpha,
+                       matrix A,
+                       matrix B)->matrix C
+  as multidirectional
+    ('bbbf' foreign 'gsl-blas-dgemm-alpha-ab---+' cost {2,1})
+    ('bbfb' foreign 'gsl-blas-dgemm-alpha-ab--+-' cost {20,1});
+
+/* A B = C */
+create function dgemm (matrix A, matrix B)->matrix C
+             as dgemm (1.0, A, B);
+
+
+
+/* DSYMM */
+
+/**
+ * \alpha A B + \beta C = D for symmetric A
+ *
+ */      
+create function dsymm (number alpha,
+                       matrix A,
+                       matrix B,
+                       number beta,
+                       matrix C)->matrix D
+  as multidirectional
+    ('bbbbbf' foreign 'gsl-blas-dsymm-alpha-ab-beta-c-----+' cost {2,1})
+    ('bbfbbb' foreign 'gsl-blas-dsymm-alpha-ab-beta-c--+---' cost {20,1});
+
+/* \alpha A B + C = D for symmetric A */
+create function dsymm (number alpha,
+                       matrix A, 
+                       matrix B, 
+                       matrix C)->matrix D
+             as dsymm (alpha, A, B, 1.0, C);
+
+/* A B + \beta C = D for symmetric A */
+create function dsymm (matrix A, 
+                       matrix B,
+                       number beta,
+                       matrix C)->matrix D
+             as dsymm (1.0, A, B, beta, C);
+
+/* A B + C = D for symmetric A */
+create function dsymm (matrix A, 
+                       matrix B,
+                       matrix C)->matrix D
+             as dsymm (1.0, A, B, 1.0, C);
+
+
+/**
+ * \alpha A B = C for symmetric A 
+ *
+ */
+create function dsymm (number alpha,
+                       matrix A,
+                       matrix B)->matrix C
+  as multidirectional
+    ('bbbf' foreign 'gsl-blas-dsymm-alpha-ab---+' cost {2, 1})
+    ('bbfb' foreign 'gsl-blas-dsymm-alpha-ab--+-' cost {20, 1});
+
+/* A B = C for symmetric A */
+create function dsymm (matrix A, matrix B)->matrix C
+             as dsymm (1.0, A, B);
+
+
+/* DTRMM */
+
+/**
+ * \alpha A B = C for triangular A 
+ *
+ */
+create function dtrmm (number alpha, matrix A, matrix B)->matrix C
+     as foreign 'gsl-blas-dtrmm---+';
+
+/* A B = C for triangular A */
+create function dtrmm (matrix A, matrix B)->matrix C
+             as dtrmm (1.0, A, B);
+
+
+/* DTRSM */
+
+/* Solve A B = C for B for triangular A */
+create function dtrsm (number alpha, matrix A, matrix C)->matrix B
+  as foreign 'gsl-blas-dtrsm---+';

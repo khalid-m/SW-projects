@@ -1,0 +1,6 @@
+create function cache_rdf_source()->Integer as stored;
+set cache_rdf_source()=0;
+
+< "regress/test.amosql";
+
+quit;

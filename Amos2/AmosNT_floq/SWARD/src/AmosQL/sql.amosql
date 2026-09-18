@@ -1,0 +1,3 @@
+create function sqlBinds(Charstring sql)->Vector
+as
+ select bindsTpl(sql(sql),resSQLVars(sql));

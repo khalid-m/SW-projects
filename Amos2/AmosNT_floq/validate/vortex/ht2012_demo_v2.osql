@@ -1,0 +1,130 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: ht2012_demo_v2.osql,v $
+ * $Revision: 1.1 $ $Date: 2012/10/12 14:13:05 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description:
+ *
+ ****************************************************************************
+ * $Log: ht2012_demo_v2.osql,v $
+ * Revision 1.1  2012/10/12 14:13:05  larme597
+ * *** empty log message ***
+ *
+ *
+ ****************************************************************************/
+
+load_lisp("json_wrapper.lsp");
+
+< 'mill_model.osql';
+
+<'drill.osql';
+
+create function mill_th() -> Number as stored;
+set mill_th() = 0;
+create function drill_th() -> Number as stored;
+set drill_th() = 0;
+
+set :s1 = json_stream_wrapper("python corenet_streamer.py", "localhost", 1337);
+set :s2 = corenet_jason2vector_stream(
+    	   json_stream_wrapper("python corenet_streamer.py", "localhost", 1338));
+
+create function corenet_mill_stream(Integer port) -> Stream of Record
+  as json_stream_wrapper("python corenet_streamer.py", "localhost", port);
+
+create function corenet_validate_mill_b(Integer port) -> Bag of (Number, Number, Number, Number)
+  as for each Number ts, Number measured, Number expected, Number diff
+     where (ts, measured, expected, diff) in
+       model_n_validate(corenet_mill_stream(port), #'expected_power_r', #'validate_power_r', 0)
+       if diff > mill_th() then return (ts, measured, expected, 1)
+       else return (ts, measured, expected, 0);
+
+create function corenet_drill_stream(Integer port) -> Stream of Vector
+  as corenet_jason2vector_stream(
+    	   json_stream_wrapper("python corenet_streamer.py", "localhost", port));
+
+create function corenet_validate_drill_b(Integer port) -> Bag of (Number, Window, Window, Number)
+  as for each Number ts, Window measured, Window expected, Number diff
+     where (ts, measured, expected, diff) in
+       learn_n_validate(pwindowize(corenet_drill_stream(port), #'drill_start', #'drill_stop'),
+       			1, #'learn_drill', #'validate_drill', 0)
+       if diff > drill_th() then return (ts, measured, expected, 1)
+       else return (ts, measured, expected, 0);
+
+create function port(Charstring src) -> Integer port as stored;
+
+set port("A") = 1337;
+set port("B") = 1338;
+
+create function alerts(Charstring src) -> Charstring as stored;
+set alerts("A") = "Alert milling machine";
+set alerts("B") = "Alert drilling machine";
+
+create function alertmsg(Charstring src, Number expected)
+  -> Charstring
+  as alerts(src) + ". Threshold: " + expected;
+
+
+/* validate mill */
+create function validate_mill_b(Charstring src) -> Bag of (Number, Number)
+  as for each Number ts, Number measured, Number expected, Number invalid
+    where (ts, measured, expected, invalid) in corenet_validate_mill_b(port(src))
+      return (ts, measured);
+create function validate_mill(Charstring src) -> Stream of (Number, Number)
+  as streamof(validate_mill_b(src));
+
+/* How should the alert stream be defined? */
+create function mill_alert_b0(Charstring src) -> Bag of Number
+  as select invalid from Number ts, Number measured, Number expected, Number invalid
+    where (ts, measured, expected, invalid) in corenet_validate_mill_b(port(src));
+
+create function mill_alert_b(Charstring src) -> Bag of Charstring
+  as for each Number x where x in changed0(mill_alert_b0(src))
+     if x > 0 then
+       begin
+         print(mill_th());
+         return alertmsg(src, mill_th());
+       end
+     else return "";
+
+create function mill_alert(Charstring src) -> Stream of Charstring
+  as streamof(mill_alert_b(src));
+
+
+/* validate drill */
+create function is_drilling_b(Charstring src) -> Bag of (Number, Number)
+  as for each Number identifier, Number id, Number flag, Number time, Number value
+    where {identifier, id, flag, time, value} in corenet_drill_stream(port(src))
+    if flag = 1 then return (time, value);
+
+create function is_drilling(Charstring src) -> Stream of (Number, Number)
+  as streamof(is_drilling_b(src));
+
+/* How should the alert stream be defined? */
+create function drill_alert_b0(Charstring src) -> Bag of Number
+  as for each Number ts, Window measured, Window expected, Number invalid
+    where (ts, measured, expected, invalid) in corenet_validate_drill_b(port(src))
+   return invalid;
+
+create function drill_alert_b(Charstring src) -> Bag of Charstring
+  as for each Number x where x in changed0(drill_alert_b0(src))
+     if x > 0 then return alertmsg(src, drill_th())
+     else return "";
+
+create function drill_alert(Charstring src) -> Stream of Charstring
+  as streamof(drill_alert_b(src));
+/*
+in(validate_mill("A"));
+
+in(mill_alert("A"));
+
+mill_alert_b0("A");
+
+in(is_drilling("B"));
+
+in(drill_alert("B"));
+
+corenet_validate_drill_b(port("B"));
+*/

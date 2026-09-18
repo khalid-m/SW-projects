@@ -1,0 +1,302 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Erik Zeitler, UDBL
+ * $RCSfile: generator.osql,v $
+ * $Revision: 1.22 $ $Date: 2012/05/15 20:41:13 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Generate input for multiple Linear Road xways
+ *
+ ****************************************************************************
+ * $Log: generator.osql,v $
+ * Revision 1.22  2012/05/15 20:41:13  torer
+ * result -> return
+ *
+ * Revision 1.21  2012/03/13 10:34:48  zeitler
+ * assignment replaced by in
+ *
+ * Revision 1.20  2010/11/27 11:52:42  zeitler
+ * re-definition removed
+ *
+ * Revision 1.19  2010/02/16 18:51:24  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.18  2010/02/11 17:39:35  zeitler
+ * bigxslayer_param(numxways, stopafter)
+ * enables benchmarking in 2 dimensions
+ *
+ * Revision 1.17  2010/02/11 14:02:42  zeitler
+ * simplifications
+ *
+ * Revision 1.16  2009/12/16 12:53:31  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.15  2009/05/08 15:44:45  zeitler
+ * no need for trailing "/" in AMOS_HOME
+ *
+ * Revision 1.14  2009/02/25 21:50:59  zeitler
+ * Numarray used in ezgen
+ *
+ * Revision 1.13  2008/12/22 16:40:05  zeitler
+ * Removed cast.
+ * New routing function.
+ *
+ * Revision 1.12  2008/10/09 16:10:44  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.11  2008/10/03 21:32:53  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.10  2008/08/29 15:26:43  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.9  2008/08/29 15:02:20  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.8  2008/08/13 09:01:48  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.7  2008/08/12 11:24:43  zeitler
+ * max[vq]id for xway=0..20
+ *
+ * Revision 1.6  2008/08/04 22:55:51  zeitler
+ * smj: streamed merge join
+ *
+ * Revision 1.5  2008/07/22 12:54:27  zeitler
+ * Scalable LR input data generator
+ *
+ * Revision 1.4  2008/07/21 23:20:15  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.3  2008/07/21 16:52:44  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.2  2008/07/20 22:53:31  zeitler
+ * Re-use vids that left an xway
+ *
+ * Revision 1.1  2008/07/19 17:13:44  zeitler
+ * LR input stream generator
+ *
+ *
+ ****************************************************************************/
+
+create function maxvid() -> integer;
+create function maxqid() -> integer;
+create function nxways() -> integer;
+
+create function inputfilesdir() -> Charstring;
+create function inputfilesmask() -> Charstring;
+
+create function eventtype(vector v)->integer
+as select v[0];
+create function second(vector v)->integer
+as select v[1];
+create function vid(vector v)->integer
+as select v[2];
+create function speed(vector v)->integer
+as select v[3];
+create function xway(vector v)->integer
+as select v[4];
+create function lane(vector v)->integer
+as select v[5];
+create function dir(vector v)->integer
+as select v[6];
+create function seg(vector v)->integer
+as select v[7];
+create function pos(vector v)->integer
+as select v[8];
+create function qid(vector v)->integer
+as select v[9];
+create function m_init(vector v)->integer
+as select v[10];
+create function m_end(vector v)->integer
+as select v[11];
+create function dow(vector v)->integer
+as select v[12];
+create function tod(vector v)->integer
+as select v[13];
+create function day(vector v)->integer
+as select v[14];
+
+create function posrep(vector v)->boolean as
+select
+where eventtype(v) = 0;
+
+create function accbal(vector v)->boolean as
+select
+where eventtype(v) = 2;
+
+create function dexp(vector v)->boolean as
+select
+where eventtype(v) = 3;
+
+create function tte(vector v)->boolean as
+select
+where eventtype(v) = 4;
+
+create function eventtype(iarray v)->integer
+as select v[0];
+create function second(iarray v)->integer
+as select v[1];
+create function vid(iarray v)->integer
+as select v[2];
+create function speed(iarray v)->integer
+as select v[3];
+create function xway(iarray v)->integer
+as select v[4];
+create function lane(iarray v)->integer
+as select v[5];
+create function dir(iarray v)->integer
+as select v[6];
+create function seg(iarray v)->integer
+as select v[7];
+create function pos(iarray v)->integer
+as select v[8];
+create function qid(iarray v)->integer
+as select v[9];
+create function m_init(iarray v)->integer
+as select v[10];
+create function m_end(iarray v)->integer
+as select v[11];
+create function dow(iarray v)->integer
+as select v[12];
+create function tod(iarray v)->integer
+as select v[13];
+create function day(iarray v)->integer
+as select v[14];
+
+create function posrep(iarray v)->boolean as
+select
+where eventtype(v) = 0;
+
+create function accbal(iarray v)->boolean as
+select
+where eventtype(v) = 2;
+
+create function dexp(iarray v)->boolean as
+select
+where eventtype(v) = 3;
+
+create function tte(iarray v)->boolean as
+select
+where eventtype(v) = 4;
+
+/* Transform xway 0 to any xway */
+
+create function this_xway()->integer;
+
+create function compute_maxvid(stream s)->integer as
+select maxagg(select vid(v)
+from vector v
+where v = in(s));
+
+create function compute_maxqid(stream s)->integer as
+select maxagg(select qid(v)
+from vector v
+where v = in(s));
+
+create function addvids(integer xway)->integer as
+xway*maxvid();
+
+create function addqids(integer xway)->integer as
+xway*maxqid();
+
+create function change_posrep(vector v, integer xway)->vector of integer as
+select concat({v[0], v[1], vid(v) + addvids(xway), v[3], xway}, w)
+from vector w
+where w = vectorize(
+select i - 5, v[i] from integer i where i > 4);
+
+create function change_dexp(vector v, integer xway, integer nxways)
+-> vector of integer as
+select {v[0], v[1], vid(v) + addvids(xway), v[3], rand(nxways), v[5], v[6], 
+        v[7], v[8], qid(v) + addqids(xway), v[10], v[11], v[12], v[13], v[14]};
+
+create function change_accbal(vector v, integer xway)->vector of integer as
+select {v[0], v[1], vid(v) + addvids(xway), v[3], v[4], v[5], v[6], v[7], 
+        v[8], qid(v) + addqids(xway), v[10], v[11], v[12], v[13], v[14]};
+
+/* This postfilter adds appropriate constants to vid and qid 
+   so that they seem to originate from this_xway instead of xway 0 */
+
+/* port = this xway, nports = total #xways. */
+
+create function offset_vidqidfilter(vector v, integer nports)
+-> (integer port, vector) as
+select 0, w from vector w
+where (posrep(v) and w = change_posrep(v, this_xway()))
+or (dexp(v) and w = change_dexp(v, this_xway(), nxways()))
+or (accbal(v) and w = change_accbal(v, this_xway()))
+or (tte(v) and w = v);
+
+/* Read and stream cardata files */
+
+create function readxway(charstring filename, integer this_xway, 
+                         integer nxways) -> vector as begin
+clear_function("this_xway");
+clear_function("nxways");
+add this_xway() = this_xway;
+add nxways() = nxways;
+return readfile(filename);
+end;
+
+create function streamxway(charstring filename, integer this_xway, 
+                         integer nxways) -> stream as
+select streamof(readxway(filename, this_xway, nxways));
+
+create function tinyxstream(integer i, integer n)->stream as
+select streamxway(getenv('AMOS_HOME') + '/scsq/generator/data/c100-' + 
+stringify(i), i, n);
+
+create function xstream(integer i, integer n)->stream as
+select streamxway(getenv('AMOS_HOME') + '/scsq/generator/data/c10k-' + 
+stringify(i), i, n);
+
+create function bigxstream(integer i, integer n)->stream as
+select streamxway(inputfilesdir() + inputfilesmask() + stringify(i), i, n);
+
+create function bigxstream_param(integer i, integer n, integer stopafter)
+ -> stream as section(streamxway(
+      inputfilesdir() + inputfilesmask() + stringify(i), i, n),
+    1, stopafter);
+
+/* Data generator process layer */
+create function xslayer(integer numxways)->vector of sp as
+select spvflex(vselect xstream(i, numxways) 
+from integer i where i in iota(0, numxways-1),
+make_record({'sfn', #'offset_vidqidfilter'}));
+
+create function tinyxslayer(integer numxways)->vector of sp as
+select spvflex(vectorof(
+select tinyxstream(i, numxways) from integer i 
+where i in iota(0, numxways-1)),
+make_record({'sfn', #'offset_vidqidfilter'}));
+
+create function bigxslayer(integer numxways)->vector of sp as
+select spvflex(vectorof(
+select bigxstream(i, numxways) from integer i where i in iota(0, numxways-1)),
+make_record({'sfn', #'offset_vidqidfilter'}));
+
+create function bigxslayer_param(integer numxways, integer stopafter)
+ -> vector of sp as spvflex(vectorize(
+      select i, bigxstream_param(i, numxways, stopafter)
+      from integer i
+      where i in iota(0, numxways - 1)), 
+    make_record({'sfn', #'offset_vidqidfilter'}));
+
+/* Binary */
+
+create function offset_vidqidfilterbin(vector v, integer nports)
+-> (integer port, iarray ia) as
+select 0, ia
+from vector of integer w
+where (posrep(v) and ia = iarray(change_posrep(v, this_xway())))
+or (dexp(v) and ia = iarray(change_dexp(v, this_xway(), nxways())))
+or (accbal(v) and ia = iarray(change_accbal(v, this_xway())))
+or (tte(v) and ia = iarray(w) and w = v);
+
+create function xslayerbin(integer numxways)->vector of sp as
+select spvflex(vselect xstream(i, numxways)
+from integer i where i in iota(0, numxways-1),
+make_record({'sfn', #'offset_vidqidfilterbin'}));

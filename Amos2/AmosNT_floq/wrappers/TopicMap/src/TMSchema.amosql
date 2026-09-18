@@ -1,0 +1,214 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Quin, Silvia Stefanova, UDBL
+ * $RCSfile: TMSchema.amosql,v $
+ * $Revision: 1.32 $ $Date: 2012/05/15 19:27:16 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Topic Map schema in Amos II
+ *
+ ****************************************************************************
+ * $Log: TMSchema.amosql,v $
+ * Revision 1.32  2012/05/15 19:27:16  torer
+ * result -> return
+ *
+ * Revision 1.31  2012/01/10 08:18:35  torer
+ * New tuple syntax
+ *
+ * Revision 1.30  2008/09/15 10:22:14  silvias
+ * added index on baseNameOfTopic
+ *
+ * Revision 1.29  2008/09/12 09:25:25  silvias
+ * Added "Of" to some schema functions' names
+ *
+ * Revision 1.28  2008/02/28 16:07:15  silvias
+ * Changed the notation ":" with "#"
+ *
+ * Revision 1.27  2008/02/08 15:31:25  silvias
+ * Added more indexes
+ *
+ * Revision 1.26  2008/01/30 21:00:03  silvias
+ * Added SubjectAddress schema function
+ *
+ * Revision 1.25  2008/01/11 14:05:56  silvias
+ * Delete the HashMap data structure from Java and put the checking for cross references in Amos
+ *
+ * Revision 1.24  2007/11/30 11:02:26  silvias
+ * *** empty log message ***
+ *
+ * Revision 1.23  2007/11/29 21:03:13  silvias
+ * Added more indexes
+ *
+ * Revision 1.22  2007/11/28 21:27:39  torer
+ * Added one index. Many more needed.
+ *
+ * Revision 1.21  2007/11/24 19:06:22  silvias
+ * Redifine TMURI as TMURI(TM_Object o, Charstring src)
+ *
+ * Revision 1.20  2007/11/08 14:24:43  silvias
+ * TMURL changed to URLfile + idTMO instead of ontology + idTMO
+ *
+ * Revision 1.17  2007/10/09 18:49:27  silvias
+ * *** empty log message ***
+ *
+ * Revision 1.16  2007/10/09 16:19:08  silvias
+ * *** empty log message ***
+ *
+ * Revision 1.15  2007/10/09 15:26:01  silvias
+ * Added parteval on several functs
+ *
+ * Revision 1.14  2007/10/09 15:23:42  silvias
+ * Localname as multidirectional foreign function
+ *
+ * Revision 1.13  2007/10/04 10:05:30  torer
+ * result -> select for invertability
+ *
+ * Revision 1.12  2007/09/10 17:30:34  silvias
+ * *** empty log message ***
+ *
+ * Revision 1.11  2007/08/16 16:31:10  silvias
+ * *** empty log message ***
+ *
+ * Revision 1.10  2007/06/25 20:40:22  silvias
+ * *** empty log message ***
+ *
+ * Revision 1.9  2007/06/10 16:29:41  silvias
+ * *** empty log message ***
+ *
+ * Revision 1.8  2007/06/06 17:39:19  silvias
+ * "TM" deleted from the type's names
+ *
+ * Revision 1.7  2007/04/30 14:59:59  torer
+ * Generation of UPV functions now in image
+ *
+ ****************************************************************************/
+
+create type TM_Object;
+create type TopicMap under TM_Object;
+create type Topic under TM_Object;
+create type BaseName under TM_Object;
+create type Variant under TM_Object;
+create type Occurrence under TM_Object;
+create type Association under TM_Object;
+create type Member under TM_Object;
+
+create function topicOfTopicMap(TopicMap) -> Bag of Topic as stored;
+create function mergeMap(TopicMap) -> Bag of Topic as stored;
+create function associationOfTopicMap(TopicMap) -> Bag of association as stored;
+create function idTopicMap(TopicMap) -> Charstring as stored;
+/*create function name(TopicMap) -> Charstring as stored;*/
+
+create function idTopic(topic) -> Charstring as stored;
+create_index(theresolvent("idtopic"),"Charstring","hash","multiple");
+/*create function URI(topic) -> Charstring as stored;*/
+create function instanceOfTopic(topic nonkey) -> topic as stored;
+create_index(theresolvent("instanceoftopic"),"Topic","hash","multiple");
+/*create function subjectIdentity(topic nonkey) -> topic as stored;*/
+create function subjectIdentity(topic nonkey) -> Charstring as stored;
+create_index(theresolvent("subjectidentity"),"Charstring","hash","multiple");
+create function subjectAddress(topic nonkey) -> Charstring as stored;
+create_index(theresolvent("subjectAddress"),"Charstring","hash","multiple");
+create function baseNameOfTopic(topic) -> Bag of baseName as stored;
+create_index(theresolvent("baseNameOfTopic"),"baseName","hash","multiple");
+create function occurrenceOfTopic(topic) -> Bag of occurrence as stored;
+create_index(theresolvent("occurrenceOfTopic"),"Occurrence","hash","multiple");
+
+create function idBaseName(baseName) -> Charstring as stored;
+create function baseNameString(baseName) -> Charstring as stored;
+create_index(theresolvent("basenamestring"),"Charstring","hash","multiple");
+create function scopeOfBaseName(baseName) -> Bag of topic as stored;
+create_index(theresolvent("scopeOfBaseName"),"Topic","hash","multiple");
+
+create function variantOfBaseName(baseName nonkey) -> variant as stored;
+
+create function subVariant(variant) -> Bag of variant as stored;
+create function variantName(variant) -> Charstring as stored;
+create function parameters(variant) -> Bag of topic as stored;
+/*create function data(variant) -> (Charstring,Charstring) as stored;*/
+
+create function instanceOfOccurrence(occurrence) -> topic as stored;
+create_index(theresolvent("instanceOfOccurrence"),"Topic","hash","multiple");
+
+create function scopeOfOccurrence(occurrence nonkey) ->  topic as stored;
+create_index(theresolvent("scopeOfOccurrence"),"Topic","hash","multiple");
+create function data(occurrence) -> Charstring as stored;
+create_index(theresolvent("data"),"Charstring","hash","multiple");
+create function reference(occurrence) -> Charstring as stored;
+create_index(theresolvent("reference"),"Charstring","hash","multiple");
+create function idOccurrence(occurrence) -> Charstring as stored;
+
+create function idAssociation(association key) -> Charstring as stored;
+create function instanceOfAssociation(association) -> topic as stored;
+create function scopeOfAssociation(association nonkey) -> topic as stored;
+create function memberOfAssociation(association) -> Bag of member as stored;
+
+create function roleSpec(member key) -> topic as stored;
+create function topicOfMember(member nonkey) -> topic as stored;
+
+/*create function localname(TM_Object t key)->Charstring n key*/
+/*  as  multidirectional ("bf" foreign "localname-+")*/
+/*                       ("fb" foreign "localname+-");*/
+
+lisp;
+(defun localname-+ (fno t- n+)
+   (if (oid-p t-) (osql-result t- (mkstring (oid-idno t-)))))
+
+(defun localname+- (fno t+ n-)
+   (osql-result (getobjectnumbered (read n-)) n-))
+:osql
+
+create function long_ontology()->charstring
+  /* Namespace for the RDF view of Topic Maps */
+  as stored;
+set long_ontology()="http://udbl2.it.uu.se/swatm";
+
+create function short_ontology()->charstring
+  /* Namespace for the RDF view of Topic Maps */
+  as stored;
+
+set short_ontology()="swatm";
+
+create function ontology()->charstring 
+  /* Namespace for the RDF view of Topic Maps */
+  as stored;
+/*set ontology()="swatm";*/
+set ontology()=long_ontology();
+
+parteval("ontology"); /* never changes */
+
+create function idTMO(TM_Object t)-> (charstring URI, integer ito)
+/*Unique identification of a TM_Object*/
+as stored;
+
+declare_key(theresolvent('IDTMO'),{'URI','ito'});
+create_index(theresolvent('IDTMO'), "ITO","hash", "multiple");
+
+
+create function TMURI(TM_Object o)->Charstring
+/*Giving an unique URI of each TM_Object as a sum of the ontology URI and its unique number*/
+as
+	begin
+	 declare integer i, charstring u;
+	 select id, uri into i, u from integer id, Charstring uri where idTMO(o)=(uri,id);
+	 return u+ "#"+ itoa(i);
+	end;
+
+
+create function TMURI(TM_Object o, Charstring src)->Charstring
+/*Giving an unique URI of each TM_Object as a sum of the ontology URI and its unique number*/
+as select src + "#" + itoa(id) from integer id where idTMO(o)=(src, id); 
+
+create function topicFile(TM_Object o)-> Charstring
+as select src from Charstring src, Charstring turi where TMURI(o,src)=turi;
+
+create function topicidno(charstring URI, TM_object t)-> integer
+/*Retrieving the unique number of a TM_Object coming from a xtm file with the URI*/
+as
+	select idno from integer idno where (URI, idno) = idTMO(t);
+
+
+create function topicnumbered(charstring URI, integer idn)-> TM_Object
+/*Retrieving the TM_Object coming from a xtm file with the URI and having the unique number idn within the file*/
+as
+	select o from TM_object o where idTMO(o)=(URI, idn); 

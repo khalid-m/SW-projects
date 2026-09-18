@@ -1,0 +1,290 @@
+create function LstManifest()->Charstring as stored;
+
+
+/*old syntax 
+add LstManifest()="./regress/data/simple2/manifest.n3";
+add LstManifest()="./regress/data/unsaid-inference/manifest.n3";
+*/
+
+/*languae other than english
+add LstManifest()="./regress/data/i18n/manifest.ttl";
+*/
+
+/*unsuppoted result file format 'srx'
+add LstManifest()="./regress/data/rf1/manifest.ttl";
+*/
+
+add LstManifest()="./regress/data/Optional/manifest.ttl";
+add LstManifest()="./regress/data/Expr2/manifest.n3";
+add LstManifest()="./regress/data/ValueTesting/manifest.n3";
+add LstManifest()="./regress/data/examples/manifest.n3";
+add LstManifest()="./regress/data/sort/manifest.ttl";
+add LstManifest()="./regress/data/ExprBuiltins/manifest.ttl";
+add LstManifest()="./regress/data/survey/manifest.ttl";
+add LstManifest()="./regress/data/regex/manifest.n3";
+add LstManifest()="./regress/data/TypePromotion/manifest.ttl";
+add LstManifest()="./regress/data/SyntaxFull/manifest.ttl";
+add LstManifest()="./regress/data/Select/manifest.ttl";
+add LstManifest()="./regress/data/Expr1/manifest.n3";
+add LstManifest()="./regress/data/local-constr/manifest.n3";
+add LstManifest()="./regress/data/bound/manifest.n3";
+add LstManifest()="./regress/data/Sorting/manifest.n3";
+add LstManifest()="./regress/data/source-named/manifest.n3";
+add LstManifest()="./regress/data/Syntax/manifest.n3";
+add LstManifest()="./regress/data/ExprEquals/manifest.n3";
+
+create function SkipTestCases()->Charstring as stored;
+create function NotSkip(Charstring x)->Boolean as 
+	select notany(select x=in(SkipTestCases()));
+/*
+add SkipTestCases()="dawg-select-2";
+add SkipTestCases()="sorting-one-of-one-column";
+add SkipTestCases()="extendedType-literal-ne";
+*/
+
+create function Approved(Charstring manifest, Resource entry)->Resource rslt as
+		select rslt where rdf_tr_c(manifest)=<entry,
+		uri("<http://www.w3.org/2001/sw/DataAccess/tests/test-dawg#approval>"),
+		rslt>;
+
+/*name, data, result, approved, tested?, ??*/
+create function TestInfo(Literal)-><Literal,Literal,Literal,Literal,Literal,Literal> as stored;
+create function SaveTestInfo()->
+	<Literal rq, Literal name, Literal data, Literal rslt,Literal approval, Literal pass> as
+begin
+	declare Resource mf_name,Resource mf_action,Resource mf_result,
+				Resource qt_query, Resource qt_data, Resource dawg_approval, Literal dawg_approved;
+	set mf_name=uri("http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#name");
+	set mf_action=uri("http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#action");
+	set mf_result=uri("http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#result");
+	set qt_query=uri("http://www.w3.org/2001/sw/DataAccess/tests/test-query#query");
+	set qt_data=uri("http://www.w3.org/2001/sw/DataAccess/tests/test-query#data");
+	set dawg_approval=uri("http://www.w3.org/2001/sw/DataAccess/tests/test-dawg#approval");
+	set dawg_approved="http://www.w3.org/2001/sw/DataAccess/tests/test-dawg#Approved";
+	
+	for each Charstring manifest where LstManifest()=manifest 
+	begin
+		for each Resource entry, Resource action,
+			Resource rq, Resource name, Resource data, Resource rslt
+			where rdf_tr_c(manifest)=<entry,mf_name,name> and
+					rdf_tr_c(manifest)=<entry,mf_action,action> and
+					rdf_tr_c(manifest)=<entry,mf_result,rslt> and
+					rdf_tr_c(manifest)=<action,qt_query,rq> and
+					rdf_tr_c(manifest)=<action,qt_data,data> and
+					NotSkip(cast (name as Charstring))
+		begin
+			declare Charstring a, Literal approval;
+			
+			set a = "NotApproved";
+			
+			select uid(a) into approval from Resource a
+			where rdf_tr_c(manifest)=<entry,dawg_approval,a>;	
+			
+			if approval=nil then
+				set a = "Unknown";
+			if approval=dawg_approved then
+				set a = "Approved"; 
+	
+			set TestInfo(uid(rq))=
+					<lid(name),uid(data),uid(rslt),a,"NotTested","">;
+			/*result <rq,name,data,rslt,a,"NotTested">;*/
+		end;
+	end;
+end;
+
+create function ResultInfo(Integer)->Bag of Object as stored;
+create function SaveResultInfo(Charstring fn)->Integer as
+begin
+	declare Resource rs_solution, Resource rs_binding, 
+					Resource rs_value, Resource rs_variable, Integer num;
+		
+	set rs_solution = uri("http://www.w3.org/2001/sw/DataAccess/tests/result-set#solution");		
+	set rs_binding = uri("http://www.w3.org/2001/sw/DataAccess/tests/result-set#binding");
+	set rs_value = uri("http://www.w3.org/2001/sw/DataAccess/tests/result-set#value");
+	set rs_variable = uri("http://www.w3.org/2001/sw/DataAccess/tests/result-set#variable");
+	
+	set num = 0;
+	for each Resource root, Resource solution
+	where rdf_tr_c(fn)=<root,rs_solution,solution>
+	begin
+		set num = num+1;
+		for each Resource binding, Object value
+		where rdf_tr_c(fn)=<solution,rs_binding,binding> and
+					rdf_tr_c(fn)=<binding,rs_value,value>
+		begin
+			add ResultInfo(num)=(value);
+		end;
+	end;
+	
+	result num;
+end;
+
+create function CmpBags(Bag a, Vector b)->Bag of Boolean as 
+begin
+	for each Object x	where x=in(b)
+	begin
+		/*if name(typeof(x))="RESOURCE" then set xx=x
+		else set xx=OBJ(x);*/
+		/*print("+++++");print(x);print("+++++");*/
+		if x=in(a) or fltr(isBlnk(cast (x as resource))) then
+			result true;
+
+	end;
+end;
+
+create function CmpQueryResult(Charstring data, Charstring rq, Charstring rslt)->
+		Integer as
+begin
+	declare Integer num, Integer match, Integer got;
+	
+	set num = SaveResultInfo(rslt);
+	set match = num;
+	set got = 0;
+	
+	/*debug query result*/
+	print("----------------------standard result----------------------");
+	for each Integer x where x=iota(1,num)
+	begin
+		print(concatagg(inject(ResultInfo(x),',')));
+	end;
+	print("-----------------------------------------------------------");
+	
+	/*set rdf_src()=data;*/
+	print("----------------------result----------------------");
+	for each Vector v where v=sparql_from_file(data,cache_rdf_source(),rq)
+	begin
+		declare Integer bStop;
+		set bStop = 0;
+		print(v); /*debug query result*/
+		set got = got + 1;
+		for each Integer x where x=iota(1,num) and bStop = 0
+		begin
+			/*print("==============Debug===============")
+			print(count(in(v)));
+			print(count(ResultInfo(x)));
+			print(ResultInfo(x));
+			print(v);
+			/*print(count(CmpBags(ResultInfo(x),v)));*/
+			
+			if bStop=0 /*and count(in(v))=count(ResultInfo(x))*/ and count(CmpBags(ResultInfo(x),v))>=count(v) then
+			begin
+				set match = match - 1;
+				set bStop = 1;
+			end;
+		end;			
+	end;
+	print("--------------------------------------------------");
+			
+	remove ResultInfo(i)=o from Integer i, Object o;
+	
+	/*
+	print(got);
+	print(match);
+	print(num);
+	*/
+	
+	if num=0 then
+		if got=0 then
+			result 0
+		else
+		  result 1
+	else
+		if got=num then
+			result match;
+end;
+
+create function RunTest(Charstring InputedOpt)->Boolean as
+begin
+	declare Integer passed;
+	
+	for each Literal rq, Literal name, 
+						Literal data, Literal rslt,Literal pass, Literal reason, Charstring Opt
+	where TestInfo(rq)=<name,data,rslt,Opt,pass,reason> and Opt=InputedOpt
+	begin
+		print("<-------------"+cast (name as Charstring)+"-------------->");
+		/*print(data);print(rq);print(rslt); /*print data, query and result filename*/
+		set LastErrorMsg()="Result does not match.";
+		set passed=0;
+		if (CmpQueryResult(cast (data as Charstring),
+					cast (rq as Charstring), cast (rslt as Charstring))=0) then
+			set passed=1;
+		if (passed=1) then
+		begin
+			set TestInfo(rq)=<name,data,rslt,Opt,"Passed","">;
+			print("<-------------Passed-------------->");
+		end
+		else
+		begin
+			set TestInfo(rq)=<name,data,rslt,Opt,"Failed",LastErrorMsg()>;
+			print("<*************Failed**************>");
+		end;
+		print("");
+	end;
+end;
+
+create function RunOneTestCase(Charstring name)->Boolean as
+begin
+	declare Integer passed;
+	
+	for each Literal rq,
+						Literal data, Literal rslt,Literal pass, Literal reason, Charstring Opt
+	where TestInfo(rq)=<name,data,rslt,Opt,pass,reason>
+	begin
+		print("<-------------"+cast (name as Charstring)+"-------------->");
+		print(data);print(rq);print(rslt); /*print data, query and result filename*/
+		set LastErrorMsg()="Result does not match.";
+		set passed=0;
+		if (CmpQueryResult(cast (data as Charstring),
+					cast (rq as Charstring), cast (rslt as Charstring))=0) then
+			set passed=1;
+		if (passed=1) then
+		begin
+			set TestInfo(rq)=<name,data,rslt,Opt,"Passed","">;
+			print("<-------------Passed-------------->");
+		end
+		else
+		begin
+			set TestInfo(rq)=<name,data,rslt,Opt,"Failed",LastErrorMsg()>;
+			print("<*************Failed**************>");
+		end;
+		print("");
+	end;
+end;
+
+/*****************/
+/* Run testcases */
+SaveTestInfo();
+
+
+runtest("Approved");
+runtest("Unknown");
+/*runtest("NotApproved");*/
+
+/*****************/
+/*  Show result  */
+print("<----------------Passed---------------->");
+in(sortbagby((select approval,name from Literal rq,Literal name,Literal data,Literal rslt,Literal approval,Literal reason
+where TestInfo(rq)=<name,data,rslt,approval,"Passed",reason>),1,"dec"));
+
+print("<----------------Failed---------------->");
+in(sortbagby((select reason,approval,name from Literal rq,Literal name,Literal data,Literal rslt,Literal approval,Literal reason
+where TestInfo(rq)=<name,data,rslt,approval,"Failed",reason>),{1,2},{"dec","dec"}));
+
+/*
+print("<----------------NotTested---------------->");
+in(sortbagby((select approval,name from Literal rq,Literal name,Literal data,Literal rslt,Literal approval,Literal reason
+where TestInfo(rq)=<name,data,rslt,approval,"NotTested",reason>),1,"dec"));
+*/
+
+/*
+The following test cases fails due to 
+1. incorrect standard result
+2. open issue
+
+"datatype-1"
+"Equality - 2 var - test equals"
+"LangMatches-4"
+"LangMatches-3"
+"dawg-select-2"
+*/
+

@@ -1,0 +1,68 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Ruslan Fomkin, UDBL
+ * $RCSfile: stream.structs.limited.2005.osql,v $
+ * $Revision: 1.10 $ $Date: 2008/09/04 13:26:04 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Regression test for ALEH project for streamed approach with 
+ * ontology implemented with use of structs, which represent objects in
+ * transient way. Wrapper streams events as structs. For each event particles
+ * are materialized as structs and added to event structs.
+ * Testing when no cost model for ALEH defined, i.e. default Amos cost model.
+ * Cuts query from 2005 paper.
+ ****************************************************************************
+ * $Log: stream.structs.limited.2005.osql,v $
+ * Revision 1.10  2008/09/04 13:26:04  ruslan
+ * takes in account that partial evaluation of vector is in basic
+ *
+ * Revision 1.9  2008/09/03 11:24:23  ruslan
+ * Implementations of the both analyses are moved in one file and function names correspond to the thesis
+ *
+ * Revision 1.8  2008/08/18 11:59:47  ruslan
+ * names are corrected according the schema in the thesis
+ *
+ * Revision 1.7  2008/05/25 15:26:25  ruslan
+ * cost hints for wrapper functions
+ *
+ * Revision 1.6  2008/05/25 15:08:01  ruslan
+ * cost hint for wrapper functions
+ *
+ * Revision 1.5  2008/05/19 15:02:02  ruslan
+ * removing type check affects costs
+ *
+ * Revision 1.4  2008/05/13 09:02:05  ruslan
+ * for correct cost model of multidirectional. one more case is tested in regression test
+ *
+ * Revision 1.3  2008/02/28 13:14:37  ruslan
+ * using sobjects
+ *
+ * Revision 1.2  2008/01/10 11:02:48  ruslan
+ * current regress for 2005 moved to the main regress, which is part of main Amos regression test
+ *
+ * Revision 1.1  2008/01/10 10:52:34  ruslan
+ * working version for cuts from Christian's paper (2005)
+ *
+ ****************************************************************************/
+
+cd('regress');
+
+create function idOptAllCuts() -> integer as
+select eventid(ev) from event ev where 
+	ev=optfourcuts("../../wrappers/ROOTWrap/t.root");
+
+lisp;
+(checkequal "Checking optfourcuts."
+	    ((lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'idoptallcuts->integer)) 
+	      '(2 8))
+	     '(9416165 1140480000))
+	    ((osql "idoptallCuts();")
+	     '((140) (1285) (2202) (2247) (2526) (3572) (3969) (5809) (6637) 
+	       (7515) (8175) (8340) (11243) (11984) (12093) (12497) (13387) 
+	       (14539) (14842) (15357) (15579) (15815) (16818) (17051) (17562)
+	       (19166) (20761) (22290) (22926) (23524) (23583) (24455))))
+(princ "Time to execute paper cuts 2005 without ALEH cost model ")
+(print (timer2 (osql "idOptAllCuts();")))
+:osql

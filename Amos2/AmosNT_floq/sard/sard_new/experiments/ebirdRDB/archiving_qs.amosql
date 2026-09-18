@@ -1,0 +1,1132 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Silvia Stefanova UDBL
+ * $RCSfile: archiving_qs.amosql,v $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: SparQL queries to archive RDFS views of RDB
+ ******************************************************************************/
+
+
+defineDS("ebirdDS",
+         "jdbc:microsoft:sqlserver://localhost;DatabaseName=ebird",
+        "com.microsoft.jdbc.sqlserver.SQLServerDriver",
+         "ebird",
+         "ebird",
+         "ebird",
+         "ebird");
+
+
+Defineupv("ebirdDS","bird", "http://user.it.uu.se/~udbl/sard/ebird");
+
+DSConnect("bird");	
+
+wrapRDB(jdbcOfDS("ebirdDS"), "ebird", "ebird", "ebird");
+assign_typeMap("bird", "ebird","ebird");
+
+/*Mappings*/
+set cMap("taxon","bird")="http://rs.tdwg.org/dwc/terms/Taxon";   
+set cMap("location","bird")="http://purl.org/dc/terms/Location";   
+set cMap("event","bird")="http://rs.tdwg.org/dwc/terms/Event";
+set cMap("occurrence","bird")="http://rs.tdwg.org/dwc/terms/Occurrence";
+
+set pMap("taxon","tid","bird")="http://user.it.uu.se/~udbl/sard/ebird/taxon_tid";
+set pMap("taxon","scientificName","bird")="http://rs.tdwg.org/dwc/terms/scientificName";
+
+set pMap("taxon","acceptedNameUsage","bird")="http://rs.tdwg.org/dwc/terms/acceptedNameUsage";
+set pMap("taxon","class","bird")="http://rs.tdwg.org/dwc/terms/class";
+set pMap("taxon","taxon_order","bird")="http://rs.tdwg.org/dwc/terms/order";
+set pMap("taxon","family","bird")="http://rs.tdwg.org/dwc/terms/family";
+set pMap("taxon","genus","bird")="http://rs.tdwg.org/dwc/terms/genus";
+
+
+set pMap("location","lid","bird")="http://user.it.uu.se/~udbl/sard/ebird/location_lid";
+set pMap("location","country","bird")="http://rs.tdwg.org/dwc/terms/country";
+set pMap("location","countryCode","bird")="http://rs.tdwg.org/dwc/terms/countryCode";
+set pMap("location","stateProvince","bird")= "http://rs.tdwg.org/dwc/terms/stateProvince";
+set pMap("location","decimalLatitude","bird")="http://rs.tdwg.org/dwc/terms/decimalLatitude";
+set pMap("location","decimalLongitude","bird")="http://rs.tdwg.org/dwc/terms/decimalLongitude";
+
+
+set pMap("event","eid","bird")="http://user.it.uu.se/~udbl/sard/ebird/event_eid";
+set pMap("event","eventID","bird")="http://rs.tdwg.org/dwc/terms/eventID";
+set pMap("event","samplingProtocol","bird")="http://rs.tdwg.org/dwc/terms/samplingProtocol";
+set pMap("event","samplingEffort","bird")="http://rs.tdwg.org/dwc/terms/samplingEffort";
+set pMap("event","eventDate","bird")="http://rs.tdwg.org/dwc/terms/eventDate";
+set pMap("event","eventTime","bird")="http://rs.tdwg.org/dwc/terms/eventTime";
+set pMap("event","location","bird")="http://user.it.uu.se/~udbl/sard/ebird/location_of_event";
+
+set pMap("occurrence","oid","bird")="http://user.it.uu.se/~udbl/sard/ebird/occurrence_oid";
+set pMap("occurrence","recordedBy","bird")="http://rs.tdwg.org/dwc/terms/recordedBy";
+set pMap("occurrence","individualCount","bird")="http://rs.tdwg.org/dwc/terms/individualCount";
+set pMap("occurrence","taxon","bird")="http://user.it.uu.se/~udbl/sard/ebird/taxon_of_occurrence";
+set pMap("occurrence","event","bird")="http://user.it.uu.se/~udbl/sard/ebird/event_of_occurrence";
+set pMap("occurrence","taxon","bird")="http://user.it.uu.se/~udbl/sard/ebird/taxon_of_occurrence";
+
+set rMap("occurrence","event","event","bird")= "http://user.it.uu.se/~udbl/sard/ebird/event_of_occurrence";
+set rMap("occurrence","taxon","taxon","bird")= "http://user.it.uu.se/~udbl/sard/ebird/taxon_of_occurrence";
+set rMap("event","location","location","bird")= "http://user.it.uu.se/~udbl/sard/ebird/location_of_event";
+
+ViewRDB("bird");
+
+parteval('pmap');
+parteval('cmap');
+parteval('rowid');
+parteval('like');
+parteval('rmap');
+parteval('rmmMap');
+parteval('typeMap');
+parteval('xsd_Shortmap');
+parteval("valueid");
+parteval("OBJECT.OBJECT.!=->BOOLEAN");
+lisp;
+(setq _sq_always_return_vectors_ nil) 
+(setq _el-corcl_ t)
+(setq _elcon_ifnounif_ t)
+(setq _rewrite_row_and_like_ t)
+(setq _unif_ t)
+(setq _gct_ t)
+:osql   
+
+set_bijective_function("rowid",true);
+
+/*Archiving queries expressed by ARCHIVE (DESCRIBE similar) */
+
+/*1) Archive the whole DB contenet*/
+
+
+/*1.1)Archive the whole database --->(right) Describe query*/
+set :q1="ARCHIVE ?s 
+	 FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	 WHERE {?s ?p ?o}";
+
+create function q11()->(Charstring,Charstring,Charstring)
+as select ss,pp,oo from
+Charstring pp,Charstring oo,Charstring ss
+where bird()=(ss,pp,oo);
+
+1995913
+14.847 s
+
+
+/*1.2)Using Symetric (double side) Describe */ 
+/*Problems: */
+
+create function q12()->(Charstring,Charstring,Charstring)
+as select ss,pp,oo from Charstring s,Charstring p, Charstring o,
+Charstring s1,Charstring p1,Charstring pp,Charstring oo,Charstring ss
+where (s,p,o) in bird() and (s1,p1,s) in bird()
+and (bird()=(ss,pp,oo) and ss=s ) or (bird()=(ss,pp,oo) and oo=s);
+
+ count(remove_null(q12()));
+1995913
+109.627 s
+
+
+/*2)Archive the taxonomy ---> Describe query*/
+set :q2= "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>
+ 	  PREFIX dwc: <http://rs.tdwg.org/dwc/terms/>
+	  ARCHIVE ?s 
+	  FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	  WHERE {?s rdf:type dwc:Taxon.}";
+
+/*2.1)Using one-directional (right) Describe */ 
+create function q21()->(Charstring,Charstring,Charstring)
+as select ss,pp,oo from Charstring s,
+Charstring ss,Charstring pp,Charstring oo
+where bird()=(s, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", "http://rs.tdwg.org/dwc/terms/Taxon")
+      and  ((bird()=(ss,pp,oo) and ss=s);
+
+
+/*2.2)Using two-directional (symetrical) Describe */ 
+create function q22()->(Charstring,Charstring,Charstring)
+as select ss,pp,oo from Charstring s,
+Charstring ss,Charstring pp,Charstring oo
+where bird()=(s, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", "http://rs.tdwg.org/dwc/terms/Taxon")
+      and  ((bird()=(ss,pp,oo) and ss=s) or (bird()=(ss,pp,oo) and oo=s));
+
+count(remove_null(q22()));
+355 346
+6.75 s
+
+
+/*3)Archive the whole DB content without the taxonomy ---> Describe query */
+set :q3= "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+ 	  PREFIX dwc: <http://rs.tdwg.org/dwc/terms/>
+	  ARCHIVE ?s 
+	  FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	  WHERE {?s rdf:type ?o.
+		FILTER (?o != dwc:Taxon) }";
+
+/*31)Using Right Describe */ 
+create function q31()->(Charstring,Charstring,Charstring)
+as select ss,pp,oo from Charstring s,Charstring o,
+Charstring ss,Charstring pp,Charstring oo
+where bird()=(s, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", o) and
+NEQ(o,"http://rs.tdwg.org/dwc/terms/Taxon") 
+and (bird()=(ss,pp,oo) and ss=s);
+
+/*3.2)Using Symetric (double side) Describe */ 
+/*Problems: duplicates from the invesre properties that coincide
+	with non-inverse properties of the neighbour class*/
+
+create function q32()->(Charstring,Charstring,Charstring)
+as select ss,pp,oo from Charstring s,Charstring o,
+Charstring ss,Charstring pp,Charstring oo
+where bird()=(s, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", o) and
+NEQ(o,"http://rs.tdwg.org/dwc/terms/Taxon") 
+and ( (bird()=(ss,pp,oo) and ss=s) or (bird()=(ss,pp,oo)and oo=s) );
+
+count(remove_null(q32()));
+2 755 371
+25.188 s
+
+
+/*4) Archive all birds observations in terms of 'Event' and 'Occurrence'
+without the properties 'samplingProtocol' of 'Event' and
+'recordedBy' of 'Occurrence' ---> CONSTRUCT query */
+
+set :q4= "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>
+ 	  PREFIX dwc: <http://rs.tdwg.org/dwc/terms/>
+	  PREFIX ebird: <http://user.it.uu.se/~udbl/sard/ebird/>
+	  ARCHIVE {?s1 ?p1 ?o1.
+ 		   ?s2 ?p2 ?o2 } 
+	  FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	  WHERE {?s1 rdf:type dwc:Event.
+		 ?s2 rdf:type dwc:Occurrence.
+		 ?s2 ebird:event_of_occurrence ?s1.
+		 ?s1 ?p1 ?o1.
+		 FILTER (?p1 != dwc:samplingProtocol).
+		 ?s2 ?p2 ?o2.
+		FILTER (?p2 != dwc:recordedBy) }";
+
+create function q4()->(Charstring,Charstring,Charstring) 
+as select ss,pp,oo from Charstring ss,Charstring pp,Charstring oo,
+ Charstring s1,Charstring p1,Charstring o1, Charstring s2,Charstring p2,Charstring o2   
+where bird()=(s1,p1,o1) 
+and bird()=(s1, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", "http://rs.tdwg.org/dwc/terms/Event") 
+and bird()=(s2, "http://user.it.uu.se/~udbl/sard/ebird/event_of_occurrence", s1) 
+and NEQ (p1,"http://rs.tdwg.org/dwc/terms/samplingProtocol")
+and bird()=(s2,p2,o2) 
+and bird()=(s2, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", "http://rs.tdwg.org/dwc/terms/Occurrence") 
+and NEQ (p2,"http://rs.tdwg.org/dwc/terms/recordedBy")
+and ((ss=s1 and pp=p1 and oo=o1) or (ss=s2 and pp=p2 and oo=o2));
+
+ count(remove_null(q4()));
+14 747 732
+138.951 s
+
+count(q4());
+16 258 320
+133.687 s
+
+
+/*5) Archive all the dates on which observations have been made --> CONSTRUCT query*/
+
+set :q5= "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>
+ 	  PREFIX dwc: <http://rs.tdwg.org/dwc/terms/>
+	  ARCHIVE {?s dwc:eventDate ?o }
+	  FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	  WHERE {?s rdf:type dwc:Event.
+		 ?s dwc:eventDate ?o }";
+
+create function q5()->(Charstring,Charstring,Charstring) 
+as select ss,pp,oo from Charstring s,Charstring o, Charstring ss, Charstring pp, Charstring oo 
+where bird()=(s, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", "http://rs.tdwg.org/dwc/terms/Event")
+and bird()=(s, "http://rs.tdwg.org/dwc/terms/eventDate", o) 
+and (ss=s and pp="http://rs.tdwg.org/dwc/terms/eventDate" and oo=o);
+
+
+/*6) Archive all the dates (eventDate) and times (eventTime), and the person (recordedBy) 
+who made observations --> CONSTRUCT query */
+
+set :q6= "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+ 	  PREFIX dwc: <http://rs.tdwg.org/dwc/terms/>
+	  PREFIX saq: <http://user.it.uu.se/~udbl/sard/ebird/>
+	  ARCHIVE { ?s dwc:eventDate ?o.
+		    ?s dwc:eventTime ?o1.
+   	            ?s1 dwc:recordedBy ?o2 }
+	  FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	  WHERE {?s rdf:type dwc:Event .
+		 ?s dwc:eventDate ?o.
+		 ?s dwc:eventTime ?o1.
+		 ?s1 rdf:type dwc:Occurrence .
+		 ?s1 saq:event_of_occurrence ?s.
+		 ?s1 dwc:recordedBy ?o2 }";
+
+create function q6()->(Charstring,Charstring,Charstring) 
+as select ss,pp,oo from Charstring s,Charstring o,Charstring o2,
+Charstring s1,Charstring o1,Charstring ss,Charstring pp,Charstring oo   
+ where bird()=(s, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://rs.tdwg.org/dwc/terms/Event')
+   and bird()=(s, 'http://rs.tdwg.org/dwc/terms/eventDate', o)
+   and bird()=(s, 'http://rs.tdwg.org/dwc/terms/eventTime', o1)
+   and bird()=(s1, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://rs.tdwg.org/dwc/terms/Occurrence')
+   and bird()=(s1, 'http://user.it.uu.se/~udbl/sard/ebird/event_of_occurrence', s)
+   and bird()=(s1, 'http://rs.tdwg.org/dwc/terms/recordedBy', o2)
+   and ((ss=s and pp= 'http://rs.tdwg.org/dwc/terms/eventDate' and oo=o)
+	or (ss=s and pp= 'http://rs.tdwg.org/dwc/terms/eventTime' and oo=o1)
+	or (ss=s1 and pp= 'http://rs.tdwg.org/dwc/terms/recordedBy' and oo=o2));
+
+/*7)Archive classes having the word 'occur' in the class URI (like '*occur*') */
+
+set :q7= "ARCHIVE ?s
+	 FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	 WHERE {?s ?p ?o.
+	 FILTER REGEX ( str(?s), '*Occur*')} ";
+
+
+create function q7()->(Charstring,Charstring,Charstring)
+as select ss,pp,oo
+  from Charstring s, Charstring p, Charstring o,
+	Charstring ss,Charstring pp,Charstring oo 
+ where bird()=(s, p, o)
+ and like(s,'*Occur*')
+ and ( bird()= (ss,pp,oo) and ss=s and pp=p and oo=o);
+
+
+/*8) Archive these properties in the DB which concern latitude and longitude 
+    --> CONSTRUCT query */
+
+set :q8= " PREFIX dc: <http://purl.org/dc/terms>
+	  ARCHIVE {?s ?p ?o.
+		   ?s ?p1 ?o1 }
+	  FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	  WHERE {?s ?p ?o.
+		FILTER REGEX (?p, '*Latitude').
+		 ?s1 ?p1 ?o1
+		FILTER REGEX (?p1, '*Longitude') }";
+
+create function q8()->(Charstring,Charstring,Charstring)
+as select ss,pp,oo
+  from Charstring s, Charstring p1, Charstring o1, Charstring p, Charstring o,
+	Charstring ss, Charstring pp, Charstring oo
+ where bird()=(s, p, o)
+   and like(p,'*Latitude')
+   and bird()=(s, p1, o1)
+   and like(p1,'*Longitude')
+   and ((ss=s and pp=p and oo=o) or (ss=s and pp=p1 and oo=o1));
+
+
+/*9)Archive all species from the bird family 'Ardeidae' that 
+have ben seen in state province of New York --> DESCRIBE query */
+
+set :q9= "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+ 	  PREFIX dwc: <http://rs.tdwg.org/dwc/terms/>
+	  PREFIX dc: <http://purl.org/dc/terms/>
+	  PREFIX saq: <http://user.it.uu.se/~udbl/sard/ebird/>
+	  ARCHIVE ?s1
+	  FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	  WHERE {?s1 rdf:type dwc:Taxon.
+		 ?s1 dwc:family 'Ardeidae'.
+		 ?s2 rdf:type dc:Location .
+		 ?s2 dwc:stateProvince 'New_York'.
+		 ?s3 rdf:type dwc:Event.
+		 ?s3 saq:location_of_event ?s2.
+		 ?s4 rdf:type dwc:Occurrence .
+		 ?s4 saq:event_of_occurrence ?s3.
+		 ?s4 saq:taxon_of_occurrence ?s1    }";
+
+create function q9()->(Charstring,Charstring,Charstring) 
+as select ss, pp, oo
+  from Charstring s4, Charstring s2, Charstring s3, Charstring s1,
+	Charstring ss, Charstring pp, Charstring oo
+ where bird()=(s1, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://rs.tdwg.org/dwc/terms/Taxon')
+   and bird()=(s1, 'http://rs.tdwg.org/dwc/terms/family', 'Ardeidae')
+   and bird()=(s2, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://purl.org/dc/terms/Location')
+   and bird()=(s2, 'http://rs.tdwg.org/dwc/terms/stateProvince', 'New_York')
+   and bird()=(s3, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://rs.tdwg.org/dwc/terms/Event')
+   and bird()=(s3, 'http://user.it.uu.se/~udbl/sard/ebird/location_of_event', s2)
+   and bird()=(s4, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://rs.tdwg.org/dwc/terms/Occurrence')
+   and bird()=(s4, 'http://user.it.uu.se/~udbl/sard/ebird/event_of_occurrence', s3)
+   and bird()=(s4, 'http://user.it.uu.se/~udbl/sard/ebird/taxon_of_occurrence', s1)
+   and (bird()=(ss, pp, oo) and ss=s1);
+
+
+/*10)Archive all species from the bird family 'Ardeidae' and the locations where 
+they have ben seen during the period from May to September  --> DESCRIBE query **/
+
+set :q10= "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+ 	  PREFIX dwc: <http://rs.tdwg.org/dwc/terms/>
+	  PREFIX dc: <http://purl.org/dc/terms/>
+	  PREFIX saq: <http://user.it.uu.se/~udbl/sard/ebird/>
+	  ARCHIVE ?s1 ?s2
+	  FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	  WHERE {?s1 rdf:type dwc:Taxon.
+		 ?s1 dwc:family 'Ardeidae'.
+		 ?s2 rdf:type dc:Location.
+		 ?s3 rdf:type dwc:Event.
+		 ?s3 saq:location_of_event ?s2.
+		 ?s4 rdf:type dwc:Occurrence.
+		 ?s4 saq:event_of_occurrence ?s3.
+		 ?s4 saq:taxon_of_occurrence ?s1.
+		 ?s3 dwc:eventDate ?d1.
+		 ?s3 dwc:eventDate ?d2.
+		 FILTER (?d1 >= '2002-05-01').
+                 FILTER (?d2 <= '2002-09-30')  }";
+
+create function q10()->(Charstring,Charstring,Charstring) 
+as select ss, pp, oo
+  from Charstring s4, Charstring s2, Charstring s3, Charstring s1,
+	Charstring d1, Charstring d2, Charstring oo, Charstring pp, Charstring ss
+ where bird()=(s1, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://rs.tdwg.org/dwc/terms/Taxon')
+   and bird()=(s1, 'http://rs.tdwg.org/dwc/terms/family', 'Ardeidae')
+   and bird()=(s2, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://purl.org/dc/terms/Location')
+   and bird()=(s3, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://rs.tdwg.org/dwc/terms/Event')
+   and bird()=(s3, 'http://user.it.uu.se/~udbl/sard/ebird/location_of_event', s2)
+   and bird()=(s4, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://rs.tdwg.org/dwc/terms/Occurrence')
+   and bird()=(s4, 'http://user.it.uu.se/~udbl/sard/ebird/event_of_occurrence', s3)
+   and bird()=(s4, 'http://user.it.uu.se/~udbl/sard/ebird/taxon_of_occurrence', s1)
+   and bird()=(s3, 'http://rs.tdwg.org/dwc/terms/eventDate', d1)
+   and bird()=(s3, 'http://rs.tdwg.org/dwc/terms/eventDate', d2)
+   and d1 > '2002-04-30' and d2 < '2002-09-01'
+   and ((bird()=(ss, pp, oo) and ss=s1 ) or (bird()=(ss, pp, oo) and ss=s2 ));
+
+/*11)Archive all content having a property like '*code' with a value USA */
+
+set :q11 ="ARCHIVE ?s
+	   FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	   WHERE{?s ?p 'USA'.
+	   FILTER REGEX (?p, '*Code')} "; 
+
+create function q11()->(Charstring,Charstring,Charstring)
+as select ss,pp,oo
+  from Charstring s, Charstring p,
+ Charstring oo, Charstring pp, Charstring ss
+ where bird()=(s, p, 'USA')
+   and like(p,'*Code')
+   and (bird()=(ss, pp, oo) and ss=s );
+
+/*12)Archive all content having a property with value like 'P2*'*/
+
+set :q12="ARCHIVE ?s
+	 FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	WHERE{?s ?p ?o.
+       FILTER REGEX (?o, 'P2*')} ";
+
+create function q12()->(Charstring,Charstring,Charstring)
+as select ss,pp,oo
+  from Charstring s, Charstring p,Charstring o,
+ Charstring oo, Charstring pp, Charstring ss
+ where bird()=(s, p, o)
+   and like(o,'P2*')
+   and (bird()=(ss, pp, oo) and ss=s and pp=p and oo=o );
+
+
+/*13)Archive all content having a property with value different than 'Florida'*/
+set :q13="ARCHIVE ?s
+	 FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	WHERE{?s ?p ?o.
+       FILTER (?o != 'Florida')} ";
+
+create function q13()-> (Charstring, Charstring, Charstring)
+as select ss,pp,oo
+  from Charstring s, Charstring p, Charstring o,
+	Charstring oo, Charstring pp, Charstring ss 
+ where bird()=(s, p, o)
+   and NEQ(o,'Florida')
+and  (bird()=(ss, pp, oo) and ss=s and pp=p and oo=o );
+
+
+/*14)Archive all properties having URIs like '*country' */
+
+set :q14 = "ARCHIVE {?s ?p ?o}
+	   FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	   WHERE{?s ?p ?o.
+	    FILTER REGEX (?p, '*country')} ";
+
+create function q14()->(Charstring,Charstring,Charstring)
+as select ss, pp, oo
+  from Charstring s, Charstring p, Charstring o,
+ Charstring oo, Charstring pp, Charstring ss
+ where bird()=(s, p, o)
+ and like(p,'*country*')
+ and (bird()=(ss, pp, oo) and ss=s and pp=p and oo=o );
+
+
+
+
+
+
+/* eBird = 41.8 MB */
+
+defineDS("ebirdDS",
+         "jdbc:microsoft:sqlserver://localhost;DatabaseName=ebird",
+        "com.microsoft.jdbc.sqlserver.SQLServerDriver",
+         "ebird",
+         "ebird",
+         "ebird",
+         "ebird");
+
+
+Defineupv("ebirdDS","bird", "http://user.it.uu.se/~udbl/sard/ebird");
+
+DSConnect("bird");	
+
+wrapRDB(jdbcOfDS("ebirdDS"), "ebird", "ebird", "ebird");
+assign_typeMap("bird", "ebird","ebird");
+
+
+ 
+/*-----------------------------------------------------------------*/
+
+
+/* eBird = 166.87 MB */
+
+defineDS("ebird2007DS",
+         "jdbc:microsoft:sqlserver://localhost;DatabaseName=ebird2007",
+        "com.microsoft.jdbc.sqlserver.SQLServerDriver",
+         "ebird2007",
+         "ebird2007",
+         "ebird2007",
+         "ebird2007");
+
+Defineupv("ebird2007DS","bird", "http://user.it.uu.se/~udbl/sard/ebird");
+
+DSConnect("bird");	
+
+wrapRDB(jdbcOfDS("ebird2007DS"), "ebird2007", "ebird2007", "ebird2007");
+assign_typeMap("bird", "ebird2007","ebird2007");
+
+
+/*-----------------------------------------------------------------*/
+
+/* eBird = 341.52 MB */
+
+defineDS("ebird2009DS",
+         "jdbc:microsoft:sqlserver://localhost;DatabaseName=ebird2009",
+        "com.microsoft.jdbc.sqlserver.SQLServerDriver",
+         "ebird2009",
+         "ebird2009",
+         "ebird2009",
+         "ebird2009");
+
+Defineupv("ebird2009DS","bird", "http://user.it.uu.se/~udbl/sard/ebird");
+
+DSConnect("bird");	
+
+wrapRDB(jdbcOfDS("ebird2009DS"), "ebird2009", "ebird2009", "ebird2009");
+assign_typeMap("bird", "ebird2009","ebird2009");
+
+/*-----------------------------------------------------------------*/
+
+/* eBird = 593.152 MB */
+
+defineDS("ebird2003DS",
+         "jdbc:microsoft:sqlserver://localhost;DatabaseName=ebird2003",
+        "com.microsoft.jdbc.sqlserver.SQLServerDriver",
+         "ebird2003",
+         "ebird2003",
+         "ebird2003",
+         "ebird2003");
+
+Defineupv("ebird2003DS","bird", "http://user.it.uu.se/~udbl/sard/ebird");
+
+DSConnect("bird");	
+
+wrapRDB(jdbcOfDS("ebird2003DS"), "ebird2003", "ebird2003", "ebird2003");
+assign_typeMap("bird", "ebird2003","ebird2003");
+
+/*-----------------------------------------------------------------*/
+
+
+
+/*Mappings*/
+set cMap("taxon","bird")="http://rs.tdwg.org/dwc/terms/Taxon";   
+set cMap("location","bird")="http://purl.org/dc/terms/Location";   
+set cMap("event","bird")="http://rs.tdwg.org/dwc/terms/Event";
+set cMap("occurrence","bird")="http://rs.tdwg.org/dwc/terms/Occurrence";
+
+set pMap("taxon","tid","bird")="http://user.it.uu.se/~udbl/sard/ebird/taxon_tid";
+set pMap("taxon","scientificName","bird")="http://rs.tdwg.org/dwc/terms/scientificName";
+set pMap("taxon","acceptedNameUsage","bird")="http://rs.tdwg.org/dwc/terms/acceptedNameUsage";
+set pMap("taxon","class","bird")="http://rs.tdwg.org/dwc/terms/class";
+set pMap("taxon","taxon_order","bird")="http://rs.tdwg.org/dwc/terms/order";
+set pMap("taxon","family","bird")="http://rs.tdwg.org/dwc/terms/family";
+set pMap("taxon","genus","bird")="http://rs.tdwg.org/dwc/terms/genus";
+
+set pMap("location","lid","bird")="http://user.it.uu.se/~udbl/sard/ebird/location_lid";
+set pMap("location","country","bird")="http://rs.tdwg.org/dwc/terms/country";
+set pMap("location","countryCode","bird")="http://rs.tdwg.org/dwc/terms/countryCode";
+set pMap("location","stateProvince","bird")= "http://rs.tdwg.org/dwc/terms/stateProvince";
+set pMap("location","decimalLatitude","bird")="http://rs.tdwg.org/dwc/terms/decimalLatitude";
+set pMap("location","decimalLongitude","bird")="http://rs.tdwg.org/dwc/terms/decimalLongitude";
+
+set pMap("event","eid","bird")="http://user.it.uu.se/~udbl/sard/ebird/event_eid";
+set pMap("event","eventID","bird")="http://rs.tdwg.org/dwc/terms/eventID";
+set pMap("event","samplingProtocol","bird")="http://rs.tdwg.org/dwc/terms/samplingProtocol";
+set pMap("event","samplingEffort","bird")="http://rs.tdwg.org/dwc/terms/samplingEffort";
+set pMap("event","eventDate","bird")="http://rs.tdwg.org/dwc/terms/eventDate";
+set pMap("event","eventTime","bird")="http://rs.tdwg.org/dwc/terms/eventTime";
+
+set pMap("event","location","bird")="http://user.it.uu.se/~udbl/sard/ebird/location_of_event";
+
+set pMap("occurrence","oid","bird")="http://user.it.uu.se/~udbl/sard/ebird/occurrence_oid";
+set pMap("occurrence","recordedBy","bird")="http://rs.tdwg.org/dwc/terms/recordedBy";
+set pMap("occurrence","individualCount","bird")="http://rs.tdwg.org/dwc/terms/individualCount";
+set pMap("occurrence","taxon","bird")="http://user.it.uu.se/~udbl/sard/ebird/taxon_of_occurrence";
+
+set pMap("occurrence","event","bird")="http://user.it.uu.se/~udbl/sard/ebird/event_of_occurrence";
+set pMap("occurrence","taxon","bird")="http://user.it.uu.se/~udbl/sard/ebird/taxon_of_occurrence";
+
+set rMap("occurrence","event","event","bird")= "http://user.it.uu.se/~udbl/sard/ebird/event_of_occurrence";
+set rMap("occurrence","taxon","taxon","bird")= "http://user.it.uu.se/~udbl/sard/ebird/taxon_of_occurrence";
+set rMap("event","location","location","bird")= "http://user.it.uu.se/~udbl/sard/ebird/location_of_event";
+
+ViewRDB("bird");
+
+parteval('pmap');
+parteval('cmap');
+parteval('rowid');
+parteval('like');
+parteval('rmap');
+parteval('rmmMap');
+parteval('typeMap');
+parteval("OBJECT.OBJECT.!=->BOOLEAN");
+lisp;
+(setq _sq_always_return_vectors_ nil) 
+(setq _unif_ t)
+(setq _gct_ t)
+:osql  
+
+set_bijective_function("rowid",true);
+
+
+
+/*Archiving Queries:*/
+
+set :select_sch = "SELECT DISTINCT ?s1 ?p1 ?val1";
+set :where_sch = "?s1 ?p1 ?val1.
+		?cl  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2000/01/rdf-schema#Class>.
+		?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?cl. 
+		{FILTER (?s1 = ?cl).
+		 FILTER (?p1 =<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)}
+             UNION
+		{  ?p <http://www.w3.org/2000/01/rdf-schema#domain> ?cl.
+		   FILTER (?s1 = ?p).
+		  FILTER (?p1 =  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)}
+	      UNION
+		{?p <http://www.w3.org/2000/01/rdf-schema#domain> ?cl.
+		FILTER (?s1 = ?p).
+		FILTER (?p1 =<http://www.w3.org/2000/01/rdf-schema#domain>)}
+	    UNION
+		{?p <http://www.w3.org/2000/01/rdf-schema#domain> ?cl.
+		FILTER (?s1 = ?p).
+		FILTER (?p1 =<http://www.w3.org/2000/01/rdf-schema#range>)}  
+	     UNION 
+		{FILTER (?s1 = ?cl).
+		 FILTER (?p1 = <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY> ).}
+  	    UNION  
+		 {?cl  <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY> ?s1.
+	          FILTER (?p1 =  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)} 
+	     UNION
+		{  ?cl  <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY> ?s1.
+		  FILTER (?p1 = <http://www.w3.org/1999/02/22-rdf-syntax-ns#_1>).  } ";
+ 
+
+set :where_sch_old = "?s1 ?p1 ?val1.
+		?cl  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2000/01/rdf-schema#Class>.
+		?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?cl. 
+		{FILTER (?s1 = ?cl).
+		 FILTER (?p1 =<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)}
+             UNION
+		{  ?p <http://www.w3.org/2000/01/rdf-schema#domain> ?cl.
+		   FILTER (?s1 = ?p).
+		  FILTER (?p1 =  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)}
+	      UNION
+		{?p <http://www.w3.org/2000/01/rdf-schema#domain> ?cl.
+		FILTER (?s1 = ?p).
+		FILTER (?p1 =<http://www.w3.org/2000/01/rdf-schema#domain>)}
+	    UNION
+		{?p <http://www.w3.org/2000/01/rdf-schema#domain> ?cl.
+		FILTER (?s1 = ?p).
+		FILTER (?p1 =<http://www.w3.org/2000/01/rdf-schema#range>)}  
+	     UNION 
+		{FILTER (?s1 = ?cl).
+		 FILTER (?p1 = <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY> )}
+	     UNION
+		  {FILTER (?s1 = ?cl).
+                   FILTER (?p1 = <http://user.it.uu.se/~udbl/sard#FOREIGN_KEY>)}
+	     UNION
+ 		 {FILTER (?p1 = <http://user.it.uu.se/~udbl/sard#REFERENCES>).
+		  FILTER(?s1 = ?p).
+		  ?p <http://www.w3.org/2000/01/rdf-schema#domain> ?cl. }
+		UNION
+		 {?p  <http://user.it.uu.se/~udbl/sard#REFERENCES> ?fk.
+		  ?p <http://www.w3.org/2000/01/rdf-schema#domain> ?cl. 
+		  FILTER (?s1=?fk ).
+		 FILTER (?p1 =<http://www.w3.org/2000/01/rdf-schema#domain>) }
+	     UNION
+		 {?p  <http://user.it.uu.se/~udbl/sard#REFERENCES> ?fk.
+		  ?p <http://www.w3.org/2000/01/rdf-schema#domain> ?cl. 
+		  ?fk  <http://www.w3.org/2000/01/rdf-schema#domain> ?s1. 
+		 FILTER (?p1 =<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>) }
+	     UNION  
+		 {?cl  <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY> ?s1.
+	          FILTER (?p1 =  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)} 
+	     UNION
+		{  ?cl  <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY> ?s1.
+		  FILTER (?p1 = <http://www.w3.org/1999/02/22-rdf-syntax-ns#_1>).  } ";
+
+/*0)Archive the whole data (without the schema)*/
+
+set :q0="SELECT ?s ?p ?val
+	 FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	 WHERE {?s ?p ?val.
+		FILTER (?p !=  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>).
+		FILTER (?p != <http://www.w3.org/2000/01/rdf-schema#domain> ).
+		FILTER (?p != <http://www.w3.org/2000/01/rdf-schema#range>).
+		FILTER (?p != <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY>).
+		FILTER (?p != <http://user.it.uu.se/~udbl/sard#FOREIGN_KEY> ).
+		FILTER (?p != <http://user.it.uu.se/~udbl/sard#REFERENCES> ).
+		FILTER (?p != <http://www.w3.org/1999/02/22-rdf-syntax-ns#_1> ). }";
+
+eval("create function exec_q0()-><Charstring,Charstring,Literal> as " + parse_sparql(:q0)); 
+
+
+/*1)Archive the whole database*/
+
+set :q1="SELECT ?s ?p ?val
+	 FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	 WHERE {?s ?p ?val.}";
+
+eval("create function exec_q1()-><Charstring,Charstring,Literal> as " + parse_sparql(:q1)); 
+
+
+create function count_q1()->Integer as count(remove_null(exec_q1()));
+
+/*SARQ: 1 995 914; 6 047 669; 19 242 556; 39 874 996; 68 908 959*/
+/*D2RQ: 1 995 789; 6 047 560; 19 242 447; 39 874 887; 68 908 850 */
+
+/*Schema query 1, concerning metadata of q1*/
+set :q1_schema="SELECT DISTINCT ?s1 ?p1 ?val1
+		 FROM <http://user.it.uu.se/~udbl/sard/ebird>
+		 WHERE {?s ?p ?val.
+			?s1 ?p1 ?val1.
+			?cl  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2000/01/rdf-schema#Class>.
+			?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?cl. 
+			{FILTER (?s1 = ?cl).
+		 	FILTER (?p1 =<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)}
+             	  UNION
+			{?p <http://www.w3.org/2000/01/rdf-schema#domain> ?cl.
+		   	 FILTER (?s1 = ?p).
+		  	 FILTER (?p1 =  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)}
+	      	  UNION
+			{?p <http://www.w3.org/2000/01/rdf-schema#domain> ?cl.
+			 FILTER (?s1 = ?p).
+			 FILTER (?p1 =<http://www.w3.org/2000/01/rdf-schema#domain>)}
+	    	  UNION
+			{?p <http://www.w3.org/2000/01/rdf-schema#domain> ?cl.
+			 FILTER (?s1 = ?p).
+			 FILTER (?p1 =<http://www.w3.org/2000/01/rdf-schema#range>)}  
+	     	  UNION 
+			{FILTER (?s1 = ?cl).
+		 	 FILTER (?p1 = <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY> ).}
+  	    	  UNION  
+		 	{?cl  <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY> ?s1.
+	          	 FILTER (?p1 =  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)} 
+	     	  UNION
+			{?cl  <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY> ?s1.
+		  	 FILTER (?p1 = <http://www.w3.org/1999/02/22-rdf-syntax-ns#_1>). } }";
+
+eval("create function schema_q1()-><Charstring,Charstring,Literal> as " + parse_sparql(:q1_schema)); 
+
+count(schema_q1());
+
+/*results: 78*/
+ 
+
+
+/*2)Archive the class Occurrence (all properties)*/
+
+set :q2="SELECT ?s ?p ?val
+	 FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	 WHERE {?s  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rs.tdwg.org/dwc/terms/Occurrence>.
+		?s ?p ?val.}";
+
+eval("create function exec_q2()-><Charstring,Charstring,Literal> as " + parse_sparql(:q2)); 
+
+create function count_q2()->Integer as count(remove_null(exec_q2()));
+
+/*SAQ: 1 731 528 ;5 494 004  17 567 417*;           ; 62 897 684 */
+/*D2RQ: 1 731 528; 5 494 004; 17 567 417*; 36 217 296; 62 897 684*/
+
+
+/*Retrieve the schema info concerning the archived by q2 data*/
+
+
+set :q2_main="?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rs.tdwg.org/dwc/terms/Occurrence>.
+	      ?s ?p ?val.";
+
+set :q22="";
+select :select_sch + " FROM <http://user.it.uu.se/~udbl/sard/ebird> " + 
+	" WHERE "+ "{"+ :q2_main +
+	  :where_sch +"}" into :q22;
+
+
+eval("create function exec_q22()->(Charstring,Charstring,Charstring) as " + parse_sparql(:q22)); 
+
+/* 0,002 s   */
+
+
+select e1,e2,e3,e4,e5,e6,e7 from integer e1,charstring e2,charstring e3,charstring e4,charstring e5, charstring e6,integer e7 where EVENT_EBIRDDS_CC()=<e1,e2,e3,e4,e5,e6,e7> and e1 <=5 and e1>=3;
+
+select e1,e2,e3,e4,e5,e6,e7 from integer e1,charstring e2,charstring e3,charstring e4,charstring e5, charstring e6,integer e7 where EVENT_EBIRDDS_CC()=(e1,e2,e3,e4,e5,e6,e7) and e2 ="S5971680";
+
+
+set :q230="SELECT  ?s ?p ?val
+	 FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	 WHERE {?s  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rs.tdwg.org/dwc/terms/Event>.
+		?s <http://rs.tdwg.org/dwc/terms/eventID> 'S6009775'.
+	        ?s ?p ?val.
+	       {FILTER (?p = <http://rs.tdwg.org/dwc/terms/eventTime>)}
+	       UNION
+		{FILTER (?p =<http://rs.tdwg.org/dwc/terms/samplingProtocol>)}
+		UNION
+		{FILTER (?p =<http://user.it.uu.se/~udbl/sard/ebird/location_of_event>)} }";
+
+
+eval("create function exec_q230()->(Charstring,Charstring,Literal) as " + parse_sparql(:q230)); 
+
+
+set :q230_s="SELECT  ?s1 ?p1 ?val1
+	 FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	 WHERE {?s  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rs.tdwg.org/dwc/terms/Event>.
+		?s <http://rs.tdwg.org/dwc/terms/eventID> 'S6009775'.
+		?s ?p ?val.
+        	?s1 ?p1 ?val1.
+		?cl  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2000/01/rdf-schema#Class>.
+		?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?cl. 
+		{FILTER (?s1 = ?cl).
+		FILTER (?p1 =<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>) }
+		UNION 
+		 {FILTER (?p = <http://rs.tdwg.org/dwc/terms/eventTime>)}
+	       UNION
+		{FILTER (?p =<http://rs.tdwg.org/dwc/terms/samplingProtocol>)}
+		UNION
+		{FILTER (?p =<http://user.it.uu.se/~udbl/sard/ebird/location_of_event>)}}";
+	      
+
+eval("create function exec_q230_s()->(Charstring,Charstring,Literal) as " + parse_sparql(:q230_s)); 
+
+
+/*Not correctly defined archival query*/ 
+set :q231="SELECT  ?s ?p ?val
+	 FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	 WHERE {?p <http://user.it.uu.se/~udbl/sard/ebird/location_of_event> ?s.
+		?s ?val ?r.
+	        ?cl  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2000/01/rdf-schema#Class>.
+		?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?cl. 
+		?p <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property>.
+		FILTER (?val != ?p).}";
+
+eval("create function exec_q231()->(Charstring,Charstring,Literal) as " + parse_sparql(:q231)); 
+
+set :q231_main="?p <http://user.it.uu.se/~udbl/sard/ebird/location_of_event> ?s.
+		?s ?val ?r. ";
+
+select :select_sch + " FROM <http://user.it.uu.se/~udbl/sard/ebird> " + 
+	" WHERE "+ "{"+ :q231_main +
+	  :where_sch +"}" into :q231_s;
+
+
+eval("create function exec_q231_s()->(Charstring,Charstring,Charstring) as " + parse_sparql(:q231_s)); 
+
+
+select s, val
+   from Charstring s, Charstring val
+   where bird()=<s, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://rs.tdwg.org/dwc/terms/Event'>
+   and bird()=<s, 'http://rs.tdwg.org/dwc/terms/samplingEffort', val>
+   and bird()=<s, 'http://rs.tdwg.org/dwc/terms/eventID', 'S6009775'> and val != 'sql null';
+
+
+
+/*2-2)Archive the class Event (all properties)*/
+
+set :q2="SELECT ?s ?p ?val
+	 FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	 WHERE {?s  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rs.tdwg.org/dwc/terms/Event>.
+		?s ?p ?val.}";
+
+eval("create function exec_q2()-><Charstring,Charstring,Literal> as " + parse_sparql(:q2)); 
+
+create function count_q2()->Integer as count(remove_null(exec_q2()));
+
+
+/*3)Archive classes Event and Location*/
+
+set :q3="SELECT ?s ?p ?val
+	 FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	 WHERE {?s ?p ?val.
+		{?s  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rs.tdwg.org/dwc/terms/Event>.}
+	        UNION
+		{?s  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://purl.org/dc/terms/Location>.}}";
+
+eval("create function exec_q3()-><Charstring,Charstring,Literal> as " + parse_sparql(:q3)); 
+create function count_q3()->Integer as count(exec_q3());
+
+
+create function count_q3()->Integer as count(remove_null(exec_q3()));
+
+/*SARQ: 257 128; ; 1 667 897; 3 650 458;  6 004 033*/
+/*D2RQ: 257 128; ; 1 667 897; 3 650 458 ;  6 004 033 */
+
+
+/*Retrieve the schema info concerning the archived by q3 data*/
+
+
+set :q3_main="?s ?p ?val.
+		{?s  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rs.tdwg.org/dwc/terms/Event>.}
+	        UNION
+		{?s  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://purl.org/dc/terms/Location>.}.";
+
+
+select :select_sch + " FROM <http://user.it.uu.se/~udbl/sard/ebird> " + 
+	" WHERE "+ "{"+ :q3_main +
+	  :where_sch +"}" into :q33;
+
+
+eval("create function exec_q33()->(Charstring,Charstring,Charstring) as " + parse_sparql(:q33)); 
+
+
+
+/*4)Archive the classes Event,Occurrence and Taxon*/
+
+set :q4="SELECT ?s ?p ?val
+	 FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	 WHERE {?s ?p ?val.
+		{?s  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rs.tdwg.org/dwc/terms/Event>.}
+	        UNION
+		{?s  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rs.tdwg.org/dwc/terms/Occurrence>.}
+		UNION
+		{?s  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rs.tdwg.org/dwc/terms/Taxon>}}";
+
+eval("create function exec_q4()-><Charstring,Charstring,Literal> as " + parse_sparql(:q4)); 
+create function count_q4()->Integer as count(remove_null(exec_q4()));
+
+/*1936827*/
+
+/*5)Archive the whole database without the class Taxon*/
+
+set :q5="SELECT ?s ?p ?val
+	 FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	 WHERE {?s ?p ?val.
+		?s  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?val1.
+		FILTER (?val1 != <http://rs.tdwg.org/dwc/terms/Taxon>)}";
+
+eval("create function exec_q5()-><Charstring,Charstring,Literal> as " + parse_sparql(:q5)); 
+create function count_q5()->Integer as count(remove_null(exec_q5()));
+
+/* Answers: 1 988 765 */
+/*1 988 656 - D2RQ */
+
+/*6)Archive the classes Event and Location without the properties 'decimalLatitude', 'decimalLongitude' 
+and 'samplingProtocol'*/
+
+set :q6="SELECT ?s ?p ?val
+	 FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	 WHERE{ ?s ?p ?val.
+		{?s  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rs.tdwg.org/dwc/terms/Event>.
+		FILTER (?p != <http://rs.tdwg.org/dwc/terms/samplingProtocol>)}
+               UNION
+		{?s  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://purl.org/dc/terms/Location>.
+		FILTER (?p != <http://rs.tdwg.org/dwc/terms/decimalLongitude>).
+		FILTER (?p != <http://rs.tdwg.org/dwc/terms/decimalLatitude>).} }";
+
+eval("create function exec_q6()-><Charstring,Charstring,Literal> as " + parse_sparql(:q6)); 
+create function count_q6()->Integer as count(exec_q6());
+
+/* SAQ: 158 865 ;436 344 ; ;3 012 794; 4 962 659 */
+/*D2RQ;         ;436 344 ; ;3 012 794; 4 962 659   */
+
+
+/* The archive query 6 modified with the added constraint triples */
+set :q6="SELECT ?s ?p ?val
+	 FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	 WHERE{ ?s ?p ?val.
+		?cl  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2000/01/rdf-schema#Class>.
+		 ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?cl.	 
+		 ?p <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/1999/02/22-rdf-syntax-ns#Property>.
+		 ?p <http://www.w3.org/2000/01/rdf-schema#domain> ?cl.
+		{?s  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rs.tdwg.org/dwc/terms/Event>.
+		FILTER (?p != <http://rs.tdwg.org/dwc/terms/samplingProtocol>)}
+               UNION
+		{?s  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://purl.org/dc/terms/Location>.
+		FILTER (?p != <http://rs.tdwg.org/dwc/terms/decimalLongitude>).
+		FILTER (?p != <http://rs.tdwg.org/dwc/terms/decimalLatitude>).} }";
+
+eval("create function exec_q6()-><Charstring,Charstring,Literal> as " + parse_sparql(:q6)); 
+create function count_q6()->Integer as count(exec_q6());
+
+
+set :qs6="SELECT ?cl ?p 
+	 FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	 WHERE{ ?s ?p ?val.	
+		?cl  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2000/01/rdf-schema#Class>.
+		 ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?cl.	 
+		{
+		 ?s  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rs.tdwg.org/dwc/terms/Event>.
+		FILTER (?p != <http://rs.tdwg.org/dwc/terms/samplingProtocol>)}
+               UNION
+		{
+		 ?s  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://purl.org/dc/terms/Location>.
+		FILTER (?p != <http://rs.tdwg.org/dwc/terms/decimalLongitude>).
+		FILTER (?p != <http://rs.tdwg.org/dwc/terms/decimalLatitude>).} }";
+
+eval("create function exec_qs6()-><Charstring, Charstring> as " + parse_sparql(:qs6)); 
+
+
+/*7)Archive the classes Event and Occurrence for events that happened on 2002-08-08.*/
+
+set :q7="SELECT ?s ?p ?val
+	 FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	 WHERE{	?s2  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rs.tdwg.org/dwc/terms/Event>.
+		?s2 <http://rs.tdwg.org/dwc/terms/eventDate> ?val2.
+		FILTER (?val2 = '2002-09-08').
+		?s1 <http://user.it.uu.se/~udbl/sard/ebird/event_of_occurrence> ?s2.
+		{?s ?p ?val.
+		 FILTER (?s = ?s2).}
+		UNION
+		{?s ?p ?val.
+		 FILTER (?s = ?s1). }}";
+
+eval("create function exec_q7()-><Charstring,Charstring,Literal> as " + parse_sparql(:q7)); 
+create function count_q7()->Integer as count(exec_q7());
+
+
+/* Answers: 13 948 -> 7.427 s */
+
+/*SAQ:  */
+/*D2RQ:    */
+
+/*7.2)Archive the classes Event and Occurrence for events that happened before 2007-09-08.*/
+
+
+set :q72="SELECT ?s ?p ?val
+	 FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	 WHERE{	?s2  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rs.tdwg.org/dwc/terms/Event>.
+		?s2 <http://rs.tdwg.org/dwc/terms/eventDate> ?val2.
+		FILTER (?val2 < '2007-09-08').
+		?s1 <http://user.it.uu.se/~udbl/sard/ebird/event_of_occurrence> ?s2.
+		{?s ?p ?val.
+		 FILTER (?s = ?s2).}
+		UNION
+		{?s ?p ?val.
+		 FILTER (?s = ?s1). }}";
+
+
+eval("create function exec_q72()-><Charstring,Charstring,Literal> as " + parse_sparql(:q72)); 
+create function count_q72()->Integer as count(remove_null(exec_q72()));
+
+
+/*SAQ: 3 686 952;;  */
+
+create function archive_q72()->(Charstring,Charstring,Charstring)
+as
+select distinct s_1, p_1, val_1
+  from Charstring p_1, Charstring val_1, Charstring cl, Charstring s_1,Charstring s1, Charstring s2, Charstring val2, Charstring s, Charstring p, Charstring val
+ where ( bird()=(s2, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://rs.tdwg.org/dwc/terms/Event')
+   and bird()=(s2, 'http://rs.tdwg.org/dwc/terms/eventDate', val2)
+   and val2 < '2007-09-08'
+   and bird()=(s1, 'http://user.it.uu.se/~udbl/sard/ebird/event_of_occurrence', s2)
+   and ((bird()=(s, p, val)
+     and s = s2)
+    or  (bird()=(s, p, val)
+     and s = s1)) )
+   and bird()=(s_1, p_1, val_1)
+   and bird()=(cl, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/2000/01/rdf-schema#Class')
+   and bird()=(s, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', cl)
+   and ((s_1 = cl
+     and p_1 = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type')
+    or  (bird()=(p, 'http://www.w3.org/2000/01/rdf-schema#domain', cl)
+     and s_1 = p
+     and p_1 = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type')
+    or  (bird()=(p, 'http://www.w3.org/2000/01/rdf-schema#domain', cl)
+     and s_1 = p
+     and p_1 = 'http://www.w3.org/2000/01/rdf-schema#domain')
+    or  (bird()=(p, 'http://www.w3.org/2000/01/rdf-schema#domain', cl)
+     and s_1 = p
+     and p_1 = 'http://www.w3.org/2000/01/rdf-schema#range')
+    or  (s_1 = cl
+     and p_1 = 'http://user.it.uu.se/~udbl/sard#PRIMARY_KEY')
+    or  (bird()=(cl, 'http://user.it.uu.se/~udbl/sard#PRIMARY_KEY', s_1)
+     and p_1 = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type')
+    or  (bird()=(cl, 'http://user.it.uu.se/~udbl/sard#PRIMARY_KEY', s_1)
+     and p_1 = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#_1'));
+
+
+8)Archive the classes Event, Occurrence and Location for events observed in Georgia, USA.
+
+set :q8="SELECT ?s ?p ?val
+	 FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	 WHERE{	?s2  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://rs.tdwg.org/dwc/terms/Event>.
+		?s2  <http://user.it.uu.se/~udbl/sard/ebird/location_of_event> ?s3.
+		?s3 <http://rs.tdwg.org/dwc/terms/stateProvince> 'Georgia'.
+		?s3 <http://rs.tdwg.org/dwc/terms/countryCode> 'USA'.
+		?s5 <http://user.it.uu.se/~udbl/sard/ebird/event_of_occurrence> ?s2.
+		{?s ?p ?val.
+		 FILTER (?s = ?s2).}
+		UNION
+		{?s ?p ?val.
+		 FILTER (?s = ?s3).}
+		UNION
+		{?s ?p ?val.
+		 FILTER (?s = ?s5).}}";
+
+eval("create function exec_q8()-><Charstring,Charstring,Literal> as " + parse_sparql(:q8)); 
+
+create function count_q8()->Integer as count(exec_q8());
+
+/*SARQ ;953 395 */
+/*D2RQ  */
+
+
+9)Archive all the properties of class Events without property samplingEffort.
+10)Archive the prperties recordedBy (who) and individualCount 
+(individuals represented present at the time of the Occurrence) of the class Occurrence.
+11)Archive all the properties of class Occurrence for occurrences where the 'Piranga_flava'
+(scientificName of a taxon) have been represented.
+12)Archive the occurrences where a taxon have been represented 
+by more than 5 individuals (individualCount >5) 
+13)Archive class Occurrence for occurrences where the genus 'Spiza' have been represented 
+by less than 3 individuals (individualCount < 3) in Texas
+14)Archive classes having a property like '%code%' with value 'USA'.
+
+set :q14="SELECT ?s ?p ?o
+	  FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	  WHERE{?s ?p1 'USA'.                             
+                ?s ?p ?o.
+	        FILTER REGEX (?p1, '*Code')   }   ";
+
+
+eval("create function exec_q14()-><Charstring,Charstring,Literal> as " + parse_sparql(:q14)); 
+
+create function count_q14()->Integer as count(remove_null(exec_q14()));
+
+15)Archive classes having a property with value 'Florida'.
+16)Archive classes having a property like '%time' with value 17:00.
+17)Archive all classes having properties with value value like 'P2%'
+
+set :q17="SELECT ?s ?p ?o
+	  FROM <http://user.it.uu.se/~udbl/sard/ebird>
+	  WHERE{?s ?p ?o.
+	        FILTER REGEX (?o, 'P2*')   }   ";
+
+
+eval("create function exec_q17()-><Charstring,Charstring,Literal> as " + parse_sparql(:q17)); 
+
+create function count_q17()->Integer as count(exec_q17());
+
+18)Archive all classes 
+19)
+20)   
+
+
+/***********
+(AND (CALL APPLY-PRED-+ #[OID 333 "FUNCTION.APPLY_PRED->OBJECT"] #[OID TRANSIENT 13554976 "sql@EBIRDDS:'select EVENTID,SAMPLINGPROTOCOL,EVENTDATE from EVENT '()->(E2 E3 E5)"] 
+        E2 E3 E5)
+     (CALL #extpred "NE--"# #[OID 161 "OBJECT.OBJECT.!=->BOOLEAN"] E5 "sql null"))
+
+*******/
+create function q1()-><charstring,charstring,charstring> as
+select e4,e5,e6 from integer e1,charstring e2,charstring e3,charstring e4,charstring e5,charstring e6,integer e7 where event_ebird_CC()=<e1,e2,e3,e4,e5,e6,e7> and e6 != "sql null" and  e5 != 'sql null' and e4 !="sql null";

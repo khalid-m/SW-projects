@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app version="2.5" xmlns="http://java.sun.com/xml/ns/javaee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd">
+    <session-config>
+        <session-timeout>
+            30
+        </session-timeout>
+    </session-config>
+    <welcome-file-list>
+        <welcome-file>index.html</welcome-file>
+    </welcome-file-list>
+    <url-config>
+    		<ws-url>/wsmos/service/AmosServlet</ws-url>
+	        <wsdl-url>http://localhost/wsdl/CMWS.wsdl</wsdl-url>
+    		<!--
+    		<ws-url>http://terraservice.net/TerraService2.asmx</ws-url>
+		    <wsdl-url>http://terraservice.net/TerraService2.asmx?wsdl</wsdl-url>
+		    <ws-url>/wsmos/service/AmosServlet</ws-url>
+		    <wsdl-url>http://localhost/wsdl/CMWS.wsdl</wsdl-url>
+		    <ws-url>http://www.ripedevelopment.com/webservices/LocalTime.asmx</ws-url>
+		    <wsdl-url>http://www.ripedevelopment.com/webservices/LocalTime.asmx?WSDL</wsdl-url>
+		    -->
+    </url-config>
+</web-app>

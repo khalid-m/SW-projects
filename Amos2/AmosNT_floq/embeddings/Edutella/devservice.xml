@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<!DOCTYPE Service SYSTEM "FireDaemon.dtd">
+<Service>
+ <Program>
+  <Name>PSELODevService</Name>
+  <DisplayName>PSELODevService</DisplayName>
+  <WorkingDir>F:\AmosNT\PSELO</WorkingDir>
+  <Executable>c:\windows\system32\cmd.exe</Executable>
+  <Parameters>/c startup.cmd 118183 PSELODevSetup.xml</Parameters>
+  <Delay>3000</Delay>
+  <ConsoleApp>false</ConsoleApp>
+  <ForceReplace>true</ForceReplace>
+ </Program>
+ <Options>
+  <AffinityMask>0</AffinityMask>
+  <Priority>0</Priority>
+  <EventLogging>true</EventLogging>
+  <InteractWithDesktop>false</InteractWithDesktop>
+  <PreLaunchDelay>0</PreLaunchDelay>
+  <StartUpMode>1</StartUpMode>
+  <UponExit>1</UponExit>
+  <ShutdownDelay>5000</ShutdownDelay>
+  <ShowWindow>0</ShowWindow>
+  <JobType>1</JobType>
+ </Options>
+ <SMF>
+  <SMFEnabled>false</SMFEnabled>
+  <SMFFrequency>5000</SMFFrequency>
+ </SMF>
+</Service>

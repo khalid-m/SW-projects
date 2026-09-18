@@ -1,0 +1,6 @@
+extlang("python");
+create function pyfloor(Number a) -> Real x 
+  as foreign 'py:math.floor';
+save "foo.dmp";
+quit;
+

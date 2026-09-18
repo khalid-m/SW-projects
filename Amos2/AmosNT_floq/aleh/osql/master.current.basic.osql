@@ -1,0 +1,6 @@
+<"files.osql";
+< "stream.structs.basic.osql";
+load_lisp("../lsp/ineqrewrite.lsp");
+<'formulas.stream.osql';
+<"allcuts.stream.osql";
+save "../current.basic.dmp";

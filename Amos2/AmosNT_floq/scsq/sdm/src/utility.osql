@@ -1,0 +1,207 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2009 Gyozo Gidofalvi, UDBL
+ * $RCSfile: utility.osql,v $
+ * $Revision: 1.4 $ $Date: 2009/08/03 13:26:47 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Utility and testing function definitions 
+ *
+ ****************************************************************************
+ * $Log: utility.osql,v $
+ * Revision 1.4  2009/08/03 13:26:47  gyogi445
+ * Novelty detection via independently trained "compression" neural networks
+ *
+ * Revision 1.3  2009/05/12 13:33:49  gyogi445
+ * Feed-forward Neural Network implementation via recursive stored procedure
+ *
+ * Revision 1.2  2009/05/09 06:18:39  gyogi445
+ * Updated stream_transducer code, vectorized stream aggregators, spectrum monitoring
+ *
+ * Revision 1.1  2009/04/09 10:20:11  gyogi445
+ * Basic stream operators
+ *
+ * Revision 1.1  2009/04/07 20:01:08  gyogi445
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+ 
+/* Example unary boolean valued numerical (integer) predicate 
+   functions */
+create function odd(Integer i)-> Boolean 
+/* Fn that returns TRUE if the argument is odd */
+  as mod(i,2)=1;
+
+create function even(Integer i)-> Boolean 
+/* Fn that returns TRUE if the argument is even */
+  as mod(i,2)=0;
+ 
+create function gt0(Number n)-> Boolean 
+/* Fn that returns TRUE if the argument is greater than 0 */
+  as n>0;
+
+create function le0(Number n)-> Boolean 
+/* Fn that returns TRUE if the argument is less than or equal to 0 */
+  as n<=0; 
+
+/* Example unary Number valued function */ 
+
+create function times2(Number n)-> Number 
+/* Fn that returns 2 times the value of its argument */
+  as n*2;
+
+create function duration_sec(Time t, Integer us)-> Real 
+/* Function to convert a timespan tuple to durations in seconds */
+  as select 60*60*hour(t)+60*minute(t)+second(t)+(us/1000000);
+
+create function elapsed_sec(Timeval s, Timeval e)-> Real
+/* Function to calculate the elapsed time between two 
+   timestamps (Timvals) */ 
+  as duration_sec(timespan(s, e));
+
+create function sign(Number n)->Integer i
+/* Procedure that returns +/-1 depending 
+   on the sign of its argument */
+  as if (n>=0) then result 1
+               else result -1;
+
+/* Stream generators to simulate input streams to 
+   NN for function approximation */
+
+create function f1()-> Vector of Vector of Number 
+/* Fn to generate a sample of the function f = sin(x + cos(y)) */
+  as select {{r1, r2}, {res}}
+     from Real r1, Real r2, Real res
+     where r1 = nrand() and r2 = nrand() and res = sin(r1 + cos(r2));
+
+create function b1(Integer k)->Bag of Vector of Vector of Number
+/* Fn that calls f1 k times; returns a bag of the results */
+  as for each Integer i where i in iota(1,k) result f1();
+
+create function s1(Integer k)->Stream of Vector of Vector of Number
+/* Fn to make b1() into a stream */
+  as streamof(b1(k));
+
+create function switch()-> Vector of Vector of Number
+/* Fn that generates two random numbers and returns the
+   numbers and in order and in reverse order. */   
+  as select {{r1, r2}, {r2, r1}} 
+     from Real r1, Real r2
+     where r1 = nrand() and r2 = nrand();
+
+create function b2(Integer k)-> Bag of Vector of Vector of Number
+/* Fn that calls switch() k times; generates a bag of the results */
+  as for each Integer i where i in iota(1,k) result switch();
+
+create function s2(Integer k)-> Stream of Vector of Vector of Number
+/* Fn to make b2() into a stream */
+  as streamof(b2(k));
+
+create function b3(Integer k)-> Vector of Number
+/* Fn that returns the sin and cosine of a random number k times */ 
+  as for each Integer i where i in iota(1,k) result {sin(nrand()), cos(nrand())};   
+
+create function s3(Integer k)-> Stream of Vector of Number 
+/* Fn to make b3 into a stream */
+  as streamof(b3(k));  
+
+/* Basic binary Boolean operators */
+/* NOTE XOR is a classical NN test problem. It is a special 
+   / most simple case of the parity problem and is generally 
+   regarded as a difficult task to learn */
+create function xorop(Integer a, Integer b)-> Integer 
+/* XOR fn */
+as 
+begin 
+   if (a=0 and b=0) then result 0;
+   if (a=1 and b=0) then result 1;
+   if (a=0 and b=1) then result 1;
+   if (a=1 and b=1) then result 0;
+end;
+
+create function andop(Integer a, Integer b)-> Integer 
+/* AND fn */
+as 
+begin 
+   if (a=0 and b=0) then result 0;
+   if (a=1 and b=0) then result 0;
+   if (a=0 and b=1) then result 0;
+   if (a=1 and b=1) then result 1;
+end;
+
+create function nandop(Integer a, Integer b)-> Integer 
+/* NAND fn */
+as 
+begin 
+   if (a=0 and b=0) then result 1;
+   if (a=1 and b=0) then result 1;
+   if (a=0 and b=1) then result 1;
+   if (a=1 and b=1) then result 0;
+end;
+
+create function orop(Integer a, Integer b)-> Integer 
+/* OR fn */
+as 
+begin 
+   if (a=0 and b=0) then result 0;
+   if (a=1 and b=0) then result 1;
+   if (a=0 and b=1) then result 1;
+   if (a=1 and b=1) then result 1;
+end;
+
+create function norop(Integer a, Integer b)-> Integer 
+/* NOR fn */
+as 
+begin 
+   if (a=0 and b=0) then result 0;
+   if (a=1 and b=0) then result 0;
+   if (a=0 and b=1) then result 0;
+   if (a=1 and b=1) then result 1;
+end;
+
+create function logop(Function bfn)-> Vector of Vector of Integer 
+/* Function that generates two random bits and applies the 
+   binary Boolean function bfn to them. The output is the 
+   random bits b1, and b2 and the result of bfn(b1, b2). */  
+  as select {{b1, b2}, {br}} 
+     from Integer b1, Integer b2, Integer br
+     where b1 = integer(rand(20)/20)
+       and b2 = integer(rand(20)/20)
+       and br = in(apply(bfn, {b1,b2}));
+
+create function blogop(Integer k, Function bfn)
+                       -> Bag of Vector of Vector of Number
+/* Fn to call logop() k times; returns a bag of the results */
+  as for each Integer i where i in iota(1,k) result logop(bfn);
+
+create function slogop(Integer k, Function bfn)
+                       -> Stream of Vector of Vector of Number
+/* Fn to make blogop() into a stream */ 
+  as streamof(blogop(k, bfn));
+
+/* Simple Stream functions: stream.fn->stream */
+
+/* Numeric stream function: stream-number.fn->stream */
+create function stimes2(Stream of Number sn)-> Stream of Number 
+  as streamof(times2(in(sn)));
+
+/* Vector Stream functions: stream-vector.fn->stream */
+create function sdim(Stream of Vector sv)-> Stream of Number 
+  as streamof(dim(in(sv)));
+
+/* Parameterized Stream function */
+create function saddsome(Stream of Number sn, Number n1, Number n2)-> Stream of Number
+  as streamof(in(sn)+n1+n2);
+
+create function vsample(Vector v, Integer ssize)
+                        -> Vector 
+/* Fn that selects an ssize sample with replacement from vector v */  
+  as vselect v[siv[i]]
+     from Vector of Integer siv, Integer i
+     where siv = (vselect randbag(dim(v), ssize));   
+
+create function svsample(Stream of Vector sv, Integer ssize)
+                         -> Stream of Vector 
+/* Fn that samples the vector elements of a stream of vectors */ 
+  as streamof(vsample(in(sv), ssize));

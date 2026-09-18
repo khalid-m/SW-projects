@@ -1,0 +1,9 @@
+CREATE USER 'regress'@'localhost' IDENTIFIED BY 'regress';
+
+GRANT USAGE ON * . * TO 'regress'@'localhost' IDENTIFIED BY 'regress'
+WITH MAX_QUERIES_PER_HOUR 0 MAX_CONNECTIONS_PER_HOUR 0 
+MAX_UPDATES_PER_HOUR 0 MAX_USER_CONNECTIONS 0 ;
+
+CREATE DATABASE IF NOT EXISTS `regress` ;
+
+GRANT ALL PRIVILEGES ON `regress` . * TO 'regress'@'localhost'; 

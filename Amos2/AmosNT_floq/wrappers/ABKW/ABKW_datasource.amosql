@@ -1,0 +1,81 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2004 Maryam Ladjvardi, UDBL
+ * $RCSfile: ABKW_datasource.amosql,v $
+ * $Revision: 1.10 $ $Date: 2005/03/13 19:52:59 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: AmosQL declaration of functions that constitute the ABKW 
+ *              wrapper interface.
+ *
+ ****************************************************************************/
+
+create function bk_create(charstring filename, charstring btid, vector keys, 
+	                  vector values, Integer unique) -> integer 
+       /* Create and format Abkw database */
+       as foreign 'BKCreateaa';
+
+create function bk_open(charstring filename)->boolean 
+       /* Connection to BerkeleyDB database */
+       as foreign 'BKConnectaa';
+
+create function bk_handle(charstring filename, charstring btid)->
+				integer 
+       /* Make handle (integer) given BerkeleyDB filename and table name */
+       as multidirectional
+         ("bbf" foreign 'BKHandleaa' cost {1,1});
+
+create function bk_set(integer handle_id, vector keys,
+				 vector values)->boolean 
+       /* Insert row into table */		
+       as foreign 'BKSetaa';
+
+create function bk_del(integer handle_id, vector key)->	boolean 
+       /* Remove row with given key from a table */			
+       as foreign 'BKDeleteaa';
+
+create function  bk_get_interval(integer handle_id, vector lowkey, 
+                                 vector upkey)-> bag of <vector, vector>  
+       /* Retrieve rows having keys within interval from a database table */
+       as multidirectional
+          ("bbbff" foreign 'BKGet_between_intervalaa' cost {2000,40});
+				
+create function bk_rollback()->boolean 
+       /* rollback BerkeleyDB transaction */
+       as foreign 'BKRollbackaa';
+
+create function bk_commit()->boolean 
+       /* commit BerkekelyDB transaction */
+       as foreign 'BKCommitaa';	     
+
+create function bk_remove(charstring filename, charstring btid)-> boolean 
+       /* Remove BerkeleyDB table */               			
+       as foreign 'BKRemoveaa';
+
+create function bk_cost(function fn, vector bpat, vector args)->
+				<integer , integer > 
+       /* Function for computing the cost of different ??? operation */
+       as foreign 'BKCostaa';
+
+load_lisp("rewriter.lsp");
+
+create function bk_access(integer handle_id )-><vector  key, vector > 
+       /* Core cluster function */                 	
+       as multidirectional 
+		('bff' foreign 'bk_scan' cost bk_cost rewriter "abkw" ) 
+                ('bbf' foreign 'bk_get' cost {1002, 1});	 
+
+create function bk_get(integer handle_id, vector k)->bag of Vector 
+       /* Retrieve row given key from table */
+       as select r from Vector r
+          where bk_access(handle_id) = <k, r>;
+
+create function bk_scan(integer handle_id)->bag of <vector, vector> 
+       /* Scan table */
+       as select k, r from Vector k, Vector r
+          where bk_access(handle_id) = <k, r>;
+
+create function bk_disconnect()->boolean 
+       /* Disconnect from BerkeleyDB database */
+       as foreign 'BKDisconnectaa';

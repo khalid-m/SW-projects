@@ -1,0 +1,24 @@
+  /* Load Lsp-SPARQL_parser */
+lisp;
+(setq _sql-namespace_ nil) ;; SARD uses old CC function names ???
+
+(with-directory (concat (getenv "amos_home") "/SQoND") (load "lsp/master.lsp")) 
+(load "../../lsp/ntriples-reader/ntriples-reader.lsp");N-triples reader
+:osql
+
+/* Load useful functions from SWARD */
+<'src/amosql/ds.amosql';
+<'src/amosql/export_SWARD_URI.amosql';
+
+loadSystem(".","src/sard2.amosql"); 
+
+
+lisp;
+;;(setq _prompter_ "SARD2")
+
+:osql
+save "sard2.dmp";
+quit;
+
+
+

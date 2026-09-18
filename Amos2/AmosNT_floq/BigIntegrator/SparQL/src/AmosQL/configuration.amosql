@@ -1,0 +1,21 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year>Minpeng Zhu<author>, UDBL
+ * $RCSfile: configuration.amosql,v $
+ * $Revision: 1.2 $ $Date: 2012/05/31 09:13:36 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: configuration to setup absorber, finalizer, absorbability 
+                for a SparQL kind of Datasource.
+ ****************************************************************************/
+
+set_absorber('sparql', 'absorb-sparql');
+set_finalizer('sparql', 'translate-sparql');
+
+create_wrapper_absorbability('sparql', '<', 'sparql-translate-comparison');
+create_wrapper_absorbability('sparql', '<=', 'sparql-translate-comparison');
+create_wrapper_absorbability('sparql', '>', 'sparql-translate-comparison');
+create_wrapper_absorbability('sparql', '>=', 'sparql-translate-comparison');
+create_wrapper_absorbability('sparql', 'like', 'sparql-translate-like');
+

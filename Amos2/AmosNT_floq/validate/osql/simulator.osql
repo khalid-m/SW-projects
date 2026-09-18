@@ -1,0 +1,129 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) Cheng Xu 2012, UDBL
+ * $RCSfile: simulator.osql,v $
+ *
+ * Description: Input simulation
+ *
+ ****************************************************************************
+ * $Log: simulator.osql,v $
+ * Revision 1.2  2012/08/08 21:09:59  chexu484
+ * a new (cyclic) data generator simulating machine process includes:
+ * 1. idle phase 2. warm up phase 3. working phase.
+ *
+ * Revision 1.1  2012/05/24 12:54:16  chexu484
+ * read a file N times to get infinite streams (naive)
+ * scales linearly though
+ *
+ * Revision 1.1  2006/02/12 20:01:08  torer
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+
+create function read_n_times(Charstring filename, Function reader, Integer n)
+							      -> Bag of Object
+  as select apply(reader, {filename})[0]
+  from Integer i
+  where i in iota(1, n);
+
+
+create function randn(Number start, Number stop, Integer precision) -> Number
+as select r/p
+from Number r, Number p
+where p = power(10, precision)
+and r = rand(start*p, stop*p);
+
+create function randn(Number stop, Integer precision) -> Number
+as select r/p
+from Number r, Number p
+where p = power(10, precision)
+and r = rand(0, stop*p);
+
+/* the normal value are within this band */
+create function normalBand() -> Number as stored;
+set normalBand() = 0.03;
+
+/* 10% of total working time is warm up phase */
+create function warmupTime() -> Number as stored;
+set warmupTime() = 0.1;
+
+/* the warm up is about 30% of normal value */
+create function warmupVal() -> Number as stored;
+set warmupVal() = 0.3;
+
+create function oneCycle(Number start, Number workTime, Number frequency,
+			 Number workVal, Number trend)
+			       		  	 -> Bag of Vector of Number
+as begin
+	declare Number step, Number now, Number val,
+		Number warmupTime, Number warmupVal;
+	set warmupTime = workTime * warmupTime();
+	set warmupVal = workVal * warmupVal();
+   	set now = start;
+   	set step = 1/frequency;
+	   /* warm up */
+   	   while now <= start + warmupTime
+   	   do set val = randn(warmupVal, 2);
+	   return {1, 1, now, val};
+   	   set now = now + step;
+   	   end while;
+   	   /* normal behavior with trend */
+	   while now <= start + workTime
+   	   do set val = randn(workVal - normalBand() * workVal,
+	      	      	      workVal + normalBand() * workVal, 2);
+   	   return {1, 1, now, val};
+   	   set now = now + step;
+   	   end while;
+   end;
+
+create function betweenCycle(Number start, Number span,
+			     Number frequency, Number value)
+       				    	   -> Bag of Vector of Number
+as begin
+     declare Number step, Number now, Number val;
+     set step = 1/frequency;
+     set now = start;
+     while now <= start + span
+     do set val = randn(value, 2);
+     return {1, 0, now, val};
+     set now = now + step;
+     end while;
+   end;
+
+/*
+plot({1,2}, (vselect betweenCycle(0, 1, 100, 0.1)));
+
+plot({1,2}, (vselect oneCycle(0, 8.99, 10, 30, 1)));
+*/
+
+create function tstream(Number start, Number stop, Number frequency,
+       			Number idleTime, Number idleVal, Number workTime,
+			Number normalval, Number trend)
+			       		   -> Bag of Vector of Number
+as begin
+     declare Number now, Number step, Number val;
+     set now = start;
+     set step = 1/frequency;
+     while now + (floor(idleTime * frequency) + 1) * step + workTime <= stop
+     do
+       for each Vector of Number v
+       	   where v in betweenCycle(now, idleTime, frequency, idleVal)
+	   return v;
+       set now = now + (floor(idleTime * frequency) + 1) * step;
+       for each Vector of Number v
+       	   where v in oneCycle(now, workTime, frequency, normalVal, trend)
+	   return v;
+       set now = now + (floor(workTime * frequency) + 1) * step;
+     end while;
+     for each Vector of Number v
+     where v in betweenCycle(now, idleTime, frequency, idleVal)
+     return v;
+   end;
+
+/*
+plot({1,2}, (vselect v from Vector of Number v
+	     where v in tstream(0, 100, 10, 3, 0.1, 7, 30, 1)));
+
+count(tstream(0, 100, 10, 1, 0.1, 9, 30, 1));
+*/

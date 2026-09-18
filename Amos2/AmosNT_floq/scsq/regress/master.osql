@@ -1,0 +1,506 @@
+/*-*-sql-*-*******************************************************************/
+
+lisp;
+
+(if (file-exists-p "regress/numarray_regress.lsp")
+    (load "regress/numarray_regress.lsp"))
+(if (file-exists-p "numarray_regress.lsp")
+    (load "numarray_regress.lsp"))
+
+(let ((a (caar (osql "tcount(siota(0,10));")))
+      (b (caar (osql "tcount(siota(0,-1));"))))
+  (checkequal "tcount"
+	      ((length a)
+	       4)
+	      ((elt a 3)
+	       11)
+	      ((elt b 3)
+	       0)
+	      ((length b)
+	       4)))
+
+
+(checkequal "proctime"
+	    ((progn
+	       (osql "iota(1, 10000);") 
+	       (let ((p (proctime)))
+		 (princ (concat " [ " p " s ] "))
+		 (and (< p 1.0) (>= p 0.0))))
+	     t))
+
+(checkequal "SCSQ code"
+	    ((verify-all) t)
+	    )
+
+(checkequal "make vector of generators" 
+	    ((osql "dim(vectorof(select bagof(iota(1,10 )) 
+		                 from integer i where i in iota(1,2 )));")
+	     '((2)))
+	    (nil nil)
+	    ) 
+
+(checkequal "readfile"
+	    ((osql "count(readfile('data/signals.dat'));") '((1024))))
+
+(checkequal 
+ "writefile"
+ ((osql "writefile('data/writefile-test', iota(1, 29));
+   readfile('data/writefile-test');")
+  '((1) (2) (3) (4) (5) (6) (7) (8) (9) (10) (11) (12) (13) (14) (15) (16) (17)
+    (18) (19) (20) (21) (22) (23) (24) (25) (26) (27) (28) (29))))
+
+(checkequal 
+ "writefiles"
+ ((osql "writefiles('data/writefiles-test', 5, iota(1, 29));
+   vectorof(readfiles(sort('data/' + dir('data','writefiles-test*'))));")
+  '((#(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 
+	 27 28 29)))))
+
+(checkequal 
+ "writefiles"
+ ((let ((wfresult 
+	 (osql "writefiles('data/empty.out', 10, (
+  select i from integer i where i in retard(0.05, iota(5,10))));")))
+    (formatl t "[time " (roundto (first (car wfresult)) 2) "s bag, "
+	     (roundto(second (car wfresult)) 2) "s setup] ")
+    (< (caar wfresult) 1.0))
+  t))
+
+(checkequal 
+ "writefiles on empty bag"
+ ((let ((wfresult 
+	 (osql "writefiles('data/empty.out', 10, (
+  select i from integer i where i in retard(0.05, iota(5,10)) and i < 5));")))
+    (formatl t "[time " (roundto (first (car wfresult)) 2) "s bag, "
+	     (roundto(second (car wfresult)) 2) "s setup] ")
+    (< (caar wfresult) 1.0))
+  t))
+
+(checkequal 
+ "operations on vectors of numbers"
+ ((osql "
+create function positive(number n)->number as select n where n>=0;
+
+create function vsquarediffs(vector of number b, real x)->bag of real as
+select (y-x)*(y-x) from real y where y = in(b);
+
+create function getdimvalues(vector of number v, integer dim)-> real as
+select positive(sqrt(sum(vsquarediffs(cast({v[cast(dim-1 as integer)],v[dim]}
+  as vector of number),0.0))));
+
+getdimvalues(cast ({1,1,4,4,99,98} as vector of number),1) - positive(sqrt(2));
+")
+  '((0.0)))
+
+ ((osql "getdimvalues(cast ({1,1,4,4.5,99,98} as vector of number), 3) - 
+        positive(sqrt(36.25));")
+  '((0.0))))
+
+(checkequal 
+ "chopvector"
+ ((osql "chopvector(viota(0, 8),3);")
+  '((#(#(0 3 6) #(1 4 7) #(2 5 8)))))
+ ((osql "chopvector(viota(0, 10),3);")
+  '((#(#(0 3 6 9) #(1 4 7 10) #(2 5 8)))))
+ ((osql "chopvector(in(select {} where 1=2), 2);")
+  nil)
+ ((osql "chopvector({}, 2);")
+  '((#(#() #()))))
+ )
+
+(checkequal "transpose"
+	    ((osql "transpose({{11,12},{21,22}});")
+	     '((#(#(11 21) #(12 22)))))
+	    ((osql "transpose({{1}});")
+	     '((#(#(1)))))
+	    ((osql "transpose({{1,1,1}});")
+	     '((#(#(1) #(1) #(1)))))
+	    ((osql "transpose({{2},{1}});")
+	     '((#(#(2 1)))))
+	    )
+
+(checkequal "arrayarrayp"
+	    ((arrayarrayp 3)
+	     nil)
+	    ((arrayarrayp nil)
+	     nil)
+	    ((arrayarrayp #(#(1 2) #(3 4)))
+	     t)
+	    ((arrayarrayp #(#(1 2) #(3 4) 'a "a" #(3 4)))
+	     nil))
+
+(checkequal "Numarray-element access"
+	    ((na-elt (caar (osql "iarray({17, 42, 4711});")) 1)
+	     42))
+
+(osql "set :a = iarray({17, 42, 57});")
+
+(with-output-file str "data/bin0"
+		  (print amos_a str))
+
+(checkequal 
+ "Readfile of binary"
+ ((osql "roundto(enorm(cast(in(readfile('data/bin0'))as Numarray)), 6);")
+  '((72.814834))))
+
+(checkequal 
+ "numarray copy"
+ ((let ((b (copy-numarray amos_a))) (na2vec b))
+  #(17 42 57))
+ ((let ((b (copy-numarray amos_a))) (na-seta b 1 4711) (na2vec amos_a))
+  #(17 42 57)))
+
+(checkequal "numarray smash"
+	    ((let ((v (make-iarray 6))
+		   (w (init-iarray #(1 2 3 4))))
+	       (na-smash v 0 w))
+	     (init-iarray #(1 2 3 4 0 0)))
+	    ((let ((v (make-iarray 6)))
+	       (na-smash v 2 (init-iarray #(1 2 3 4))))
+	     (init-iarray #(0 0 1 2 3 4)))
+	    ((let ((v (make-darray 6))
+		   (w (init-darray #(1.0 2.0 3.0 4.0))))
+	       (na-smash v 2 w))
+	     (init-darray #(0.0 0.0 1.0 2.0 3.0 4.0)))
+	    ((let ((v (make-darray 6)))
+	       (na-smash v 0 (init-darray #(1.0 2.0 3.0 4.0))))
+	     (init-darray #(1.0 2.0 3.0 4.0 0.0 0.0)))
+	    ((let ((v (make-farray 6))
+		   (w (init-farray #(1.0 2.0 3.0 4.0))))
+	       (na-smash v 2 w))
+	     (init-farray #(0.0 0.0 1.0 2.0 3.0 4.0)))
+	    ((let ((v (make-farray 6)))
+	       (na-smash v 0 (init-farray #(1.0 2.0 3.0 4.0))))
+	     (init-farray #(1.0 2.0 3.0 4.0 0.0 0.0)))
+	    )
+
+(checkequal "numarray smash type mismatch"
+	    ((errcond-msg (catch-error
+			   (let ((v (make-darray 1))) 
+			     (na-smash v -1 (make-iarray 1)))))
+	     "Numarray type mismatch")
+	    ((errcond-msg (catch-error
+			   (let ((v (make-farray 1))) 
+			     (na-smash v -1 (make-iarray 1)))))
+	     "Numarray type mismatch")
+	    )
+
+(checkequal 
+ "numarray annotation"
+ ((na-enum-reset 10)
+  t)
+ ((osql "enum_na(iarray(10), 1)[1];")
+  '((10)))
+ ((osql "enum_na(iarray(10), 2)[2];")
+  '((11))))
+
+(checkequal "make-numarray"
+	    ((make-numarray 8 (arg-type (make-darray 1)))
+	     (make-darray 8))
+	    ((make-numarray 8 (arg-type (make-farray 1)))
+	     (make-farray 8))
+	    )
+
+; NB: The windowagg() function defined below does funky stuff to vectors.
+; As such, it is a good test of basic vector aggregation methods.
+
+(checkequal 
+ "vector aggregation"
+ ((osql "
+create function windowagg(bag of vector v, integer sz) -> vector as begin
+        declare vector w, integer cnt;
+        set w={};
+        set cnt=0;
+        for each original vector e where e=in(v)
+        begin
+                set cnt=cnt+1;
+                set w=concat(w,e);
+
+                if cnt=sz then
+                begin
+                        return(w);
+                        set w={};
+                        set cnt=0;
+                end;
+        end;
+end;
+
+count(select windowagg((
+    select vectorof(select iota(1,100)) 
+    from integer i 
+    where i in iota(1,10)),5));")
+  '((2))))
+
+(checkequal "vmax"
+ ((osql "vmax({7,4,5,6,7,5,4});")
+ '((0 7) (4 7))))
+
+(checkequal "sbetween" 
+	    ((osql "sbetween({8, iota(1,10)}, 1, 2, 5);")
+	     '((#(8 2)) (#(8 3)) (#(8 4)))))
+
+(checkequal "numarray dimensionality"
+	    ((osql "dim(darray(vectorof(real(iota(0,7)))));")
+	     '((8))))
+
+(checkequal "iarray to multiarray"
+	    ((osql "na2multi(iarray({iota(1, 4)}), 2);")
+	     (list (list (init-iarray #(1 2))) (list (init-iarray #(3 4))))))
+
+(checkequal "darray to multiarray"
+	    ((osql "na2multi(darray({real(iota(1, 4))}), 2);")
+	     (list (list (init-darray #(1.0 2.0))) 
+		   (list (init-darray #(3.0 4.0))))))
+
+(checkequal "numarray to multiarray"
+	    ((osql "na2vec(na2multi((select iarray({i, 0, 100})
+         from integer i where i in iota(1, 4)), 2));")
+	     '((#(1 0 100 2 0 100)) (#(3 0 100 4 0 100)))))
+
+(checkequal "multiarray to numarray"
+	    ((osql "na2vec(multi2na(iarray(vselect iota(0,7)), 4));")
+	     '((#(0 1 2 3)) (#(4 5 6 7)))))
+
+(checkequal 
+ "numarray projection"
+ ((na-project (init-iarray #(1 2 3 4 5 6 7 8)) 0 2)
+  (init-iarray #(1 2)))
+ ((na-project (init-iarray #(1 2 3 4 5 6 7 8)) 1 3)
+  (init-iarray #(2 3 4)))
+ ((na-project (init-darray #(1.0 2.0 3.0 4.0 5.0 6.0 7.0)) 2 4)
+  (init-darray #(3.0 4.0 5.0 6.0)))
+ ((na-project (init-darray #(10.0 20.0 30.0 40.0 50.0 60.0 70.0)) 2 2)
+  (init-darray #(30.0 40.0))))
+
+(checkequal "Roundto"
+	    ((osql "roundto(9.99, 1);")
+	     '((10.0))))
+
+(checkequal "prod"
+	    ((osql "prod(iota(0,1));")
+	     '((0)))
+	    ((osql "prod(in({2,4,8}));")
+	     '((64)))) 
+
+(checkequal "Euclid. norm of a darray"
+	    ((osql "roundto(enorm(darray({1.0,1.0})),3);")
+	     '((1.414))))
+
+(checkequal 
+ "Euclid. norm of real fft of carray"
+ ((osql "roundto(enorm(carray(vectorof(real(iota(0,7))),
+                              vectorof(real(0*iota(0,7))) )),3);")
+  '((5.292))))
+
+(checkequal 
+ "Euclid. norm of real fft of double numarray"
+ ((osql "roundto(enorm(rfft(darray(vectorof(real(iota(0,7)))))),3);")
+  '((4.743)))) 
+
+(checkequal 
+ "Euclid. norm of fft of complex numarray"
+ ((osql "roundto(enorm(fft(carray(vectorof(real(iota(0,7))),
+                                  vectorof(real(0*iota(0,7) )) )) ),3);")
+  '((3.291)))) 
+
+(checkequal 
+ "Euclid. norm of ifft of fft of complex numarray"
+ ((osql "roundto(enorm(ifft(fft(carray(vectorof(real(iota(0,7))),
+                                       vectorof(real(0*iota(0,7) )) )))),3);")
+  '((5.292)))) 
+
+(checkequal 
+ "odd"
+ ((osql "roundto(enorm(odd(darray( vectorof(real(iota(1,8)))))),3);")
+  '((10.954)))) 
+
+(checkequal 
+ "even"
+ ((osql "roundto(enorm(even(darray( vectorof(real(iota(1,8)))))),3);")
+  '((9.165)))) 
+
+(checkequal 
+ "readfile"
+ ((osql "sum(cast(readfile('regress/req21.data')as vector of number)[2]);")
+  '((15176550.0)))) 
+
+(checkequal 
+ "groupagg2, size < stride"
+ ((osql "groupagg2(10, 20, 0, {iota(1, 50)});")
+  '((#(#(1) #(2) #(3) #(4) #(5) #(6) #(7) #(8) #(9) #(10)))
+    (#(#(21) #(22) #(23) #(24) #(25) #(26) #(27) #(28) #(29) #(30)))
+    (#(#(41) #(42) #(43) #(44) #(45) #(46) #(47) #(48) #(49) #(50))))))
+
+(checkequal 
+ "groupagg2, size = stride"
+ ((osql "groupagg2(10, 10, 0, {iota(1, 30)});")
+  '((#(#(1) #(2) #(3) #(4) #(5) #(6) #(7) #(8) #(9) #(10)))
+    (#(#(11) #(12) #(13) #(14) #(15) #(16) #(17) #(18) #(19) #(20)))
+    (#(#(21) #(22) #(23) #(24) #(25) #(26) #(27) #(28) #(29) #(30))))))
+
+(checkequal 
+ "groupagg2, size > stride"
+ ((osql "groupagg2(20, 10, 0, {iota(1, 40)});")
+  '((#(#(1) #(2) #(3) #(4) #(5) #(6) #(7) #(8) #(9) #(10) 
+       #(11) #(12) #(13) #(14) #(15) #(16) #(17) #(18) #(19) #(20)))
+    (#(#(11) #(12) #(13) #(14) #(15) #(16) #(17) #(18) #(19) #(20)
+       #(21) #(22) #(23) #(24) #(25) #(26) #(27) #(28) #(29) #(30)))
+    (#(#(21) #(22) #(23) #(24) #(25) #(26) #(27) #(28) #(29) #(30)
+       #(31) #(32) #(33) #(34) #(35) #(36) #(37) #(38) #(39) #(40))))))
+
+(checkequal 
+ "groupagg2e, size < stride"
+ ((osql "groupagg2e(10, 20, 0, {iota(1, 50)});")
+  '((#(#(1) #(2) #(3) #(4) #(5) #(6) #(7) #(8) #(9) #(10)))
+    (#(#(21) #(22) #(23) #(24) #(25) #(26) #(27) #(28) #(29) #(30)))
+    (#(#(41) #(42) #(43) #(44) #(45) #(46) #(47) #(48) #(49) #(50))))))
+
+(checkequal 
+ "groupagg2e, size = stride"
+ ((osql "groupagg2e(10, 10, 0, {iota(1, 30)});")
+  '((#(#(1) #(2) #(3) #(4) #(5) #(6) #(7) #(8) #(9) #(10)))
+    (#(#(11) #(12) #(13) #(14) #(15) #(16) #(17) #(18) #(19) #(20)))
+    (#(#(21) #(22) #(23) #(24) #(25) #(26) #(27) #(28) #(29) #(30))))))
+
+(checkequal 
+ "groupagg2e, size > stride"
+ ((osql "groupagg2e(20, 10, 0, {iota(1, 40)});")
+  '((#(#(1) #(2) #(3) #(4) #(5) #(6) #(7) #(8) #(9) #(10)))
+    (#(#(1) #(2) #(3) #(4) #(5) #(6) #(7) #(8) #(9) #(10) 
+       #(11) #(12) #(13) #(14) #(15) #(16) #(17) #(18) #(19) #(20)))
+    (#(#(11) #(12) #(13) #(14) #(15) #(16) #(17) #(18) #(19) #(20)
+       #(21) #(22) #(23) #(24) #(25) #(26) #(27) #(28) #(29) #(30)))
+    (#(#(21) #(22) #(23) #(24) #(25) #(26) #(27) #(28) #(29) #(30)
+       #(31) #(32) #(33) #(34) #(35) #(36) #(37) #(38) #(39) #(40))))))
+
+(checkequal "last"
+	    ((osql "vectorof(skipfirst(2,0,{iota(0,5)}));")
+	     '((#((#(2)) (#(3)) (#(4)) (#(5)))))))
+;'
+
+(checkequal "na2vec"
+	    ((osql "na2vec(iarray(10));")
+	     (osql "{0,0,0,0,0,0,0,0,0,0};")))
+
+(checkequal "vstream2iastream"
+	    ((osql "create function sv()->stream as
+streamof(select {0,0,i} from integer i where i in 5*iota(1, 2));
+na2vec(in(vstream2iastream(sv())));")
+	     (osql "in(bag({0,0,5}, {0,0,10}));")))
+
+(checkequal "default"
+	    ((osql "default(bagof(make_record({})['hej']), 1);")
+	     '((1)))
+	    ((osql "default(bagof(make_record({'hej',2})['hej']), 1);")
+	     '((2))))
+
+(checkequal 
+ "init-osql"
+ ((init-osql (caar (osql "make_record({'osql', 'iota(1,3);'});")) "osql")
+  '((1) (2) (3))))
+
+(checkequal 
+ "proute"
+ ((osql "vselect i, na2vec(na) from integer i, iarray na 
+where (i,na) = proute(iarray({iota(0, 9)}), 1, 0, 1);")
+  '((#(#(0 #(0)) #(0 #(1)) #(0 #(2)) #(0 #(3)) #(0 #(4)) #(0 #(5)) #(0 #(6)) 
+       #(0 #(7)) #(0 #(8)) #(0 #(9))))))
+ ((osql "vselect i, na2vec(na) from integer i, iarray na 
+where (i,na) = proute(iarray({iota(0, 9)}), 2, 0, 1);")
+  '((#(#(0 #(0)) #(1 #(1)) #(0 #(2)) #(1 #(3)) #(0 #(4)) #(1 #(5)) #(0 #(6))
+       #(1 #(7)) #(0 #(8)) #(1 #(9))))))
+ ((osql "vselect i, na2vec(na) from integer i, iarray na 
+where (i,na) = proute(iarray({iota(0, 9)}), 2, 0, 2);")
+  '((#(#(0 #(0)) #(0 #(1)) #(1 #(2)) #(1 #(3)) #(0 #(4)) #(0 #(5)) #(1 #(6))
+       #(1 #(7)) #(0 #(8)) #(0 #(9))))))
+ ((osql "vselect i, na2vec(na) from integer i, iarray na 
+where (i,na) = proute(iarray({iota(0, 9)}), 2, 0, 2);")
+  '((#(#(0 #(0)) #(0 #(1)) #(1 #(2)) #(1 #(3)) #(0 #(4)) #(0 #(5)) #(1 #(6))
+       #(1 #(7)) #(0 #(8)) #(0 #(9))))))
+ ((osql "vselect i, na2vec(na) from integer i, iarray na 
+where (i,na) = proute(iarray({iota(0, 9)}), 2, 0, 4);")
+  '((#(#(0 #(0)) #(0 #(1)) #(0 #(2)) #(0 #(3)) #(1 #(4)) #(1 #(5)) #(1 #(6))
+       #(1 #(7)) #(0 #(8)) #(0 #(9)))))))
+
+(checkequal 
+ "retard"
+ ((let ((ts (roundto 
+	     (time-spent 
+	      (osql "set :count = count(retard(0.1, iota(1,5)));")) 2)))
+    (princ (concat " [" ts  " seconds] "))
+    (and (>= ts 0.5) (< ts 0.6)))
+  t)
+ ((osql ":count;")
+  '((5))))
+
+(checkequal 
+ "interrupted retard"
+ ((osql "some(retard(1.0, 
+ read_ntuples(getenv('AMOS_HOME') + '/scsq/data/pump.dat')));")
+  '((TRUE))))
+
+;' "
+
+(let ((res (caar (osql "select vdsum0(vselect darray({1.0,2.0})
+from integer i where i in iota(1,10));"))))
+  (checkequal "vdsum0"
+	      ((na-elt res 0) 10.0)
+	      ((na-elt res 1) 20.0)))
+
+(let ((res (caar (osql "in(vdsum(streamof(vselect darray({1.0,2.0})
+from integer i where i in iota(1,10))));"))))
+  (checkequal "vdsum"
+	      ((na-elt res 0) 10.0)
+	      ((na-elt res 1) 20.0)))
+
+(checkequal "numarray hash merge, single attribute value"
+	    ((osql "select na2vec(nav[0]), na2vec(nav[1])
+from vector of numarray nav
+where nav = nahmerge((select iarray({0, 2, i})
+from integer i where i in iota(1, 6)), 1, 2);")
+	     '((#(0 2 1) #(0 2 2)) (#(0 2 3) #(0 2 4)) (#(0 2 5) #(0 2 6)))))
+
+(checkequal 
+ "numarray hash merge, multiple attribute values"
+ ((osql "select na2vec(nav[0]), na2vec(nav[1])
+from vector of numarray nav
+where nav = nahmerge((select iarray({0, integer(3-i), 20})
+from integer i, integer j where i in iota(1, 3)
+and j in iota(1,2)), 1, 2);")
+  '((#(0 2 20) #(0 2 20)) (#(0 1 20) #(0 1 20)) (#(0 0 20) #(0 0 20)))))
+
+(checkequal 
+ "aggregation over numarray hash merge result"
+ ((osql "
+create function nahagg(vector of numarray w)->numarray as
+select iarray({x[0], x[1], x[2], sum})
+from integer sum, iarray x
+where sum = sum(select v[3] from numarray v where v in w)
+and x = w[0];
+na2vec(nahagg(nahmerge((select iarray({0, 0, integer(3-i), integer(j+i)})
+from integer i, integer j where i in iota(1, 3)
+and j in iota(1,2)), 2, 2)));")
+  '((#(0 0 2 5)) (#(0 0 1 7)) (#(0 0 0 9)))))
+
+:osql
+
+/*
+;Testing streams
+(checkequal 
+ "Stream functions"
+ ((osql "name(typeof(siota(1,10)));")
+  '(("STREAM-INTEGER")))
+ ((osql "extract(siota(1,10));")
+  '((1) (2) (3) (4) (5) (6) (7) (8) (9) (10)))
+ ((osql "name(typeof(streamagg(siota(1,10),1,1)));")
+  '(("STREAM-VECTOR")))
+ ((osql "extract(streamagg(siota(1,10),1,1));")
+  '((#(1)) (#(2)) (#(3)) (#(4)) (#(5)) (#(6)) (#(7)) (#(8)) (#(9)) (#(10))))
+ ((osql "name(typeof(streamagg(streamagg(siota(1,10),2,2),2,2)));")
+  '(("STREAM-VECTOR")))
+ ((osql "extract(streamagg(streamagg(siota(1,10),2,2),2,2));")
+  '((#(#(1 2) #(3 4))) (#(#(5 6) #(7 8))))))
+*/
+
+
+rollback;

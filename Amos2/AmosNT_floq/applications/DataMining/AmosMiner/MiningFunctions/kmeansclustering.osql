@@ -1,0 +1,121 @@
+/*-*-sql-*-******************************************************************/
+
+/*************************************************************************
+BASIC KMEANS FUNCTIONS
+**************************************************************************/
+
+/* Defines function 
+	sample(Bag b, Integer s) -> Bag */
+load_lisp('sampling.lsp');
+
+create function get_nearest_centroid(Vector of Number x, 
+                                     Vector of Vector of Number vc)
+                                 -> (Number d, Vector of Number c)
+  /* Gets nearest centroid among vc for the given datapoint x,
+     returns distance and centroid vector */
+ as leastk((select euclid(x, c), c 
+              from Vector of Number c 
+             where c in vc),
+           1);
+
+create function calc_cluster_assignment(Vector of Vector of Number vc, 
+                                        Function dpfn)
+                                     -> Bag of (Vector of Number c, 
+                                                Vector of Number x)
+  /* Returns cluster assignment in form of (centroid,datapoint) pairs */
+ as select c, x
+     from Number d
+    where {x} in extent(dpfn) 
+      and (d,c) = get_nearest_centroid(x, vc);
+
+create function col_means(Bag of Vector of Number bv) 
+                      -> Vector of Number vm
+  /* Returns mean vector for a given bag of vectors */
+  as aggv(bv,#'avg');
+
+create function kmeans_tcfv(Vector of Vector of Number vc, Function dpfn)
+                        -> (Vector of Vector of Number, Function)
+  /* Functional argument to transitive closure: iterates over a vector of 
+     centroids 
+     vc   : vector of current centroids
+     dpfn : Type A function storing datapoints */
+  as select vectorof(select newc
+                       from Vector of Number c, Vector of number newc
+                      where (c, newc) in 
+                            groupby(calc_cluster_assignment(vc,dpfn),
+                                    #'col_means')
+                        and newc != vc), 
+            dpfn;
+
+create function kmeans_fc(Vector of Vector of Number vic, Function dpfn)
+                      -> Vector of Vector of Number vfc
+  /* K-means algorithm to construct the 'final' set of centroids 
+     vic  : vector of initial centroids
+     dpfn : Type A function storing datapoitns */
+  as select vfc
+     where (vfc, dpfn) = iterate(#'kmeans_tcfv', 1000, vic, dpfn);
+
+create function centroid2id(Vector of Number c, Vector of Vector of Number vc)
+                        -> Integer i
+  /* Returns an integer id to distinguish a cluster centroid 
+     c  : centroid to identify position of
+     vc : vector of centroids containing c */
+  as select i where c = vc[i];
+
+create function get_nearest_centroid_id(Vector of Number x, 
+                                        Vector of Vector of Number vc)
+                                    -> Number cid
+  /* Gets nearest centroid among vc for the given datapoint p,
+     returns distance and centroid vector */
+  as select centroid2id(c, vc) 
+       from Number d, Vector of number c
+      where (d, c) in get_nearest_centroid(x, vc);
+
+
+/*****************************************************************************
+CENTROID MANAGEMENT FUNCTIONS
+******************************************************************************/
+
+create function save_centroids(Vector of Vector of Number vc, 
+                               Charstring filename) -> Charstring
+  /* Saves vector of centroids to an '.nt' file */
+  as write_ntuples((select vc[i] from Integer i), filename);
+
+create function load_centroids(Charstring filename) 
+                           -> Vector of Vector of Number
+  /* Loads a vector of centroids from an '.nt' file */
+  as vectorof(read_ntuples(filename));
+
+/*****************************************************************************
+VISUALISATION FUNCTIONS
+******************************************************************************/
+
+create function disp_clustering3d(Bag of (Number, Vector of Number) cdp, Vector of Number projs)
+                              -> Integer
+  /* Create a 3D scatter plot display of a bag of (cluster_id, datapoint)
+     Different cluster ids get different colors, 
+     projection is made to dimesions listed in projs  */
+  as scatter3p((select concat(project(dp,projs),{cid}) 
+                  from Vector of Number dp, Number cid
+                 where (cid,dp) in cdp));
+
+/*****************************************************************************
+SUM OF SQUARED ERROR
+******************************************************************************/
+
+create function agg_se(Bag of Vector of Number cdp) -> Number
+  /* Aggregate error values within a cluster, given data points cdp */
+  as sum(select power(euclid(dp,col_means(cdp)),2)
+           from Vector of Number dp
+          where dp in cdp);
+
+create function sse(Bag of (Number, Vector of Number) clustered_points)
+                  -> Number
+  /* Calculate SSE for the given clustered points */
+  as sum(select se 
+           from Number cid, Number se
+          where (cid,se) in groupby((select cid, x
+                                       from Number cid, Vector of Number x
+                                      where (cid,x) in clustered_points), 
+                                    #'agg_se'));
+

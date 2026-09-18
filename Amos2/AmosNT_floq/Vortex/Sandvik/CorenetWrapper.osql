@@ -1,0 +1,37 @@
+/*-*-sql-*-*******************************************************************
+ * SVALI
+ *
+ * Author: (c) 2012 Minpeng Zhu, Tore Risch. Cheng Xu UDBL
+ * $RCSfile: CorenetWrapper.osql,v $
+ * $Revision: 1.7 $ $Date: 2013/11/16 17:02:38 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Data stream wrapper for Corenet
+ ****************************************************************************/
+
+/* Corenet JSON stream wrapper interface functions: */
+
+load_lisp("json_wrapper.lsp"); /* Load interface function to Sandvik's CORENET server */
+
+create type CorenetStream under RawDataStream
+  properties (coreid Charstring key);
+
+/*** Extract raw JSON tuples from Corenet JSON stream ***/
+
+create function rawStreamTuples(CorenetStream s) -> Stream of Record
+  /* The raw stream of tuples emitted froma Corenet stream */
+  as json_stream_wrapper("python corenet_streamer.py", host(s), port(s));
+
+create function theCorenetStream(Charstring coreid) -> CorenetStream
+  as select s from CorenetStream s where coreid(s) = coreid;
+
+
+create function th(CorenetStream s) -> Number as stored;
+
+create function th(Charstring coreid) -> Number
+  as th(theCorenetStream(coreid));
+
+create function th(Charstring coreid, Number val) -> Boolean
+  as set th(theCorenetStream(coreid)) = val;
+
+create function alertString(CorenetStream s) -> Charstring as stored;

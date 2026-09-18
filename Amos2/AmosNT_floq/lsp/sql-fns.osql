@@ -1,0 +1,188 @@
+/******************************************************************************
+ * Data definition and helper functions for SQL compliant data sources
+ *****************************************************************************/
+
+/*****************************************************************************/
+create function sql_table_named(charstring ds, charstring tbl) ->
+                <charstring, charstring, charstring, charstring>
+as
+select t1, t2, t3, t4
+from charstring t1, charstring t2, charstring t3, charstring t4
+where <t1, t2, t3, t4> = tables(ds) and 
+      t1 = tbl;
+
+/******************************************************************************
+ * Retrieve the all tables with similar names in a datasource DS
+ *****************************************************************************/
+create function sql_tables_like(charstring ds, charstring tblpat) -> charstring
+as select t1
+   from charstring t1, charstring t2, charstring t3, charstring t4
+   where <t1, t2, t3, t4> = tables(ds) and 
+         like_i(t1, tblpat);
+
+/******************************************************************************
+ * Check the existence of the table TBL in a datasource DS
+ *****************************************************************************/
+create function sql_table_exists(charstring ds, charstring tbl) -> boolean
+as
+  select true
+  from charstring t1, charstring t2, charstring t3, charstring t4
+  where <t1, t2, t3, t4> = tables(ds) and t1 = upper(tbl);
+
+/******************************************************************************
+ * Create a table in datasource DS.
+ *****************************************************************************/
+create function sql_create_table(character ds, character tbl, character definition) 
+                                -> charstring
+as
+begin
+  declare  character create_stmt;
+
+  set create_stmt = 'CREATE TABLE ' + upper(tbl) + ' ' + definition;
+
+  if notany(sql_table_exists(ds, tbl)) then
+  begin
+    sql(ds, create_stmt, {}, -1);
+    result tbl;
+  end else
+  begin
+    print('Table ' + tbl + ' already exists.');
+  end
+end;
+
+/******************************************************************************
+ * Drop the table TABLE_NAME in datasource DS
+ *****************************************************************************/
+create function sql_drop_table(charstring ds, charstring table_name) -> charstring
+as
+begin
+  declare charstring drop_stmt;
+  set drop_stmt = 'DROP TABLE ' + upper(table_name);
+    
+  if some(sql_table_exists(ds, table_name)) then
+  begin
+    sql(ds, drop_stmt, {}, -1);
+    result table_name;
+  end else
+  begin
+    print('Table ' + table_name + ' does not exist.');
+  end
+end;
+
+/******************************************************************************
+ * Dump the contents of the table TABLE_NAME in datasource DS
+ *****************************************************************************/
+create function sql_dump_table(charstring ds, charstring table_name) -> vector
+as select sql(ds, 'SELECT * FROM ' + upper(table_name), {}, -1);
+
+/******************************************************************************
+ * Empty the contents of the table TABLE_NAME in datasource DS
+ *****************************************************************************/
+create function sql_empty_table(charstring ds, charstring table_name) -> vector
+as select sql(ds, 'DELETE FROM ' + upper(table_name), {}, -1);
+
+/******************************************************************************
+ * Create index on the column COLNAME of a table TABLE_NAME.
+ * The index will have the name: <TABLE_NAME>_<COLNAME>, e.g. "person_ssn"
+ *****************************************************************************/
+create function sql_index_table(
+                   charstring ds,
+                   charstring table_name,
+                   charstring colname) -> charstring
+as
+begin
+  declare
+    charstring indexname,
+    charstring index_stmt;
+
+  set indexname = upper(table_name) + "_" + upper(colname);
+  set index_stmt = 'CREATE INDEX ' + indexname + 
+                   ' ON ' + table_name + ' (' + colname + ')';
+
+  sql(ds, index_stmt, {}, -1);
+  result indexname;
+end;
+
+/* due to naming problems - to gen shorter names */
+create function sql_index_table1(
+                   charstring ds,
+                   charstring table_name,
+                   charstring colname) -> charstring
+as
+begin
+  declare
+    charstring indexname,
+    charstring index_stmt;
+
+  set indexname = upper(table_name) + '_IDX';
+  set index_stmt = 'CREATE INDEX ' + indexname + 
+                   ' ON ' + table_name + ' (' + colname + ')';
+
+  sql(ds, index_stmt, {}, -1);
+  result indexname;
+end;
+
+/******************************************************************************
+ * Commit an ODBC datasource (connection)
+ *****************************************************************************/
+create function sql_commit(charstring ds) -> vector
+as select sql(ds, 'commit;', {}, -1);
+
+
+
+
+
+/******************************************************************************
+ * Create a table TBL in a datasource DS where:
+ * - COLUMNS is a vector of column names (strings)
+ * - COLSPECS is a vector of column types and options as "integer NOT NULL"
+ * - KEYS is a vector with the key columns of the table
+ *
+ * NOTES:
+ * - COLUMNS and COLSPECS must be the same lenght
+ * - This function us useful to automatically create many tables in a ODBC DS
+ *****************************************************************************/
+/* THERE IS NO WAY TO MAKE THIS WORK - FOREACH DOESNT BEHAVE ACCORDING TO
+   NORMAL SCOPING RULES
+create function sql_create_table(character ds, character tbl,
+                                 vector of character columns, integer colnum,
+                                 vector of character colspecs,
+                                 vector of character keys, integer keynum) -> charstring
+as
+begin
+  declare
+    charstring colname,
+    charstring colspec,
+    charstring create_stmt;
+
+  set create_stmt = 'CREATE TABLE ' + tbl + ' (';
+
+  for each integer idx1
+  where idx1 = iota(0, colnum)
+  begin
+    set create_stmt = create_stmt + columns[idx1] + ' ' + colspecs[idx1] + ',';
+    print(create_stmt);
+  end;
+
+  set create_stmt = create_stmt + ' PRIMARY KEY (';
+
+  for each integer idx2
+  where idx2 = iota(0, keynum)
+  begin
+    set create_stmt = create_stmt + keys[idx2] + ',';
+  end;
+
+  set create_stmt = create_stmt + '))';
+
+  print(create_stmt);
+
+  if notany(sql_table_exists(ds, tbl)) then
+  begin
+    sql(ds, create_stmt, {}, -1);
+    result tbl;
+  end else
+  begin
+    print('table ' + tbl + ' already exists.');
+  end
+end;
+*/

@@ -1,0 +1,141 @@
+/*-*-sql-*-*******************************************************************/
+
+/* This is obsoleted by qss.osql and qssbig.osql */
+
+< "experiment/tree_comm_setup.osql";
+
+declare integer :exp;
+
+sp_ts(1);
+sp_ts_freq(0.1);
+sp_report_freq(10.0);
+
+sp_flush_freq(0.02);
+
+sp_imgsize(100000000);
+sp_proctime_freq(1.0);
+lisp;
+;"
+
+;; (checkequal "Pure comm"
+;; ((osql "add tresult(11) = train(100);") nil))
+;; (checkequal "Pure comm"
+;; ((osql "add tresult(12) = train(100);") nil))
+;; (checkequal "Pure comm"
+;; ((osql "add tresult(13) = train(3000);") nil))
+;; (checkequal "Pure comm"
+;; ((osql "add tresult(14) = train(3000);") nil))
+;; (checkequal "Pure comm"
+;; ((osql "add tresult(15) = train(3000);") nil))
+
+(checkequal "FSPLIT bcast" ((osql "set :exp = experiment();
+set experimentdir() = pbasedir() + '/bc/flat';
+add tresult(11) = flat_bc(2000, :exp);") nil))
+
+(checkequal "TWOMAX bcast" ((osql "set :exp = experiment();
+set experimentdir() = pbasedir() + '/bc/twomax';
+add tresult(12) = twomax_bc(2000, :exp);") nil))
+
+(checkequal "BIN bcast" ((osql "set :exp = experiment();
+set experimentdir() = pbasedir() + '/bc/bin';
+add tresult(13) = bin_bc(2000, :exp);") nil))
+
+(checkequal "EXP bcast" ((osql "set :exp = experiment();
+set experimentdir() = pbasedir() + '/bc/exp';
+add tresult(14) = exp_bc(2000, :exp);") nil))
+
+(checkequal "VAR bcast" ((osql "set :exp = experiment();
+set experimentdir() = pbasedir() + '/bc/var';
+add tresult(15) = var_bc(2000, :exp);") nil))
+
+(checkequal "RR bcast" ((osql "set :exp = experiment();
+set experimentdir() = pbasedir() + '/bc/flat';
+add tresult(16) = rr_bc(2000, :exp);") nil))
+
+(checkequal "HYB bcast" ((osql "set :exp = experiment();
+set experimentdir() = pbasedir() + '/bc/hyb';
+add tresult(17) = hyb_bc(2000, :exp);") nil))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; (checkequal "FLAT fanout"
+;; ((osql "set experimentdir() = pbasedir() + '/fo/flat';
+;; add tresult(21) = flat_fo(2000, 7, 50);")
+;; nil))
+
+;; (checkequal "TWOMAX fanout"
+;; ((osql "set experimentdir() = pbasedir() + '/fo/twomax';
+;; add tresult(22) = twomax_fo(2000, 7, 50);")
+;; nil))
+;; (checkequal "BIN fanout"
+;; ((osql "set experimentdir() = pbasedir() + '/fo/bin';
+;; add tresult(23) = bin_fo(2000, 7, 50);")
+;; nil))
+;; (checkequal "EXP fanout"
+;; ((osql "set experimentdir() = pbasedir() + '/fo/exp';
+;; add tresult(24) = exp_fo(2000, 7, 50);")
+;; nil))
+;; (checkequal "VAR fanout"
+;; ((osql "set experimentdir() = pbasedir() + '/fo/var';
+;; add tresult(25) = var_fo(2000, 7, 50);")
+;; nil))
+
+;; (checkequal "RR fanout" ((osql "set :exp = experiment();
+;; set experimentdir() = pbasedir() + '/bc/flat';
+;; add tresult(16) = flat_bc(2000, :exp);") nil))
+
+;; (checkequal "HYB fanout"
+;; ((osql "set experimentdir() = pbasedir() + '/fo/hyb';
+;; add tresult(27) = hyb_fo(2000, 8, 50);")
+;; nil))
+
+;"
+:osql
+
+create function setuptime(vector of vector of number x, real inittime)->real as
+maxagg(select y[0] from vector of number y where y in x) - inittime;
+
+create function exectime(vector of vector of number x)->real as
+maxagg(select y[2] from vector of number y where y in x);
+
+create function countsum(vector of vector of number x)->integer as
+sum(select y[3] from vector of number y where y in x);
+
+writefile(tbasedir() + "/all.tms",
+(select {experiment, width, times, fov}
+from integer experiment, integer width, vector of vector of number times,      
+vector fov, real stime
+where <width, times, fov, stime> in tresult(experiment)
+and experiment in iota(1, 32)
+and width in iota(0, 1000)));
+
+writefile(tbasedir() + "/setup.tms",
+(select {experiment, width, time}
+from integer experiment, integer width, real time, vector fov, 
+vector of vector of number times, real stime
+where <width, times, fov, stime> in tresult(experiment)
+and experiment in iota(1, 32)
+and width in iota(0, 1000)
+and time = setuptime(times, stime)));
+
+writefile(tbasedir() + "/bcast.tms",
+(select {experiment, width, time, counts}
+from integer experiment, integer width, real time, vector fov, 
+vector of vector of number times, integer counts, real stime
+where <width, times, fov, stime> in tresult(experiment)
+and experiment in iota(11, 17)
+and width in iota(0, 1000)
+and time = exectime(times)
+and counts = countsum(times)));
+
+writefile(tbasedir() + "/fanout.tms",
+(select {experiment, width, time, counts}
+from integer experiment, integer width, real time, vector fov,
+vector of vector of number times, integer counts, real stime
+where <width, times, fov, stime> in tresult(experiment)
+and experiment in iota(21, 27)
+and width in iota(1, 256)
+and time = exectime(times)
+and counts = countsum(times)));
+
+dumpinst(tbasedir() + "/commtrees"); 

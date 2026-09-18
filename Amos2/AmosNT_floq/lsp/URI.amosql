@@ -1,0 +1,57 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2006 Johan Petrini and Tore Risch, UDBL
+ * $RCSfile: URI.amosql,v $
+ * $Revision: 1.5 $ $Date: 2006/12/10 15:57:36 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Basic representation of URIs
+ *
+ ****************************************************************************
+ * $Log: URI.amosql,v $
+ * Revision 1.5  2006/12/10 15:57:36  torer
+ * 1. New file lsp/uri.lsp for basic URI management
+ * 2. Defined AmosQL print functions for types RESOURCE and RLIT
+ *
+ * Revision 1.4  2006/10/03 14:21:44  petrini
+ * *** empty log message ***
+ *
+ * Revision 1.3  2006/09/11 13:49:46  petrini
+ * Propagating v8 code to current version.
+ *
+ * Revision 1.2.2.2  2006/09/07 15:52:10  petrini
+ * Print resources as 'uri(...)' and 'lit(...)'.
+ *
+ * Revision 1.2.2.1  2006/08/31 12:51:36  petrini
+ * *** empty log message ***
+ *
+ * Revision 1.2  2006/08/01 12:16:29  petrini
+ * Added rid fn for alternative inverse of uri and literal.
+ *
+ * Revision 1.1  2006/07/21 13:34:50  torer
+ * Separated basic URI management
+ *
+ ****************************************************************************/
+
+declare_key(theresolvent('R'),{'i','str'});
+declare_key(theresolvent('R'),{'uri'});
+
+ /***************************************************************	
+ * Constructor fns for uris and rdf literals in terms of r.	*
+ ***************************************************************/
+
+create function uri(literal l)->resource key
+  as select r(0,l);
+
+create function lit(literal l)->rlit key
+  as select r(1,l);
+  
+ /***************************************************************	
+ * Inverse of uri and literal resources as identifying values.  *
+ ***************************************************************/
+create function uid(resource r)->literal l
+  as select l where uri(l)=r;
+
+create function lid(resource r)->literal l 
+  as select l where lit(l)=r;

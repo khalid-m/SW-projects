@@ -1,0 +1,29 @@
+cd("../osql");
+<'server.osql';
+cd("../regress");
+<'testdb.amosql';
+lisp;
+(checkequal 
+ "Course manager"
+ ((osql "assignmentinfo();")
+  '((#(#(1 "Normalization") #(2 "DB design and EER modeling") 
+       #(3 "SQL") #(4 "Amos II project")))))
+ ((osql "listlonelystudents(1,'inc');")
+  '((#(#("Gohar Saeed" "gohargenius@yahoo.com" "none") 
+       #("Jonas Gisterå" "gistera@student.chalmers.se" "17") 
+       #("Kavoos Nasoudi-Shoar" "kavoos.n@gmail.com" "none") 
+       #("Lars Johansson" "lj1234@uu.se" "none") 
+       #("Laszlo Fischer" "laszlo@student.chalmers.se" "none") 
+       #("Naeem Haris" "haris105@hotmail.com" "none") 
+       #("Vitaly Doljikov" "Vitaly.Doljikov.4957@student.uu.se" "5")))))
+ ((osql "sort(listgroupmembers('naha0089'));")
+  '((#(#("Gohar Saeed" "gohargenius@yahoo.com" "none") 
+       #("Kavoos Nasoudi-Shoar" "kavoos.n@gmail.com" "none") 
+       #("Lars Johansson" "lj1234@uu.se" "none") 
+       #("Laszlo Fischer" "laszlo@student.chalmers.se" "none") 
+       #("Naeem Haris" "haris105@hotmail.com" "none")))))
+ )
+
+:osql
+rollback;
+

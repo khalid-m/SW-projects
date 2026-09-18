@@ -1,0 +1,28 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2005 Johan Petrini UDBL
+ * $RCSfile: filebased.amosql,v $
+ * $Revision: 1.1 $ $Date: 2005/05/18 13:34:19 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ * Creating tSpace fn of rdf_filebased in terms over local rdf repository.
+ *
+ * !!NOT PART OF RDFAmos!!
+ ****************************************************************************/
+make_rdf_type(the_persistent({"http://www.sward.se/meta-data-schema#", "FileBased"}),{typenamed("RDF_SOURCE")});
+
+create rdf_filebased instances :f;
+
+ /***************************************************************************************
+ * Create RDFS class rdf_filebased representing stmt source of local rdf repository.	*	 		
+ * Create tSpace over local rdf respository. 						*
+ ***************************************************************************************/
+create function tSpace(rdf_filebased f)-><rdf_resource s, rdf_resource p, rdf_resource o>
+as
+	select s, p, o from integer i where stmt_store(s, p, o, i);
+
+
+
+

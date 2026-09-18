@@ -1,0 +1,43 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: 2013 Tore Risch, UDBL
+ * $RCSfile: signatures.osql,v $
+ * $Revision: 1.1 $ $Date: 2013/06/18 19:59:17 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Definition of SVALI extensions
+ ****************************************************************************
+ * $Log: signatures.osql,v $
+ * Revision 1.1  2013/06/18 19:59:17  torer
+ * Added radom numarray generator
+ *
+ * Revision 1.1  2013/05/07 15:11:07  torer
+ * Added example of stream wrapper in C
+ *
+ ****************************************************************************/
+
+/***************** CSV wrapper ***************/
+load_extension("csvwrapper"); /* Dynamically load the DLL to read CSV files */
+
+create function my_csv_tuples(Charstring file) -> Bag of Numarray
+  as foreign 'my-csv-tuples-+';
+
+create function my_csv_stream(Charstring file) -> Stream of Numarray
+  /* This wrapper functions is currently needed in order to tell
+     the system that the emitted tuples should be regarded as a stream */
+  as streamof(my_csv_tuples(file));
+
+/***************** Random tuples ***************/
+load_extension("numtuples"); /* Dynamically load the DLL to generate 
+                                random tuples */
+
+create function numtuples0(Number delay) -> Bag of Numarray
+  as foreign 'numtuples-+';
+
+create function numtuples(Number delay) -> Stream of Numarray
+  /* This wrapper functions is currently needed in order to tell
+     the system that the emitted tuples should be regarded as a stream */
+  as streamof(numtuples0(delay));
+
+

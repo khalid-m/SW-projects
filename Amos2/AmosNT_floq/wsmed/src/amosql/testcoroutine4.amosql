@@ -1,0 +1,7 @@
+register("me1");
+lisp;
+
+;; wait until WSMOS peer is killed
+(while (osql "select 'WSMOS' in other_peers();")  (print "wait") )
+:osql
+kill_the_federation();

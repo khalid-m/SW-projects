@@ -1,0 +1,57 @@
+/*-*-sql-*-*******************************************************************
+ * SVALI
+ *
+ * Author: (c) 2012 Minpeng Zhu, Tore Risch UDBL
+ * $RCSfile: SandvikMetaData.osql,v $
+ * $Revision: 1.8 $ $Date: 2013/11/20 21:01:44 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Sandvik meta-data
+ ****************************************************************************/
+
+create Machine (name, description) instances
+ :ma ("MoriSeiki 5000", "milling machine"),
+ :mb ("MoriSeiki 5005", "other machine");
+
+create Location (name, country, region) instances
+ :la ("Uppsala", "Sweden", "Uppland"),
+ :lb ("Campinas", "Brazil", "Sao Paulo");
+
+create Operator (name) instances
+ :oa ("Niklas"),
+ :ob ("Carl");
+
+create MachineInstallation(locatedAt,  machineModel, operator) instances
+ :mia (:la, :ma, :oa),
+ :mib (:lb, :mb, :ob);
+
+create Sensor(name, manufacturer, version)
+ instances
+ :s1 ("Power usage", "ABB", "1.0a"), 
+ :s2 ("Cutting depth", "Zephyr Ltd", "2.0a"),
+ :s3 ("Cutting diameter", "Zephyr Ltd", "3.0b"),
+ :s4 ("ae sensor", "ABB", "3.4");
+
+create SensorInstallation(onMachine, sensorModel, serialNumber)
+ instances
+ (:mia, :s1, "ga123"),
+ (:mib, :s1, "vh456"),
+ (:mia, :s2, "jkga123"),
+ (:mib, :s3, "uv45123");
+
+create MillStream(coreid, receivesFrom, port, host)
+ instances
+ :csa("A", :mia, 1337, "localhost");
+
+create OtherStream(coreid, receivesFrom, port, host)
+ instances
+ :csb("B", :mib, 1338, "localhost");
+
+
+/************  Thresholds and alerts *****************/
+
+set th(:csa) = 1.5;
+set th(:csb) = 1.15;
+
+set alertString(:csa) = "Alert milling machine";
+set alertString(:csb) = "Alert other machine";

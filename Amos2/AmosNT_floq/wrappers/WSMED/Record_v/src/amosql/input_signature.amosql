@@ -1,0 +1,102 @@
+create type sigvec properties(name charstring,value vector);
+create sigvec instances :sigvec1;
+set value(:sigvec1)={};
+set name(:sigvec1)='sig';
+create type sigvec2 properties(name charstring,value vector);
+create sigvec2 instances :sigvec2;
+set value(:sigvec2)={};
+set name(:sigvec2)='sig2';
+
+create type Vecele11 properties(name charstring,value vector);
+create Vecele11 instances :vecele11;
+set value(:vecele11)={};
+set name(:vecele11)="ele1";
+
+
+create function findresult_insig()
+                ->vector e as select value(ve)from sigvec ve where name(ve)="sig";
+
+create function findresult_insig1()
+                ->vector e as select value(ve)from sigvec2 ve where name(ve)="sig2";
+
+create function findsignature(vector ip)-> vector ot  as
+					 begin
+					  for each object ve, sigvec sv where ve in ip and name(sv)='sig'
+					   begin
+					    if value(sv)={} then
+					     set value(sv)={typename(ve)}
+					    else
+					     set value(sv)=concat(value(sv),{typename(ve)});
+					   end;
+					  set ot=findresult_insig();
+					  result ot;
+					  set  value(sv)={} from sigvec sv where name(sv)='sig';
+					end;
+					   		
+						
+create function insig_iterate(vector  r)-> vector rs
+		as 
+		begin
+		 for each  Element e,sigvec2 sv where e=in(r)and name(sv)="sig2"
+		   begin
+		    if subelements(e)then 
+		     begin
+		      if value(sv)={} then
+			 set value(sv)=insig_iterate(subelements(e))
+		      else
+			 set value(sv)=concat(value(sv),insig_iterate(subelements(e)));
+		     end
+		    else
+		     begin
+		      if value(sv)={} then
+			 set value(sv)={wsmedtype(e)}
+		      else
+			 set value(sv)=concat(value(sv),{wsmedtype(e)});
+		     end;
+		   end;
+		  set rs=findresult_insig1();	
+		  result rs;
+		  set value(ve)={} from sigvec2 ve where name(ve)="sig2";	
+		end;
+
+
+
+create function input_elementtype(charstring wsuri,charstring wsname, Operation op)-> vector rs 
+		as 
+		begin
+	
+		  for each  Element e,sigvec sv where e=in(input(op))and name(sv)="sig"
+		   begin
+		    if subelements(e)then 
+		     begin
+		      if value(sv)={} then
+			 set value(sv)=insig_iterate(subelements(e))
+		      else
+			 set value(sv)=concat(value(sv),insig_iterate(subelements(e)));
+		     end
+		    else
+		     begin
+		      if value(sv)={} then
+			 set value(sv)={wsmedtype(e)}
+		      else
+			 set value(sv)=concat(value(sv),{wsmedtype(e)});
+		     end;
+		   end;
+		  set rs=findresult_insig();	
+		  result rs;
+		  set value(ve)={} from sigvec ve where name(ve)="sig";
+	       end;
+
+
+
+/**** add SOAPHeader values *********/
+create function findoperation(charstring wsdluri, charstring wsname, charstring opname,vector insig)->Operation  as 
+                                                                        select op
+									from Operation op, Service ws 
+									where name(op)=opname and name(ws)=wsname  and wsdluri(ws)=wsdluri and port(ws)=op                                                                          and insig=input_elementtype(wsdluri,wsname,op);
+create function putsoaphvalue(charstring wsdluri, charstring wsname, charstring opname,vector insig ,vector sv)->SHValue s as 
+							begin
+							   create SHValue instances s;
+							   set oper(s)=findoperation(wsdluri,wsname,opname,insig); 
+							   set value(s)=sv;
+							end;

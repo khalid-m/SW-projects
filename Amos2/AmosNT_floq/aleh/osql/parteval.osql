@@ -1,0 +1,37 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2008 Ruslan Fomkin, UDBL
+ * $RCSfile: parteval.osql,v $
+ * $Revision: 1.3 $ $Date: 2008/09/04 13:29:37 $
+ * $State: Exp $
+ *
+ * Description: 
+ ****************************************************************************
+ * $Log: parteval.osql,v $
+ * Revision 1.3  2008/09/04 13:29:37  ruslan
+ * partial evaluation of vector is in the basic of amos
+ *
+ * Revision 1.2  2008/08/18 11:59:46  ruslan
+ * names are corrected according the schema in the thesis
+ *
+ * Revision 1.1  2008/03/16 14:43:51  ruslan
+ * partial evaluation of predicates is moved to separate file
+ *
+ ****************************************************************************/
+
+enable_parteval(true);
+
+parteval('typenamed');
+parteval("CHARSTRING.UPPER->CHARSTRING");
+parteval("OBJECT.OBJECTNAME->CHARSTRING");
+parteval("NUMBER.NUMBER.TIMES->NUMBER");
+
+parteval("SOBJECT_TYPE.NAME->CHARSTRING");
+parteval("SOBJECT_TYPE.STRUCTOF->TYPE");
+
+parteval("EXPERIMENT.NAME->CHARSTRING");
+parteval("DATAFILE.NAME->CHARSTRING");
+parteval("DATAFILE.PATH->CHARSTRING");
+parteval("EVENTDATA.FILEID->INTEGER");
+parteval("EVENTDATA.EXPERIMENT->EXPERIMENT");

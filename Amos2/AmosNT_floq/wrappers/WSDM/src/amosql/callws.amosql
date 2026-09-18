@@ -1,0 +1,89 @@
+/****************************************************/
+	/* Decode functions  */
+/****************************************************/
+create type Vecele1 properties(name charstring,value vector);
+create Vecele1 instances :vecele1;
+set value(:vecele1)={};
+set name(:vecele1)="ele1";
+
+create type Vecele2 properties(name charstring,value vector);
+create Vecele2 instances :vecele2;
+set value(:vecele2)={};
+set name(:vecele2)="ele2";
+
+create function findparameters(charstring wsname,charstring opname)
+                ->vector vecpar 
+			as 
+			   select vecpar 
+   			   from Operator op, Message msg, Webservice ws 
+   			   where name(op)=opname and name(ws)=wsname and 
+         			port(ws)=op and input(op)=msg and despar(msg)=vecpar;
+
+create function findresult1()->vector rs  
+				as select value(ve) from Vecele1 ve where name(ve)="ele1";
+
+create function findresult2()->vector rs  
+				as select value(ve) from Vecele2 ve where name(ve)="ele2";
+	 
+create function iterate1(vector  r)-> vector rs
+		as 
+		begin
+		 for each Parameter p, Element e, Vecele2 ve2  
+                 where p=in(r) and valuedes(p)=e and name(ve2)="ele2"
+		  begin
+			set value(ve2)= concat(value(ve2),{name(e)});
+			if collectionpar(p)then 
+	                       	set value(ve2)= concat(value(ve2),iterate1(collectionpar(p)));
+		 end;
+	        set rs=findresult2();	
+		result rs;
+		set value(ve2)={} from Vecele2 ve2 where name(ve2)="ele2";	
+		end;
+
+create function iterate(charstring wsname, charstring opname)-> vector rs 
+		as 
+		begin
+		  for each Parameter p, Element e,Vecele1  ve  
+                  where p=in(findparameters(wsname,opname)) and 
+                        valuedes(p)=e and name(ve)="ele1" 
+		   begin
+			set value(ve)= concat(value(ve),{name(e)});
+		    	if collectionpar(p)then 
+				set value(ve)= concat(value(ve),iterate1(collectionpar(p)));
+		   end;
+		   set rs=findresult1();	
+		   result rs;
+		   set value(ve)={} from Vecele1 ve where name(ve)="ele1";						 	
+	       end;
+
+create function decode(charstring wsname, charstring opname)
+                ->vector rs key as
+begin
+   set rs =iterate(wsname,opname);
+   result rs;
+end;
+
+/*****************************************************************************/
+		/* callwebservice  functions  */
+/*****************************************************************************/
+
+create function call_webservice(charstring name, charstring soapactionuri, 
+                                charstring style ,charstring encodingstyle, 
+                                charstring targetobjecturi, 
+                                charstring namespaceuri, charstring targeturl,
+                                vector t,vector s)
+                 -> vector r 
+as foreign  "JAVA:webservicewrapper/initoperation";  
+
+create function callwebservice(charstring wsname,charstring opname, 
+                               vector t)->vector r as 
+ select call_webservice(opname,soapactionuri(op),style(op),
+                        encodingstyle(op),targetobjecturi(op),
+                        namespaceuri(op),targeturl(op),t,
+                        decode(wsname,opname))
+ from Operator op, Webservice ws 
+ where name(op)=opname and name(ws)=wsname and port(ws)=op;
+
+/*****************************************************************************/
+
+

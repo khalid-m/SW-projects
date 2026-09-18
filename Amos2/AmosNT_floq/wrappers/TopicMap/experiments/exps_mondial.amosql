@@ -1,0 +1,121 @@
+/*SPARQL queries*/
+
+set :sparql_content1 = "SELECT ?basenamestring
+			FROM <http://user.it.uu.se/~udbl/software/swatm/mondial.xtm>
+			WHERE {?tmo <http://udbl2.it.uu.se/swatm:BASENAMESTRING> ?basenamestring}";
+
+sparql(:sparql_content1);
+5s
+
+set :sparql_content2  = "SELECT ?tm0 
+		       	FROM <http://user.it.uu.se/~udbl/software/swatm/mondial.xtm>
+			WHERE {?tm0  <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?tm1.
+			       ?tm1  <http://udbl2.it.uu.se/swatm:BASENAMESTRING> 'Lang Son'}"; 
+
+sparql(:sparql_content2);
+
+{"http://udbl2.it.uu.se/swatm:10953"}
+0.516 s
+
+
+set :sparql_content3  =  "SELECT ?tm2 
+		       	FROM <http://user.it.uu.se/~udbl/software/swatm/mondial.xtm>
+			WHERE {?tm0  <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?tm1.
+			       ?tm1  <http://udbl2.it.uu.se/swatm:BASENAMESTRING> 'Lang Son'. 			    		    
+	                       ?tm0  <http://udbl2.it.uu.se/swatm:OCCURRENCETOPIC> ?tm2 }";
+
+sparql(:sparql_content3);
+
+{"http://udbl2.it.uu.se/swatm:10956"}
+{"http://udbl2.it.uu.se/swatm:10955"}
+1.422 s
+
+
+set :sparql_content4  = "SELECT ?occurrence 
+		       	FROM <http://user.it.uu.se/~udbl/software/swatm/mondial.xtm>
+			WHERE {?tm0  <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?tm1.
+			       ?tm1  <http://udbl2.it.uu.se/swatm:BASENAMESTRING> 'Lang Son'. 
+			       ?tm0  <http://udbl2.it.uu.se/swatm:OCCURRENCETOPIC> ?tm2.
+        		       ?tm2  <http://udbl2.it.uu.se/swatm:DATA> ?occurrence }";
+
+sparql(:sparql_content4);
+
+{"8187"}
+{"671900"}
+2.532 s
+
+/*RDQL questions*/
+
+
+
+set :rdql_content1 = "SELECT ?basenamestring
+			FROM <mondial.xtm>
+			WHERE (?tmo , <http://udbl2.it.uu.se/swatm:BASENAMESTRING> ?basenamestring)";
+
+3 s
+
+set :rdql_content2  = "SELECT ?tm0 
+		       	FROM <mondial.xtm>
+			WHERE (?tm0 , <http://udbl2.it.uu.se/swatm:BASENAMETOPIC>, ?tm1)
+			      (?tm1 , <http://udbl2.it.uu.se/swatm:BASENAMESTRING>, 'Lang Son')"; 
+
+rdql(:rdql_content2);
+{"http://udbl2.it.uu.se/swatm:12013"}
+0.3 s
+
+set :rdql_content3  =  "SELECT ?tm2 
+		       	FROM <mondial.xtm>
+			WHERE (?tm0 , <http://udbl2.it.uu.se/swatm:BASENAMETOPIC>, ?tm1)
+			      (?tm1 , <http://udbl2.it.uu.se/swatm:BASENAMESTRING>, 'Lang Son') 			    		    
+	                      (?tm0 , <http://udbl2.it.uu.se/swatm:OCCURRENCETOPIC>, ?tm2)";
+
+{"http://udbl2.it.uu.se/swatm:12016"}
+{"http://udbl2.it.uu.se/swatm:12015"}
+0.782 s
+
+set :rdql_content4  = "SELECT ?occurrence 
+		       	FROM <mondial.xtm>
+			WHERE (?tm0 , <http://udbl2.it.uu.se/swatm:BASENAMETOPIC>, ?tm1)
+			      (?tm1 , <http://udbl2.it.uu.se/swatm:BASENAMESTRING>, 'Lang Son') 
+			      (?tm0 , <http://udbl2.it.uu.se/swatm:OCCURRENCETOPIC>, ?tm2)
+        		      (?tm2 , <http://udbl2.it.uu.se/swatm:DATA>, ?occurrence)";
+rdql(:rdql_content4);
+/*The result
+{"8187"}
+{"671900"}
+2 s
+*/
+
+set :rdql_content45  = "SELECT ?iofc, ?occurrence
+		       	FROM <mondial.xtm>
+			WHERE (?tm0 , <http://udbl2.it.uu.se/swatm:BASENAMETOPIC>, ?tm1)
+			      (?tm1 , <http://udbl2.it.uu.se/swatm:BASENAMESTRING>, 'Lang Son') 
+			      (?tm0 , <http://udbl2.it.uu.se/swatm:OCCURRENCETOPIC>, ?tm2)
+        		      (?tm2 , <http://udbl2.it.uu.se/swatm:DATA>, ?occurrence)
+			      (?tm2 , <http://udbl2.it.uu.se/swatm:INSTANCEOFOCCURRENCE>, ?iofc)";
+
+{"http://udbl2.it.uu.se/swatm:1395","8187"}
+{"http://udbl2.it.uu.se/swatm:1397","671900"}
+3.844 s
+
+set :rdql_content05  = "SELECT ?idt
+		       	FROM <mondial.xtm>
+			WHERE (<http://udbl2.it.uu.se/swatm:1395>, <http://udbl2.it.uu.se/swatm:IDTOPIC>, ?idt)";
+
+
+set :rdql_content5  = "SELECT ?idt
+		       	FROM <mondial.xtm>
+			WHERE (?tm0 , <http://udbl2.it.uu.se/swatm:BASENAMETOPIC>, ?tm1)
+			      (?tm1 , <http://udbl2.it.uu.se/swatm:BASENAMESTRING>, 'Lang Son') 
+			      (?tm0 , <http://udbl2.it.uu.se/swatm:OCCURRENCETOPIC>, ?tm2)
+        		      (?tm2 , <http://udbl2.it.uu.se/swatm:DATA>, ?occurrence)
+			      (?tm2 , <http://udbl2.it.uu.se/swatm:INSTANCEOFOCCURRENCE>, ?iofc)
+			      (?iofc, <http://udbl2.it.uu.se/swatm:IDTOPIC>, ?idt)";
+
+
+
+rdql(:rdql_content5);
+
+{"8187","http://udbl2.it.uu.se/swatm:1395"}
+{"671900","http://udbl2.it.uu.se/swatm:1397"}
+1.906 s

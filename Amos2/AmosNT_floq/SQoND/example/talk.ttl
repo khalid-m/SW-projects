@@ -1,0 +1,8 @@
+@prefix : <http://udbl.uu.se/pop#> .
+:grid1 :species "A" .
+:grid1 :pop ((1 2 3)
+             (4 5 6)) .
+:grid2 :species "B" .
+:grid2 :pop ((1 0 1)
+             (0 1 0)) .
+

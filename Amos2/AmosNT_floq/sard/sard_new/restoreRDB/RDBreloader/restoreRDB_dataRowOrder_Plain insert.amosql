@@ -1,0 +1,136 @@
+
+
+
+create function CallProc_RowOrderPIL(JDBC jd,Charstring filename2, charstring baseURI)
+->Boolean
+/*Generates CALL PROCEDURE statements to call the corresponding procedures to insert data ,given in Row order in NT, into the table.*/
+
+as
+begin
+	declare Charstring c,Charstring d, Charstring col1,Vector cn,Vector cv,Vector ct,Vector cnt,Vector cnt1,Vector cnt2,
+		Vector v1, Vector v2,Vector v3,Vector v4,Vector t3,Vector t4,
+		Charstring z,Charstring tname,Charstring t,Charstring fkV,Charstring c1,Charstring c2;
+	set t="";
+	set c1="";
+	set c2="";
+	set col1="";
+	set t3={};
+	set t4={};
+	set v1={};
+	set v2={};
+	set v3={};
+	set v4={};
+	set cnt={};
+	set cnt1={};
+	set cnt2={};
+	set cv={};
+	set cn={};
+	set ct={};
+	set tname="";
+	
+	for each charstring ch where ret_tableURIs_CT()=ch
+	/*Retrieves all connecting tables from the NT file and stores in a vector.*/
+	begin
+		set cnt=concat(cnt,{ch});
+	end;
+
+	for each charstring s, charstring p,charstring v, Charstring i where readtuples1(filename2)=<s,p,v,i>
+	begin
+		if (p in cnt) then
+		/* Generatig CALL Procedure statements for connecting tables.*/
+		begin
+			set cnt1=str_exp3(str_exp(clearURI(v,baseURI),'/'),'_');
+			set cnt2=str_exp3(str_exp(clearURI(s,baseURI),'/'),'_');
+			for each integer i where i in iota(1,dim(cnt1))
+			begin
+				if (cnt1[i-1]!="") then
+					set c1=c1+","+cnt1[i-1];
+			end;
+			for each integer i where i in iota(1,dim(cnt2))
+			begin
+				if (cnt2[i-1]!="") then
+					set c2=c2+","+cnt2[i-1];
+			end;
+			
+			sql(jd,"CALL SP_"+clearURI(p,baseURI)+"("+substring(c1,1,char_length(c1))+","+substring(c2,1,char_length(c2))+");");	
+			set cnt1={};
+			set cnt2={};
+			set c1="";
+			set c2="";
+		end
+		else
+		/* Generatig CALL Procedure statements for regular tables.*/
+		begin
+			if(s!=t) then
+	    		begin 		
+				if (t!="")then
+				begin 	
+					for each Vector ch1, Vector ch2 where get_pkValRow(baseURI,t)=<ch1,ch2>
+					begin
+						set t3=concat(t3,ch1);
+						set t4=concat(t4,ch2);
+					end;		
+					set col1=sorting(cn,t3,t4);
+					sql(jd,"CALL SP_"+tname+"("+substring(col1,1,char_length(col1))+");");	
+				end;
+				set t3={};
+				set t4={};
+				set t=s;
+				if(tname!=ret_tableNamefromRowID(baseURI,t)) then 
+				begin 
+					set cn={};
+					set ct={};
+					for each Charstring col,Charstring colURI where ret_columnURIs(ret_tableURIfromRowID(baseUri,t),baseURI)=<colURI,col>
+					begin
+						set cn=concat(cn,{str_exp(col,'/')});
+						for each Integer i where i in iota(1,dim(v4))
+						begin
+							if(colURI=v4[i-1]) then
+								set d=v2[i-1];
+						end;
+						set ct=concat(ct,{d});
+					end;
+				end; 	
+	 			set tname=ret_tableNamefromRowID(baseURI,t);
+			end;		
+			if(v!="" and p!="<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>") then
+			begin 
+				set z=clearURI(p,baseURI);
+				if(like(z,"*/*")) then 
+				begin 
+					set t3=concat(t3,{str_exp(clearURI(p,baseURI),'/')});	
+					if(ret_colDatatype(p)='varchar')then 
+					begin
+						set v="'"+v+"'";
+                                        	set t4=concat(t4,{v});
+					end
+					else if(ret_colDatatype(p)='datetime')then 
+					begin
+						set v="'"+v+"'";
+                                        	set t4=concat(t4,{v});
+					end
+					else
+                                        	set t4=concat(t4,{v});
+					end
+				else
+				begin	
+					for each Vector ch1, Vector ch2,Charstring ch3 where get_fkValRow(baseURI,v,p)=<ch1,ch2,ch3>
+					begin	
+						set fkV=ch3;
+						set t3=concat(t3,ch1);
+						set t4=concat(t4,ch2);
+					end;
+				end;
+			end;
+		end;
+	end;
+	
+	for each Vector ch1, Vector ch2 where get_pkValRow(baseURI,t)=<ch1,ch2>
+	begin
+		set t3=concat(t3,ch1);
+		set t4=concat(t4,ch2);
+	end;
+	set col1=sorting(cn,t3,t4);
+	sql(jd,"CALL SP_"+tname+"("+substring(col1,1,char_length(col1))+");");	
+end;
+

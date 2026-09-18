@@ -1,0 +1,160 @@
+
+
+  create type Person properties
+  (  key Name Charstring key as stored,
+     key Age  Integer as stored
+  );
+
+  create function PersonNamed (Charstring n nonkey) -> Person p
+  as select p from Person p where Name(p)=n;
+
+  create function Married (Person husband, Person wife) -> Boolean as stored;
+
+  create function Husband (Person w nonkey) -> Person h 
+  as select h from Person h where Married ( h, w );
+
+  create function Wife ( Person h nonkey) -> Person w
+  as select w from Person w where Married ( h, w );
+
+  create function ParentChild (Person parent nonkey, Person child nonkey) -> 
+  Boolean as stored;
+
+  create function Parent ( Person c nonkey) -> Person p nonkey
+  as select p from Person p where ParentChild ( p, c );
+
+  create function Child ( Person p nonkey) -> Person c nonkey
+  as select c from Person c where ParentChild ( p, c );
+
+  create type Seaman under person properties
+  (  Rank Charstring nonkey as stored
+  );
+
+  create type Criminal under Person;
+
+  create function Crime ( Criminal nonkey) -> Charstring as stored;
+
+  create function Victim ( Criminal nonkey) -> Person as stored;
+		/*  Instantiation  */
+
+
+  create Person (Name, Age)
+  instances :Adam ('Adam', 930);
+
+  create Person (Name, Age)
+  instances     :Eve ('Eve', 900);
+
+  set Married(:Adam, :Eve) = True;
+
+  create Person (Name, Age, Parent)
+  instances :Cain ('Cain', 913, bag(:Adam,:Eve));
+
+  create Person (Name, Age, Parent)
+  instances :Abel ('Abel', 914, bag(:Adam,:Eve));
+
+  add type Criminal to :Cain;
+
+  set Crime(:Cain) = 'Murder';
+  set Victim(:Cain) = :Abel;
+
+  create Person (Name, Age, Parent)
+  instances :Seth ('Seth', 912, bag(:Adam,:Eve));
+
+  create Person (Name, Age, Parent)
+     instances  :Lilith ('Lilith', 840, nil);
+
+  set Married (:Seth, :Lilith) = True;
+
+  create Person (Name, Age, Parent)
+  instances :Noah ('Noah', 950, bag(:Seth, :Lilith));
+
+  add type Seaman (Rank)
+  to :Noah ('Captain');
+
+  create Person (Name, Age, Parent)
+  instances :Ruth ('Ruth', 869, :Cain);
+
+  set Married(:Noah, :Ruth) = True;
+
+  create Person (Name, Age, Parent)
+  instances :Shem ('Shem', 600, bag(:Noah, :Ruth));
+
+  create Person (Name, Age, Parent) instances
+            :Ham ('Ham', 590, bag(:Noah, :Ruth));
+
+  create Person (Name, Age, Parent) instances
+            :Japheth ('Japheth', 580, bag(:Noah, :Ruth));
+
+  create Person (Name, Age, Parent) instances
+            :Cush ('Cush', nil,:Ham);
+
+  create Person (Name, Age, Parent) instances
+            :Mizraim ('Mizraim', nil, :Ham);
+
+  create Person (Name, Age, Parent) instances
+            :Canaan ('Canaan', nil, :Ham);
+
+  create Person (Name, Age, Parent) instances
+            :Gomer ('Gomer', nil, :Japheth);
+
+  create Person (Name, Age, Parent) instances
+            :Ashkenaz ('Ashkenaz', nil, :Gomer);
+
+  create Person (Name, Age, Parent) instances
+            :Riphath ('Riphath', nil, :Gomer);
+
+  create function Sibling (Person p nonkey) -> Person gc nonkey
+  as select gc from Person gc where gc = Child(Parent(p)) and gc != p;
+
+  create function Grandparent ( Person p nonkey) -> Person gc nonkey
+  as select gc from Person gc where gc = Parent(Parent(p));
+
+  create function Grandchild ( Person p nonkey) -> Person gc nonkey
+  as select gc from Person gc where gc = Child(Child(p));
+
+  create function Cousin ( Person p nonkey) -> Person gc nonkey
+  as select gc from Person gc where gc = Child(Sibling(Parent(p)));
+
+/*  Commit; */
+
+
+
+
+		/*  Queries  */
+lisp;
+
+(checkequal "Find names and ages of all persons:"
+  ((sorttuples(osql "select n, a
+		from Person p, Charstring n, Integer a
+		where Name (p) = n and Age (p) = a;"))
+   '(("Abel" 914) ("Adam" 930) ("Cain" 913) ("Eve" 900) ("Ham" 590) ("Japheth" 580) 
+     ("Lilith" 840) ("Noah" 950) ("Ruth" 869) ("Seth" 912) ("Shem" 600)))
+  )
+
+(checkequal "Find the names of all Noah's cousins:"
+  ((osql "select distinct c
+		from Charstring c
+		where Name(Cousin(PersonNamed('Noah'))) = c;")
+	     '(("Ruth"))))
+
+
+(checkequal "Find the rank of Adam's grandchild:"
+  ((osql "select r
+	      from Charstring r, Seaman s, Person p
+  		where p = Grandchild(PersonNamed('Adam'))
+		and Rank(s) = r and s = p;")
+	     '(("Captain"))))
+
+(checkequal "Find names of all of Seth's grandchildren:"
+  ((sorttuples(osql "select c from Charstring c
+		where Name(Grandchild(PersonNamed('Seth'))) = c;"))
+	     '(("Ham")("Japheth")("Shem"))))
+
+
+(checkequal "Find all criminals and their crimes:"
+  ((osql "select n, cn
+  	 	from Criminal c, Charstring n, Charstring cn
+  		where Name(c) = n and Crime (c) = cn;")
+	     '(("Cain" "Murder"))))
+:osql
+rollback; 
+/*  Release; */

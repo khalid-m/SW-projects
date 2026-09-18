@@ -1,0 +1,45 @@
+ /*-*-sql-*-*************************************
+ * AMOS2
+ *
+ * Replace this to suit your SP configuration */
+
+set dumpfile() = "scsq.dmp";
+set sprocstart() = "lsproc2";
+
+set preprsh() = "/usr/bin/ssh -n";
+set sp_username("") = getenv("USER");
+set sp_start("") = "cd " + getenv("TMPDIR") + ";";
+set prepstartcmd("") = getenv("AMOS_HOME") + "/bin/scsq.exe";
+set spstdout() = " >> PrepLog";
+set sppostfix() = " 2>&1 &";
+set prephome() = "";
+set cpus_per_host() = 4;
+
+/* coord is on the host which does mkdmp */
+set prepcoordhost() = gethostname();
+
+/* prephosts is going to be re-set if in queue system */
+set prephosts() = {"localhost"};
+
+/* Default config for queue system */
+
+create function gersh() -> Charstring as getenv("TMPDIR") + "/rsh -n";
+create function slrsh() -> Charstring as "srun";
+create function slstdout() -> Charstring as getenv("TMPDIR") + "/PrepLog";
+create function qnodelistfile() -> Charstring 
+  as getenv("TMPDIR") + "/machines";
+create function genodes() -> Charstring
+  as select s + "." + d
+     from Charstring s, Charstring d
+     where s in read_ntuples(qnodelistfile())[0]
+     and d = domainname(gethostname());
+create function distgenodes() -> Charstring as
+select distinct genodes();
+
+create function slnodes() -> Charstring as exec("srun hostname|sort");
+create function distslnodes() -> Charstring as
+select distinct slnodes();
+
+/* Set a generous timeout for open-port */
+
+porttimeout(10.0);

@@ -1,0 +1,332 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2002 Martin Hansson, UDBL
+ * $RCSfile: relational.osql,v $
+ * $Revision: 1.3 $ $Date: 2012/04/19 15:13:01 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ * OSQL declaration of functions that constitute the relational wrapper. All
+ * interface functions are defined to return errors when not called with a
+ * subtype of relational, and serve as a template for implementing subtypes 
+ * of the relatio $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ * OSQL declaration of functions that constitute the relational wrapper. All
+ * interface functions are defined to return errors when not called with a
+ * subtype of relational, and serve as a template for implementing subtypes 
+ * of the relational wrapper. To change the interface, one has to subtype
+ * relational and implement the function on the subtype. See also odbc.osql 
+ * and jdbc.osql.  
+ * 
+ ****************************************************************************
+ * $Log: relational.osql,v $
+ * Revision 1.3  2012/04/19 15:13:01  minzh812
+ * plus the in predicate case.
+ *
+ * Revision 1.2  2012/04/09 15:46:26  minzh812
+ * *** empty log message ***
+ *
+ * Revision 1.34  2012/03/24 10:37:34  torer
+ * Support for pushing infix functions to SQL
+ *
+ * Revision 1.33  2012/03/23 18:47:57  torer
+ * Table driven finalizer simpler
+ *
+ * Revision 1.32  2012/02/13 19:19:37  torer
+ * Corrected signatures
+ *
+ * Revision 1.31  2011/01/29 11:04:43  torer
+ * Base system uses (...) tuple notation, 'return' statement, and systematic indentation
+ *
+ * Revision 1.30  2008/08/13 14:54:34  torer
+ * Capitalization of connection name
+ *
+ ****************************************************************************/
+
+/* Static functions (not operating on an instance) */
+
+create function relational_named(charstring nm) -> relational r 
+  as select r where r=datasource_named(upper(nm));
+
+ 
+/****************************************************************************
+ *  
+ * 'Virtual' functions. Cannot be run with a pure 'relational' object, they
+ * must be oveloaded on subtypes.
+ *
+ ****************************************************************************/
+
+create function connect(relational r, 
+			charstring ds_identifier, 
+			charstring username, 
+			charstring password) -> relational
+as foreign 'abstract-function';
+
+create function disconnect(relational r) -> boolean
+as foreign 'abstract-function';
+
+
+/* Metadata */
+
+/* Returns a scan of all the tables in the database. 
+ */
+create function tables(relational r)
+                   -> (charstring table, charstring catalog, 
+                       Charstring schema, Charstring owner)
+  as foreign 'abstract-function';
+
+create function tables(Charstring relational_name)
+                   -> (Charstring table, Charstring catalog, 
+                       Charstring schema, Charstring owner)
+  as tables(relational_named(relational_name));
+
+/* Returns a scan of the columns in the database. table_name_pattern may 
+ * include '%' signs as wildcards.
+ */
+create function columns(Relational r, Charstring schema_pattern,
+			Charstring table_name_pattern, 
+ 			Charstring column_name_pattern)
+                    -> (Charstring column_type, Charstring column_name)
+  as foreign 'abstract-function';
+
+/* Returns a scan all columns in the database where table_name_pattern matches. 
+ * table_name_pattern may include '%' signs as wildcards.
+ */
+create function columns(Relational r, Charstring table_name_pattern) 
+                    -> (Charstring column_type, Charstring column_name)
+  as columns(r, '%', table_name_pattern, '%');
+
+
+/* Returns a bag of the columns that make up the primary key in a database.
+ */
+create function primary_keys(Relational r, Charstring catalog_name, 
+                             Charstring schema_name, Charstring table_name)
+                         -> (Charstring column_name, 
+                             Charstring constraint_name)
+  as foreign 'abstract-function';
+
+create function primary_keys(Relational r, Charstring table_name)
+                         -> (Charstring column_name, 
+                             Charstring constraint_name)
+  as primary_keys(r, '', '', table_name);
+
+create function imported_keys(Relational r, Charstring fktable) 
+                          -> (Charstring pktable, Charstring pkcolumn, 
+                              Charstring fkcolumn)
+  as foreign 'abstract-function';
+
+create function exported_keys(Relational r, Charstring pktable)
+                          -> (Charstring pkcolumn, Charstring fktable, 
+                              Charstring fkcolumn)
+  as foreign 'abstract-function';
+
+/*
+ * Direct SQL query execution. When overloaded, this function's type MUST be
+ * foreign. It cannot be derived
+ */
+create function sql(Relational r, Charstring query, Vector arguments)
+                -> Vector results
+  as foreign 'abstract-function'; 
+
+create function sql(Relational r, Charstring query) -> Vector
+  as sql(r, query, {});
+
+/*
+ * The default implementation of sql without parameters.
+ * A wrapper may have a smarter foreign implementation
+ * and overload this function.
+ */
+create function sql(Relational r, Charstring query) -> Vector
+  as sql(r, query, {});
+
+/*
+ * Takes the name instead of the relational object.
+ */
+create function sql(Charstring relational_name, Charstring query, 
+                    Vector arguments)
+                -> Vector
+  as sql(relational_named(relational_name), query, arguments);
+
+/*
+ * Takes the name instead of the relational object.
+ */
+create function sql(Charstring relational_name, Charstring query) -> Vector
+  as sql(relational_named(relational_name), query);
+
+/*
+ * Direct SQL update.
+ */
+create function sqlu(Relational r, Charstring update) -> Integer  
+  as foreign 'abstract-function';
+
+create function sqlu(Relational r, Charstring update, Vector params)
+                 -> Integer  
+  as foreign 'abstract-function';
+
+create function read_sql(Relational r, Charstring filename)->Bag of Vector
+  as foreign 'abstract-function';
+
+/****************************************************************************
+ *  
+ * Actually implemented functions. But they Cannot be run with a pure 
+ * 'relational' object, they must be called with subtypes.
+ *
+ ****************************************************************************/
+
+/* overloaded functions */
+
+/*
+ * True if the table exists in the database 
+ */
+create function has_table(Relational r, Charstring table_name) -> Boolean b 
+  as select true 
+     from Charstring catalog_name, Charstring schema_name, 
+ 	  Charstring type_name, Charstring present_table_name 
+     where tables(r)=(present_table_name, catalog_name, schema_name, type_name)
+       and upper(table_name) = upper(present_table_name);
+
+/*
+ * Returns the number of rows in a table
+ */
+create function cardinality(Relational r, Charstring table_name) -> Integer
+  as cast(sql(r,'select count(*) from '+table_name,{})[0] as Integer);
+
+/* foreign functions */
+
+/* 
+ * Imports a table from the given catalog-, schema-, and table name unto a 
+ * mapped typ;
+
+/* foreign functions */
+
+/* 
+ * Imports a table from the given catalog-, schema-, and table name unto a 
+ * mapped type named <typename>, with supertypes <supertypes> and optionally
+ * updateable.
+ * Catalog or schema name may be '' in order to import tables without schemas
+ * or calaogs. 
+ * This is the full function; all other are derived in terms of this one.
+ */
+create function import_table(Relational r,
+		             Charstring catalog_name,
+		             Charstring schema_name,
+		             Charstring table_name,
+			     Charstring typename, 
+	           	     Boolean updateable,
+                             Vector supertypes) -> Mappedtype mt
+  as foreign 'import_table-------+';
+
+
+/* used by neurogenerator */
+create function import_table(Relational r, 
+		             Charstring table_name, 
+			     Charstring typename, 
+	           	     Boolean updateable,
+                             Vector supertypes) -> Mappedtype mt
+  as import_table(r, '', '', table_name, typename, updateable, supertypes);
+
+/* used in ibasetest2.osql
+ * Imports a table as a mapped type in read only mode (updateable = false), or 
+ * read/write mode (updateable = true). 
+ */
+create function import_table(Relational r,  
+			     Charstring table_name, 
+			     Charstring type_name, 
+			     Boolean updateable)
+                         -> Mappedtype mt
+  as import_table(r, table_name, type_name, updateable, {});
+
+/* used in ibasetest2.osql */
+create function import_table(Relational r, 
+			     Charstring table_name, 
+			     Boolean updateable)
+                         -> Mappedtype mt
+  as import_table(r, '', '', table_name, '', updateable, {});
+
+/*
+ * Imports a table in read only mode, giving the mapped type the default
+ * name <table_name>_<datasource name>
+ */	
+create function import_table(Relational r, Charstring table_name)
+                         -> Mappedtype mt
+  as import_table(r, table_name, false);
+
+/*
+ * Imports a table without creating a mapped type.
+ */
+create function import_relation(Relational r,
+				Charstring catalog_name,
+				Charstring schema_name,
+				Charstring table_name,
+				Charstring argument_column_name,
+				Charstring result_column_name,	
+				Charstring function_name,
+				Boolean updateable)
+                            -> Function 
+  as foreign 'import_relation------+';
+
+create function import_relation(Relational r,
+				Charstring table_name,
+				Charstring argument_column_name,
+				Charstring result_column_name,	
+				Charstring function_name,
+				Boolean updateable)
+                            -> Function 
+  as import_relation(r, '', '', table_name, argument_column_name, 
+	             result_column_name, function_name, updateable);
+
+/*
+ * Creates a function from a table and interprets foreign key references as 
+ * types. The binding pattern dictates which columns are input arguments and
+ * which are output arguments, a zero in the string means skip that column,
+ * But compund foreign keys may not be split. The function name will be the 
+ * same as that of the table.
+ */
+create function import_foreign_keys(Relational r, Function core_cluster, 
+                                    Charstring bpat)
+                                -> Function
+  as foreign 'import_foreign_keys--+';
+
+/*
+ * As above except it lets you choose a name for the function created.
+ */
+create function import_foreign_keys(Relational r, Function f, 
+                                    Charstring bpat, Charstring name) 
+                                -> Function
+  as foreign 'import_foreign_keys---+';
+
+create function referenced_table(Relational r, 
+				 Charstring fktable, 
+				 Charstring fkcolumn)
+                             -> Charstring pktable
+  as select pktable
+     from Charstring _pkcolumn, Charstring _fkcolumn
+     where imported_keys(r, fktable) = (pktable, _pkcolumn, _fkcolumn);
+
+
+create function export_types(Relational r, Vector types) -> Boolean
+  as foreign 'export_types--+';
+
+create function drop_table(Relational r,Charstring name) -> Integer
+  as sqlu(r,concat('drop table ',name));
+
+/* Wrapper tables */
+
+create function sqlop(Function f) -> (Charstring sqlop, 
+                                      Boolean infix, Boolean hasvalue, Boolean reverse)
+ /* Table of mappings between Amos functions and SQL infix operators */
+  as stored;
+
+create function sqloperator(Charstring fn, Charstring sqlop, 
+                            Boolean infix, Boolean hasvalue, Boolean reverse) 
+	-> Function f
+  /* Declare the infix SQL operator corresponding to Amos function fn */
+  as begin declare Function r;
+           set r = theresolvent(fn);
+           set sqlop(r) = (sqlop, infix, hasvalue, reverse);
+           return r;
+     end; 
+

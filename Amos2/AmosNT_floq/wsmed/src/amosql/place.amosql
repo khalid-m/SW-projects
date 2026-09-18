@@ -1,0 +1,5 @@
+
+
+create function sql:Place( charstring city,integer maxitems,charstring imagepresence)-><charstring placename,charstring statename, charstring country,real lon, real lat,integer availablethememask,charstring placetypeid,integer population> 
+       as select placename,statename,country,lon,lat,availablethememask,placetypeid,population where GetPlaceList(city, maxitems,imagepresence)=<placename, statename, country, lon, lat, availablethememask, placetypeid,population>;
+

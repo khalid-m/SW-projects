@@ -1,0 +1,47 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Tore Risch, UDBL
+ * $RCSfile: multicast.osql,v $
+ * $Revision: 1.1 $ $Date: 2007/08/27 19:28:22 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Test multicasting functions
+ *
+ ****************************************************************************
+ ****************************************************************************/
+
+create function location(Charstring peerid) -> Charstring loc key
+  as stored;
+
+create function measure(Number sid, Charstring loc) -> Number m
+  as select m
+     from Charstring peer
+     where {sid,m} = call_function(peer, "measures", {}, 100)
+       and location(peer) = loc;
+
+create function measure1(Number sid, Charstring loc) -> Number m
+  as select m
+     from Charstring peer
+     where {sid,m} = call_function(peer, "measures", {}, 100)
+       and location(peer) = loc;
+
+create function measure2(Number sid, Charstring loc) -> Number m
+  as multidirectional
+	/*bbf?*/
+    ("bbf" select m
+             from Charstring peer, Number m
+            where m in call_function(peer, "measure", {sid}, 100)[1] and location(peer) = loc)
+	/*fbf?*/
+    ("fbf" select sid, m
+             from Charstring peer
+            where {sid,m} = call_function(peer, "measures", {}, 100)
+              and location(peer) = loc);
+
+
+
+set location("u") = "Uppsala";
+set location("v") = "Västerås";
+set location("g") = "Gävle";
+set location("e") = "Enköping";
+

@@ -1,0 +1,13 @@
+/*Try this:
+create function #food(charstring ndbnumber)-> <charstring longdescr,charstring foodcode> 
+ as multidirectional ("fff" foreign "cc_fff" )("ffb" foreign "cc_ffb");
+
+create function #food(Charstring ndbnumber)-> <Charstring longdescr, Charstring foodcode> 
+ as mukltidirectional ("fff" derived searchFoodByDescription("",""))
+                      ("ffb" derived searchFoodByDescription("",foodcode));
+/*calculate time exclude printing*/
+create function countfoods()->Number
+   as select count(searchfoodbydescription("",""));
+
+create function countfoodsingroup(Charstring groupcode)->Number
+   as select count(searchfoodbydescription("",groupcode));

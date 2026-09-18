@@ -1,0 +1,86 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: numpredqueries.osql,v $
+ * $Revision: 1.1 $ $Date: 2013/06/18 14:22:46 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: LOcal multi-SQL scenario
+ ****************************************************************************
+ ****************************************************************************/
+
+
+/* in this scenario, we store metadata and logDB in the same mysql database */
+/* metadata can be seem as downloaded from cloud */
+
+set :a = jdbc("c1", "com.mysql.jdbc.Driver");
+
+set :dburl = "jdbc:mysql://localhost:3306/";
+
+connect(:a, :dburl + "regress", "regress", "regress");
+
+import_table(:a, 'SENSORINSTALLATION');
+
+import_table(:a, 'SITE');
+
+import_table(:a, 'INSTALLEDEQUIPMENT');
+
+import_table(:a, 'EQUIPMENTMODEL');
+
+import_table(:a, 'SENSORMODEL');
+
+import_table(:a, 'MEASURED2');
+
+parteval("now");
+
+parteval("real");
+
+/* numerical queries */
+/*nq1: What equipment in Uppsala has failed (mv-ev>th) during the last month? */
+create function nq1()->(Integer, charstring) as
+select ie(si), ename(e)
+from SENSORINSTALLATION@C1 si, SITE@C1 s, MEASURED2@C1 m, 
+     INSTALLEDEQUIPMENT@C1 ie, EQUIPMENTMODEL@C1 e
+where location(s)='Uppsala' and 
+      Real(now())-30*24*60*60<ts(m) and
+      mv(m)-ev(si)>th(si) and
+      site(s)=site(ie) and
+      ie(ie)=ie(si) and
+      e(ie)=e(e) and
+      si(m)=si(si) and
+      logdbid(m)=logdbid(s);
+
+pc("nq1");
+
+/* with times operations */
+create function nq2()->(Integer, charstring) as
+select ie(si), ename(e)
+from SENSORINSTALLATION@C1 si, SITE@C1 s, MEASURED2@C1 m, 
+     INSTALLEDEQUIPMENT@C1 ie, EQUIPMENTMODEL@C1 e
+where location(s)='Uppsala' and 
+      Real(now())-30*24*60*60<ts(m) and
+      mv(m)-ev(si)>0.75*th(si) and
+      site(s)=site(ie) and
+      ie(ie)=ie(si) and
+      e(ie)=e(e) and
+      si(m)=si(si) and
+      logdbid(m)=logdbid(s);
+
+pc("nq2");
+
+/* with abs and times operations */
+create function nq3()->(Integer, charstring) as
+select ie(si), ename(e)
+from SENSORINSTALLATION@C1 si, SITE@C1 s, MEASURED2@C1 m, 
+     INSTALLEDEQUIPMENT@C1 ie, EQUIPMENTMODEL@C1 e
+where location(s)='Uppsala' and 
+      Real(now())-30*24*60*60<ts(m) and
+      abs(mv(m)-ev(si))/2>0.75*th(si) and
+      site(s)=site(ie) and
+      ie(ie)=ie(si) and
+      e(ie)=e(e) and
+      si(m)=si(si) and
+      logdbid(m)=logdbid(s);
+
+pc("nq3");

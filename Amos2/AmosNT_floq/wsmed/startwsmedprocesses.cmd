@@ -1,0 +1,1 @@
+JavaAMOS %1  -o " wsmedns(); startwsmedpeers(%2 ,' %1 '); quit;" 

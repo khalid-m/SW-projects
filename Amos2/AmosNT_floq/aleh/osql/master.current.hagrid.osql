@@ -1,0 +1,11 @@
+<"parteval.osql";
+<"files.osql";
+< "stream.structs.osql";
+load_lisp("../lsp/cost_model.populated.hagrid.lsp");
+load_lisp("../lsp/profiling.structs.lsp");
+load_lisp("../lsp/stopprofiling.lsp");
+load_lisp("../lsp/ineqrewrite.lsp");
+<'formulas.stream.osql';
+<'cost_model.udfs.stream.hagrid.osql';
+<"allcuts.stream.rewritten.osql";
+save "../current.dmp";

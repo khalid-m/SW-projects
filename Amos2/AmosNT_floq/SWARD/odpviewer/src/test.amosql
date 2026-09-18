@@ -1,0 +1,110 @@
+        set :upv = "dmoz";	 			/* UPV name */
+        set :ds = "dmozDS";				/* UPV name */
+	set :dmoz = "DmozML";				/* Ontology*/
+        set :uri = "http://udbl.it.uu.se/upv/dmoz";     /*User defined*/
+
+        setURIOfUPV(:upv,"http://udbl.it.uu.se/upv/dmoz");            
+
+
+	/************ Example queries to demonstrate *********************/
+	set :rdql_schema_1 = 
+		"SELECT ?structureprop
+		 FROM <" + :uri + ">
+		 WHERE (?structureprop, <http://www.w3.org/2000/01/rdf-schema#domain>, 
+		                        <" + :dmoz + "#Structure>)
+ 		 AND ?structureprop != <http://udbl.it.uu.se/schemas/Dmoz#StructureID>";
+
+
+        set :rdql_schema_2 = "SELECT ?class
+			FROM <" + :uri + ">
+			WHERE (<http://udbl.it.uu.se/schemas/DmozMLSchema#Topic>,                                                                   <http://www.w3.org/2000/01/rdf-schema#domain>, 
+			           ?class)";
+
+
+	set :rdql_content_1 = "SELECT ?r
+		               FROM <" + :uri + ">
+		               WHERE (?str,<http://udbl.it.uu.se/schemas/DmozMLSchema#StructureTitle>,?structs),
+		                     (?str,<http://udbl.it.uu.se/schemas/DmozMLSchema#StructureID>,?structid),
+		                     (?cl,<http://udbl.it.uu.se/schemas/DmozMLSchema#ClinksID>,?structid),
+                                     (?cl,<http://udbl.it.uu.se/schemas/DmozMLSchema#ClinksSubject>,?r)  
+		               AND ?structs =~ '%Dr._Mabuse%'";
+
+ 	set :rdql_content_2 = "SELECT ?val2
+                        FROM <" + :uri + ">
+                        WHERE (?s,<http://udbl.it.uu.se/schemas/DmozMLSchema#ContentsTitle>,?val1),
+                        (?s,<http://udbl.it.uu.se/schemas/DmozMLSchema#Subject>,?val2)
+                        AND ?val1 =~ '%12 Monkeys%'";
+
+
+	set :rdql_hybrid_1 = "SELECT ?s,?p,?val2
+ 			FROM <" + :uri + ">
+ 			WHERE (?s,<http://udbl.it.uu.se/schemas/DmozMLSchema#Topic>,?val1),
+      			(?p,<http://www.w3.org/2000/01/rdf-schema#domain>,
+			<" + :dmoz + "#Clinks>),
+      			 (?s,?p,?val2)
+ 			AND ?p != <http://udbl.it.uu.se/schemas/DmozMLSchema#Topic>     
+ 			AND ?val1 =~ '%Top/Arts/Movies/Titles/1/12_Monkeys%'";
+
+        set :rdql_hybrid_2 = "SELECT ?dtp, ?p, ?val
+		              FROM <" + :uri + ">
+		              WHERE (?str,<http://udbl.it.uu.se/schemas/DmozMLSchema#StructureTitle>,?structs),
+		                    (?str,<http://udbl.it.uu.se/schemas/DmozMLSchema#StructureID>,?structid),
+		                    (?dtp,<http://udbl.it.uu.se/schemas/DmozMLSchema#DatatypesID>,?structid),
+                                    (?p,<http://www.w3.org/2000/01/rdf-schema#domain>, <" + :dmoz + "#Datatypes>), 
+                                    (?dtp,?p,?val)
+			      AND ?structs =~ '%Cartoons%'
+                              AND ?p != <http://udbl.it.uu.se/schemas/DmozMLSchema#DatatypesNewID>
+                              AND ?p != <http://udbl.it.uu.se/schemas/DmozMLSchema#DatatypesID>";
+
+
+        
+        DSConnect(:upv);
+
+       
+	/*Schema queries */
+	
+	print("==================================================================");
+	print("Executing RDQL schema query 1");
+	print("==================================================================");
+
+	rdql(:rdql_schema_1);
+
+	print("==================================================================");
+	print("Executing RDQL schema query 2");
+	print("==================================================================");
+
+	rdql(:rdql_schema_2);
+
+
+	/* Content queries: */
+
+	print("==================================================================");
+	print("Executing RDQL content query 1");
+	print("==================================================================");
+
+	rdql(:rdql_content_1);
+
+	print("==================================================================");
+	print("Executing RDQL content query 2");
+	print("==================================================================");
+
+	rdql(:rdql_content_2);
+	
+
+	/* Hybrid queries */
+
+	print("==================================================================");
+	print("Executing RDQL hybrid query 1");
+	print("==================================================================");
+
+	rdql(:rdql_hybrid_1);
+
+	print("==================================================================");
+	print("Executing RDQL hybrid query 2");
+	print("==================================================================");
+
+	rdql(:rdql_hybrid_2);
+
+        DSDisconnect(:upv);
+
+        quit;

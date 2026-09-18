@@ -1,0 +1,191 @@
+create function commonInVectors(Vector vec1,Vector vec2)->Boolean
+as foreign 'commonels';
+
+create function USTR_literal(Literal l) -> Literal ll key
+  as multidirectional 
+   ('bf' foreign 'USTR-literal-+')
+   ('fb' foreign 'USTR-literal+-');
+
+
+create function URII(URI us) -> Charstring key
+  as foreign 'URI+-';
+
+
+create function URI(Charstring s key)-> URI r key
+  as multidirectional 
+  ('bf' foreign 'URI-+')
+  ('fb' select URII(r));
+
+
+create function URI_id(Literal x)-> Charstring s
+  as select s where URI(s) = x;
+
+
+create function USTR_str(Literal us) -> Charstring
+  as foreign 'USTR-str-+';
+
+
+
+create function USTR(Charstring str) -> USTR res key
+  as multidirectional
+  ('bf' foreign 'USTR-+')
+  ('fb' select USTR_str(res)); 
+
+
+/*create_capability('Relational', '=', 'bb','relational-translate-like' );*/
+
+
+
+create function import_tableRDB(relational r,
+		             charstring catalog_name,
+		             charstring schema_name,
+		             charstring table_name,
+			     charstring typename, 
+	           	     boolean updateable,
+                             vector supertypes) -> mappedtype mt
+as foreign 'import_table_new-------+';
+
+
+create function import_tableRDB(relational r, 
+			     charstring table_name, 
+			     boolean updateable)
+  -> mappedtype mt
+as
+select import_tableRDB(r, '', '', table_name, '', updateable, {});
+
+
+
+create function import_tableRDB(relational r, charstring table_name)
+  -> mappedtype mt
+as select import_tableRDB(r, table_name, false);
+
+
+
+
+/* Returns a scan of the columns in the database. table_name_pattern may 
+ * include '%' signs as wildcards.
+ */
+create function columns4(relational r, charstring schema_pattern,
+			charstring table_name_pattern, 
+ 			charstring column_name_pattern)
+  -> <charstring column_type, charstring column_name, integer column_size,  Charstring allowed_nulls>
+as foreign 'abstract-function';
+
+/* Returns a scan all columns in the database where table_name_pattern matches. 
+ * table_name_pattern may include '%' signs as wildcards.
+ */
+create function columns4(relational r, charstring table_name_pattern) 
+  -> <charstring column_type, charstring column_name, integer column_size,  Charstring allowed_nulls>
+as select columns4(r, '%', table_name_pattern, '%');
+
+
+/*
+create function sql_nil(jdbc ds, charstring query) -> vector res
+as foreign 'JAVA:executeSQL/executeQuery';
+
+
+create function sql_nil(jdbc ds, charstring query, vector arguments) -> vector res
+as foreign 'JAVA:executeSQL/executeParametrizedQuery';
+
+*/
+
+
+create function columns4(jdbc ds, 
+			charstring schema_pattern,
+			charstring table_name_pattern,
+			charstring column_name_pattern)
+  -> <charstring column_type, charstring column_name, integer column_size, Charstring allowed_nulls>
+as foreign 'JAVA:executeSQL/columns';
+
+
+
+create function bestRowIdent(jdbc ds, Charstring catalog, Charstring schema, Charstring table, Integer scope, Boolean nullable) -> Charstring column_name
+as foreign 'JAVA:executeSQL/getBestRowIdent';
+
+
+create function sql_rowN(jdbc ds, Charstring query) -><Vector,integer>
+as foreign 'JAVA:executeSQL/rowNumbQuery';
+
+
+
+
+/* Returns a scan of the columns in the database. table_name_pattern may 
+ * include '%' signs as wildcards.
+ */
+create function columns4(relational r, charstring schema_pattern,
+			charstring table_name_pattern, 
+ 			charstring column_name_pattern)
+  -> <charstring column_type, charstring column_name, integer column_size,  Charstring allowed_nulls>
+as foreign 'abstract-function';
+
+/* Returns a scan all columns in the database where table_name_pattern matches. 
+ * table_name_pattern may include '%' signs as wildcards.
+ */
+create function columns4(relational r, charstring table_name_pattern) 
+  -> <charstring column_type, charstring column_name, integer column_size,  Charstring allowed_nulls>
+as select columns4(r, '%', table_name_pattern, '%');
+
+create function pStat()->Boolean as foreign 'p-stat'; /*Johans:Returns true if partial evaluation is enabled (default)*/
+
+
+lisp;
+
+(defun p-stat(fno)
+"To get status of partial evaluation"
+ (if *enable-parteval* (osql-result fno t)))
+
+(defun import_table_res-------+ (fno ds catalog-name schema-name table-name 
+				 type-name updateable supertypes mtp)
+  (let ((mt (import-table-res ds 
+			  (convert catalog-name)
+			  (convert schema-name)
+			  (convert table-name)
+			  (or (convert type-name) 
+			      (make-mapped-typename ds table-name))
+			  (convert updateable)
+			  (mapcar #'gettypenamed (convert supertypes)))))
+    (osql-result ds catalog-name schema-name table-name
+		 type-name updateable supertypes mt)))
+
+
+;;(defun notnull- (fno x res) (if x (osql-result x)))
+
+(defun notnull- (fno x) (if x (osql-result x)))
+
+(osql "create function optional0(Bag b key, Object o) -> Object r as foreign 'optional--+';")
+
+:osql
+
+
+create function notnull(Object x) -> Boolean
+  as foreign 'notnull-';
+
+
+create function import_table_res(relational r,
+		             charstring catalog_name,
+		             charstring schema_name,
+		             charstring table_name,
+			     charstring typename, 
+	           	     boolean updateable,
+                             vector supertypes) -> mappedtype mt
+as foreign 'import_table_res-------+';
+
+create function calc_mon_day(integer,integer,integer)->integer 
+as foreign 'calculate-mon-day';
+
+
+
+create function round_tominutes(Real hh)->Charstring
+as foreign 'time-round-tominutes';
+
+
+create function write_triples_asNT(Bag of Vector rowset, Charstring file)
+                            -> Charstring
+  /* Write tuples in rowset as NT-triples in file */
+  as foreign 'write-ntuplesNT--+';
+
+create function write_asCSV(Bag of Vector rowset, Charstring file)
+                            -> Charstring
+  /* Write tuples in rowset as CSV in file */
+  as foreign 'write-ntuplesCSV--+';
+

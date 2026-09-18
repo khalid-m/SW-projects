@@ -1,0 +1,336 @@
+/*-*-sql-*-********************************************************************
+*                            Tutorial on                                      *
+*                              Amos II                                        *
+*                        Tore Risch, 2013-11-01                               *
+******************************************************************************/
+
+/************************************************************
+ * Cut-and-paste the commands below and observe the effects *
+ ***********************************************************/
+
+                      /******************************************
+                       * Those of you who use emacs:            *
+                       * The file lsp/init.el defines the F2    *
+                       * button to move forward in this script  *
+                       * inside an emacs shell                  *
+                      /*****************************************/
+
+/* What folder is my current working direcory? */
+
+pwd();
+
+/* Documentation of function 'sqrt()': */
+
+doc("sqrt");
+
+/* Finding functions whose names contain the string 'nearest': */
+
+apropos("nearest");
+
+/* Documentation of all functions whose names contain the string 'nearest': */
+
+doc(apropos("nearest"));
+
+/* What is the Java CLASSPATH OS environment variable? */
+
+getenv("CLASSPATH");
+
+/* Call built-in functions: */
+
+1+2+3;
+
+sqrt(1+2+3);
+
+/* Vector arithmetics */
+
+{1,2,3}+{4,5,6};
+
+{1,2,3}*{4,5,6};
+
+5*{1,2,3};
+
+{1,2,3}/4;
+
+{1,2,3}.*{4,5,6};
+
+{1,2,3}./{4,5,6};
+
+/* Vectors can hold objects of any datatype: */
+
+{1,3,{3,4}};
+
+{1,"a",{"b","c"}};
+
+/* Define your own type 'Person' */
+
+create type Person;
+
+/* Stored functions represent data explicitly stored in database, 
+   i.e. they represent TABLES */
+
+/* Define stored function (table) 'name' as property of a person: */
+
+create function name (Person p) -> Charstring
+   as stored;
+
+/* Create another property of a person: */
+
+create function income (Person p) -> Number inc
+   as stored;
+
+/* Create a new person and bind to temporary variable :tore.
+   Temporary variables start with a ':', are not saved in the database */
+
+create Person instances :tore;
+
+/* Set properties of :tore in database */
+
+set name(:tore) = "Tore";
+set income(:tore) = 100;
+
+/* Get the income of Tore: */
+
+income(:tore);
+
+/* Create some other persons and their properties: */
+
+create Person(name, income) instances
+("Kalle",200),
+("Tina",400),
+("Torsten",200),
+("Putte",350);
+
+/* Get the incomes of all persons: */
+
+select income(p) from Person p;
+
+/* Get the names and incomes of all persons: */
+
+select name(p), income(p) from Person p;
+
+/* Get the person objects and their names: */
+
+select p, name(p) from Person p;
+
+/* Get the names and incomes of all persons
+   whose names begin with 'To': */
+
+select name(p), income(p) 
+  from Person p 
+ where like(name(p),"To*");
+
+/* Use aggregate functions: */
+
+/* How many persons are there in the database? */
+
+count(select p from Person p);
+
+/* What is the sum of the incomes of all persons whose names begin with 'To'?*/
+
+sum(select income(p) from Person p where like(name(p),"To*"));
+
+/* What is the average incomes of all persons? */
+
+avg(select income(p) from Person p);
+
+/* What is the standard deviation of the incomes of all persons? */
+
+stdev(select income(p) from Person p);
+
+/* Derived functions: */
+
+/* The following function finds the incomes higher than a given
+   threshold. It is a function returning a bag (set with duplicates)
+   of numbers */
+
+create function highIncomes (Number thres) -> Bag of Number
+   as select income(p) 
+      from Person p
+      where income(p)>thres;
+
+/* Call function highIncomes(): */
+
+highIncomes(100);
+
+/* Function highIncomePers() returns both incomes and names It is a
+   function returning a bag of tuples (pairs): */
+
+create function highIncomePers (Number thres) 
+                -> Bag of (Number inc, Charstring nm) 
+   as select inc, name(p) 
+      from Number inc, Person p
+      where income(p)=inc and
+            inc > thres;
+
+/* Call tuple valued function: Get persons earning more than 100: */
+
+highIncomePers(100);
+
+/* Get the two highest income earners: */
+
+topk(highIncomePers(50),2);
+
+/* Get the three lowest income earners: */
+
+leastk(highIncomePers(50),3);
+
+/* Get persons earning more than 100 again: */
+
+highIncomePers(100);
+
+/* Count number of persons for each different income 
+   of those persons earning more than 100: */
+
+groupby(highIncomePers(100),#'count');
+
+/* Groupby is 'second order aggregate function' over bag of pairs (x, y)
+   #'count' means the function named 'count'
+   The aggregate function 'count' is applied on group of y:s for each x */
+
+/* Make derived function doing the grouping: */
+
+create function incGroups(Number th) -> Bag of (Number k, Number v)
+  as groupby(highIncomePers(th),#'count');
+
+/* Run grouping function: */
+
+incGroups(50);
+
+incGroups(200);
+
+/* Average income per number of occurrences of each income for persons
+   earning more than 50: */
+
+groupby((select c, i 
+          from Number c, Number i 
+          where (i, c) in incGroups(50)),
+        #'avg'); 
+
+/* Nicer with subfunction to avoid nested select: */
+
+create function groupIncs(Number thres) -> Bag of (Number, Number)
+  as select g, i 
+     from Number g, Number i
+     where (i, g) in incGroups(thres);
+
+incGroups(50);
+
+/* Same query as before: */
+
+groupby(groupIncs(50),#'avg');
+
+/* Check that result is same as old query: */
+
+groupIncs(50);
+
+/****************** collections ******************/
+
+/* Bags */
+
+/* The function iota() returns a bag of integers in an interval: */
+
+iota(2,6);
+
+/* You can assign a variable to a bag valued function: */
+
+set :b = iota(1,10);
+
+:b;
+
+/* Use in() to extract values from bag: */
+
+in(:b);
+
+/* Alternatively 'in' operator: */
+
+select x from Number x where x in :b;
+
+set :b = iota(1,100000);
+
+/* Aggregate functions over bags: */
+
+count(:b);
+
+sum(:b);
+
+avg(:b);
+
+stdev(:b);
+
+maxagg(:b);
+
+minagg(:b);
+
+/* Smaller bag: */
+
+set :b2 = iota(1,30);
+
+/* Advanced aggregation with nested select statement: */
+
+sum(select x from Number x where x in :b2 and x>7);
+
+set :b3 = (select x from Number x where x in :b2 and x > 7);
+
+sum(:b3);
+
+avg(:b3);
+
+/* Vectors (ordered collections) */
+
+/* Set temporary variable :v0 to value of query forming a vector 
+   {1,2,3,4,5,6,7,8,9,10}: */
+
+set :v0 = vectorof(select i from Number i where i in iota(1,10));
+
+:v0;
+
+/* Set :v to the square root of elements in :v */
+
+set :v = vectorof(select sqrt(i) from Number i where i in :v0);
+
+:v;
+
+/* Basic vector aggregation: */
+
+dim(:v);
+
+vsum(:v);
+
+vavg(:v);
+
+vstdev(:v);
+
+/* The 'in' operator converts vectors to bags: */
+
+select n from Number n 
+         where n in {1,2,3} and
+               n >= 2; 
+
+/* Represent coordinates as 2D vectors: */
+
+set :c1 = {1,2};
+set :c2 = {3,4};
+
+/* Euclidean coordinate distance: */
+
+euclid(:c1, :c2);
+
+/* Save database in file mydb.dmp: */
+
+save "mydb.dmp";
+
+/* After saving the local variables are lost: */
+
+:b;
+
+/* Quit Amos II: */
+
+quit;
+
+/* Run Amos II again with the save database: */
+
+amos2 mydb.dmp
+
+/* Inspect the database again: */
+
+highIncomePers(100);

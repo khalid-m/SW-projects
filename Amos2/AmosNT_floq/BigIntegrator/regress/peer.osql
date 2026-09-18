@@ -1,0 +1,68 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: multisql.osql,v $
+ * $Revision: 1.7 $ $Date: 2013/09/10 08:00:12 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: script for peer to load
+ ****************************************************************************
+ *
+ ****************************************************************************/
+
+create function logdburi_jdbc(Charstring logdburi)->JDBC as stored;
+
+create function pop_uri_jdbc(Charstring logdburi, JDBC jo)->Boolean as 
+ set logdburi_jdbc(logdburi)=jo;
+
+
+create function sql_my(Charstring logdburi, Charstring query)->Vector
+as
+    sql(logdburi_jdbc(logdburi),query);
+
+create function sql_my(Charstring logdburi, Charstring query, Vector args)->Vector
+as
+    sql(logdburi_jdbc(logdburi),query,args);
+
+/* sql_myv2 with args as vector of vector arguments for sql query running in 
+   peers */
+
+/* new version for push down metaDB data to logdb to output at the same time */
+/* can i simplify the output format ?? */
+/*
+create function sql_myv2(Charstring logdburi, Charstring query, Vector of Vector args, Vector inputvarposvec)->Vector
+as select {arg[0], arg[1], arg[2], arg[3], arg[4], arg[5], arg[6], logres[0], logres[1], logres[2]}
+   from Vector arg, vector logres
+   where arg in args and logres = sql(logdburi_jdbc(logdburi),query,{arg[4], arg[5], arg[3], arg[2]});
+*/
+
+/* almost working */
+/*
+create function sql_myv2(Charstring logdburi, Charstring query, Vector of Vector args, Vector of number inputvarposvec)->Vector
+as select {arg[0], arg[1], arg[2], arg[3], arg[4], arg[5], arg[6], logres[0], logres[1], logres[2]}
+   from Vector arg, vector logres
+   where arg in args and logres = sql(logdburi_jdbc(logdburi),query, project(arg, inputvarposvec));
+*/
+
+create function sql_myv2(Charstring logdburi, Charstring query, Vector of Vector args, Vector of number inputvarposvec)->Vector
+as select concat(arg, logres)
+   from Vector arg, vector logres
+   where arg in args and logres = sql(logdburi_jdbc(logdburi),query, project(arg, inputvarposvec));
+
+
+/*
+create function sql_myv2(Charstring logdburi, Charstring query, Vector of Vector args)->Vector
+as select {arg, sql(logdburi_jdbc(logdburi),query,{arg[4], arg[5], arg[3], arg[2]})}
+   from Vector arg
+   where arg in args;
+
+*/
+
+/* original version */
+/*
+create function sql_myv2(Charstring logdburi, Charstring query, Vector of Vector args)->Vector
+as select sql(logdburi_jdbc(logdburi),query,arg)
+   from Vector arg
+   where arg in args;
+*/

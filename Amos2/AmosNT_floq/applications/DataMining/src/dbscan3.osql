@@ -1,0 +1,643 @@
+/*-*-sql-*-*******************************************************************/
+
+/* Disable logging */
+logging off;
+/* Turn off one-tuple buffering to facilitate truely dynamic cursors */
+lisp; 
+(delay-emit NIL) ; disable
+:osql 
+
+/* stored global parameters: 
+   to make life easier by avoiding passing arguments from the top level */
+create function eps()->Number as stored;
+create function minpts()->Integer as stored;
+
+create function enumerate(Bag of Vector bv) ->Bag of <Integer i, Vector>
+/* Enumerates a bag of vectors bv from  1 to count(b) */
+as 
+begin
+  set i = 0;
+  for each original Vector w where w = in(bv)
+  begin
+    set i = i + 1;
+    result <i, w>;
+  end;
+end; 
+
+/* Function / relation to store the enumerates data points as vectors */
+create function datapoint(Integer d)->Vector of Number v as stored;
+create_index('datapoint', 'v', 'mbtree', 'multiple');
+
+create function datapoints()->Bag of Vector
+/* Enumerated values in stored function datapoint */ 
+  as select datapoint(p) from Integer p; 
+
+create function add_vdp(Bag of Vector bv)->Boolean
+/* Adds the vectors in input bag bv to the stored 
+   function datapoint */ 
+  as add datapoint(i) =  v
+     from Integer i, Vector v
+     where <i, v> in enumerate(bv);
+
+create function load_vdp(Charstring file)->Boolean
+/* Loads stored function datapoint from a file that
+   contains numerical n-tuples representing vectors */
+  as add_vdp(read_ntuples(file)); 
+
+/* Stored function / relation of the directly density reachable 
+   graph, i.e. ddrtab(p)=q entails that p is a corepoint and q 
+   is within p's eps-neighborhood. */ 
+create function ddrtab(Integer p)->Bag of Integer q as stored; 
+/*Automatic: create_index('ddrtab', 'p', 'hash', 'multiple');*/
+create_index('ddrtab', 'q', 'hash', 'multiple');
+
+create function nbr(Integer p)->Bag of Integer
+/* Calculates the eps-neighborhood of point p (p is excluded)*/
+  as select q
+     from Integer q, Integer i,
+          Vector of Number pv, Vector of Number qv
+     where pv = datapoint(p)
+       and qv = datapoint(q)
+       and qv[i] >= pv[i] - eps() 
+       and qv[i] <= pv[i] + eps()
+       and euclid(pv, qv) <= eps()
+       and p != q;
+
+create function vplus(Vector of Number v, Number n)
+                      ->Vector of Number
+  as vectorize(select i, v[i]+n
+               from Integer i
+               where i in iota(0,dim(v)-1));
+
+create function nbr_index(Integer p)->Bag of Integer
+/* Calculates the eps-neighborhood of point p (p is excluded)*/
+  as select q
+     from Integer q,
+          Vector of Number pv, Vector of Number qv, 
+          Vector of Number lb, Vector of Number ub 
+     where pv = datapoint(p)
+       and qv = datapoint(q)
+       and lb = vplus(pv, -eps())
+       and ub = vplus(pv, eps())
+       and qv > lb 
+       and qv < ub
+       and euclid(pv, qv) <= eps()
+       and p != q;
+
+create function ddr(Integer p)->Bag of Integer
+/* Calculates the set of points q that are ddr from p */ 
+  as select q
+     from Integer q
+     where count(nbr(p)) >= minpts()
+       and q in nbr(p); 
+
+create function build_ddrtab()->Boolean
+/* Populates ddrtab based on the function ddr(p) */
+  as add ddrtab(p)=q
+     from Integer p, Integer q
+     where q in ddr(p); 
+
+create function remove_ddrtab(Vector of Integer dcc)->Boolean
+/* Removes a dcc, i.e., a cluster from ddrtab */
+  as remove ddrtab(a)=b
+     from Integer a, Integer b
+     where a in dcc 
+        or b in dcc;
+
+create function show_ddrtab()-> Bag of <Integer, Integer>
+/* Displayes the contents of ddrtab */
+  as select f, t 
+     from Integer f, Integer t
+     where t in ddrtab(f);
+
+create function ddr_child(Integer p)->Bag of Integer
+/* Returns a set of points q that are ddr from point p.
+   Essentially the same results as ddr(p), but instead
+   of operationg on the stored table datapoint, it 
+   retrieves the results from the precalculated ddrtab.
+   Used to traverse the ddr graph stored in ddrtab by 
+   iterative application of the function on its results
+   via transitive closure. */
+  as select q 
+     from Integer q
+     where q in ddrtab(p);  
+
+create function dc(Integer p)->Bag of Integer
+/* Retrieve the maximal set of density-connected points
+   starting from p, i.e., a the maximal ddr tree / chain. (p is exluded)*/    
+  as select q 
+     from Integer q
+     where q = tclose(#'ddr_child', p)
+       and p != q;
+
+create function find_and_remove_dc(Integer p, Integer cn)->Vector
+/* Find, emit, and remove the density-connected dc points, dcc starting
+   from p. It identifies a density-based cluster starting from p. */
+as 
+begin
+    declare Vector of Integer dcc;
+    /* find dc(p) */ 
+    set dcc = (vselect dc(p));
+    /* add p to dcc */
+    set dcc = concat(dcc, {p});
+    /* remove dcc from ddrtab */
+    remove_ddrtab(dcc);
+    /* emit dcc */ 
+    result (select {cn, q, datapoint(q)} 
+            from Integer q
+            where q in dcc);
+end;
+
+create function nnbr(Integer p)->Integer
+/* Returns the number of neighbors of p based on ddrtab */ 
+  as count(ddrtab(p));
+
+create function corepoints()->Bag of Integer
+/* Returns the remaining corepoints based on the state of ddrtab */ 
+  as select distinct p
+     from integer p, integer q
+     where q in ddrtab(p)
+       and nnbr(p) >= eps();
+/* NOTE: The last condition might seem useless, but it can happen 
+   that some neighbors of an initially core point p are added to 
+   clusters making p a non-core point. Density-connected components
+   i.e, clusters should be retrieved by starting at a corepoint. */
+
+create function dbscan(Number eps, Integer minpts)->Bag of Vector
+/* The DBSCAN algorithm based on retrieval of dccs from the ddr graph */
+as 
+begin 
+   declare Integer cn;
+   set minpts() = minpts;
+   set eps() = eps;
+   set cn = 1; 
+   /* build ddr tab */
+   clear_function("ddrtab");
+   build_ddrtab();
+   /* find, remove and emit dccs from ddrtab */
+   for each original Integer cp
+   where cp in corepoints()
+   begin 
+      result find_and_remove_dc(cp, cn);
+      set cn = cn + 1;
+   end;
+end;
+
+/* For each 'original' is like a dynamic cursor over the result set,
+   but a one-tuple buffering is performed by the DBMS, hence the 
+   above implementation of DBSCAN is not entirely correct because the
+   for each original corepoint loop buffers one corepoint ahead. So
+   for example if x and y are coorpoints calculated in the given order
+   and y belongs to the dcc of x, then y is added to the cluster of x
+   and is removed from ddrtab, but it will be tried as a new core of a 
+   cluster, and because of the faulty logic, will actually be placed in
+   its own singelton cluster AGAIN!!! To avoid this one can disable the
+   buffering, or fix the semantics of dc(p) to include p, or alternatively 
+   the corepoints can also be stored and managed in a table. The functions
+   bellow implement the later solution. */
+
+create function dbscan_bag(Bag of vector bv, 
+                           Number eps, 
+                           Integer minpts)
+                           ->Bag of Vector
+/* The DBSCAN algorithm based on retrieval of dccs from the ddr graph */
+as 
+begin 
+  clear_function('datapoint');
+  add_vdp(bv);
+  result dbscan(eps, minpts); 
+end;
+
+create function dbscan_file(Charstring file, 
+                            Number eps, 
+                            Integer minpts)
+                            ->Bag of Vector
+/* The DBSCAN algorithm based on retrieval of dccs from the ddr graph */
+ as result dbscan_bag(read_ntuples(file),0.3,20);
+
+create function assume_datapoints_as_noise()->Bag of Vector
+/* Returns a vector of zero cluster id, point id and coordinates 
+   for each point in stored table datapoint */
+  as select {0, p, v}
+     from Integer p, Vector of Number v
+     where datapoint(p)=v; 
+
+create function combine_clust_and_noise(Bag of Vector c, Bag of vector n)
+                                        ->Bag of Vector 
+/* Performs an application-specific set union between a bag of clustered 
+   points and all the points initially assumed to be noise. If a point is
+   part of a cluster, i.e., in c, then it is taken from c, otherwise it 
+   taken from n and is treated as noise, which is represented by clueter id 0 */
+  as select res
+     from Vector of Vector res,
+          Vector of Vector v,
+          Vector of Vector of Vector cv,
+          Vector of Vector of Vector nv     
+     where cv = vectorof(c)
+       and nv = vectorof(n)
+       and ((v = in(nv) 
+             and 
+             notany(select 1 where v[1] = in(cv)[1])) 
+            or 
+            v = in(cv))
+       and res = v;  
+
+create function dbscan_with_noise(Number eps, Integer minpts)->Bag of Vector
+/* The DBSCAN algorithm based on retrieval of dccs from the ddr graph.
+   The resulting clustering also returns the noise points labaled as cluster 0*/
+  as combine_clust_and_noise(dbscan(eps,minpts), assume_datapoints_as_noise());
+
+create function disp_clustering3d(Bag of Vector c)
+                                  ->Integer   
+/* 3D scatter plot display of clustering */
+  as scatter3p((select concat(project(v[2],{0,1,2}),{v[0]})
+                from Vector of Vector v
+                where v in c));
+
+create function pcapoject3d_clustering(Bag of Vector bc)
+                                       ->Bag of Vector
+/* Function that projects the results of a clustering 
+   down to 3 dimensions. Used for vizualization of high 
+   dimensional clustering results */ 
+  as select {cv[i], pv[i], pvv[i]}
+     from Vector of Vector vc,
+          Vector of Integer cv,
+          Vector of Integer pv,
+          Vector of Vector of Number vv,
+          Vector of Vector pvv,
+          Integer i
+     where vc = vectorof(bc)
+       and cv = vectorof(in(vc)[0])
+       and pv = vectorof(in(vc)[1])
+       and vv = vectorof(in(vc)[2])
+       and pvv = vectorof(pcascore(in(vv),3));
+
+
+/*
+
+clear_function("datapoint");
+
+load_vdp("./data/patterns2.nt");
+
+nbr(1);
+
+dbscan(0.3,30);
+
+dbscan_file('./data/patterns2.nt',0.3,20);
+
+dbscan_with_noise(0.3,20);
+
+disp_clustering3d(pcapoject3d_clustering(dbscan_with_noise(0.3,30)));
+
+*/
+
+/* Special 2d and 3d versions of DBSCAN with B-tree indexes */
+
+/****************
+*** 2D DBSCAN ***
+*****************/
+
+/* Function / relation to store the enumerates data points as vectors */
+create function datapoint2d(Integer d)-><Number x, Number y> as stored;
+create_index('datapoint2d', 'x', 'mbtree', 'multiple');
+create_index('datapoint2d', 'y', 'mbtree', 'multiple');
+
+create function datapoints2d()-> Bag of <Number, Number>
+/* Enumerated values in stored function datapoint2d */ 
+  as select datapoint2d(p) from Integer p;
+
+create function add_vdp2d(Bag of Vector bv)->Boolean
+/* Adds the vectors in input bag bv to the stored 
+   function datapoint2d */ 
+  as add datapoint(i) =  <v[0], v[1]>
+     from Integer i, Vector v
+     where <i, v> in enumerate(bv);
+
+create function load_vdp2d(Charstring file)->Boolean
+/* Loads stored function datapoint2d from a file that
+   contains numerical n-tupls representing vectors. */
+  as add_vdp2d(read_ntuples(file)); 
+
+create function nbr2d(Integer p)->Bag of Integer
+/* Calculates the eps-neighborhood of point p */
+as select q
+   from Integer q, Number px, Number py, Number qx, Number qy
+   where <px,py> = datapoint2d(p)
+     and <qx,qy> = datapoint2d(q)
+     and qx >= px - eps() 
+     and qx <= px + eps()
+     and qy >= py - eps() 
+     and qy <= py + eps()
+     and euclid({px,py}, {qx,qy}) <= eps()
+     and p != q;
+
+create function ddr2d(Integer p)->Bag of Integer
+/* Calculates the set of points q that are ddr from p */ 
+  as select q
+     from Integer q
+     where count(nbr2d(p)) >= minpts()
+       and q in nbr2d(p); 
+
+create function build_ddrtab2d()->Boolean
+/* Populates ddrtab based on the function ddr(p) */
+  as add ddrtab(p)=q
+     from Integer p, Integer q
+     where q in ddr2d(p); 
+
+create function find_and_remove_dc2d(Integer p, Integer cn)->Vector
+/* Find, emit, and remove the density-connected dc points, dcc starting
+   from p. It identifies a density-based cluster starting from p. */
+as 
+begin
+    declare Vector of Integer dcc;
+    /* find dc(p) */ 
+    set dcc = (vselect dc(p));
+    set dcc = concat(dcc, {p});
+    /* remove dcc from ddrtab */
+    remove_ddrtab(dcc);
+    /* emit dcc */ 
+    result (select {cn, q, datapoint2d(q)} 
+            from Integer q
+            where q in dcc);
+end;
+
+create function dbscan2d(Number eps, Integer minpts)->Bag of Vector
+/* The 2D-DBSCAN algorithm based on retrieval of dccs from the ddr graph */
+as 
+begin 
+   declare Integer cn;
+   set minpts() = minpts;
+   set eps() = eps;
+   set cn = 1; 
+   /* build ddr tab */
+   clear_function("ddrtab");
+   build_ddrtab2d();
+   /* find, remove and emit dccs from ddrtab */
+   for each original Integer cp
+   where cp in corepoints()
+   begin 
+      result find_and_remove_dc2d(cp, cn);
+      set cn = cn + 1;
+   end;
+end;
+
+
+/****************
+*** 3D DBSCAN ***
+****************/
+
+/* Function / relation to store the enumerates data points as vectors */
+create function datapoint3d(Integer d)-><Number x, Number y, Number z> as stored;
+create_index('datapoint3d', 'x', 'mbtree', 'multiple');
+create_index('datapoint3d', 'y', 'mbtree', 'multiple');
+create_index('datapoint3d', 'z', 'mbtree', 'multiple');
+
+create function datapoints3d()-> Bag of <Number, Number, Number>
+/* Enumerated values in stored function datapoint2d */ 
+  as select datapoint3d(p) from Integer p;
+
+create function add_vdp3d(Bag of Vector bv)->Boolean
+/* Adds the vectors in input bag bv to the stored 
+   function datapoint3d */ 
+  as add datapoint3d(i) =  <v[0], v[1], v[2]>
+     from Integer i, Vector v
+     where <i, v> in enumerate(bv);
+
+create function load_vdp3d(Charstring file)->Boolean
+/* Loads stored function datapoint2d from a file that
+   contains amos Vectors */
+  as add_vdp3d(read_ntuples(file)); 
+
+create function nbr3d(Integer p)->Bag of Integer
+/* Calculates the eps-neighborhood of point p */
+as select q
+   from Integer q, 
+        Number px, Number py, Number pz,
+        Number qx, Number qy, Number qz
+   where <px,py,pz> = datapoint3d(p)
+     and <qx,qy,qz> = datapoint3d(q)
+     and qx >= px - eps() 
+     and qx <= px + eps()
+     and qy >= py - eps() 
+     and qy <= py + eps()
+     and qz >= pz - eps() 
+     and qz <= pz + eps()
+     and euclid({px,py,pz}, {qx,qy,qz}) <= eps()
+     and p != q;
+
+create function ddr3d(Integer p)->Bag of Integer
+/* Calculates the set of points q that are ddr from p */ 
+  as select q
+     from Integer q
+     where count(nbr3d(p)) >= minpts()
+       and q in nbr3d(p); 
+
+create function build_ddrtab3d()->Boolean
+/* Populates ddrtab based on the function ddr(p) */
+  as add ddrtab(p)=q
+     from Integer p, Integer q
+     where q in ddr3d(p); 
+
+create function find_and_remove_dc3d(Integer p, Integer cn)->Vector
+/* Find, emit, and remove the density-connected dc points, dcc starting
+   from p. It identifies a density-based cluster starting from p. */
+as 
+begin
+    declare Vector of Integer dcc;
+    /* find dc(p) */ 
+    set dcc = (vselect dc(p));
+    set dcc = concat(dcc, {p});
+    /* remove dcc from ddrtab */
+    remove_ddrtab(dcc);
+    /* emit dcc */ 
+    result (select {cn, q, datapoint3d(q)} 
+            from Integer q
+            where q in dcc);
+end;
+
+create function dbscan3d(Number eps, Integer minpts)->Bag of Vector
+/* The 3D-DBSCAN algorithm based on retrieval of dccs from the ddr graph */
+as 
+begin 
+   declare Integer cn;
+   set minpts() = minpts;
+   set eps() = eps;
+   set cn = 1; 
+   /* build ddr tab */
+   clear_function("ddrtab");
+   build_ddrtab3d();
+   /* find, remove and emit dccs from ddrtab */
+   for each original Integer cp
+   where cp in corepoints()
+   begin 
+      result find_and_remove_dc3d(cp, cn);
+      set cn = cn + 1;
+   end;
+end;
+
+/* k-dist based methods to estimate values for k and eps for the 2D case.
+   k for the 2D case is 4. For the 3D case it is likely to be 8 and in
+   general in the d-D case to be 2^d. */
+   
+create function nbrs2d(Number maxd)->Bag of <Integer p, Number d>
+/* Calculates the maxd-neighborhood of all points in datapoint2d */
+as select p,d
+   from Number d, Integer p, Integer q, Number px, Number py, Number qx, Number qy
+   where <px,py> = datapoint2d(p)
+     and <qx,qy> = datapoint2d(q)
+     and qx >= px - maxd 
+     and qx <= px + maxd  
+     and qy >= py - maxd   
+     and qy <= py + maxd  
+     and d = euclid({px,py}, {qx,qy})
+     and d <= maxd
+     and p != q;
+
+/* Replicate the other symetric half */
+/* BUG: Works as a select but not as a function. Why?
+
+create function nbrs2d(Number maxd)->Bag of <Integer p, Integer q, Number d>
+  as select a,b,d 
+     from Integer a, Integer b, Integer p, Integer q, Number d 
+     where <p,q,d> in nbrs2d0(maxd)
+       and (((a=p) and (b=q)) or ((a=q) and (b=p)));
+
+*/
+
+create function nkth(Bag of Number b)->Vector of Number
+/* Returns min(n,k=4) and the min(n,k=4)-th smallest number in the set b 
+   with cardinality n */
+  as select {nk, in(lb)}
+     from Integer nk, Bag lb, Bag of Number b
+     where lb = topk((leastk(b, nk)), 1)
+       and nk = min(4,count(b));
+
+create function nkdist(Number maxd)->Bag of <Integer nk, Vector of Number>
+/* Calculates the nk-th distance for all points in datapoint */
+  as groupby((nbrs2d(maxd)),#'nkth');
+
+create function sorted_nkdist(Number maxd)-> Bag of Vector of Number
+/* Produces sorted nk-dist values for plotting */
+  as select {i, snkd[i]}
+     from Integer i, Vector of Number snkd
+     where snkd = sortbagby((select nkd
+                             from Number nkd, Integer nk, Integer p
+                             where <p, {nk, nkd}> in nkdist(maxd)),
+                            1, 'dec');
+
+/* How do we calculate maxd to get the k-dist values for k=4. Based 
+   on upper bound heuristics and statistical estimates */
+
+create function rand_id(Bag of Object b) ->Bag of <Integer i, Object>
+/* Assigns random ids to elements of a bag */
+  as for each Object o where o in b result <rand(1000000), o>; 
+
+create function rand_sample(Bag of Object b, Integer k)->Bag of Object 
+/* Selects a random k-sized sample of a bag */  
+  as select vo[i][1]
+     from Integer i, Vector of Vector vo
+     where vo = sortbagby(rand_id(b), 1, 'inc')
+       and i < k;
+
+create function allnbrs2d(Integer p)->Bag of <Integer, Number>
+/* Calculates the distances to all neighbors of a point p */
+as select p, d
+   from Number px, Number py, Integer q, Number qx, Number qy, Number d
+   where <px,py> = datapoint2d(p)
+     and <qx,qy> in datapoint2d(q)
+     and d = euclid({px,py},{qx,qy})
+     and p != q;      
+
+
+create function volume2d()->Number
+/* Calculates the volume of the data */
+  as select (maxx-minx)*(maxy-miny)
+     from Number maxx, Number minx, Number maxy, Number miny
+     where maxx = maxagg({datapoints2d()}[0])
+       and minx = minagg({datapoints2d()}[0])
+       and maxy = maxagg({datapoints2d()}[1])
+       and miny = minagg({datapoints2d()}[1]);
+
+create function extent2d()->Number
+/* Calculates the volume of the data */
+  as select max((maxx-minx),(maxy-miny))
+     from Number maxx, Number minx, Number maxy, Number miny
+     where maxx = maxagg({datapoints2d()}[0])
+       and minx = minagg({datapoints2d()}[0])
+       and maxy = maxagg({datapoints2d()}[1])
+       and miny = minagg({datapoints2d()}[1]);
+
+create function ub_maxd2d()->Number
+/* Derives upper bound for the distcance to the n=4-th nearest neigbors 
+   of points assuming uniform data distribution along the dimension with
+   largest extent. */
+  as select 4/(n/e)
+     from Integer n, Number e
+     where n = count(datapoints2d())
+       and e = extent2d();
+
+create function somenbrs2d(Integer p)->Bag of <Integer, Number>
+/* Calculates the distances to some of the closest neighbors of a point p */
+as select p, d
+   from Number px, Number py, Integer q, Number qx, Number qy, Number d, Number maxd
+   where <px,py> = datapoint2d(p)
+     and <qx,qy> in datapoint2d(q)
+     and qx >= px - maxd 
+     and qx <= px + maxd  
+     and qy >= py - maxd   
+     and qy <= py + maxd  
+     and d = euclid({px,py},{qx,qy}) 
+     and d <= maxd
+     and maxd = ub_maxd2d()
+     and p != q;      
+
+create function sample_nbrs2d(Integer k)->Bag of <Integer p, Number d>
+/* Calculates the distances to all neighbors of k sample points */
+  as select somenbrs2d(p)
+     from Integer p, Bag of Integer bid 
+     where p in rand_sample(bid,k)
+       and bid = (select p 
+                  from Integer p, Number x, Number y
+                  where <x,y> in datapoint2d(p));
+
+create function sample_estimate_maxd2d(Integer k)->Number
+/* Estimates the maxd distance to the n=4-th nearest neigbors of points */
+  as select m+3*s
+     from Number m, Number s
+     where <m,s> = avgstdev(select v[1]
+                            from Vector of Number v
+                            where v = {groupby((sample_nbrs2d(k)), #'nkth')}[1]);  
+
+create function sorted_nkdist()->Bag of Vector of Number
+/* Produces sorted nk-dist values for plotting */
+  as sorted_nkdist(ub_maxd2d()*5);
+
+
+/*
+
+clear_function("datapoint");
+load_vdp('./data/patterns2.nt');
+
+dbscan(0.2,4);
+
+clear_function("datapoint2d");
+
+add datapoint2d(i) = <v[0],v[1]> 
+from Integer i, Vector of Number v 
+where datapoint(i)=v;
+
+select count(datapoints2d()) = count(datapoints());
+
+scatter2({1,2}, sorted_nkdist());
+
+scatter2l({3,4,1}, dbscan2d(0.54,4));
+
+clear_function("datapoint3d");
+
+load_vdp3d('./data/patterns2.nt');
+
+scatter3p({3,4,5,1}, dbscan3d(0.54,8));
+
+*/
+
+

@@ -1,0 +1,176 @@
+/*-*-sql-*-*******************************************************************/
+
+logging off;
+
+create function mergetree(Vector of Stream src, Integer nout) -> Vector of Stream
+  as select part
+     from Vector of Vector of Stream chopped,
+          Vector of Stream part
+     where part = vectorize(select i, ostream(newsp(mergestreams(v)), 0)
+                            from Vector of Stream v, Integer i
+                            where v = chopped[i])
+       and chopped = chopvector(src, nout);
+
+set lroutputfiles() = "/local/home/javad/AmosNT/scsq/lr/scsq-plr/lrouput";
+
+create function DexpFull(
+ charstring infile, integer inl, integer mult, integer rsplitfo,
+ charstring outfile)
+ -> object as
+select in(res)
+from stream of iarray src, vector of stream of iarray rsplit, integer fo,
+vector of stream fsplit, vector of stream of darray proc, stream of darray res,
+stream t3, stream t0, stream t1, stream t2, vector of stream t20, vector of stream t00
+
+where res = mergestreams({t3, t2, t1, t0})
+
+and t3 = ostream(newsp( streamof(writefile(outfile + "-dexp",
+	in_d(mergestreams(vectorize(select i, proc[i*4 + 3]
+    	from integer i where i in iota(0, dim(proc)/4))))))), 0)
+
+and t2 = ostream(newsp(streamof(writefile(outfile+"-acc-balance",
+	 in_d(zipmmaplayer(t20, 1, 6,#'lrfd')[0])))), 0)
+
+and t20 = zipmmaplayerm(vectorize(select i, proc[i*4 + 2]
+  from integer i where i in iota(0, dim(proc)/4)), 
+  2, 6, #'lrfd', 6)
+
+and t1 = ostream(newsp(streamof(writefile(outfile+"-accident",
+  in_d(mergestreams(vectorize(select i, proc[i*4 + 1]
+  from integer i where i in iota(0, dim(proc)/4))))))), 0)
+
+and t0 = ostream(newsp(streamof(writefiles(outfile+"-position",10000000,
+  in_d(mergestreams(t00))))), 0)
+
+and t00 = mergetree(vectorize(select i, proc[i*4]
+  from integer i where i in iota(0, dim(proc)/4)), 6)
+
+and proc = mapflex(premerge(fsplit, rsplitfo, fo), #'lrdexpbin',
+  make_record({'imagesize', 20000000, 'nsub',4,'sfn',#'dexpoesplit', 'na2m', {'ma-size': 6}}))
+and fsplit = unpackfsplit(rsplit, fo, #'xwayrfn', #'q2bfn', 15)
+and rsplit = rsplit_force_flex(src, rsplitfo, {'hostnum':0, 'rem':'rsplit'})
+and src = ostream(newspflex(
+  streamof(na2multi(clrmultiply(ts_iarray(in(lreadfastbin(infile)),12), inl, mult),15)),
+  {'hostnum':0, 'rem':'src'}), 0)
+and fo = inl*mult;
+
+create function DexpNaive(charstring infile, integer inl, integer mult, charstring outfile)
+                                                  -> object as
+select in( mergestreams( {t3, t2, t1, t0} ) )
+from stream of iarray input, integer fo,
+vector of stream xp, vector of stream proc, /*vector of stream postproc,*/
+stream t0, stream t1, stream t2, stream t3
+
+where t3 = ostream(newspflex( streamof(writefiles(outfile + "-ib-3-", 10000000,
+           	 in(mergestreams(vectorize(select i, proc[i*4 + 3]
+                 from integer i where i in iota(0, dim(proc)/4)))))),
+		 make_record({'hostname', 'localhost'})), 0)
+
+and t2 = ostream(newspflex(streamof(writefiles(outfile + "-ib-2-", 10000000,
+                 dtslrbin(lrf0(in(zipstreams(vectorize(select i, proc[i*4 + 2]
+                 from integer i where i in iota(0, dim(proc)/4)))))))),
+                 make_record({'hostname', 'localhost'})), 0)
+and t1 = ostream(newspflex(streamof(writefiles(outfile + "-ib-1-", 10000000,
+                 dtslrbin(in_d(mergestreams(vectorize(select i, proc[i*4 + 1]
+                 from integer i where i in iota(0, dim(proc)/4))))))),
+                 make_record({'hostname', 'localhost'})), 0)
+and t0 = ostream(newspflex(streamof(writefiles(outfile + "-ib-0-", 10000000,
+                 dtslrbin(in_d(mergestreams(vectorize(select i, proc[i*4]
+                 from integer i where i in iota(0, dim(proc)/4))))))),
+                 make_record({'hostname', 'localhost'})), 0)
+and proc = mapflex(xp, #'lrdexpbin', make_record({'imagesize', 200000000, 'nsub',4,'sfn',#'dexpoesplit'}))
+and xp = splitstream(input, fo, #'xwayrfn',#'q2bfn')
+and input = ostream(newsp(streamof(clrmultiply(in(lreadfastbin(infile)),inl,mult))),0)
+and fo = inl*mult;
+
+create function DexpTOS(
+ charstring infile, integer inl, integer mult, integer rsplitfo,
+ charstring outfile)
+ -> object as
+select in(res)
+from stream of iarray src, vector of stream of iarray rsplit, integer fo,
+vector of stream fsplit, vector of stream of darray proc, stream of darray res,
+stream t3, stream t0, stream t1, stream t2, vector of stream t20, vector of stream t00
+
+where res = mergestreams({t3, t2, t1, t0})
+
+and t3 = ostream(newsp( streamof(writefile(outfile + "-dexp",
+        in_d(mergestreams(vectorize(select i, proc[i*4 + 3]
+        from integer i where i in iota(0, dim(proc)/4))))))), 0)
+
+and t2 = ostream(newsp(streamof(writefile(outfile+"-acc-balance",
+         in_d(zipmmaplayer(t20, 1, 6,#'lrfd')[0])))), 0)
+
+and t20 = zipmmaplayerm(vectorize(select i, proc[i*4 + 2]
+  from integer i where i in iota(0, dim(proc)/4)),
+  integer(sqrt(fo)), 6, #'lrfd', 6)
+
+and t1 = ostream(newsp(streamof(writefile(outfile+"-accident",
+  in_d(mergestreams(vectorize(select i, proc[i*4 + 1]
+  from integer i where i in iota(0, dim(proc)/4))))))), 0)
+
+and t0 = ostream(newsp(streamof(writefiles(outfile+"-position",10000000,
+  in_d(mergestreams(t00))))), 0)
+
+and t00 = mergetree(vectorize(select i, proc[i*4]
+  from integer i where i in iota(0, dim(proc)/4)), 6)
+
+and proc = mapflex(premerge(fsplit, rsplitfo, fo), #'lrdexpbin',
+  make_record({'imagesize', 20000000, 'nsub',4,'sfn',#'dexpoesplit', 'na2m', {'ma-size': 6}}))
+and fsplit = unpackfsplit(rsplit, fo, #'xwayrfn', #'q2bfn', 15)
+and rsplit = rsplit_force_flex(src, rsplitfo, {'hostnum':0, 'rem':'rsplit'})
+and src = ostream(newspflex(
+  streamof(na2multi(clrmultiply(ts_iarray(in(lreadfastbin(infile)),12), inl, mult),15)),
+  {'hostnum':0, 'rem':'src'}), 0)
+and fo = inl*mult;
+
+create function DexpOnly(charstring infile, integer inl, integer mult, charstring outfile)
+                                                  -> object as
+select in(t3)
+from stream of iarray src, integer fo,
+vector of stream of iarray si, stream t3, vector of stream of darray so_hist
+
+where t3 = ostream(newspflex( streamof(
+           writefiles(outfile + "-ib-3-", 10000000,
+           in(mergestreams(so_hist)))),
+           make_record({'hostname', 'localhost'})), 0)
+
+and so_hist = mapstreams( si, #'lrdexpbin')
+and si = splitstream( src, fo, #'dexpxpartitionbin')
+and src = streamof(clrmultiply(ts_iarray(in(lreadfastbin(infile)),12),inl, mult))
+and fo = inl*mult;
+
+create function dexpresponse()->Boolean 
+	/*calculate worst case response time for the different queries*/
+	as begin declare  Number dexp, Number accident, Number accountbal;
+                 
+		 set dexp = maxagg(select (d[2]-d[5])
+        		    from Vector of Number d
+        		    where d in streamof(na2vec(multi2na(in_d(
+        		    lreadfastbin('/local/home/javad/scratch/lrout-dexp')),6))));
+
+		 set accountbal = maxagg(select (a[2]-a[3])
+        			  from Vector of Number a
+        			  where a in streamof(na2vec(multi2na(in_d(
+        			  lreadfastbin('/local/home/javad/scratch/lrout-acc-balance')),6))));
+		 set accident = maxagg(select (d[2]-d[5])
+        			from Vector of Number d
+        			where d in streamof(na2vec(multi2na(in_d(
+        			lreadfastbin('/local/home/javad/scratch/lrout-accident')),6)))); 
+		 print ({"worst case response time for daily expenditure queries:",dexp});
+		 print ({"worst case response time for daily accident report queries:",accident});
+		 print ({"worst case response time for daily account balance queries:",accountbal});
+           end; 
+
+scsqprofile("src");
+imagesize 40000000;
+/*
+To run the full optimized LRB for input L=2, multiplier = 75, WS=10 execute:
+DexpFull('/local/home/javad/AmosNT/scsq/lr/data/cdplast10mins.bin', 2, 75, 10, 'lrout');
+To run the full naive LRB for input L=2, multiplier = 64 execute:
+DexpNaive('/local/home/javad/AmosNT/scsq/lr/data/cdplast10mins.bin', 2, 64, 'lrout');
+To run only daily expenditure queries for input L=2, multiplier = 64 execute:
+DexpOnly('/local/home/javad/AmosNT/scsq/lr/data/cdplast10mins.bin', 2, 64, 'lrout');
+*/
+
+

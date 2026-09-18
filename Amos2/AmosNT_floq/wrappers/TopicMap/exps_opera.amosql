@@ -1,0 +1,269 @@
+exportTopicMap("opera","http://user.it.uu.se/~udbl/software/swatm/opera.xtm");
+7-8 s
+
+count(select t from tm_object t);
+4379
+
+count(tm_rdf_triples_opera());
+/* The result 16512 */
+
+/*SPARQL queries */
+
+/*Retrieves the names of all operas (all 711 topics)*/
+set :sparql1 = "SELECT ?topicname
+	       FROM <http://user.it.uu.se/~udbl/software/swatm/opera.xtm>
+	       WHERE {?tmo  <http://udbl2.it.uu.se/swatm:BASENAMESTRING> ?topicname}
+               ORDER BY ?toicname ";
+
+sparql(:sparql1);
+
+set :sparql3  = "SELECT ?tm2 ?tm3
+		FROM <http://user.it.uu.se/~udbl/software/swatm/opera.xtm>
+		WHERE {?tm0  <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?tm1.
+		       ?tm1  <http://udbl2.it.uu.se/swatm:BASENAMESTRING> 'Rigoletto'. 
+		       ?tm0  <http://udbl2.it.uu.se/swatm:OCCURRENCETOPIC> ?tm2.
+         	       ?tm2  <http://udbl2.it.uu.se/swatm:INSTANCEOFOCCURRENCE> ?tm3}";
+sparql(:sparql3);
+
+{"http://udbl2.it.uu.se/swatm:1914","http://udbl2.it.uu.se/swatm:1475"}
+{"http://udbl2.it.uu.se/swatm:1913","http://udbl2.it.uu.se/swatm:1466"}
+{"http://udbl2.it.uu.se/swatm:1912","http://udbl2.it.uu.se/swatm:1469"}
+{"http://udbl2.it.uu.se/swatm:1911","http://udbl2.it.uu.se/swatm:1469"}
+{"http://udbl2.it.uu.se/swatm:1910","http://udbl2.it.uu.se/swatm:1432"}
+11.359 s
+
+/*Retrieves the type of the references (occurrnces) to the opera 'Rigoletto' */
+set :sparql5  = "SELECT ?idc
+		FROM <http://user.it.uu.se/~udbl/software/swatm/opera.xtm>
+		WHERE {?tm0  <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?tm1.
+		       ?tm1  <http://udbl2.it.uu.se/swatm:BASENAMESTRING> 'Rigoletto'. 
+		       ?tm0  <http://udbl2.it.uu.se/swatm:OCCURRENCETOPIC> ?tm2.
+         	       ?tm2  <http://udbl2.it.uu.se/swatm:INSTANCEOFOCCURRENCE> ?tm3.
+		       ?tm3  <http://udbl2.it.uu.se/swatm:IDTOPIC> ?idc}";
+sparql(:sparql5);
+
+{"premiere-date"}
+{"synopsis"}
+{"libretto"}
+{"libretto"}
+{"homepage"}
+16.703 s
+
+/*Retrieves the type of the references (occurrnces) and the links to the refrences of the opera 'Rigoletto' */
+set :sparql6  = "SELECT ?idc ?ref
+		FROM <http://user.it.uu.se/~udbl/software/swatm/opera.xtm>
+		WHERE {?tm0  <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?tm1.
+		       ?tm1  <http://udbl2.it.uu.se/swatm:BASENAMESTRING> 'Rigoletto'. 
+		       ?tm0  <http://udbl2.it.uu.se/swatm:OCCURRENCETOPIC> ?tm2.
+         	       ?tm2  <http://udbl2.it.uu.se/swatm:INSTANCEOFOCCURRENCE> ?tm3.
+         	       ?tm2  <http://udbl2.it.uu.se/swatm:REFERENCE> ?ref.
+		       ?tm3  <http://udbl2.it.uu.se/swatm:IDTOPIC> ?idc}";
+
+sparql(:sparql6);
+
+{"libretto","http://opera.stanford.edu/opera/Verdi/Rigoletto/libretto.html"}
+{"libretto","http://www.giuseppeverdi.it/verdi/libretti/Rigoletto.htm"}
+{"synopsis","http://www.metopera.org/synopses/rigoletto.html"}
+{"homepage","http://opera.stanford.edu/opera/Verdi/Rigoletto/main.html"}
+15.844 s
+
+/*Retrieves the type of the references (occurrnces) and their content concerning the opera 'Rigoletto' */
+set :sparql7  = "SELECT ?idc ?ref
+		FROM <http://user.it.uu.se/~udbl/software/swatm/opera.xtm>
+		WHERE {?tm0  <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?tm1.
+		       ?tm1  <http://udbl2.it.uu.se/swatm:BASENAMESTRING> 'Rigoletto'. 
+		       ?tm0  <http://udbl2.it.uu.se/swatm:OCCURRENCETOPIC> ?tm2.
+         	       ?tm2  <http://udbl2.it.uu.se/swatm:INSTANCEOFOCCURRENCE> ?tm3.
+         	       ?tm2  <http://udbl2.it.uu.se/swatm:DATA> ?ref.
+		       ?tm3  <http://udbl2.it.uu.se/swatm:IDTOPIC> ?idc}";
+
+sparql(:sparql7);
+
+{"premiere-date","11 Mar 1851"}
+4.125 s
+
+set :sparql8  = "SELECT ?ass 
+		FROM <http://user.it.uu.se/~udbl/software/swatm/opera.xtm>
+		WHERE {?tm0  <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?tm1.
+		       ?tm1  <http://udbl2.it.uu.se/swatm:BASENAMESTRING> 'Rigoletto'. 
+		       ?mem  <http://udbl2.it.uu.se/swatm:TOPICMEMBER> ?tmo. 
+                       ?mem  <http://udbl2.it.uu.se/swatm:ROLESPEC> ?tm3.
+                       ?tm3  <http://udbl2.it.uu.se/swatm:IDTOPIC> 'opera'.
+		       ?ass  <http://udbl2.it.uu.se/swatm:MEMBERASSOCIATION> ?mem}";
+
+sparql(:sparql8);	
+
+"rigoletto" takes part as anplays role 'opera' in 564 associations
+93-94 s
+
+set :sparql9  = "SELECT ?ass 
+		FROM <http://user.it.uu.se/~udbl/software/swatm/opera.xtm>
+		WHERE {?tm0  <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?tm1.
+		       ?tm1  <http://udbl2.it.uu.se/swatm:BASENAMESTRING> 'Rigoletto'. 
+		       ?mem1  <http://udbl2.it.uu.se/swatm:TOPICMEMBER> ?tmo. 
+                       ?mem1  <http://udbl2.it.uu.se/swatm:ROLESPEC> ?tm3.
+                       ?tm3  <http://udbl2.it.uu.se/swatm:IDTOPIC> 'opera'.
+		       ?ass  <http://udbl2.it.uu.se/swatm:MEMBERASSOCIATION> ?mem1.
+		       ?ass  <http://udbl2.it.uu.se/swatm:MEMBERASSOCIATION> ?mem2.
+		       ?mem2  <http://udbl2.it.uu.se/swatm:TOPICMEMBER> ?tm4. 
+                       ?mem2  <http://udbl2.it.uu.se/swatm:ROLESPEC> ?tm5.
+		       ?tm5  <http://udbl2.it.uu.se/swatm:IDTOPIC> 'composer'}";
+
+sparql(:sparql9);
+!!!!!! Error : SparQL memory running out of memory	
+
+set :sparql10 = "SELECT ?tm4 
+		FROM <http://user.it.uu.se/~udbl/software/swatm/opera.xtm>
+		WHERE {?tm0  <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?tm1.
+		       ?tm1  <http://udbl2.it.uu.se/swatm:BASENAMESTRING> 'Rigoletto'. 
+		       ?mem1  <http://udbl2.it.uu.se/swatm:TOPICMEMBER> ?tmo. 
+                       ?mem1  <http://udbl2.it.uu.se/swatm:ROLESPEC> ?tm3.
+                       ?tm3  <http://udbl2.it.uu.se/swatm:IDTOPIC> 'opera'.
+		       ?ass  <http://udbl2.it.uu.se/swatm:MEMBERASSOCIATION> ?mem1.
+		       ?ass  <http://udbl2.it.uu.se/swatm:MEMBERASSOCIATION> ?mem2.
+		       ?mem2  <http://udbl2.it.uu.se/swatm:TOPICMEMBER> ?tm4}";
+
+210 s
+
+set :sparql11 = "SELECT ?idtm
+		FROM <http://user.it.uu.se/~udbl/software/swatm/opera.xtm>
+		WHERE {?tm0  <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?tm1.
+		       ?tm1  <http://udbl2.it.uu.se/swatm:BASENAMESTRING> 'Rigoletto'. 
+		       ?mem1 <http://udbl2.it.uu.se/swatm:TOPICMEMBER> ?tmo. 
+                       ?mem1 <http://udbl2.it.uu.se/swatm:ROLESPEC> ?tm3.
+                       ?tm3  <http://udbl2.it.uu.se/swatm:IDTOPIC> 'opera'.
+		       ?ass  <http://udbl2.it.uu.se/swatm:MEMBERASSOCIATION> ?mem1.
+		       ?ass  <http://udbl2.it.uu.se/swatm:MEMBERASSOCIATION> ?mem2.
+		       ?mem2 <http://udbl2.it.uu.se/swatm:TOPICMEMBER> ?tm4.
+		       ?tm4  <http://udbl2.it.uu.se/swatm:IDTOPIC> ?idtm }";
+
+sparql(:sparql11);
+
+
+/*RDQL questions*/
+set :rdql_content1 = "SELECT ?basenamestring
+			FROM <http://user.it.uu.se/~udbl/TMRDF/>
+			WHERE (?tmo , <http://user.it.uu.se/~udbl/TMRDF/Schema#BASENAMESTRING> ?basenamestring)";
+/*with PE
+0.2
+*/
+
+set :rdql_content2  = "SELECT ?tm0 
+		       	FROM <http://user.it.uu.se/~udbl/TMRDF/>
+			WHERE (?tm0 , <http://user.it.uu.se/~udbl/TMRDF/Schema#BASENAME>, ?tm1)
+			      (?tm1 , <http://user.it.uu.se/~udbl/TMRDF/Schema#BASENAMESTRING>, 'nom de plume')"; 
+
+rdql(:rdql_content2);
+/*The result
+{"http://udbl.it.uu.se/TopicMap#1846"}
+0.09 s
+*/
+
+set :rdql_content3  = "SELECT ?tm2 
+		       	FROM <http://user.it.uu.se/~udbl/TMRDF/>
+			WHERE (?tm0 , <http://user.it.uu.se/~udbl/TMRDF/Schema#BASENAME>, ?tm1)
+			      (?tm1 , <http://user.it.uu.se/~udbl/TMRDF/Schema#BASENAMESTRING>, 'nom de plume') 
+			      (?tm0 , <http://user.it.uu.se/~udbl/TMRDF/Schema#OCCURRENCETOPIC>, ?tm2)
+         		      (?tm2 , <http://user.it.uu.se/~udbl/TMRDF/Schema#INSTANCEOFOCCURRENCE>, ?tm3)";
+
+rdql(:rdql_content3);
+/*The result
+{"http://udbl.it.uu.se/TopicMap#2751"}
+{"http://udbl.it.uu.se/TopicMap#2750"}
+3.8 s
+*/
+
+set :rdql_content4  = "SELECT ?occurrence 
+		       	FROM <http://user.it.uu.se/~udbl/TMRDF/>
+			WHERE (?tm0 , <http://user.it.uu.se/~udbl/TMRDF/Schema#BASENAME>, ?tm1)
+			      (?tm1 , <http://user.it.uu.se/~udbl/TMRDF/Schema#BASENAMESTRING>, 'nom de plume') 
+			      (?tm0 , <http://user.it.uu.se/~udbl/TMRDF/Schema#OCCURRENCE>, ?tm2)
+        		      (?tm2 , <http://user.it.uu.se/~udbl/TMRDF/Schema#REFERENCE>, ?occurrence)";
+
+ rdql(:rdql_content4);
+/*The result 
+{"file:///C|/ontopia/topicmaps/opera/occurs/nom-de-plume.htm"}
+{"http://www.ontopia.net/topicmaps/examples/opera/occurs/nom-de-plume.htm"}
+with PE 4.6 s
+*/
+
+set :rdql_content5  = "SELECT ?iofoc 
+		       	FROM <http://user.it.uu.se/~udbl/TMRDF/>
+			WHERE (?tm0 , <http://user.it.uu.se/~udbl/TMRDF/Schema#BASENAME>, ?tm1)
+			      (?tm1 , <http://user.it.uu.se/~udbl/TMRDF/Schema#BASENAMESTRING>, 'nom de plume') 
+			      (?tm0 , <http://user.it.uu.se/~udbl/TMRDF/Schema#OCCURRENCE>, ?tm2)
+        		      (?tm2 , <http://user.it.uu.se/~udbl/TMRDF/Schema#REFERENCE>, ?occurrence)
+			      (?tm2 , <http://user.it.uu.se/~udbl/TMRDF/Schema#INSTANCEOFOCCURRENCE>, ?iofoc)";
+
+rdql(:rdql_content5);
+/*The result
+{"http://udbl.it.uu.se/TopicMap#1610"}
+{"http://udbl.it.uu.se/TopicMap#1610"}
+7.6 s
+*/
+
+set :rdql_content5y  = "SELECT ?iofoc 
+		       	FROM <http://user.it.uu.se/~udbl/TMRDF/>
+			WHERE (?tm0 , <http://user.it.uu.se/~udbl/TMRDF/Schema#BASENAME>, ?tm1)
+			      (?tm1 , <http://user.it.uu.se/~udbl/TMRDF/Schema#BASENAMESTRING>, 'The Troubadour') 
+			      (?tm0 , <http://user.it.uu.se/~udbl/TMRDF/Schema#OCCURRENCE>, ?tm2)
+        		      (?tm2 , <http://user.it.uu.se/~udbl/TMRDF/Schema#REFERENCE>, ?occurrence)
+			      (?tm2 , <http://user.it.uu.se/~udbl/TMRDF/Schema#INSTANCEOFOCCURRENCE>, ?iofoc)
+			AND ?occurrence != <http://www.metopera.org/synopses/trovator.html> ";
+
+SWATM 3> rdql(:rdql_content5);
+{"http://udbl.it.uu.se/TopicMap#1484"}
+{"http://udbl.it.uu.se/TopicMap#1407"}
+{"http://udbl.it.uu.se/TopicMap#1324"}
+{"http://udbl.it.uu.se/TopicMap#1407"}
+{"http://udbl.it.uu.se/TopicMap#1474"}
+{"http://udbl.it.uu.se/TopicMap#1474"}
+7.578 s
+
+/*SQL questions */
+
+set :sql_content1 = 
+"SELECT val 
+ FROM TM 
+ WHERE p='http://user.it.uu.se/~udbl/TMRDF/Schema#BASENAMESTRING';";
+
+/*The result
+0.2 s
+*/
+
+
+set :sql_content2 = 
+"SELECT t1.s 
+ FROM TM t1, TM t2
+ WHERE t2.p='http://user.it.uu.se/~udbl/TMRDF/Schema#BASENAMESTRING' AND t2.val='nom de plume' AND t1.val=t2.s;";
+
+/*The result
+sql(:sql_content2);
+{"http://udbl.it.uu.se/TopicMap#1846"}
+0.63 s
+*/ 
+
+
+set :sql_content3 =
+"SELECT t3.val 
+ FROM TM t1, TM t2, TM t3
+ WHERE t2.p='http://user.it.uu.se/~udbl/TMRDF/Schema#BASENAMESTRING' AND t2.val='nom de plume' AND t1.val=t2.s AND t3.p='http://user.it.uu.se/~udbl/TMRDF/Schema#OCCURRENCE' AND t3.s=t1.s;";
+
+sql(:sql_content3);
+/*The result
+{"http://udbl.it.uu.se/TopicMap#2751"}
+{"http://udbl.it.uu.se/TopicMap#2750"}
+74.594 s 
+*/
+
+set :sql_content4 =
+"SELECT t1.val 
+ FROM TM t1, TM t2, TM t3, TM t4
+ WHERE t1.p='http://user.it.uu.se/~udbl/TMRDF/Schema#REFERENCE' AND t1.s=t2.val AND t2.p='http://user.it.uu.se/~udbl/TMRDF/Schema#OCCURRENCE'
+       AND t2.s=t3.s AND t3.val = t4.s AND t4.p='http://user.it.uu.se/~udbl/TMRDF/Schema#BASENAMESTRING' AND t4.val = 'nom de plume';";
+
+/*The result
+{"file:///C|/ontopia/topicmaps/opera/occurs/nom-de-plume.htm"}
+{"http://www.ontopia.net/topicmaps/examples/opera/occurs/nom-de-plume.htm"}
+81.5 s
+*/

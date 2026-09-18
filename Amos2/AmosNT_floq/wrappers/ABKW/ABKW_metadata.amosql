@@ -1,0 +1,26 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2004 Maryam Ladjvardi, UDBL
+ * $RCSfile: ABKW_metadata.amosql,v $
+ * $Revision: 1.3 $ $Date: 2005/03/06 14:13:25 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: AmosQL declaration of functions that constitute the 
+ *              generic Metadata ABKW wrapper interface.
+ *
+ ****************************************************************************/
+
+create function bk_primkeys(charstring filename, charstring btid)->
+					bag of charstring primkeys 
+       /* Rettrieve names of primary keys in a table */
+       as foreign 'BKPrimary_keysaa';
+
+create function bk_columns(charstring filename, charstring btid)->
+					bag of <charstring, charstring > 
+       /* Retrieve names of columns in a table */
+       as foreign 'BKColumnsaa';
+
+create function bk_tables(charstring filename)->bag of charstring table
+       /* Retrieve names of tables a file */
+       as foreign 'BKTablesaa';

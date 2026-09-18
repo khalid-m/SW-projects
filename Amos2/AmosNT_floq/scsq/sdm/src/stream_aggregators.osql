@@ -1,0 +1,293 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2009 Gyozo Gidofalvi, UDBL
+ * $RCSfile: stream_aggregators.osql,v $
+ * $Revision: 1.3 $ $Date: 2009/08/03 13:26:46 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Set of basic stream aggregates(/ors) defined using the 
+ * stream transducer operator strans1 (i.e., instead of initfn it uses init 
+ * state). 
+ *
+ ****************************************************************************
+ * $Log: stream_aggregators.osql,v $
+ * Revision 1.3  2009/08/03 13:26:46  gyogi445
+ * Novelty detection via independently trained "compression" neural networks
+ *
+ * Revision 1.2  2009/05/09 06:18:38  gyogi445
+ * Updated stream_transducer code, vectorized stream aggregators, spectrum monitoring
+ *
+ * Revision 1.1  2009/04/09 10:20:10  gyogi445
+ * Basic stream operators
+ *
+ * Revision 1.1  2009/04/08 20:01:08  gyogi445
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+
+/* Stream aggregator: smycount */
+/* Initial state: 0 */
+/* State transition function for stream aggregator scount: add1 */ 
+/* Output function of stream aggregator scount: id1 */
+create function smycount1(Stream s)-> Stream of Integer 
+/* Stream aggregator: scount */
+  as strans1(s, 0, #"add1", #"id1");
+
+/* Stream aggregator: ssum */
+/* Initial state: 0 */ 
+/* State transition function: NUMBER.NUMBER.PLUS->NUMBER */
+/* Output function: id1 */
+create function ssum1(Stream of Number s)-> Stream of Number 
+/* Stream aggregator: ssum */
+  as strans1(s, 0, #"NUMBER.NUMBER.PLUS->NUMBER", #"id1");
+
+/* Stream aggregator: smax */
+/* Initial state: MINREAL */
+/* State transition function: max */
+/* Output function: id1 */
+create function smax1(Stream s)-> Stream of Integer 
+/* Stream aggregator: smax */
+  as strans1(s, -1/0.00000001, #"max", #"id1");  
+
+/* Stream aggregator: smin */
+/* Initial state: MAXREAL */
+/* State transition function: min */
+/* Output function: id1 */
+create function smin1(Stream s)-> Stream of Integer 
+/* Stream aggregator: smin */
+  as strans1(s, 1/0.000000001, #"min", #"id1");  
+
+/* Stream aggregator: savgstdev */
+/* Initioal state: {0, 0.00000001, 0, 0.00000001, 0.00000001} */
+/* State transitions function based on incremental formula: incCMSS */
+create function incCMSS1(Vector of Number cmss, Number x) 
+                         -> Vector of Number 
+/* State transitions function for savgstdev 
+   based on incremental formula: incCMSS */
+  as select {x, newC, newM, newS, newSIGMA}
+     from Number newC, Number newM, Number newS, Number newSIGMA,
+          Number oldx, Number oldC, Number oldM, Number oldS, Number oldSIGMA
+     where {oldx, oldC, oldM, oldS, oldSIGMA} = cmss
+       and newC = oldC + 1
+       and newM  = oldM  + (x - oldM) / newC
+       and newS = oldS + (x - oldM) * (x - newM)    
+       and newSIGMA = sqrt(newS / oldC);
+
+/* Output function for savgstdev: outMS */
+
+ create function savgstdev1(Stream of Number s)
+                           -> Stream of Vector of Number  
+/* Stream aggregator: savgstdev */   
+  as strans1(s, {0, 0.00000001, 0, 0.00000001, 0.00000001},
+             #"incCMSS1", #"outMS");  
+
+create function smonitor01(Stream of Number s, Number devthr)
+                          -> Bag of Vector of Number 
+/* Stream aggregator: smonitor
+   based on stream aggregator savgstdev (returns bag) */
+  as select {x, mean, std, abs(x-mean)/std}  
+     from Number x, Number mean, Number std
+     where {x, mean, std} in savgstdev1(s)
+       and abs(x-mean) > devthr * std;
+
+create function smonitor1(Stream of Number s, Number devthr)
+                          -> Stream of Vector of Number 
+/* Function to turn bag result of smonitor0 to stream */
+  as streamof(smonitor01(s, devthr));
+
+/* Stream aggregator: snorm */
+/* State intialization function: initCMSS */
+/* State transitions function: incCMSS */
+/* Output function of stream aggregator snorm: normoutMS */
+create function snorm1(Stream of Number s)->Stream of Vector of Number  
+/* Stream aggregator: snorm */    
+  as strans1(s, {0, 0.00000001, 0, 0.00000001, 0.00000001},
+             #"incCMSS", #"normoutMS");
+
+
+/* Stream transducer sANN */
+/* State initialization function: initrandANN(fn)*/   
+create function initrandANN1(Vector of Integer nn,
+                            Number gain,
+                            Charstring mode,
+                            Charstring NNtaskType)
+                           -> Vector
+/* State initialization function for the sANN stream
+   transcuder. The state is initialized to a vector 
+   representation of a randomly initialized two-layer 
+   feedforward NN specified by the parameter:
+     - nn: number of neurons in layers */ 
+  as select {{}, /*prevX*/
+             {}, /*prevT*/          
+             {{}}, /*prevO*/
+             ws, /*prevWS*/
+             {{}}, /*prevDelta*/                           
+             gain,
+             mode,
+             NNtaskType}
+     from Vector of Vector of Vector of Number ws
+     where ws = randNNweights(nn); 
+
+create function initfileANN1f(Charstring wfile,
+                              Number gain,
+                              Charstring mode,
+                              Charstring NNtaskType)
+                              -> Vector
+/* State initialization function for the sANN stream
+   transcuder. The state is initialized to a vector 
+   representation of a NN read from the w(eight) file. */ 
+  as select {{}, /*prevX*/
+             {}, /*prevT*/          
+             {{}}, /*prevO*/
+             ws, /*prevWS*/
+             {{}}, /*prevDelta*/                           
+             gain,
+             mode,
+             NNtaskType}
+     from Vector of Vector of Vector of Number ws
+     where ws = readfile(wfile); 
+
+/* State transitions function: ffbp_ANN2_tfn */
+/* Output function: outT_ANN */
+create function outO_ANN(Vector NNstate,
+                          Vector of Vector of Number input)
+                          -> Vector of Number 
+  as cast(NNstate[2] as Vector)[1];
+ 
+/* Stream transdurer: sANN1 with randomly initialized NN */     
+create function sANN1(Stream of Vector of Vector of Number s,
+                     Vector of Integer nn,
+                     Number gain,
+                     Charstring mode,
+                     Charstring NNtaskType) 
+                     -> Stream of Vector of Number 
+/* Stream transducer: sANN1 with randomly initialized NN */
+  as strans1(s, initrandANN1(nn, gain, mode, NNTaskType), #"ffbp_ANN2_tfn", #"outO_ANN"); 
+
+/* Stream transducer: sANN1f with NN in file */
+create function sANN1f(Stream of Vector of Vector of Number s,
+                      Charstring wifile,
+                      Number gain,
+                      Charstring mode,
+                      Charstring NNtaskType) 
+                      -> Stream of Vector of Number 
+/* Stream transducer: sANN1f with NN in file */
+  as strans1(s, initfileANN1f(wifile, gain, mode, NNTaskType), #"ffbp_ANN2_tfn", #"outO_ANN"); 
+
+create function saveANNfn(Charstring wofile, Charstring fname)
+                          -> Function
+/* Function tha tcreates a function to save weights of a 
+   NN in the file wofile */
+  as eval("create function "+fname+" (Vector NNstate)-> Boolean
+             as writefile('"+wofile+"', NNstate[3]);");  
+
+/* Stream transducer: sANN1ff with NN in file */
+create function sANN1ff(Stream of Vector of Vector of Number s,
+                       Charstring wifile,
+                       Charstring wofile,
+                       Number gain,
+                       Charstring mode,
+                       Charstring NNtaskType) 
+                       -> Stream of Vector of Number 
+/* Stream transducer: sANN1ff with NN in file */
+  as strans2(s, initfileANN1f(wifile, gain, mode, NNTaskType), #"ffbp_ANN2_tfn", #"outO_ANN", saveANNfn(wofile, "anonymous")); 
+
+/* Stream transducer: sANN1_wwao (with fully defined NNstate in and out) */
+/* State initialization function: by parameter NNstate */
+/* State transitions function: ffbp_ANN2_tfn */
+/* Output function: id1 (i.e., NNstate) */ 
+create function sANN_wwao(Stream of Vector of Vector of Number s,
+                          Vector NNstate)
+                          -> Stream of Vector
+  as strans1(s, NNstate, #'ffbp_ANN2_tfn', #'id1'); 
+
+/* Stream transducer: sANN1_wwO (with fully defined NNstate in 
+   and observed value out) */
+/* State initialization function: by parameter NNstate */
+/* State transitions function: ffbp_ANN2_tfn */
+/* Output function: outO_ANN (i.e., observed) */ 
+create function sANN_wwo(Stream of Vector of Vector of Number s,
+                         Vector NNstate)
+                         -> Stream of Vector
+  as select strans1(s, NNstate, #'ffbp_ANN2_tfn', #'outO_ANN')
+     where print({"NNSTATE: ", NNstate});   
+
+/* Stream transducer: sANN1sw 
+   (for stream of windows with randomly initialized NN */
+
+/* State transitions function: ffbp_ANN2sw_tfn */
+create function ffbp_ANN2sw_tfn(Vector NNstate,
+                                Vector of Vector of Vector of Number XT)
+                                -> Vector
+/* Transfer function to evaluate/train NN on a stream of windows */
+as  
+begin
+   declare Stream of Vector of Vector of Number sxt,
+           Vector of Vector vNNstates,
+           Vector lastNNstate,
+           Vector of Vector of Number vo;
+/*   print({"NNstate", NNstate});
+   print({"Input", XT}); */
+   /* Transform the vector input to a stream input */
+   set sxt = streamof(in(XT));
+   /* Eval/train NN on stream and transform the 
+      output state stream into a vector */
+   set vNNstates = vectorof(in(sann_wwao(sxt, NNstate)));
+   /* Parse out the observed values (netowrk estimates) */ 
+   set vo = vselect o[1] 
+            from Vector of Vector o, Integer i 
+            where o = vNNstates[i][2];
+   /* Separerate the last state */
+   set lastNNstate = vNNstates[dim(vNNstates)-1];
+   /* Return the last state with the vector of observed values 
+      (network estimates) injected at the 3rd position */
+   result {lastNNstate[0], lastNNstate[1], 
+           vo, lastNNstate[3], lastNNstate[4], 
+           lastNNstate[5], lastNNstate[6], lastNNstate[7]};
+end;
+
+/* Output function: out_sANN1sw */
+create function out_sANN1sw(Vector NNstate,
+                            Vector of Vector of Vector of Number input)
+                            -> Vector of Vector of Number 
+  as NNstate[2];
+
+/* Stream transducer: sANN1sw */
+create function sANN1sw(Stream of Vector of Vector of Vector of Number s,
+                        Vector of Integer nn,
+                        Number gain,
+                        Charstring mode,
+                        Charstring NNtaskType) 
+                        -> Stream of Vector of Vector of Number 
+/* Stream transducer: sANN1_sw 
+   (for stream of windows with randomly initialized NN */     
+  as strans1(s, initrandANN1(nn, gain, mode, NNTaskType), 
+             #"ffbp_ANN2sw_tfn", #"out_sANN1sw"); 
+
+
+/* Stream transducer: sANN1sw_silenttrain */
+/* Final function: final_nw */
+create function final_nw(Vector NNstate,
+                         Vector of Vector of Vector of Number input)
+                         -> Vector of Vector of Vector of Number 
+  as NNstate[3];
+
+/* Stream transducer: sANN1sw_silenttrain */
+create function sANN1sw_silenttrain(Stream of Vector of Vector of Vector of Number s,
+                                    Vector of Vector of Vector of Number nw,
+                                    Number gain,
+                                    Charstring NNtaskType) 
+                                    -> Stream of Vector of Vector of Vector of Number 
+/* Stream transducer: sANN1_sw_silenttrain 
+   (for stream of windows; NN initialized to nw */     
+  as strans3(s, {{},{},{},nw,{},gain,"LEARN",NNTaskType}, 
+             #"ffbp_ANN2sw_tfn", #"final_nw"); 
+
+
+
+
+
+
+
+

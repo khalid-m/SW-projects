@@ -1,0 +1,91 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: 2012 Cheng Xu, Tore Risch, UDBL
+ * $RCSfile: MillWrapper.osql,v $
+ * $Revision: 1.1 $ $Date: 2012/11/08 16:14:46 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: The wrapper converting milling data from Sandvik
+ *
+ ****************************************************************************
+ * $Log: MillWrapper.osql,v $
+ * Revision 1.1  2012/11/08 16:14:46  torer
+ * New milling model
+ *
+ ****************************************************************************/
+
+/* Wrapper functions for accessing properties inside raw CORENET JSON stream tuples */
+
+create function cuttingDepth(Record r) -> Number
+  as select unstringify(s)
+     from Vector of Record v, Charstring s
+     where v = r["data"] and
+           s = v[5]["value"]; 
+
+create function ae(Record r) -> Number
+  as select unstringify(s)
+     from Vector of Record v, Charstring s
+     where v = r["data"] and
+           s = v[22]["value"];                                 
+
+create function fz(Record r) -> Number
+  as select unstringify(s)
+     from Vector of Record v, Charstring s
+     where v = r["data"] and
+           s = v[23]["value"];
+
+create function hex(Record r) -> Number
+  as select unstringify(s)
+     from Vector of Record v, Charstring s
+     where v = r["data"] and
+           s = v[24]["value"];                                
+
+create function vc(Record r) -> Number
+  as select unstringify(s)
+     from Vector of Record v, Charstring s
+     where v = r["data"] and
+           s = v[25]["value"];                             
+
+create function zt(Record r) -> Number
+  as 4;                           
+
+create function cuttingDiameter(Record r) -> Number
+  as select unstringify(s)
+     from Vector of Record v, Charstring s
+     where v = r["data"] and
+           s = v[6]["value"]; 
+
+create function powerConsumption(Record r) -> Number
+  as select unstringify(s)
+     from Vector of Record v, Charstring s
+     where v = r["data"] and
+           s = v[14]["value"];                           
+
+create function timestampMill(Record r) -> Number
+  as select atoi(s)
+     from Vector of Record v, Charstring s
+     where v = r["data"] and
+           s = v[1]["value"];
+
+/*** Define MillStream ***/
+
+create type MillStream under CorenetStream;
+
+create function theMillStream(Charstring coreid)-> MillStream
+  as theCorenetStream(coreid);
+
+create function streamTuples(MillStream s) -> Stream of Record
+  /* Stream tuples of milling streams as JSON */
+  as streamof(select record({"cuttingdiameter",cuttingDiameter(r),
+                             "ae",ae(r),
+                             "fz",fz(r),
+                             "hex",hex(r), 
+                             "vc",vc(r), 
+                             "zt",zt(r),
+                             "cuttingdepth",cuttingDepth(r),
+                             "powerconsumption",powerConsumption(r),
+                             "timestamp",timestampMill(r)})
+              from Record r, CorenetStream c
+              where r in rawStreamTuples(c) and s = c);
+

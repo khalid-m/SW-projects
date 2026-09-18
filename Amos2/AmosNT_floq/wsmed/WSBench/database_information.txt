@@ -1,0 +1,144 @@
+The information about the tables from Berlin SPARQL Benchmark are :
+
+___________________________________________________________
+
+table Offer 
+
+field	        type
+nr	        int
+product         int
+producer        int
+vendor	        int
+price	        double
+validFrom       datetime
+validTo	        datetime
+deliveryDays	int
+offerWebpage	varchar
+publisher	int
+publishDate	date
+
+___________________________________________________________
+
+
+table Person
+
+field	        type
+nr	        int
+name	        varchar
+mbox_sha1sum    char
+country	        char
+publisher       int
+publishDate     date
+
+___________________________________________________________
+
+
+table Producer
+
+field	        type
+nr 	        int
+label	        varchar
+comment	        varchar
+homepage        varchar
+country	        char
+publisher	int
+publishDate	date
+
+___________________________________________________________
+
+
+table Product 
+
+field	        type
+nr	        int
+label         	varchar
+comment	        varchar
+producer   	int
+propertyNum1	int
+propertyNum2	int
+propertyNum3	int
+propertyNum4	int
+propertyNum5	int
+propertyNum6	int
+propertyTex1	varchar
+propertyTex2	varchar
+propertyTex3	varchar
+propertyTex4	varchar
+propertyTex5	varchar
+propertyTex6	varchar
+publisher	int
+publishDate	date
+
+___________________________________________________________
+
+table Productfeature
+
+field	        type
+nr              int
+label	        varchar
+comment	        varchar
+publisher	int
+publishDate	date
+
+___________________________________________________________
+
+table Productfeatureproduct
+
+field           type
+product      	int
+productFeature	int
+
+___________________________________________________________
+
+table Producttype
+
+field	        type
+nr	        int
+label	        varchar
+comment	        varchar
+parent	        int
+publisher	int
+publishDate	date
+___________________________________________________________
+
+
+table Producttypeproduct
+
+field	        type
+product	        int
+productType	int
+
+___________________________________________________________
+
+table Review
+
+field	        type
+nr              int
+product	        int
+producer 	int
+person     	int
+reviewDate	datetime
+title       	varchar
+text         	text
+language 	char
+rating1   	int
+rating2   	int
+rating3   	int
+rating4   	int
+publisher	int
+publishDate	date
+___________________________________________________________
+
+
+table Vendor
+
+field        	type
+nr             	int
+label           varchar
+comment         varchar
+country         char
+publisher       int
+publishDate     date
+homepage        varchar
+___________________________________________________________
+

@@ -1,0 +1,1 @@
+This directory contains Java class files

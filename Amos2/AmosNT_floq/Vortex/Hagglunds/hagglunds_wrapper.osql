@@ -1,0 +1,102 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: hagglunds_wrapper.osql,v $
+ * $Revision: 1.1 $ $Date: 2012/10/24 17:15:28 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Hagglunds wrapper
+ *
+ ****************************************************************************
+ * $Log: hagglunds_wrapper.osql,v $
+ * Revision 1.1  2012/10/24 17:15:28  chexu484
+ * hagglunds model and validate now works
+ * record is used instead of vector
+ *
+ * Revision 1.1  2006/02/12 20:01:08  torer
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+
+load_lisp("multi_variable.lsp");
+
+<'hagglunds_schema.osql';
+
+create logdirectory (name,folder,timeout,startseq)
+       instances ('dir1',pwd()+'/data/realdata/',10,0);
+
+set variables(dirnamed("dir1")) = 
+{"DATALOSS","EMOTOR2","EMOTOR3","DOUT01","DOUT02",
+  "REG103","REG109","REG311","REG401","REG402",
+  "REG403","REG404","REG405","REG406","REG407",
+  "REG408","REG409","REG410","W1_019"};
+
+create logdirectory (name,folder,timeout,startseq)
+       instances ('dir2',pwd()+'/data/E01PB303190/',10,0);
+
+set variables(dirnamed("dir2")) =
+{"DATALOSS","EMOTOR2","EMOTOR3","DOUT01","DOUT02",
+  "REG103","REG109","REG311","REG401","REG402",
+  "REG403","REG404","REG405","REG406","REG407",
+  "REG408","REG409","REG410","W1_019"};
+
+create logdirectory (name,folder,timeout,startseq)
+       instances ('dir3',pwd()+'/data/E01PS10-2991/',10,0);
+
+set variables(dirnamed("dir3")) =
+{"DOUT01","DOUT02","REG103","REG109","REG311",
+  "REG401","REG402","REG403","REG404","REG405",
+  "REG406","REG407","REG408","REG409","REG410","W1_019"};
+
+create logdirectory (name,folder,timeout,startseq)
+       instances ('dir4',pwd()+'/data/cooler/',10,0);
+
+set variables(dirnamed("dir4")) =
+{"DOUT01","DOUT02","REG103","REG109","REG311",
+  "REG401","REG402","REG403","REG404","REG405",
+  "REG406","REG407","REG408","REG409","REG410","W1_019", "DIN01"};
+
+/*
+try:
+
+in(heartbeat(hagglunds_stream(dirnamed('dir1')), 0.5));
+
+in(heartbeat(hagglunds_tuples(dirnamed('dir1')), 0.5));
+
+in(heartbeat(hagglunds_records(dirnamed('dir1')), 0.5));
+
+*/
+
+
+/*
+
+create function value(Logdirectory dir, Vector tpl, Charstring var) -> Number
+  as select cast(tpl[idx] as Number)
+  from Integer idx
+  where variables(dir)[idx] = var
+  and tpl[idx] > -1;
+
+create function timestamp(Vector of Number tpl) -> Number as tpl[0];
+
+create function value_stream(Logdirectory dir, Charstring var) -> Stream of Number
+as streamof(select value(dir, tpl, var)
+from Vector of Number tpl
+where tpl in hagglunds_tuples(dir));
+
+
+
+set :s = hagglunds_tuples(hagglunds_stream("d2"), variables(dirnamed("d2")));
+
+in(:s);
+
+
+
+in(heartbeat(:s, 1));
+
+set :variables = (vselect distinct(v[1]) from vector v where v in :s);
+
+:variables;
+
+in(hagglunds_tuple(:s, :variables));
+*/

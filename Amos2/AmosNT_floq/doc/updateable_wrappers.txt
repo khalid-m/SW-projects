@@ -1,0 +1,64 @@
+How to make your wrapper updateable.
+
+
+1. DIY Updates.
+
+files: AmosNT/lsp/fncall.lsp
+       AmosNT/lsp/updates.lsp	
+       AmosNT/lsp/updates.osql	
+
+This document describes how to declare do-it-yourself update functions for any
+function. The following lisp functions are available on the Lisp level:
+
+	  set-addfunction (fn addfn)
+	  set-remfunction (fn addfn)
+	  set-setfunction (fn addfn)
+
+a user-defined add-function can be a function or procedure taking as as 
+arguments the 'full tuple' e.g/ for a function foo(integer)->integer the set 
+function will be set_foo(integer, integer), any return value ignored.
+The functions are also available on the AmosQL level, with the following
+functins:
+
+	* set_addfunction(function f, function uf)
+
+	* set_remfunction(function f, function uf)
+
+	* set_setfunction(function f, function uf)
+
+The function f is the function we wish to declare update function for and uf
+is the actual update function.
+
+
+2. Transparent updates for SQL
+
+files: AmosNT/wrappers/relational/import-table.lsp
+
+The function import-table calls a function named create-keyed-update-fns if
+updates are desired when importing the table. Basically what the function
+does is create three AmosQL functions and register them as the update functions
+for the property functions.
+
+Let's say we have imported the table person with a columns called name. The
+update functions will then be:
+
+       create function set_name(person@ds p, charstring name) -> integer
+       as select sqlu(<ds>, 'update person set name=? where pnr=?',
+                      {age,_decode_(p)});
+
+       create function remove_name(person@ds p, charstring name) -> integer
+       as select sqlu(<ds>, 'update person set name=null 
+			     where name=? and pnr=?',{name, _decode_(p)});
+
+       create function add_name(person@ds p, charstring name) -> integer
+       as begin 
+	  if some(sql(<ds>,'select name from person where pnr=?,{_decode_(p)}))
+	  then error('error: Violating unique index')
+          else set res=sqlu(<ds>, 'update person set name=? where pnr=?',
+				  {name, _decode_(p)});
+
+The function sqlu that is called acts like the sql function except that it
+accepts update statements, which the sql function does not, and it returns
+an integer which is the number of rows altered. This number is totally ignored
+when Amos calls the update function, but if the function add_name is called 
+by a user the number can be picked up.

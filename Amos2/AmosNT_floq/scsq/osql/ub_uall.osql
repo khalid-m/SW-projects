@@ -1,0 +1,37 @@
+/*-*-sql-*-*******************************************************************/
+create function intstreams(integer w, integer rep)
+-> (integer, stream) as begin
+for each integer i where i in viota(0, integer(w-1)) begin
+return (i, ostream(newsp(siota(1, rep)), 0));
+end;
+end;
+
+create function ilayer(integer w, integer rep)->vector of stream as
+vectorize(intstreams(w, rep));
+
+create function nastreams(integer w, integer rep, record opt)
+-> (integer, stream) as begin
+for each integer i where i in viota(0, integer(w-1)) begin
+return (i, ostream(newspflex(streamof(darray(
+{0.0, real(iota(1, rep)), 0.0, 0.0, 0.0, 0.0})), opt), 0));
+end;
+end;
+
+create function nalayer(integer w, integer rep, record opt)
+->vector of stream as vectorize(nastreams(w, rep, opt));
+
+create function ub_bgmrg(integer w, integer rep, record opt)
+->(number, number, number) as
+select v[3], roundto(v[2], 2), roundto(v[3]/v[2], 2)
+from vector of stream src, vector of number v, integer reps
+where reps = 1000*rep
+and src = nalayer(w, reps, make_record({}))
+and v = extract(newsp(stcount(bgmerge(src, 0.001))));
+
+create function ub_mrg(integer w, integer rep, record opt)
+->(number, number, number) as
+select v[3], roundto(v[2], 2), roundto(v[3]/v[2], 2)
+from vector of stream src, vector of number v, integer reps
+where reps = 1000*rep
+and src = nalayer(w, reps, make_record({}))
+and v = extract(newsp(stcount(mergestreams(src))));

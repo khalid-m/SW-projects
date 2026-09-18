@@ -1,0 +1,280 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Silvia Stefanova UDBL
+ * $RCSfile:  
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: OPTIONAL CONSTRUCT queries  
+ ******************************************************************************/
+
+/*nr triples (with NULL) :4 343 718, no NULLs: 4 188 875 ; schema : 352 triples */
+/* MS SQL server */
+
+set :id="producer180mDS";
+set :url="jdbc:microsoft:sqlserver://localhost;DatabaseName=producer180m";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="producer180m";
+set :catalog="producer180m";
+set :schema="producer180m";
+set :usern="product180m";
+set :passw="product180m";
+
+set :upv="prod";
+set :uriOfupv="http://user.it.uu.se/~udbl/sard/prod";
+/*set :upv_fn="prod_fn";*/
+/*set :uriOfupv_fn="http://user.it.uu.se/~udbl/sard/prod_fn";*/
+
+
+defineDS(:id,
+         :url,
+         :driver,
+         :catalog,
+         :schema,
+         :usern,
+         :passw);
+
+
+defineUPV(:id,:upv, :uriofupv);
+/*defineUPV(:id,:upv_fn, :uriofupv_fn);*/
+
+DSConnect(:upv);	
+
+wrapRDB(jdbcOfDS(:id), :dbname, :catalog, :schema);
+assignIDs(:upv,:catalog, :schema);
+/*assignIDs(:upv_fn,:catalog, :schema);*/
+
+ViewRDB(:upv);
+
+lisp;
+(setq _gct_ t)
+(setq _unif_ t);;to normalize variable names in a DNF RDB predicate 
+(setq _sch_ t);;rewrite congunction of schema view with pred to NIL
+(setq _el-corcl_ t);;to rewrite the schema view to NIL when possible
+(setq _elcon_ifnounif_ t);; to rewrite { * * ?s. ?s ?p ?o }
+(setq _rewrite_row_and_like_ t);;to rewrite a FILTER on subject/object
+(setq _subjects_ nil);;push subjects
+(setq _enable-proptables_ nil) ;;doesn't work together with OPTIONAL
+(memo-function 'get-columns)
+
+:osql 
+
+set :o1 =
+"PREFIX db: <http://user.it.uu.se/~udbl/sard/prod#>
+ PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ CONSTRUCT
+	{  ?s 	product:product_label ?label .
+	   ?s 	product:product_propertyTex4	?propertytextual4 .
+	   ?s	product:product_propertyTex5	?propertytextual5 . }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE { ?s 	product:product_label ?label .
+	 ?s 	product:product_propertyNum1 ?pn1 .
+	 FILTER (?pn1 > '1990') .
+	 OPTIONAL { ?s 	product:product_propertyTex4  ?propertytextual4 .} }";  
+
+eval("create function eo1()->(Charstring,Charstring,Literal) as " + parse_sparql(:o1)); 	 
+
+
+create function f1()->(Charstring,Charstring,Charstring)
+as remove_null(select _ss_, _pp_, _oo_
+  from Charstring propertytextual4, Integer pr, Charstring comment,Charstring s, Charstring _ss_, Charstring _pp_, Charstring _oo_
+ where {pr,comment,propertytextual4} = sql(jdbcOfDS("producer180mDS"),"select p1.product_nr,p1.product_label,p2.product_propertyTex4 from producer180m.product p1 left outer join producer180m.product p2 on p1.product_nr=p2.product_nr WHERE p1.product_propertyNum1 >1990;") and s=rowid(cMap('product','prod'),{pr})
+and( (_ss_ = s and _pp_ = 'http://user.it.uu.se/~udbl/sard/prod#product/product_label' and _oo_ = comment) or
+(_ss_ = s and _pp_ = 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyTex4' and _oo_ = propertytextual4)));
+
+
+set :o2 =
+"PREFIX db: <http://user.it.uu.se/~udbl/sard/prod#>
+ PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ CONSTRUCT
+	{  ?s 	product:product_label ?label .
+	   ?s 	product:product_propertyTex4	?propertytextual4 .
+	   ?s	product:product_propertyTex5	?propertytextual5 . }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE { ?s 	product:product_label ?label .
+	 ?s 	product:product_propertyNum1 ?pn1 .
+	 FILTER (?pn1 > '1990') .
+	 OPTIONAL { ?s 	product:product_propertyTex4  ?propertytextual4 .} 
+	 OPTIONAL { ?s	product:product_propertyTex5  ?propertytextual5 .} }";   
+
+eval("create function eo2()->(Charstring,Charstring,Literal) as " + parse_sparql(:o2)); 	 
+
+/* Translate 1- translate using 'left outer join' and OR*/
+create function f2()->(Charstring,Charstring,Charstring)
+as remove_null(select _ss_, _pp_, _oo_
+  from Charstring propertytextual4, Integer pr, Charstring label,Charstring s, Charstring _ss_, Charstring _pp_, Charstring _oo_, Charstring propertytextual5
+ where ({pr,label,propertytextual4} = sql(jdbcOfDS("producer180mDS"),"select p1.product_nr,p1.product_label,p2.product_propertyTex4 from producer180m.product p1 left outer join producer180m.product p2 on p1.product_nr=p2.product_nr WHERE p1.product_propertyNum1 >1990;") and s=rowid(cMap('product','prod'),{pr}) 
+and( (_ss_ = s and _pp_ = pMap('product','product_label','prod') and _oo_ = label) or
+(_ss_ = s and _pp_ = 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyTex4' and _oo_ = propertytextual4))) 
+or
+({pr,label,propertytextual5} = sql(jdbcOfDS("producer180mDS"),"select p1.product_nr,p1.product_label,p2.product_propertyTex5 from producer180m.product p1 left outer join producer180m.product p2 on p1.product_nr=p2.product_nr WHERE p1.product_propertyNum1 >1990;") and s=rowid(cMap('product','prod'),{pr})
+and 
+( (_ss_ = s and _pp_ = pMap('product','product_label','prod') and _oo_ = propertytextual5))));
+
+/* Translate 2- translate using only one 'left outer join'  */
+create function f2_2()->(Charstring,Charstring,Charstring)
+as remove_null(select _ss_, _pp_, _oo_
+  from Charstring propertytextual4, Integer pr, Charstring label,Charstring s, Charstring _ss_, Charstring _pp_, Charstring _oo_, Charstring propertytextual5
+ where {pr,label,propertytextual4,propertytextual5} = 
+sql(jdbcOfDS("producer180mDS"),
+"select p3.product_nr,p3.product_label,p3.product_propertyTex4,p3.product_propertyTex5 from producer180m.product p3 LEFT OUTER JOIN 
+(select p2.product_nr,p2.product_label,p2.product_propertyTex4 from producer180m.product p1 left outer join producer180m.product p2 on p1.product_nr=p2.product_nr WHERE p1.product_propertyNum1 >1990) as t 
+ON t.product_nr=p3.product_nr WHERE p3.product_propertyNum1 >1990 ;") and s=rowid(cMap('product','prod'),{pr}) 
+and( (_ss_ = s and _pp_ = pMap('product','product_label','prod') and _oo_ = label) or
+     (_ss_ = s and _pp_ = 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyTex4' and _oo_ = propertytextual4) or
+     (_ss_ = s and _pp_ = pMap('product','product_propertyTex5','prod') and _oo_ = propertytextual5)) );
+
+/* Translate 3- translate using UNION  */
+create function f2_3()->(Charstring,Charstring,Charstring)
+as remove_null(select _ss_, _pp_, _oo_
+  from Charstring propertytextual4, Integer pr, Charstring label,Charstring s, Charstring _ss_, Charstring _pp_, Charstring _oo_, Charstring propertytextual5
+ where ({pr,label}=sql(jdbcOfDS("producer180mDS"),"select p1.product_nr,p1.product_label from producer180m.product p1 WHERE p1.product_propertyNum1 >1990;") and  s=rowid(cMap('product','prod'),{pr})
+and( (_ss_ = s and _pp_ = pMap('product','product_label','prod') and _oo_ = label))) or
+({pr,label,propertytextual4} = sql(jdbcOfDS("producer180mDS"),"select p1.product_nr,p1.product_label,p1.product_propertyTex4 from producer180m.product p1 WHERE p1.product_propertyNum1 >1990;") and s=rowid(cMap('product','prod'),{pr}) 
+and( (_ss_ = s and _pp_ =  pMap('product','product_propertyTex4','prod') and _oo_ = propertytextual4)))
+or
+({pr,label,propertytextual5} = sql(jdbcOfDS("producer180mDS"),"select p1.product_nr,p1.product_label,p1.product_propertyTex5 from producer180m.product p1 WHERE p1.product_propertyNum1 >1990;") and s=rowid(cMap('product','prod'),{pr})
+and 
+( (_ss_ = s and _pp_ =  pMap('product','product_propertyTex5','prod') and _oo_ = propertytextual5))));
+
+
+/*Translate 3 corresponds to the UNION q: use s, s1, s2 to avoid 'DISTINCT' */
+set :o2as_un =
+"PREFIX db: <http://user.it.uu.se/~udbl/sard/prod#>
+ PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ CONSTRUCT
+	{  ?s 	product:product_label           ?label .
+	   ?s1 	product:product_propertyTex4	?propertytextual4 .
+	   ?s2	product:product_propertyTex5	?propertytextual5 . }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE {{?s 	product:product_label ?label .
+	 ?s 	product:product_propertyNum1 ?pn1 .
+	 FILTER (?pn1 > '1990') }
+	UNION
+	{?s1 	product:product_label ?label .
+	 ?s1 	product:product_propertyNum1 ?pn1 .
+	 FILTER (?pn1 > '1990') .
+	 ?s1 	product:product_propertyTex4  ?propertytextual4 .}
+	UNION
+	{?s2 	product:product_label ?label .
+	 ?s2 	product:product_propertyNum1 ?pn1 .
+	 FILTER (?pn1 > '1990') .
+	 ?s2	product:product_propertyTex5  ?propertytextual5 .} }";   
+
+
+create function f2_4()->(Charstring,Charstring,Charstring)
+as remove_null(select _ss_, _pp_, _oo_
+  from Charstring propertytextual4, Integer pr, Charstring label,Charstring s, Charstring _ss_, Charstring _pp_, Charstring _oo_, Charstring propertytextual5,Charstring s1, Charstring s2
+ where ({pr,label}=sql(jdbcOfDS("producer180mDS"),"select p1.product_nr,p1.product_label from producer180m.product p1 WHERE p1.product_propertyNum1 >1990;") and  s=rowid(cMap('product','prod'),{pr}) and( (_ss_ = s and _pp_ = pMap('product','product_label','prod') and _oo_ = label))) 
+or
+({pr,propertytextual4} = sql(jdbcOfDS("producer180mDS"),"select p1.product_nr,p1.product_propertyTex4 from producer180m.product p1 WHERE p1.product_propertyNum1 >1990;") and s1=rowid(cMap('product','prod'),{pr}) and( (_ss_ = s1 and _pp_ =  pMap('product','product_propertyTex4','prod') and _oo_ = propertytextual4)))
+or
+({pr,propertytextual5} = sql(jdbcOfDS("producer180mDS"),"select p1.product_nr,p1.product_propertyTex5 from producer180m.product p1 WHERE p1.product_propertyNum1 >1990;") and s2=rowid(cMap('product','prod'),{pr}) and ( (_ss_ = s2 and _pp_ =  pMap('product','product_propertyTex5','prod') and _oo_ = propertytextual5))));
+
+
+
+/*NESTED OPTIONAL: */
+
+set :o3 =
+"PREFIX db: <http://user.it.uu.se/~udbl/sard/prod#>
+ PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ CONSTRUCT
+	{  ?s 	product:product_label ?label .
+	   ?s 	product:product_propertyTex4	?propertytextual4 .
+	   ?s	product:product_propertyTex5	?propertytextual5 . }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE { ?s 	product:product_label ?label .
+	 ?s 	product:product_propertyNum1 ?pn1 .
+	 FILTER (?pn1 > '1990') .
+	 OPTIONAL { ?s 	product:product_propertyTex4  ?propertytextual4 .
+		 OPTIONAL { ?s	product:product_propertyTex5  ?propertytextual5 .} } }";   
+
+/* ???? Translate 1- translate using only one 'left outer join'  */
+create function f3_1()->(Charstring,Charstring,Charstring)
+as remove_null(select _ss_, _pp_, _oo_
+  from Charstring propertytextual4, Integer pr, Charstring label,Charstring s, Charstring _ss_, Charstring _pp_, Charstring _oo_, Charstring propertytextual5
+ where {pr,label,propertytextual4,propertytextual5} = 
+sql(jdbcOfDS("producer180mDS"),
+"select p3.product_nr,p3.product_label,t.product_propertyTex4,p3.product_propertyTex5 from producer180m.product p3 
+ left outer join (select p1.product_nr ,p1.product_label ,p2.product_propertyTex4 from producer180m.product p1 
+ left outer join producer180m.product p2 on p1.product_nr=p2.product_nr WHERE p1.product_propertyNum1 >1990)  
+ as t on t.product_nr=p3.product_nr WHERE p3.product_propertyNum1 >1990;  ")
+and s=rowid(cMap('product','prod'),{pr}) 
+and ( (_ss_ = s and _pp_ = pMap('product','product_label','prod') and _oo_ = label) or 
+     (_ss_ = s and _pp_ = pMap('product','product_propertyTex4','prod') and _oo_ = propertytextual4) or
+     (_ss_ = s and _pp_ = pMap('product','product_propertyTex5','prod') and _oo_ = propertytextual5)) );
+
+/* Translate Query 2- using UNION  */
+
+create function f3_2()->(Charstring,Charstring,Charstring)
+as remove_null(select _ss_, _pp_, _oo_
+  from Charstring propertytextual4, Integer pr, Charstring label,Charstring s, Charstring _ss_, Charstring _pp_, Charstring _oo_, Charstring propertytextual5,Charstring s1, Charstring s2
+ where ({pr,label}=sql(jdbcOfDS("producer180mDS"),"select p1.product_nr,p1.product_label from producer180m.product p1 WHERE p1.product_propertyNum1 >1990;") and  s=rowid(cMap('product','prod'),{pr}) and( (_ss_ = s and _pp_ = pMap('product','product_label','prod') and _oo_ = label))) 
+or
+({pr,propertytextual4} = sql(jdbcOfDS("producer180mDS"),"select p1.product_nr,p1.product_propertyTex4 from producer180m.product p1 WHERE p1.product_propertyNum1 >1990 AND p1.product_propertyTex4 IS NOT NULL;;") and s1=rowid(cMap('product','prod'),{pr}) and( (_ss_ = s1 and _pp_ =  pMap('product','product_propertyTex4','prod') and _oo_ = propertytextual4)))
+or
+({pr,propertytextual5} = sql(jdbcOfDS("producer180mDS"),"select p1.product_nr,p1.product_propertyTex5 from producer180m.product p1 WHERE p1.product_propertyNum1 >1990 AND p1.product_propertyTex4 IS NOT NULL;") and s2=rowid(cMap('product','prod'),{pr}) and ( (_ss_ = s2 and _pp_ =  pMap('product','product_propertyTex5','prod') and _oo_ = propertytextual5))));
+
+/*Translate 3 : Query 2 corresponds to the UNION q: use s, s1, s2 to avoid 'DISTINCT' */
+
+set :o3as_un =
+"PREFIX db: <http://user.it.uu.se/~udbl/sard/prod#>
+ PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ CONSTRUCT
+	{  ?s 	product:product_label           ?label .
+	   ?s1 	product:product_propertyTex4	?propertytextual4 .
+	   ?s2	product:product_propertyTex5	?propertytextual5 . }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE {{?s 	product:product_label ?label .
+	 ?s 	product:product_propertyNum1 ?pn1 .
+	 FILTER (?pn1 > '1990') }
+	UNION
+	{?s1 	product:product_label ?label .
+	 ?s1 	product:product_propertyNum1 ?pn1 .
+	 FILTER (?pn1 > '1990') .
+	 ?s1 	product:product_propertyTex4  ?propertytextual4 .}
+	UNION
+	{?s2 	product:product_label ?label .
+	 ?s2 	product:product_propertyNum1 ?pn1 .
+	 FILTER (?pn1 > '1990') .
+	 ?s2 	product:product_propertyTex4  ?propertytextual4 .
+	 ?s2	product:product_propertyTex5  ?propertytextual5 .} }"; 
+
+/*Important to add ' .. is nOT NULL ..' */
+
+create function f3_3()->(Charstring,Charstring,Charstring)
+as remove_null(select _ss_, _pp_, _oo_
+  from Charstring propertytextual4, Integer pr, Charstring label,Charstring s, Charstring _ss_, Charstring _pp_, Charstring _oo_, Charstring propertytextual5,Charstring s1, Charstring s2
+ where ({pr,label}=sql(jdbcOfDS("producer180mDS"),"select p1.product_nr,p1.product_label from producer180m.product p1 WHERE p1.product_propertyNum1 >1990;") and  s=rowid(cMap('product','prod'),{pr}) and( (_ss_ = s and _pp_ = pMap('product','product_label','prod') and _oo_ = label))) 
+or
+({pr,propertytextual4} = sql(jdbcOfDS("producer180mDS"),"select p1.product_nr,p1.product_propertyTex4 from producer180m.product p1 WHERE p1.product_propertyNum1 >1990;") and s1=rowid(cMap('product','prod'),{pr}) and( (_ss_ = s1 and _pp_ =  pMap('product','product_propertyTex4','prod') and _oo_ = propertytextual4)))
+or
+({pr,propertytextual4,propertytextual5} = sql(jdbcOfDS("producer180mDS"),"select p1.product_nr,p1.product_propertyTex4,p1.product_propertyTex5 from producer180m.product p1 WHERE p1.product_propertyNum1 >1990 AND p1.product_propertyTex4 IS NOT NULL;") and s2=rowid(cMap('product','prod'),{pr}) and ( (_ss_ = s2 and _pp_ =  pMap('product','product_propertyTex5','prod') and _oo_ = propertytextual5))));
+
+/*or Important to add ' .. is nOT NULL ..' */
+create function f3_4()->(Charstring,Charstring,Charstring)
+as remove_null(select _ss_, _pp_, _oo_
+  from Charstring propertytextual4, Integer pr, Charstring label,Charstring s, Charstring _ss_, Charstring _pp_, Charstring _oo_, Charstring propertytextual5,Charstring s1, Charstring s2
+ where ({pr,label}=sql(jdbcOfDS("producer180mDS"),"select p1.product_nr,p1.product_label from producer180m.product p1 WHERE p1.product_propertyNum1 >1990;") and  s=rowid(cMap('product','prod'),{pr}) and( (_ss_ = s and _pp_ = pMap('product','product_label','prod') and _oo_ = label))) 
+or
+({pr,propertytextual4} = sql(jdbcOfDS("producer180mDS"),"select p1.product_nr,p1.product_propertyTex4 from producer180m.product p1 WHERE p1.product_propertyNum1 >1990;") and s1=rowid(cMap('product','prod'),{pr}) and( (_ss_ = s1 and _pp_ =  pMap('product','product_propertyTex4','prod') and _oo_ = propertytextual4)))
+or
+({pr,propertytextual4,propertytextual5} = sql(jdbcOfDS("producer180mDS"),"select p1.product_nr,p2.product_propertyTex4,p1.product_propertyTex5 from producer180m.product p1,producer180m.product p2 WHERE p1.product_propertyNum1 >1990 AND p1.product_nr=p2.product_nr;") and s2=rowid(cMap('product','prod'),{pr}) and ( (_ss_ = s2 and _pp_ =  pMap('product','product_propertyTex5','prod') and _oo_ = propertytextual5))));
+
+
+set :qo =
+"PREFIX db: <http://user.it.uu.se/~udbl/sard/prod#>
+ PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ CONSTRUCT
+	{  ?s 	product:product_comment ?comment .
+	   ?s 	product:product_propertyTex4	?propertytextual4 .
+	   ?s	product:product_propertyTex5	?propertytextual5 .
+	   ?s 	product:product_propertyNum4 	?propertynumeric4   }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE { ?s 	product:product_comment ?comment .
+	 OPTIONAL { ?s 	product:product_propertyTex4  ?propertytextual4 . 
+FILTER REGEX(?propertyTextual4, '*activis*') 
+	  	OPTIONAL { ?s	product:product_propertyTex5  ?propertytextual5 . 
+			OPTIONAL { ?s 	product:product_propertyNum4  ?propertynumeric4 . } } } }";
+
+eval("create function qo()->(Charstring,Charstring,Literal) as " + parse_sparql(:qo)); 

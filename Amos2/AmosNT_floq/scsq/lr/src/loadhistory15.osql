@@ -1,0 +1,6 @@
+imagesize 1000000000;
+logging off;
+<'src/Historical_data.osql';
+loadhistory(readintstream("data/historical-tolls15.out"));
+save "historylr.dmp";
+quit;

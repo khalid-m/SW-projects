@@ -1,0 +1,1427 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Silvia Stefanova UDBL
+ * $RCSfile: trys.amosql,v $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: SparQL queries to archive RDFS views of RDB
+ ******************************************************************************/
+
+/*RDB with columns only of type Varchar (Char) */
+defineDS("egovDS",
+         "jdbc:microsoft:sqlserver://localhost;DatabaseName=egov",
+        "com.microsoft.jdbc.sqlserver.SQLServerDriver",
+         "egov",
+         "egov",
+         "useregov",
+         "egov2013");
+
+
+defineUPV("egovDS","egov","http://udbl.it.uu.se/upv/egov/");
+
+DSConnect("egov");	
+
+wrapRDB(jdbcOfDS("egovDS"), "egov", "egov", "egov");
+
+assignIDS("egov","egov", "egov");
+
+ViewRDB("egov");
+
+
+set :q1 = 
+"SELECT ?s 
+ FROM <http://udbl.it.uu.se/upv/egov/>
+ WHERE {?s <http://udbl.it.uu.se/upv/egov/#eucountry/currency> '\"euro\"\^\^<http://www.w3.org/2001/XMLSchema#string>' }";
+
+
+eval("create function q1()-> Charstring
+	as " + parse_sparql(:q1));
+
+
+set :q3 = 
+"SELECT ?p ?o
+ FROM <http://udbl.it.uu.se/upv/egov/>
+ WHERE {<http://udbl.it.uu.se/upv/egov/#eucountry/_spain> ?p ?o }";
+
+
+eval("create function q3()->(Charstring,Charstring)
+	as " + parse_sparql(:q3));
+
+
+set :q2 = 
+"CONSTRUCT { ?s ?p ?o }
+ FROM <http://udbl.it.uu.se/upv/egov/>
+ WHERE {?s <http://udbl.it.uu.se/upv/egov/#eucountry/currency>  '\"euro\"\^\^<http://www.w3.org/2001/XMLSchema#string>'.
+	?s ?p ?o }";
+
+
+eval("create function q2()-> (Charstring,Charstring,Charstring)
+	as " + parse_sparql(:q2));
+
+
+
+set :q4 = 
+"CONSTRUCT { ?s ?p ?o }
+ FROM <http://udbl.it.uu.se/upv/egov/>
+ WHERE {?s <http://udbl.it.uu.se/upv/egov/#eucountry/currency>  ?o1 .
+	?s ?p ?o .
+	FILTER REGEX (?o1, 'euro%' ) } ";
+
+create function q4()->(Charstring, Charstring, Charstring)
+as select _ss_, _pp_, _oo_
+  from Charstring o, Charstring p, Charstring s, Charstring val1,Charstring o1, Charstring _ss_, Charstring _pp_, Charstring _oo_
+ where (s, 'http://udbl.it.uu.se/upv/egov/#eucountry/currency', o1) in egov()
+   and (s, p, o) in egov() and o1="\""+val1+"\""+"\^\^"+"<"+"http://www.w3.org/2001/XMLSchema#string"+">"
+   and like(val1, 'euro')
+      and ((_ss_ = s and _pp_ = p and _oo_ = o));
+
+
+
+set :q5 = 
+"SELECT ?s ?p ?o
+ FROM <http://udbl.it.uu.se/upv/egov/>
+ WHERE {?s ?p ?o .
+	?s <http://udbl.it.uu.se/upv/egov/#lifeevent/name> ?o1 }";
+
+
+eval("create function q5()->(Charstring,Charstring,Charstring)
+	as " + parse_sparql(:q5));
+
+
+/*Archive of a MS SQL Server database*/
+/******************************************/
+
+defineDS("person2DS",
+         "jdbc:microsoft:sqlserver://localhost;DatabaseName=person2",
+        "com.microsoft.jdbc.sqlserver.SQLServerDriver",
+         "person2",
+         "person",
+         "person2",
+         "person2");
+
+
+defineUPV("person2DS","per2", "http://user.it.uu.se/~udbl/sard/person2");
+
+DSConnect("per2");	
+
+wrapRDB(jdbcOfDS("person2DS"), "person2", "person2", "person");
+
+
+/*****************************************************/
+
+defineDS("personDS",
+         "jdbc:microsoft:sqlserver://localhost;DatabaseName=person",
+        "com.microsoft.jdbc.sqlserver.SQLServerDriver",
+         "person",
+         "person",
+         "sard2",
+         "sard2");
+
+
+defineUPV("personDS","per", "http://user.it.uu.se/~udbl/sard/person");
+
+DSConnect("per");	
+
+wrapRDB(jdbcOfDS("personDS"), "person", "person", "person");
+
+assignIDS("per","person", "person");
+
+ViewRDB("per");
+/*make_def("per");*/
+
+lisp;
+(setq _gct_ t);;to apply GCT 
+;;(setq _optional_ t)
+(setq _unif_ t);;to normalize varianle names in a DNF RDB predicate 
+(setq _rewrite_row_and_like_ t);;to rewrite a FILTER on subject/object
+(setq _el-corcl_ t);;to rewrite the schema view to NIL when possible; {?s ?p <URI>}
+
+(setq _elcon_ifnounif_ t);; to rewrite ( * * ?s. ?s ?p ?o ) -> dsecribe query
+
+(setq _sch_ t) ;if the schema view and some rowid are conjuncted
+(memo-function 'get-columns)
+
+;;(setq _sq_ub_ NIL) ;;it doesn't work
+
+:osql 
+
+
+create_index(#'sdef->Charstring.Charstring.Charstring', "p","hash","multiple");
+/*set_bijective_function("rowid",true);*/
+
+/*Unload schema */
+
+unloadS_asNT("preson_schema.nt",#"SPER->CHARSTRING.CHARSTRING.CHARSTRING");
+
+unload_asNT("per_personschema.nt",functionnamed("retrieve_sclass"),{"http://user.it.uu.se/~udbl/sard/person#person"});
+
+set :q7bench=
+" CONSTRUCT {?subject ?property ?value }
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE 
+         { ?subject ?property1 ?value1 .
+	   ?subject ?property ?value .
+	   FILTER (?value1 != 'Ivan' )    }  ";
+
+
+eval("create function q7bench()-> (Charstring,Charstring,Charstring)
+	as " + parse_sparql(:q7bench));	
+
+set :q3bench=
+"CONSTRUCT {?subject ?property ?value }
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE 
+         { ?subject ?property ?value .
+	    FILTER REGEX (?value, '%lana%') } ";
+
+eval("create function q3bench()-> (Charstring,Charstring,Charstring)
+	as " + parse_sparql(:q3bench));	
+
+
+
+/*OPTIONAL*/
+set :opt1 = 
+"SELECT ?s ?val ?s1 ?val1
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s <http://user.it.uu.se/~udbl/sard/person#person/age> ?val .
+	FILTER (?val > '15') .
+	OPTIONAL { ?s1 <http://user.it.uu.se/~udbl/sard/person#tel_of_person> ?s . } .
+	OPTIONAL { ?s1 <http://user.it.uu.se/~udbl/sard/person#tel/telnumber> ?val1 . 
+		   FILTER (?val1 > '999' ).  } }";
+
+
+eval("create function opt1()-> (Charstring,Charstring,Charstring, Charstring )
+	as " + parse_sparql(:opt1));
+
+set :opt2 = 
+"SELECT ?s ?val 
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s <http://user.it.uu.se/~udbl/sard/person#person/age> ?val .
+	FILTER (?val = '30') .
+	OPTIONAL { ?s1 <http://user.it.uu.se/~udbl/sard/person#tel_of_person> ?s . 
+		   ?s1 <http://user.it.uu.se/~udbl/sard/person#tel/telnumber> ?tel . }.
+	 FILTER (!bound(?tel)) }";
+
+set :opp = 
+"SELECT ?s ?val 
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s <http://user.it.uu.se/~udbl/sard/person#person/age> ?val .
+	FILTER (?val = '30') .
+	?s1 <http://user.it.uu.se/~udbl/sard/person#tel_of_person> ?s .
+   	?s1 <http://user.it.uu.se/~udbl/sard/person#tel/telnumber> ?tel . 
+	 FILTER (!bound(?tel)) }";
+
+
+/*Retrieve the ages of all persons older than 15, if these persons have phone numbers and 
+their names are 'Ivan', retrieve the phone numbers as well*/
+create function cons_opt1()-> (Charstring, Charstring, Charstring)
+as 
+   select ss, pp, oo
+  from Charstring val, Charstring s, Charstring s1,
+	Charstring ss, Charstring pp, Charstring oo,Charstring tel
+   where per()=(s, 'http://user.it.uu.se/~udbl/sard/person#person/age', val)
+   and val > '15'
+   and {s1,tel}=optional((select {s1_o,tel_o}
+                      from Charstring s1_o, Charstring tel_o
+                     where per()= (s, 'http://user.it.uu.se/~udbl/sard/person#person/name', 'Ivan') and
+			   per()=(s1_o,'http://user.it.uu.se/~udbl/sard/person#tel/telnumber',tel_o) and
+			    per()=(s1_o, 'http://user.it.uu.se/~udbl/sard/person#tel_of_person', s)),{'',''})
+  and ( (ss=s and pp='http://user.it.uu.se/~udbl/sard/person#person/age' and oo=val) or
+	(ss=s1 and pp='http://user.it.uu.se/~udbl/sard/person#tel/telnumber' and oo=tel) or
+	(ss=s1 and pp='http://user.it.uu.se/~udbl/sard/person#tel_of_person' and oo=s ) );
+
+
+set :opt00 = 
+"SELECT  ?s ?s1 ?val2
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s <http://user.it.uu.se/~udbl/sard/person#person/age> '30' .
+	?s <http://user.it.uu.se/~udbl/sard/person#person/name> ?val2 .
+	OPTIONAL{ ?s1 <http://user.it.uu.se/~udbl/sard/person#tel_of_person> ?s } }" ;
+
+eval("create function opt00()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:opt00));	
+
+/*Translsexec0ation
+select _ss_, _pp_, _oo_
+  from Charstring val2, Charstring s1, Charstring s, Charstring _ss_, Charstring _pp_, Charstring _oo_
+ where per()=(s, 'http://user.it.uu.se/~udbl/sard/person#person/age', '30')
+   and per()=(s, 'http://user.it.uu.se/~udbl/sard/person#person/name', val2)
+   and s1=optional((select s1_o
+                      from Charstring s1_o
+                     where per()=(s1_o, 'http://user.it.uu.se/~udbl/sard/person#tel_of_person', s)),'')
+      and ((_ss_ = s and _pp_ = 'http://user.it.uu.se/~udbl/sard/person#person/name' and _oo_ = val2)
+        or (_ss_ = s1 and _pp_ = 'http://user.it.uu.se/~udbl/sard/person#tel_of_person' and _oo_ = s and NEQ(s1,'')));
+
+(AND (#[OID 210 "FUNCTION.MAKEBAG->BAG"] #[OID TRANSIENT 17661352 ] S _V115)
+     (#[OID 1348 "BAG.OBJECT.OPTIONAL->OBJECT"] _V115 "" S1)
+
+*/
+
+set :opt01 = 
+"SELECT  ?s ?s1 ?val2 ?val1
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s <http://user.it.uu.se/~udbl/sard/person#person/age> '30' .
+	?s <http://user.it.uu.se/~udbl/sard/person#person/name> ?val2 .
+	OPTIONAL{ ?s1 <http://user.it.uu.se/~udbl/sard/person#tel_of_person> ?s }
+	OPTIONAL{ ?s1 <http://user.it.uu.se/~udbl/sard/person#tel/telnumber> ?val1 } } ";
+
+eval("create function opt01()-> (Charstring,Charstring,Charstring,Charstring)
+	as " + parse_sparql(:opt01));	
+
+
+
+/*Translation
+"select s, s1_ii, val2, val1
+  from Charstring s, Charstring val2, Charstring s1, Charstring s1_i, Charstring s1_ii, Charstring val1
+ where per()=(s, 'http://user.it.uu.se/~udbl/sard/person#person/age', '30')
+   and per()=(s, 'http://user.it.uu.se/~udbl/sard/person#person/name', val2)
+   and s1=optional((select s1_o
+                      from Charstring s1_o
+                     where per()=(s1_o, 'http://user.it.uu.se/~udbl/sard/person#tel_of_person', s)),'')
+   and {val1,s1_i}=optional((select {val1_o, s1_o}
+                               from Charstring s1_o, Charstring val1_o
+                              where per()=(s1_o, 'http://user.it.uu.se/~udbl/sard/person#tel/telnumber', val1_o)
+                                and ((s1_o = s1)or(s1 = ''))),{'',''})
+   and s1_ii=either({s1_i,s1},'');"
+
+*/
+
+
+/*Andrej: it doesn't give correct AmosQL */
+set :cons_opt0 = 
+"CONSTRUCT{ ?s <http://user.it.uu.se/~udbl/sard/person#person/name> ?val2 .
+	    ?s1 <http://user.it.uu.se/~udbl/sard/person#tel_of_person> ?s. }
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s <http://user.it.uu.se/~udbl/sard/person#person/age> '30' .
+	?s <http://user.it.uu.se/~udbl/sard/person#person/name> ?val2 .
+	OPTIONAL{ ?s1 <http://user.it.uu.se/~udbl/sard/person#tel_of_person> ?s } }" ;
+
+eval("create function cons_opt0()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:cons_opt0));	
+
+
+set :cons_opt_0un = 
+"CONSTRUCT{ ?s <http://user.it.uu.se/~udbl/sard/person#person/name> ?val2 .
+	    ?s1 <http://user.it.uu.se/~udbl/sard/person#tel_of_person> ?s. }
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE{ {?s <http://user.it.uu.se/~udbl/sard/person#person/age> '30' .
+	?s <http://user.it.uu.se/~udbl/sard/person#person/name> ?val2 .}
+	UNION
+	{ ?s1 <http://user.it.uu.se/~udbl/sard/person#tel_of_person> ?s .
+	  ?s <http://user.it.uu.se/~udbl/sard/person#person/age> '30' .
+	  ?s <http://user.it.uu.se/~udbl/sard/person#person/name> ?val2 } }";
+
+eval("create function cons_opt_0un()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:cons_opt_0un));	
+
+set :cons_opt2 = 
+"CONSTRUCT{ <http://user.it.uu.se/~udbl/sard/person#person/_4_1004> <http://user.it.uu.se/~udbl/sard/person#person/name> ?val2.	?s <http://user.it.uu.se/~udbl/sard/person#tel_of_person> <http://user.it.uu.se/~udbl/sard/person#person/_4_1004> .
+	<http://user.it.uu.se/~udbl/sard/person#person/_4_1004> <http://user.it.uu.se/~udbl/sard/person#person/age> ?val1. }
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {<http://user.it.uu.se/~udbl/sard/person#person/_4_1004> <http://user.it.uu.se/~udbl/sard/person#person/name> ?val2 .
+	?s <http://user.it.uu.se/~udbl/sard/person#tel/telnumber> ?val3 .
+	?s <http://user.it.uu.se/~udbl/sard/person#tel_of_person> <http://user.it.uu.se/~udbl/sard/person#person/_4_1004> .
+OPTIONAL{<http://user.it.uu.se/~udbl/sard/person#person/_4_1004> <http://user.it.uu.se/~udbl/sard/person#person/age> ?val1. }
+OPTIONAL{?s <http://user.it.uu.se/~udbl/sard/person#tel_of_person> <http://user.it.uu.se/~udbl/sard/person#person/_4_1004> .} }" ;
+
+eval("create function cons_opt2()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:cons_opt2));	
+
+
+
+set :cons_opt1 = 
+"CONSTRUCT{ ?s <http://user.it.uu.se/~udbl/sard/person#person/name> ?val2 .
+      	    ?s1 <http://user.it.uu.se/~udbl/sard/person#tel/telnumber> ?val1 .
+	    ?s1 <http://user.it.uu.se/~udbl/sard/person#tel_of_person> ?s }
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s <http://user.it.uu.se/~udbl/sard/person#person/age> '30' .
+	?s <http://user.it.uu.se/~udbl/sard/person#person/name> ?val2 .
+	OPTIONAL{ ?s1 <http://user.it.uu.se/~udbl/sard/person#tel_of_person> ?s }
+	OPTIONAL{ ?s1 <http://user.it.uu.se/~udbl/sard/person#tel/telnumber> ?val1 } } ";
+
+eval("create function cons_opt1()-> (Charstring,Charstring,Charstring)
+	as " + parse_sparql(:cons_opt1));
+
+
+
+set :cons2 = 
+"CONSTRUCT{ ?s <http://user.it.uu.se/~udbl/sard/person#person/name> ?val2 .
+	    ?s1 <http://user.it.uu.se/~udbl/sard/person#tel_of_person> ?s .
+	    ?s1 <http://user.it.uu.se/~udbl/sard/person#tel/telnumber> ?tel }		
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s <http://user.it.uu.se/~udbl/sard/person#person/age> '30' .
+	?s <http://user.it.uu.se/~udbl/sard/person#person/name> ?val2 .
+	?s1 <http://user.it.uu.se/~udbl/sard/person#tel_of_person> ?s .
+	?s1 <http://user.it.uu.se/~udbl/sard/person#tel/telnumber> ?tel . } " ;
+
+eval("create function cons2()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:cons2));	
+
+
+
+/*Retrieve the properties of all persons who are 30, 
+ */
+	
+set :cons_opt2 = 
+"CONSTRUCT{ ?s <http://user.it.uu.se/~udbl/sard/person#person/name> ?val2 .
+	    ?s1 <http://user.it.uu.se/~udbl/sard/person#tel_of_person> ?s .
+	    ?s1 <http://user.it.uu.se/~udbl/sard/person#tel/telnumber> ?tel }		
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s <http://user.it.uu.se/~udbl/sard/person#person/age> '30' .
+	?s <http://user.it.uu.se/~udbl/sard/person#person/name> ?val2 .
+	OPTIONAL{ ?s1 <http://user.it.uu.se/~udbl/sard/person#tel_of_person> ?s .
+		  ?s1 <http://user.it.uu.se/~udbl/sard/person#tel/telnumber> ?tel . } }" ;
+
+eval("create function cons_opt2()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:cons_opt2));
+
+set :cons_opt22 = 
+"CONSTRUCT{ ?s <http://user.it.uu.se/~udbl/sard/person#person/name> ?val2 .
+	    ?s1 <http://user.it.uu.se/~udbl/sard/person#tel_of_person> ?s .
+	    ?s1 <http://user.it.uu.se/~udbl/sard/person#tel/telnumber> ?tel }		
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s <http://user.it.uu.se/~udbl/sard/person#person/age> '30' .
+	?s <http://user.it.uu.se/~udbl/sard/person#person/name> ?val2 .
+	OPTIONAL{ ?s1 <http://user.it.uu.se/~udbl/sard/person#tel_of_person> ?s .}
+	OPTIONAL { ?s1 <http://user.it.uu.se/~udbl/sard/person#tel/telnumber> ?tel . } }" ;
+
+eval("create function cons_opt22()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:cons_opt22));	
+	 
+
+create function cons_opt2_2()->(Charstring, Charstring, Charstring)
+as
+  select _ss_, _pp_, _oo_
+  from Charstring val2, Charstring s, Charstring s1, Charstring tel, Charstring _ss_, Charstring _pp_, Charstring _oo_
+ where per()=(s, 'http://user.it.uu.se/~udbl/sard/person#person/age', '30')
+   and per()=(s, 'http://user.it.uu.se/~udbl/sard/person#person/name', val2)
+   and {tel,s1}=optional((select {tel, s1}
+                            where per()=(s1, 'http://user.it.uu.se/~udbl/sard/person#tel_of_person', s)
+                             and per()=(s1, 'http://user.it.uu.se/~udbl/sard/person#tel/telnumber', tel)),{'',''})
+      and ((_ss_ = s and _pp_ = 'http://user.it.uu.se/~udbl/sard/person#person/name' and _oo_ = val2)
+        or (_ss_ = s1 and _pp_ = 'http://user.it.uu.se/~udbl/sard/person#tel_of_person' and _oo_ = s  and NEQ(s1,''))
+        or (_ss_ = s1 and _pp_ = 'http://user.it.uu.se/~udbl/sard/person#tel/telnumber' and _oo_ = tel and NEQ(s1,'') and NEQ(tel,''))) ;
+
+
+
+/*Retrieve the name and friend of person 1, retreive also his/her age only if he/she is older than 55 */
+/*Exec:
+	1 sql for the non-optional 
+	1 sql for the optional */
+create function cons_opt3()-> (Charstring, Charstring, Charstring)
+as 
+   select ss, pp, oo
+  from Charstring val, Charstring val1,
+	Charstring ss, Charstring pp, Charstring oo
+   where per()=('http://user.it.uu.se/~udbl/sard/person#person/_1_1000', 'http://user.it.uu.se/~udbl/sard/person#person/name', val) 
+   and val1=optional((select val1_o
+                      from Charstring val1_o
+                     where per()= ('http://user.it.uu.se/~udbl/sard/person#person/_1_1000', 'http://user.it.uu.se/~udbl/sard/person#person/age', val1_o) and val1_o > '55' ),'') 			  
+	  and ( (ss='http://user.it.uu.se/~udbl/sard/person#person/_1_1000' and pp='http://user.it.uu.se/~udbl/sard/person#person/age' and oo=val1) or
+	        (ss='http://user.it.uu.se/~udbl/sard/person#person/_1_1000' and pp='http://user.it.uu.se/~udbl/sard/person#person/name' and oo=val ) );
+	
+
+
+/* Archive the whole database */
+set :sparql0 = 
+"CONSTRUCT{ ?s ?p ?val } 
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s ?p ?val}";
+
+eval("create function exec0()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:sparql0));
+
+archive_content("exec0","personD.NT","personS.NT","personD_stat.txt");
+
+set :sparql1 = 
+"SELECT  ?s ?p ?o 
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s <http://user.it.uu.se/~udbl/sard/person#tel_of_person> <http://user.it.uu.se/~udbl/sard/person#person/_7_1007> .
+	?s ?p ?o .}";
+
+eval("create function exec11()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:sparql1));
+
+archive_content("exec11","person1D.NT","person1S.NT");
+
+lisp;
+(setq _repl_literal_ t)
+:osql
+
+
+set :sparql2 = 
+"CONSTRUCT { <http://user.it.uu.se/~udbl/sard/person#person/_10_1010>  <http://user.it.uu.se/~udbl/sard/person#person/name> ?name .
+
+	?tel <http://user.it.uu.se/~udbl/sard/person#tel_of_person> <http://user.it.uu.se/~udbl/sard/person#person/_10_1010> } 
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {<http://user.it.uu.se/~udbl/sard/person#person/_10_1010>  <http://user.it.uu.se/~udbl/sard/person#person/name> ?name .
+
+	?tel <http://user.it.uu.se/~udbl/sard/person#tel_of_person> <http://user.it.uu.se/~udbl/sard/person#person/_10_1010>						} ";
+
+eval("create function exec2()-> (Charstring,Charstring,Charstring)
+	as " + parse_sparql(:sparql2));
+
+
+
+set :sparql21 = 
+"SELECT ?s
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s  <http://user.it.uu.se/~udbl/sard/person#tel/telnumber> '4216http://www.w3.org/2001/XMLSchema#int' }";
+								
+
+eval("create function exec21()-> Charstring
+	as " + parse_sparql(:sparql21));
+
+
+
+set :sparql22 = 
+"CONSTRUCT { ?s  <http://user.it.uu.se/~udbl/sard/person#person/name> ?name .
+
+	?tel <http://user.it.uu.se/~udbl/sard/person#tel_of_person> ?s } 
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s  <http://user.it.uu.se/~udbl/sard/person#person/name> ?name .
+
+	?tel <http://user.it.uu.se/~udbl/sard/person#tel_of_person> ?s .
+	FILTER REGEX(?name,'Anna*')	} ";
+
+eval("create function exec22()-> (Charstring,Charstring,Charstring)
+	as " + parse_sparql(:sparql22));
+
+
+archive_content("exec2","person2D.NT","person2S.NT");
+
+
+lisp;
+(setq _repl_literal_ nil)
+:osql
+
+set :sparql3 = 
+"CONSTRUCT { ?s ?p ?o }
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s <http://user.it.uu.se/~udbl/sard/person#person/name> 'Anna' .
+	?s ?p ?o }";
+
+eval("create function exec3()-> (Charstring,Charstring,Charstring)
+	as " + parse_sparql(:sparql3));
+
+archive_content_old(#'exec3',"person3D.NT","person3S.NT","per");
+
+
+set :sparql4 = 
+"CONSTRUCT { ?s ?p ?o }
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s1 <http://user.it.uu.se/~udbl/sard/person#tel_of_person> ?s .
+	?s ?p ?o .}";
+
+eval("create function exec4()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:sparql4));
+
+
+archive_content_old(#'exec4',"person4D.NT","person4S.NT","per");
+
+/*Very bad query plan !!! For a good plan an extra rewrite is needed.
+The rewrite should remove disjuncts (obtained by combining subviews during DNF)
+that would return invalid triples (not existing in the view definition) 
+Now: A result variable is set by both rowid and valueid
+rowid(" " X S) and valueid(" " Y S) shoudn't be allowed */
+set :sparql5 = 
+"CONSTRUCT { ?s ?p ?s1 }
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s  ?p ?s1 .
+	?s1 <http://user.it.uu.se/~udbl/sard/person#region/r_name> ?o }";
+
+eval("create function exec5()-> (Charstring,Charstring, Charstring)
+	as " + parse_sparql(:sparql5));
+
+
+archive_content_old(#'exec5',"person5D.NT","person5S.NT","per");
+
+
+set :sparql6 = 
+"CONSTRUCT {?s1 ?p1 ?o1 }
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s  <http://user.it.uu.se/~udbl/sard/person#tel_of_region> ?s1 .
+	?s1 ?p1 ?o1 .}";
+
+eval("create function exec6()-> (Charstring,Charstring, Charstring)
+	as " + parse_sparql(:sparql6));
+
+archive_content_old(#'exec6',"person6D.NT","person6S.NT","per");
+
+set :sparql7 = 
+"CONSTRUCT { ?s ?p ?o }
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s ?p <http://user.it.uu.se/~udbl/sard/person#person/_7_1007> .
+	?s ?p ?o }";
+
+eval("create function exec7()-> (Charstring,Charstring, Charstring)
+	as " + parse_sparql(:sparql7));
+
+archive_content_old(#'exec7',"person7D.NT","person7S.NT","per");
+
+set :sparql8 = 
+"CONSTRUCT { ?s1 ?p1 ?o1 }
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s <http://user.it.uu.se/~udbl/sard/person#tel_of_person> ?s1 .
+	?s1 ?p1 ?o1 . 
+	FILTER REGEX (?o1,'Anna*') .  }";
+
+eval("create function exec8()-> (Charstring,Charstring,Charstring)
+		as " + parse_sparql(:sparql8));
+
+
+set :sparql9 = 
+"CONSTRUCT { ?s1 ?p1 ?o1 }
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://user.it.uu.se/~udbl/sard/person#tel> .
+	?s1 ?p1 ?o1 . 
+	FILTER REGEX (?o1,'Anna*') .  }";
+
+eval("create function exec9()-> (Charstring,Charstring,Charstring)
+		as " + parse_sparql(:sparql9));
+
+
+set :sparql10 = 
+"CONSTRUCT { ?s1 ?p1 ?o1 }
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://user.it.uu.se/~udbl/sard/person#tel> .
+	?s1 ?p1 ?o1 . 
+	FILTER (?o1 >'5000') .  }";
+
+eval("create function exec10()-> (Charstring,Charstring,Charstring)
+		as " + parse_sparql(:sparql10));
+
+
+set :sparql11 = 
+"CONSTRUCT { ?s1 ?p1 ?o1 }
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s1 ?p1 ?o1 . 
+	FILTER (?o1 >'5000') .  }";
+
+eval("create function exec11()-> (Charstring,Charstring,Charstring)
+		as " + parse_sparql(:sparql11));
+
+
+set :sparql12 = 
+"CONSTRUCT { ?s1 ?p1 ?o1 }
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {<http://user.it.uu.se/~udbl/sard/person#tel/_5> <http://user.it.uu.se/~udbl/sard/person#tel_of_person> ?s1 .
+	  ?s1 ?p1 ?o1 }";
+
+eval("create function exec12()-> (Charstring,Charstring,Charstring)
+		as " + parse_sparql(:sparql12));
+
+
+set :sparql13 = 
+"CONSTRUCT { ?s1 ?p1 <http://user.it.uu.se/~udbl/sard/person#person/_7_1007> }
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE { ?s1 ?p1 <http://user.it.uu.se/~udbl/sard/person#person/_7_1007> . }";
+
+eval("create function exec13()-> (Charstring,Charstring,Charstring)
+		as " + parse_sparql(:sparql13));
+
+
+set :sparql14 = 
+"CONSTRUCT { ?s1 ?p ?o }
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE { ?s1 ?p1 <http://user.it.uu.se/~udbl/sard/person#person/_7_1007> . 
+	 ?s1 ?p ?o } ";
+
+eval("create function exec14()-> (Charstring,Charstring,Charstring)
+		as " + parse_sparql(:sparql14));
+
+
+set :sparql15 = 
+"CONSTRUCT {  ?s1 ?p1 ?o1 }
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE { {<http://user.it.uu.se/~udbl/sard/person#tel/_5> ?p ?s1 .
+  	?s1 ?p1 ?o1 }";
+
+eval("create function exec15()-> (Charstring,Charstring,Charstring)
+		as " + parse_sparql(:sparql15));
+
+
+
+
+
+create function q10()->(Charstring,Charstring,Charstring)
+as remove_null(select ss,pp,oo from Charstring ss,Charstring pp,Charstring oo
+where per()=(ss,pp,oo)  or (per()=(ss,pp,oo) and oo=ss ));
+
+
+create function q0()->(Charstring,Charstring,Charstring)
+as remove_null(select ss,pp,oo from Charstring s,Charstring o,
+Charstring ss,Charstring pp,Charstring oo
+where per()=(s, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",o)
+	and neq(o, "http://www.w3.org/1999/02/22-rdf-syntax-ns#Property")
+	and neq(o, "http://www.w3.org/2000/01/rdf-schema#Class")
+	and neq(o, "http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq")
+      and  ((per()=(ss,pp,oo) and ss=s ) or (per()=(ss,pp,oo) and oo=s )));
+
+archive_content(#'q0',"data0.nt","schema0.nt");
+
+/*Archive only the person Class - DESCRIBE q*/ 
+
+create function q01()->(Charstring,Charstring,Charstring)
+as remove_null(select ss,pp,oo from Charstring s,
+Charstring ss,Charstring pp,Charstring oo
+where per()=(s, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", "http://user.it.uu.se/~udbl/sard/person#person")
+      and  ((per()=(ss,pp,oo) and ss=s) or (per()=(ss,pp,oo) and oo=s)));
+
+archive_content(#'q01',"data1.nt","schema1.nt");
+
+/*Describe the node <http://user.it.uu.se/~udbl/sard/person#person/_1> */
+create function q()->(Charstring,Charstring,Charstring)
+as remove_null(select ss,pp,oo from 
+Charstring ss,Charstring pp,Charstring oo
+where ((per()=(ss,pp,oo) and ss="http://user.it.uu.se/~udbl/sard/person#person/_1") 
+	or (per()=(ss,pp,oo) and oo="http://user.it.uu.se/~udbl/sard/person#person/_1")));
+
+
+/*Archive only the tel Class - DESCRIBE q*/ 
+
+create function q02()->(Charstring,Charstring,Charstring)
+as remove_null(select ss,pp,oo from Charstring s,
+Charstring ss,Charstring pp,Charstring oo
+where per()=(s, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", "http://user.it.uu.se/~udbl/sard/person#tel")
+      and  ((per()=(ss,pp,oo) and ss=s) or (per()=(ss,pp,oo) and oo=s)));
+
+
+archive_content(#'q02',"data2.nt","schema2.nt");
+
+
+/*Archive the tel for the region of 'USA' - DESCRIBE q*/ 
+
+create function q12()->(Charstring,Charstring,Charstring)
+as remove_null(select ss,pp,oo from Charstring s,Charstring s1,
+Charstring ss,Charstring pp,Charstring oo
+where per()=(s, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", "http://user.it.uu.se/~udbl/sard/person#tel") and
+      per()=(s, "http://user.it.uu.se/~udbl/sard/person#tel_of_region", s1) and
+      per()=(s1, "http://user.it.uu.se/~udbl/sard/person#region/r_name", "USA") and
+      ((per()=(ss,pp,oo) and ss=s) or (per()=(ss,pp,oo) and oo=s)));
+
+
+archive_content(#'q12',"data12.nt","schema12.nt");
+
+
+
+/*Archive only the region Class - DESCRIBE q*/ 
+
+create function q03()->(Charstring,Charstring,Charstring)
+as remove_null(select ss,pp,oo from Charstring s,
+Charstring ss,Charstring pp,Charstring oo
+where per()=(s, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", "http://user.it.uu.se/~udbl/sard/person#region")
+      and  ((per()=(ss,pp,oo) and ss=s) or (per()=(ss,pp,oo) and oo=s)));
+
+
+archive_content(#'q03',"data3.nt","schema3.nt");
+
+
+/*Archive the class person without the property name where the property name='Ivan'*/
+set :q101="select ?s ?p ?o
+	   FROM <http://user.it.uu.se/~udbl/sard/person>
+	  WHERE { ?s <http://user.it.uu.se/~udbl/sard/person#person/name> 'Ivan' .
+		  ?s ?p ?o.
+		  FILTER (?p != <http://user.it.uu.se/~udbl/sard/person#person/name>). }";
+
+eval("create function exec101()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:q101));
+
+create function q101()->(Charstring,Charstring,Charstring)
+as remove_null(select ss,pp,oo from Charstring s,
+Charstring ss,Charstring pp,Charstring oo
+where per()=(s, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", "http://user.it.uu.se/~udbl/sard/person#person") and
+      per()=(s, "http://user.it.uu.se/~udbl/sard/person#person/name", "Ivan") 
+      and  ((per()=(ss,pp,oo) and ss=s and neq(pp,'http://user.it.uu.se/~udbl/sard/person#person/name') ) or (per()=(ss,pp,oo) and oo=s)));
+
+archive_content(#'q101',"data101.nt","schema101.nt");
+
+
+
+/*Archive all classes without the class reg - DESCRIBE q*/ 
+
+create function q00()->(Charstring,Charstring,Charstring)
+as remove_null(select ss,pp,oo from Charstring s,Charstring o,
+Charstring ss,Charstring pp,Charstring oo
+where per()=(s, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",o)
+	and neq(o, "http://user.it.uu.se/~udbl/sard/person#region")
+	and neq(o, "http://www.w3.org/1999/02/22-rdf-syntax-ns#Property")
+	and neq(o, "http://www.w3.org/2000/01/rdf-schema#Class")
+	and neq(o, "http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq")
+      and  ((per()=(ss,pp,oo) and ss=s ) or (per()=(ss,pp,oo) and oo=s )));
+
+archive_content(#'q00',"data00.nt","schema00.nt");
+
+
+
+/*Archive the Classes person, region and tel - DESCRIBE q*/ 
+
+create function q000()->(Charstring,Charstring,Charstring)
+as remove_null(select ss,pp,oo from Charstring s,
+Charstring ss,Charstring pp,Charstring oo
+where (per()=(s, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", "http://user.it.uu.se/~udbl/sard/person#person") or
+	per()=(s, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", "http://user.it.uu.se/~udbl/sard/person#region") or
+	per()=(s, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", "http://user.it.uu.se/~udbl/sard/person#tel"))
+        and  ((per()=(ss,pp,oo) and ss=s) or (per()=(ss,pp,oo) and oo=s)));
+
+
+
+unload_asNT("exec1000.nt", #[OID 2084 "EXEC1000->CHARSTRING.CHARSTRING.CHARSTRING"]);
+
+set :q011 = 
+"SELECT ?s ?p ?val 
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s ?p ?val.
+	{?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://user.it.uu.se/~udbl/sard/person#person>.}
+         UNION 
+	{?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>  <http://user.it.uu.se/~udbl/sard/person#region>.} }";
+
+eval("create function exec011()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:q011));
+
+
+
+
+/*Archive only the data*/
+set :q_data="SELECT ?s ?p ?val
+	     FROM <http://user.it.uu.se/~udbl/sard/person>
+	     WHERE {?s ?p ?val.
+	     FILTER (?p != <http://www.w3.org/2000/01/rdf-schema#domain>).
+             FILTER (?p != <http://www.w3.org/2000/01/rdf-schema#range>).
+	     FILTER (?p != <http://www.w3.org/1999/02/22-rdf-syntax-ns#_1>).
+	     FILTER (?p != <http://www.w3.org/1999/02/22-rdf-syntax-ns#_2>).
+	     FILTER (?p != <http://www.w3.org/1999/02/22-rdf-syntax-ns#_3>).
+	     FILTER (?p != <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY>).
+	     FILTER (?p != <http://user.it.uu.se/~udbl/sard#FOREIGN_KEY>).
+	     FILTER (?p != <http://user.it.uu.se/~udbl/sard#REFERENCES>).
+	     FILTER (?p != <http://user.it.uu.se/~udbl/sard#size>).
+	     FILTER (?val !=<http://www.w3.org/1999/02/22-rdf-syntax-ns#Property>).
+	     FILTER (?val != <http://www.w3.org/2000/01/rdf-schema#Class>). 
+	     FILTER (?val != <http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq>).
+	     }";
+
+eval("create function exec_q_data()-><Charstring,Charstring,Literal> as " + parse_sparql(:q_data)); 
+
+write_ntuples(call_function("exec_q_data",{}),"person_data1.nt");
+
+/*Archive only the schema*/
+set :q_schema="SELECT ?s ?p ?val
+	     FROM <http://user.it.uu.se/~udbl/sard/person>
+	     WHERE {?s ?p ?val.
+	        { FILTER REGEX (?val, '*#Property').
+	          FILTER REGEX (?p,'*#type').}		 
+	     UNION
+		{ FILTER REGEX (?val, '*#Class'). 
+	          FILTER REGEX (?p,'*#type')} 
+	     UNION
+		 {FILTER REGEX (?p, '*#domain').}
+	     UNION
+		  {FILTER REGEX (?p, '*#range')}
+	     UNION
+		  {FILTER REGEX (?p,'*#PRIMARY_KEY')}
+	     UNION
+		  {FILTER REGEX (?p,'*#FOREIGN_KEY')}
+	     UNION
+		{ FILTER REGEX (?val, '*#Seq'). 
+	          FILTER REGEX (?p,'*#type')} 
+	     UNION
+		{ FILTER REGEX (?p, '*rdf-syntax-ns#_*')}
+	     UNION
+		{FILTER REGEX (?p,'*#REFERENCES')}}";
+
+eval("create function exec_q_schema()-><Charstring,Charstring,Literal> as " + parse_sparql(:q_schema)); 
+
+write_ntuples(call_function("exec_q_schema",{}),"person_schema.nt");
+
+
+
+set :q_sc_opt1 = "SELECT ?s ?p ?val ?val1
+		     FROM <http://user.it.uu.se/~udbl/sard/person>
+	     	     WHERE {?s ?p ?val.
+		     FILTER REGEX (?val, '*#Property').
+	             FILTER REGEX (?p,'*#type').
+		     OPTIONAL {?s <http://www.w3.org/2000/01/rdf-schema#range> ?val1} }";
+
+eval("create function exec_opt1()-><Charstring,Charstring,Literal,Charstring> as " + parse_sparql(:q_sc_opt1)); 
+		
+
+
+/*Unload Class <sard:person> - DATA*/
+set :q01 = 
+"SELECT ?s ?p ?val 
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://user.it.uu.se/~udbl/sard/person#person>.
+	?s ?p ?val. }";
+
+eval("create function exec01()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:q01));
+
+/*Unload schema concerning class <sard:person> - SCHEMA */
+
+set :q01_schema="SELECT DISTINCT ?s1 ?p1 ?val1
+         FROM <http://user.it.uu.se/~udbl/sard/person>
+          WHERE {?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://user.it.uu.se/~udbl/sard/person#person>.
+	         ?s ?p ?val.		 
+		?s1 ?p1 ?val1.
+		?cl  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2000/01/rdf-schema#Class>.
+		?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?cl.	       
+		{ FILTER (?s1 = ?cl).
+	          FILTER (?p1 =<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)} 
+	     UNION
+		{  ?p <http://www.w3.org/2000/01/rdf-schema#domain> ?cl.
+		   FILTER (?s1 = ?p).
+		  FILTER (?p1 =  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)}
+
+	     UNION
+		 {  ?p <http://www.w3.org/2000/01/rdf-schema#domain> ?cl.
+		   FILTER (?s1 = ?p).
+		   FILTER (?p1 = <http://www.w3.org/2000/01/rdf-schema#domain>).    }
+	     UNION
+		  { ?p <http://www.w3.org/2000/01/rdf-schema#domain> ?cl.
+		    FILTER (?p1 = <http://www.w3.org/2000/01/rdf-schema#range>).
+		    FILTER (?s1 = ?p).}
+	     UNION
+		  { FILTER (?s1 = ?cl).
+		    FILTER (?p1 = <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY>)}
+	     UNION
+		  {FILTER (?s1 = ?cl).
+                   FILTER (?p1 = <http://user.it.uu.se/~udbl/sard#FOREIGN_KEY>)}
+	     UNION
+		  { ?cl  <http://user.it.uu.se/~udbl/sard#FOREIGN_KEY> ?s1.
+                   FILTER (?p1 =  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)} 
+	     UNION
+		{ 
+		   ?cl  <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY> ?s1.
+	          FILTER (?p1 =  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)} 
+	     UNION
+		{  ?cl  <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY> ?s1.
+		  FILTER (?p1 = <http://www.w3.org/1999/02/22-rdf-syntax-ns#_1>).   }
+	     UNION
+		{
+		  FILTER REGEX (?p1,'*#REFERENCES')}}";
+		
+
+eval("create function q01_schema()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:q01_schema));
+
+
+
+
+
+
+/*Archive a table tel - DATA*/
+set :q02 = 
+"SELECT ?s ?p ?val 
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://user.it.uu.se/~udbl/sard/person#tel>.
+	?s ?p ?val}";
+
+eval("create function exec02()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:q02));
+
+
+
+set :q02_schema="SELECT DISTINCT ?s1 ?p1 ?val1
+         FROM <http://user.it.uu.se/~udbl/sard/person>
+          WHERE {?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://user.it.uu.se/~udbl/sard/person#tel>.
+	         ?s ?p ?val.		 
+		?s1 ?p1 ?val1.
+		?cl  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2000/01/rdf-schema#Class>.
+		?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?cl.	       
+		{ FILTER (?s1 = ?cl).
+	          FILTER (?p1 =<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)} 
+	     UNION
+		{  ?p <http://www.w3.org/2000/01/rdf-schema#domain> ?cl.
+		   FILTER (?s1 = ?p).
+		  FILTER (?p1 =  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)}
+
+	     UNION
+		 {  ?p <http://www.w3.org/2000/01/rdf-schema#domain> ?cl.
+		   FILTER (?s1 = ?p).
+		   FILTER (?p1 = <http://www.w3.org/2000/01/rdf-schema#domain>).    }
+	     UNION
+		  { ?p <http://www.w3.org/2000/01/rdf-schema#domain> ?cl.
+		    FILTER (?p1 = <http://www.w3.org/2000/01/rdf-schema#range>).
+		    FILTER (?s1 = ?p).}
+	     UNION
+		  { FILTER (?s1 = ?cl).
+		    FILTER (?p1 = <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY>)}
+	     UNION
+		  {FILTER (?s1 = ?cl).
+                   FILTER (?p1 = <http://user.it.uu.se/~udbl/sard#FOREIGN_KEY>)}
+	     UNION
+		{ 
+		   ?cl  <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY> ?s1.
+	          FILTER (?p1 =  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)} 
+	     UNION
+		{  ?cl  <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY> ?s1.
+		  FILTER (?p1 = <http://www.w3.org/1999/02/22-rdf-syntax-ns#_1>).   }
+	     UNION
+		{
+		  FILTER REGEX (?p1,'*#REFERENCES')}}";
+		
+
+eval("create function q012_schema()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:q02_schema));
+
+
+/*Unload schema concerning class <sard:tel> - SCHEMA */
+set :q02_schema2="SELECT ?s ?p ?val 
+         FROM <http://user.it.uu.se/~udbl/sard/person>
+         WHERE { ?s ?p ?val. 
+		{FILTER(?s = <http://user.it.uu.se/~udbl/sard/person#tel>).} 
+		UNION
+		  {?s <http://www.w3.org/2000/01/rdf-schema#domain> <http://user.it.uu.se/~udbl/sard/person#tel>.}
+ 		UNION
+	        {<http://user.it.uu.se/~udbl/sard/person#tel> <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY> ?s.
+	        FILTER REGEX (?p,'*rdf-syntax-ns#_*').}
+	        UNION
+		{?s1 <http://www.w3.org/2000/01/rdf-schema#domain> <http://user.it.uu.se/~udbl/sard/person#tel>.
+		 ?s1  <http://user.it.uu.se/~udbl/sard#references> ?s2.
+		 ?s2 <http://www.w3.org/2000/01/rdf-schema#domain> ?s3. 
+	 	  { ?s ?p ?val.
+		   FILTER (?s =?s3). 
+		   FILTER (?p =<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>).}
+		  UNION
+		  {?s ?p ?val.
+		   FILTER (?s = ?s2).
+		   FILTER (?p = <http://www.w3.org/2000/01/rdf-schema#domain>).
+		   FILTER (?val=?s3).} } }";
+
+eval("create function q02_s()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:q02_schema));
+
+
+set :q02_fk="SELECT ?s ?p ?val 
+         FROM <http://user.it.uu.se/~udbl/sard/person>
+         WHERE {?s1 <http://www.w3.org/2000/01/rdf-schema#domain> <http://user.it.uu.se/~udbl/sard/person#tel>.
+		?s1  <http://user.it.uu.se/~udbl/sard#references> ?s2.
+		?s2 <http://www.w3.org/2000/01/rdf-schema#domain> ?s3.
+		{ ?s ?p ?val.
+		  FILTER (?s =?s3) }
+		UNION
+		{?s ?p ?val.
+		FILTER (?s = ?s2).
+		FILTER (?p = <http://www.w3.org/2000/01/rdf-schema#domain>).
+		FILTER (?val=?s3).} }";
+
+eval("create function q02_fk()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:q02_fk));
+
+
+set :q02p = 
+"SELECT ?s ?p ?val 
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s ?p ?val.
+	FILTER (?p = <http://user.it.uu.se/~udbl/sard/person#tel_of_person>) }";
+
+eval("create function q02p()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:q02p));
+
+
+set :q02p_schema = 
+"SELECT DISTINCT  ?s1 ?p1 ?val1  
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s ?p ?val.
+	FILTER (?p = <http://user.it.uu.se/~udbl/sard/person#tel_of_person>). 
+	?s1 ?p1 ?val1.
+	?cl  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2000/01/rdf-schema#Class>.
+	?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?cl.	       
+		{ FILTER (?s1 = ?cl).
+	          FILTER (?p1 =<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)} 
+	     UNION
+		{  ?p <http://www.w3.org/2000/01/rdf-schema#domain> ?cl.
+		   FILTER (?s1 = ?p).
+		  FILTER (?p1 =  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)}
+
+	     UNION
+		 {  ?p <http://www.w3.org/2000/01/rdf-schema#domain> ?cl.
+		   FILTER (?s1 = ?p).
+		   FILTER (?p1 = <http://www.w3.org/2000/01/rdf-schema#domain>).    }
+	     UNION
+		  { ?p <http://www.w3.org/2000/01/rdf-schema#domain> ?cl.
+		    FILTER (?p1 = <http://www.w3.org/2000/01/rdf-schema#range>).
+		    FILTER (?s1 = ?p).}
+	     UNION
+		  { FILTER (?s1 = ?cl).
+		    FILTER (?p1 = <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY>)}
+	     UNION
+		  {FILTER (?s1 = ?cl).
+                   FILTER (?p1 = <http://user.it.uu.se/~udbl/sard#FOREIGN_KEY>)}
+	     UNION
+		{ 
+		   ?cl  <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY> ?s1.
+	          FILTER (?p1 =  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)} 
+	     UNION
+		{  ?cl  <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY> ?s1.
+		  FILTER (?p1 = <http://www.w3.org/1999/02/22-rdf-syntax-ns#_1>).   }
+	     UNION
+		{
+		  FILTER REGEX (?p1,'*#REFERENCES')} }";
+
+eval("create function q02p_schema()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:q02p_schema));
+		
+
+set :q011 = 
+"SELECT ?s ?p ?val 
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s ?p ?val.
+	{?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://user.it.uu.se/~udbl/sard/person#person>.}
+         UNION 
+	{FILTER (?p = <http://user.it.uu.se/~udbl/sard/person#tel/region>).} }";
+
+eval("create function exec011()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:q011));
+
+
+
+set :q011_sch=
+ "SELECT ?s ?p  ?val
+  FROM  <http://user.it.uu.se/~udbl/sard/person>
+  WHERE {?s ?p ?val. 
+	  {FILTER (?s = <http://user.it.uu.se/~udbl/sard/person#tel/region>).}
+          UNION
+	  { <http://user.it.uu.se/~udbl/sard/person#tel/region> <http://www.w3.org/2000/01/rdf-schema#domain> ?s .}
+          UNION 
+	  { <http://user.it.uu.se/~udbl/sard/person#tel/region> <http://www.w3.org/2000/01/rdf-schema#domain> ?s1 . 
+	   ?s1 <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY> ?s.
+	   FILTER REGEX (?p,'*rdf-syntax-ns#_*').} }";
+	
+
+
+
+
+
+
+/*Archive table telofperson (many-to-many relationship) */
+set :q03 = 
+"SELECT ?s ?p ?val 
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE{ {?s ?p ?val.
+	FILTER (?p=<http://user.it.uu.se/~udbl/sard/person#person_of_tel>).}
+	UNION 
+	{?s ?p ?val.
+	FILTER(?p = <http://user.it.uu.se/~udbl/sard/person#tel_of_person>).} }";
+
+eval("create function exec03()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:q03));
+
+/*Archive two tables */
+
+
+set :q03 = 
+"SELECT ?s ?p ?val 
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE { {?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://user.it.uu.se/~udbl/sard/person#tel>.
+	  ?s ?p ?val}
+	UNION
+	{?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://user.it.uu.se/~udbl/sard/person#person>.
+	  ?s ?p ?val} } ";
+
+eval("create function exec03()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:q03));
+
+
+/*Schema info concerning q03*/
+
+set :q03schema = 
+"SELECT ?s1 ?p1 ?val1 
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE { {?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://user.it.uu.se/~udbl/sard/person#tel>.
+	  ?s ?p ?val.
+	  ?s1 ?p1 ?val1.
+	  ?cl  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2000/01/rdf-schema#Class>.
+	  ?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?cl.	       
+	 { FILTER (?s1 = ?cl).
+	   FILTER (?p1 =<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)} 
+	     UNION
+		{  ?p <http://www.w3.org/2000/01/rdf-schema#domain> ?cl.
+		   FILTER (?s1 = ?p).
+		  FILTER (?p1 =  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)}
+
+	     UNION
+		 {  ?p <http://www.w3.org/2000/01/rdf-schema#domain> ?cl.
+		   FILTER (?s1 = ?p).
+		   FILTER (?p1 = <http://www.w3.org/2000/01/rdf-schema#domain>).    }
+	     UNION
+		  { ?p <http://www.w3.org/2000/01/rdf-schema#domain> ?cl.
+		    FILTER (?p1 = <http://www.w3.org/2000/01/rdf-schema#range>).
+		    FILTER (?s1 = ?p).}
+	     UNION
+		  { FILTER (?s1 = ?cl).
+		    FILTER (?p1 = <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY>)}
+	     UNION
+		  {FILTER (?s1 = ?cl).
+                   FILTER (?p1 = <http://user.it.uu.se/~udbl/sard#FOREIGN_KEY>)}
+	     UNION
+		{ 
+		   ?cl  <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY> ?s1.
+	          FILTER (?p1 =  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)} 
+	     UNION
+		{  ?cl  <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY> ?s1.
+		  FILTER (?p1 = <http://www.w3.org/1999/02/22-rdf-syntax-ns#_1>).   }
+	     UNION
+		{
+		  FILTER REGEX (?p1,'*#REFERENCES') } }
+	UNION
+	{?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://user.it.uu.se/~udbl/sard/person#person>.
+	  ?s ?p ?val.
+		?s1 ?p1 ?val1.
+		?cl  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2000/01/rdf-schema#Class>.
+		?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> ?cl.	       
+		{ FILTER (?s1 = ?cl).
+	          FILTER (?p1 =<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)} 
+	     UNION
+		{  ?p <http://www.w3.org/2000/01/rdf-schema#domain> ?cl.
+		   FILTER (?s1 = ?p).
+		  FILTER (?p1 =  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)}
+
+	     UNION
+		 {  ?p <http://www.w3.org/2000/01/rdf-schema#domain> ?cl.
+		   FILTER (?s1 = ?p).
+		   FILTER (?p1 = <http://www.w3.org/2000/01/rdf-schema#domain>).    }
+	     UNION
+		  { ?p <http://www.w3.org/2000/01/rdf-schema#domain> ?cl.
+		    FILTER (?p1 = <http://www.w3.org/2000/01/rdf-schema#range>).
+		    FILTER (?s1 = ?p).}
+	     UNION
+		  { FILTER (?s1 = ?cl).
+		    FILTER (?p1 = <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY>)}
+	     UNION
+		  {FILTER (?s1 = ?cl).
+                   FILTER (?p1 = <http://user.it.uu.se/~udbl/sard#FOREIGN_KEY>)}
+	     UNION
+		{ 
+		   ?cl  <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY> ?s1.
+	          FILTER (?p1 =  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>)} 
+	     UNION
+		{  ?cl  <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY> ?s1.
+		  FILTER (?p1 = <http://www.w3.org/1999/02/22-rdf-syntax-ns#_1>).   }
+	     UNION
+		{
+		  FILTER REGEX (?p1,'*#REFERENCES')} } } ";
+
+eval("create function exec03schema()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:q03schema));
+
+
+/*Schema queries*/
+
+/*Which are the tables (classes) and their properties*/
+
+set :s00="PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+	  PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+	  PREFIX saq: <http://user.it.uu.se/~udbl/sard#>
+	  PREFIX per: <http://user.it.uu.se/~udbl/sard/person#>
+	  select ?s ?p ?o
+	  FROM  <http://user.it.uu.se/~udbl/sard/person>
+	  WHERE { ?s rdf:type rdfs:Class .
+		  ?s ?p ?o} ";
+
+/*Which are the columns(propersties) of table(Class) 'per:tel' */
+
+set :s0="PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+	 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+	PREFIX saq: <http://user.it.uu.se/~udbl/sard#>
+	PREFIX per: <http://user.it.uu.se/~udbl/sard/person#>
+	select ?s ?p ?o
+	FROM  <http://user.it.uu.se/~udbl/sard/person>
+	WHERE { ?s rdfs:domain per:tel .
+	        ?s ?p ?o. }";
+
+/*The PK columns of tel with their properties*/
+
+set :s1="PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+	PREFIX saq: <http://user.it.uu.se/~udbl/sard#>
+	PREFIX per: <http://user.it.uu.se/~udbl/sard/person#>
+	select ?val ?p ?o
+	FROM  <http://user.it.uu.se/~udbl/sard/person>
+	WHERE { per:tel saq:PRIMARY_KEY ?fk.
+	       ?fk rdf:type rdf:Seq .       
+	       ?fk ?prop ?val.
+	       FILTER REGEX (?prop, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#*').
+	       ?val ?p ?o .}";
+
+/*The FK columns of tel */
+
+set :s2="PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+	PREFIX saq: <http://user.it.uu.se/~udbl/sard#>
+	PREFIX per: <http://user.it.uu.se/~udbl/sard/person#>
+	select ?fk ?prop ?val
+	FROM  <http://user.it.uu.se/~udbl/sard/person>
+	WHERE { per:tel saq:FOREIGN_KEY ?fk.
+	       ?fk rdf:type rdf:Seq .       
+	       ?fk ?prop ?val.
+	       FILTER REGEX (?prop, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#*')}";
+
+/*The FK columns of tel with their properties*/
+
+set :s3="PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+	PREFIX saq: <http://user.it.uu.se/~udbl/sard#>
+	PREFIX per: <http://user.it.uu.se/~udbl/sard/person#>
+	select ?val ?p ?o
+	FROM  <http://user.it.uu.se/~udbl/sard/person>
+	WHERE { per:tel saq:FOREIGN_KEY ?fk.
+	       ?fk rdf:type rdf:Seq .       
+	       ?fk ?prop ?val.
+	       FILTER REGEX (?prop, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#*').
+	       ?val ?p ?o.  }";
+
+
+set :s1 ="select ?prk ?prop ?val
+FROM <http://user.it.uu.se/~udbl/sard/person>
+WHERE {<http://user.it.uu.se/~udbl/sard/person#person> <http://user.it.uu.se/~udbl/sard#PRIMARY_KEY> ?prk.
+       ?prk <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq>.       
+       ?prk ?prop ?val.
+	FILTER REGEX (?prop, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#*')  }";
+
+
+
+
+/*Archive two columns from a table */
+set :q04 = 
+"SELECT ?s ?p ?val 
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE { {?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://user.it.uu.se/~udbl/sard/person#tel>.
+	  ?s ?p ?val.
+	FILTER REGEX (?p, 'http://user.it.uu.se/~udbl/sard/person#tel/age')}
+  UNION
+	{?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://user.it.uu.se/~udbl/sard/person#tel>.
+	  ?s ?p ?val}
+	FILTER REGEX (?p,'http://user.it.uu.se/~udbl/sard/person#tel/telsn') } ";
+
+
+
+
+
+set :q100=
+"SELECT ?s2 ?p2 ?val2 
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s2 <http://user.it.uu.se/~udbl/sard/person#tel/region> '10'.
+	?s2 ?p2 ?val2.}";
+
+eval("create function exec100()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:q100));
+
+
+
+set :sparql5 = 
+"SELECT ?s1 ?p1 ?val1 
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s1 ?p1 ?val1.
+ FILTER REGEX (?s1,'.*person#person.*'). }";
+
+eval("create function exec5()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:sparql5));
+
+create function amos_exec5()-> <Charstring,Charstring,Charstring> 
+as select s1,p1,val1 from Charstring s1,Charstring p1,Charstring val1
+where per()=<s1,p1,val1> and like(s1,"*person#person*");
+
+set :sparql1 = 
+"SELECT ?s1 ?p1 ?val1 
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s1 <http://user.it.uu.se/~udbl/sard/person#person/name> 'Anna' .
+	?s1 ?p1 ?val1.}";
+
+eval("create function exec1()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:sparql1));
+
+
+set :sparql12 = 
+"SELECT ?s ?p ?val 
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s1 <http://user.it.uu.se/~udbl/sard/person#tel/telnumber> '4216' .
+	?s1 <http://user.it.uu.se/~udbl/sard/person#tel_of_region> ?s .
+	?s ?p ?val.}";
+
+eval("create function exec12()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:sparql12));
+
+set :sparql2 = 
+"SELECT ?s ?p ?val
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s <http://www.w3.org/1999/02/22-rdf-syntax-ns#type>  <http://user.it.uu.se/~udbl/sard/person#person>.
+	?s ?p ?val.
+ FILTER REGEX (?val, '.*maria').}";
+
+eval("create function exec2()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:sparql2));
+
+set :sparql3 = 
+"SELECT ?s ?p ?val
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s ?p ?val.
+ FILTER REGEX (?val, '.*10.*').}";
+
+eval("create function exec3()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:sparql3));
+
+set :sparql22 = 
+"SELECT ?s ?p ?val
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE { 	?s ?p ?val.
+ FILTER REGEX (?val, '.*maria').}";
+
+eval("create function exec22()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:sparql22));
+
+create function amos_exec22_1()-><Charstring, Charstring ,Charstring>
+as
+select s,p,val
+from Charstring s,Charstring p,Charstring val
+where per()=<s,p,val> and like(val,'*maria');
+
+create function amos_exec22()-><Charstring, Charstring ,Charstring>
+as
+select s,p,val
+from Charstring s,Charstring p,Charstring val
+where (per()=<s,p,val> and like(val,'*maria') and p="http://user.it.uu.se/~udbl/sard/person#person/name") or
+	(per()=<s,p,val> and like(val,'*maria') and p="http://user.it.uu.se/~udbl/sard/person#tel/tel");
+
+
+set :sparql222 = 
+"SELECT ?s ?p 
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE { 	?s ?p '30'.}";
+
+eval("create function exec222()-> <Charstring,Charstring>
+	as " + parse_sparql(:sparql222));
+
+create function amos_exec1222()-><Charstring, Charstring>
+as select s,p
+from Charstring s,Charstring p
+where (per('30')=<s,p> and "http://user.it.uu.se/~udbl/sard/person#person/age") or
+      (per('30')=<s,p> and p="http://user.it.uu.se/~udbl/sard/person#person/sn") or
+        (per('30')=<s,p> and p="http://user.it.uu.se/~udbl/sard/person#tel/telsn");
+
+set :sparql23 = 
+"SELECT ?s ?p ?val
+ FROM <http://user.it.uu.se/~udbl/sard/person>
+ WHERE {?s <http://user.it.uu.se/~udbl/sard/person#person/age> '30'. 
+	?s ?p ?val.
+ FILTER REGEX (?val, '.*van.*').}";
+
+eval("create function exec23()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:sparql23));
+
+set :sparql3=
+"select ?s ?val ?val2
+FROM  <http://user.it.uu.se/~udbl/sard/person>
+WHERE {  ?s <http://user.it.uu.se/~udbl/sard/person#person/name> ?val.
+FILTER (?val != 'Ivan'). 
+OPTIONAL {
+          ?s <http://user.it.uu.se/~udbl/sard/person#person/age> ?val2.} }";
+
+eval("create function exec3()-> <Charstring,Charstring,Charstring>
+	as " + parse_sparql(:sparql3));
+
+create function orrr()-> <Charstring, Charstring> as
+select s, val
+from Charstring s, Charstring val
+where per()=<s, 'http://user.it.uu.se/~udbl/sard/person#person/name', val>
+and like(val,'*van*') or 
+(per()=<s, 'http://user.it.uu.se/~udbl/sard/person#person/age', val>);
+

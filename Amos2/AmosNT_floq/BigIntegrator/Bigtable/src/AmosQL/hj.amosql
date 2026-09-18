@@ -1,0 +1,38 @@
+lisp;
+
+;;; For hash join we need a new collection datatype Hashtab
+
+(createliteraltype (quote hashtab) (quote (collection)) (quote hashtab))
+
+(defun newHashtab- (fno r)
+  (osql-result (make-hash-table :test (function equal))))
+
+(defun addHashtab--- (fno h k v)
+  (push v (gethash k h))
+  (osql-result h k v))
+
+(defun getHashtab--+ (fno h k r)
+  (dolist (res (gethash k h))
+    (osql-result h k res)))
+
+:osql
+
+create function newHashtab()->Hashtab h
+  as foreign 'newHashtab-';
+
+create function addHashtab(Hashtab h, Object k, Object v)->Boolean
+  as foreign 'addHashtab---';
+
+create function getHashtab(Hashtab h, Object k)->Bag of Object r
+  as foreign 'getHashtab--+';
+
+create function fasthashjoin(Bag b1, Bag b2, Number pos1, Number pos2) -> Bag of Vector
+  /* Single threaded hash join based on mapping */
+  as begin declare Hashtab h;
+           set h = newHashtab();
+           for each original Vector r1 where r1 in b1
+                 addHashtab(h, r1[pos1], r1);
+           for each original Vector r2, Vector r0 where r2 in b2 and
+                                                  r0 in getHashTab(h, r2[pos2]) 
+                return concat(r0,r2);
+     end;

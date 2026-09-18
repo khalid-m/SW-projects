@@ -1,0 +1,22 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Erik Zeitler, UDBL
+ * $RCSfile: master.osql,v $
+ * $Revision: 1.8 $ $Date: 2010/02/11 17:42:25 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Linear Road generator master file.
+ *
+ ****************************************************************************/
+
+set dumpfile() = "generator.dmp";
+load_lisp('../../lr/src/lread.lsp');
+< 'generator.osql';
+< 'alias.osql';
+< 'config.osql';
+
+lisp;
+(setq _system-watermark_ _oidno_)
+(debugging nil)
+:osql

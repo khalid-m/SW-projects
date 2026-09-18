@@ -1,0 +1,19 @@
+merge({newsp(siota(1,10)), newsp(siota(20, 30))});
+propagate_delays(true);
+scsqprofile("logs");
+
+set :testQ1 = "data/testQ3.csv";
+
+lisp;
+
+(checkequal "test for q1"
+((osql "count(debs_event_file_tuples(:testQ1, start1sthalf()));")
+ '((39752))))
+
+(checkequal "test for q1"
+((osql "count(in(q1(q1input(:testQ1))));")
+ '((0))))
+
+:osql
+
+q();

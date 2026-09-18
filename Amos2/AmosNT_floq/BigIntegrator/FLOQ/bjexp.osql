@@ -1,0 +1,428 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: bjexp.osql,v $
+ * $Revision: 1.5 $ $Date: 2014/05/21 15:36:15 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: script for FLOQ bind join experiment set up
+ ****************************************************************************
+ *
+ ****************************************************************************/
+
+
+start javaamos -n
+start javaamos -O peer.osql -s u
+start javaamos -O peer.osql -s v
+
+javaamos -c me
+
+/* maps logdburi to jdbc object and used in query in sequence */
+create function logdburi_js(Object)->JDBC as stored; 
+
+
+/* create n jdbc connection objects and used in query in sequence */
+create function jdbcSet(Number n, Charstring driver)
+                       -> Bag of Jdbc
+  as jdbc("C"+iota(1,n), driver);
+
+/********************* used in query in sequence ******************/
+/* connect to jdbc datasource and map the uri to jdbc datasource */
+create function connect2(Jdbc ds1, Charstring uri, 
+                           Charstring user_name, Charstring password)->Jdbc ds2
+  as begin 
+          connect(ds1, uri, user_name, password);
+          set logdburi_js(uri)=ds1;
+     end;
+
+
+/* connect each jdbc object with a data source with different db name */
+/* and used in query in sequence */
+create function openJdbcSet(Bag of Jdbc js,
+                            Charstring dburl, Bag of Charstring dbs,
+                            Charstring user, Charstring pw)
+                          -> Bag of Jdbc
+  as for each Jdbc j, Charstring db 
+     where j in js and db in dbs 
+     begin
+         return connect(j, dburl+db, user, pw);
+     end;
+
+
+/* disconnect given database connections */
+/* and used in query in sequence */
+create function closeJdbcSet(Bag of Jdbc js) -> Bag of Jdbc
+  as for each Jdbc j where j in js 
+     begin disconnect(j);
+           return j;
+     end;
+
+/* utility functions */
+create function transformvec(vector inputvarsvec)->(object, vector) as foreign 'transinvec-++';
+
+create function formargfrombag(bag)->vector as foreign 'formargfrombag-+';
+
+create function vectorBag(Vector v) -> Bag of Charstring
+  as select v[i] 
+     from Integer i;
+
+/******************* used in multicastreceive3 *********************/
+/* mapping database uri to peer name */
+/* It is used for mapping to get peer name. It is the same for different size 
+   of logdb since i stored only 1Gb uri in metadb */
+create function mappinguri_peer(Charstring uri)->Charstring as stored;
+
+set mappinguri_peer("jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB")='u';
+
+set mappinguri_peer("jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB")='v';
+
+/* and used in query in parallel */
+/* mapping logdb uri to peer name and forming peer vector and query argument 
+   vector for multicastreceive */
+create function multicastreceive3(Vector uris, Charstring fn, Charstring query, 
+                                         Vector args)->Bag of Object
+  as begin
+     declare vector peervec, vector argvec, Charstring pe, Charstring logdburi;
+     set peervec={};
+     set argvec={};
+     for each integer i where i in iota(0, dim(uris)-1)
+       begin
+       set logdburi=uris[i];
+       set pe=mappinguri_peer(logdburi);
+        if pe then
+          begin
+          set peervec=concat(peervec, {pe}); 
+          set argvec=concat(argvec, {{logdburi, query, args[i]}});
+          end;
+       end;
+     if dim(peervec) >= 1 then
+     return multicastreceive(peervec, fn, argvec);
+     end;
+
+/* multi_sql_union is the same as sql */
+/* for query logdb in sequence, takes logdbid, query, and parameters */ 
+create function multi_sql_union(Object logdburi, Charstring query, 
+                                Vector params) -> Vector
+  as select sql(logdburi_js(logdburi), query, params);
+
+
+/* set url of meta-database */ 
+set :dburl = "jdbc:mysql://localhost:3306/";
+
+
+/************************ this is different from cases **********************/
+/* set up connection to access small meta database (100 machine installations 
+   and 200 sensors) at local mysql */
+set :metas = jdbc("metas", "com.mysql.jdbc.Driver");
+
+/* set up connection to access middle meta database (200 machine installations 
+   and 400 sensors) at local mysql */
+set :metam = jdbc("metam", "com.mysql.jdbc.Driver");
+
+
+/* set up connection to access large meta database (500 machine installations 
+   and 1000 sensors) at local mysql */
+set :metal = jdbc("metal", "com.mysql.jdbc.Driver");
+
+
+/* procedure to import tables from metaDB */
+create function importmetatable(jdbc js, charstring dburi, 
+                                charstring username, charstring password,
+                                vector of charstring tables)->boolean
+as begin declare integer i, integer numoftable; 
+         set i =0;
+	 set numoftable=dim(tables);
+        connect(js, dburi, username, password);
+        while i < numoftable
+        do 
+        import_table(js, tables[i]);
+        set i = i+1;
+        end while;
+   end;
+
+/* generate source predicates for small meta database */
+importmetatable(:metas, :dburl + "metadb_s", "regress", "regress", 
+                {'SENSORINSTALLATION', 'LOCATION', 'MACHINEINSTALLATION', 
+                 'MACHINE', 'SENSOR'});
+
+/* generate source predicates for middle meta database */
+importmetatable(:metam, :dburl + "metadb_m", "regress", "regress", 
+                {'SENSORINSTALLATION', 'LOCATION', 'MACHINEINSTALLATION', 
+                 'MACHINE', 'SENSOR'});
+
+/* generate source predicates for large meta database */
+importmetatable(:metal, :dburl + "metadb_l", "regress", "regress", 
+                {'SENSORINSTALLATION', 'LOCATION', 'MACHINEINSTALLATION', 
+                 'MACHINE', 'SENSOR'});
+
+
+/***************** just for import_table2 ******************/
+/* to get :js for generate source predicate of measuresA */
+set :js = jdbcSet(2,"com.microsoft.jdbc.sqlserver.SQLServerDriver");
+
+/* to import the measuresA schema from one of the server regardless the 
+   logdb size since they have the same schema */
+set :logdb1url = "jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB";
+
+connect2(first(:js), :logdb1url, "udbl", "udbl");
+
+< 'patch.osql';
+
+/* import source predicate Measurement from one logdb */
+/* import_sourceset_table(:js, 'MEASURESA'); */
+import_table2(first(:js),'MEASURESA',:js);
+
+
+/************************** peers setup for paralization ***************************/
+/* peer u */
+/* in peer u, call jdbc function */
+set :u= call_function('u','jdbc', {"A","com.microsoft.jdbc.sqlserver.SQLServerDriver"}, 10)[0];
+
+/* populating the mapping */
+call_function('u','pop_uri_jdbc',{"jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB",:u},10);
+
+
+/* peer v */
+/* in peer v, call jdbc function */
+set :v= call_function('v','jdbc', {"B","com.microsoft.jdbc.sqlserver.SQLServerDriver"}, 10)[0];
+
+/* populating the mapping */
+call_function('v','pop_uri_jdbc',{"jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB",:v},10);
+
+/* procedure to connect to different size of logdb */
+create function connectlogdb(Vector of charstring peervec, vector js, 
+                             vector logDBuri, 
+                             vector username, vector password)->boolean
+as begin declare integer i, integer numoflogDB;
+         set i=0;
+         set numoflogDB=dim(logDBuri);
+         while i < numoflogDB
+         do
+         call_function(peervec[i], 'connect', {js[i], logDBuri[i], username[i],
+                       password[i]}, 10);
+         set i = i+1;
+         end while;
+   end;
+
+
+/* it is different from cases, connect different logdb sizes */
+/* set to connect to bm1GB */
+set :logDBuri1="jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB";
+
+set :logDBuri2="jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB";
+
+/* connect to bm1GB */
+connectlogdb({'u','v'}, {:u, :v}, {:logDBuri1, :logDBuri2}, {"udbl", "udbl"},
+             {"udbl", "udbl"});
+/******************************************************************/
+
+
+/* it is different from cases, connect different logdb sizes */
+/* set to connect to bm5GB */
+set :logDBuri1="jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm5GB";
+
+set :logDBuri2="jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm5GB";
+
+/* connect to bm5GB */
+connectlogdb({'u','v'}, {:u, :v}, {:logDBuri1, :logDBuri2}, {"udbl", "udbl"},
+             {"udbl", "udbl"});
+/******************************************************************/
+
+
+/* it is different from cases, connect different logdb sizes */
+/* set to connect to bm10GB */
+set :logDBuri1="jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm10GB";
+
+set :logDBuri2="jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm10GB";
+
+/* connect to bm10GB */
+connectlogdb({'u','v'}, {:u, :v}, {:logDBuri1, :logDBuri2}, {"udbl", "udbl"},
+             {"udbl", "udbl"});
+/******************************************************************/
+
+
+/* it is different from cases, connect different logdb sizes */
+/* set to connect to bm15GB */
+set :logDBuri1="jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm15GB";
+
+set :logDBuri2="jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm15GB";
+
+/* connect to bm15GB */
+connectlogdb({'u','v'}, {:u, :v}, {:logDBuri1, :logDBuri2}, {"udbl", "udbl"},
+             {"udbl", "udbl"});
+
+
+/*********************** start rewrite ******************************/
+lisp;
+
+(setq *enable-parallel* t)
+
+:osql
+
+
+/********************** Numerical queries **************************/
+/* retrieves the machine identifiers m for which a sensor has measured values 
+   mv of measurement class A higher than the expected values ev by a threshold
+   value @thA during the time from bt to time et */
+/* with small meta DB and different size of logdb */
+create function newq4s()->(Integer, Number, Number) as
+select m(ma), bt(ma), et(ma)
+from SensorInstallation@metas si, Location@metas l, MeasuresA ma, 
+     MachineInstallation@metas mi, Machine@metas m
+where mv(ma)> ev(si) + th(si) and
+      lid(l)=locatedat(mi) and
+      mi(mi)=mi(si) and
+      m(mi)=m(m) and
+      s(ma)=si(si) and 
+      m(ma)=mi(si) and 
+      uri(l)=jdbcuri(ma);
+
+pc("newq4s");
+
+count(newq4s());
+
+
+/* with middle meta DB and different size of logdb */
+create function newq4m()->(Integer, Number, Number) as
+select m(ma), bt(ma), et(ma)
+from SensorInstallation@metam si, Location@metam l, MeasuresA ma, 
+     MachineInstallation@metam mi, Machine@metam m
+where mv(ma)> ev(si) + th(si) and
+      lid(l)=locatedat(mi) and
+      mi(mi)=mi(si) and
+      m(mi)=m(m) and
+      s(ma)=si(si) and 
+      m(ma)=mi(si) and 
+      uri(l)=jdbcuri(ma);
+
+pc("newq4m");
+
+count(newq4m());
+
+
+
+/* with large meta DB and different size of logdb */
+create function newq4l()->(Integer, Number, Number) as
+select m(ma), bt(ma), et(ma)
+from SensorInstallation@metal si, Location@metal l, MeasuresA ma, 
+     MachineInstallation@metal mi, Machine@metal m
+where mv(ma)> ev(si) + th(si) and
+      lid(l)=locatedat(mi) and
+      mi(mi)=mi(si) and
+      m(mi)=m(m) and
+      s(ma)=si(si) and 
+      m(ma)=mi(si) and 
+      uri(l)=jdbcuri(ma);
+
+pc("newq4l");
+
+count(newq4l());
+
+
+/* identifies a potential failure by retrieving for machine models M_1, M_2, 
+   and M_3 those machineid where, during the time interval (bt, et), the 
+   measured value mv was above 75% of the allowed deviation @thA from the 
+   expected value ev */
+/* with small meta DB and different size of logdb */
+create function newq5s()->(Integer, Number, Number) as
+select m(ma), bt(ma), et(ma)
+from SensorInstallation@metas si, Location@metas l, MeasuresA ma, 
+     MachineInstallation@metas mi, Machine@metas m
+where mv(ma)> ev(si) + 0.75*th(si) and
+      mmname(m) in {'MoriSeiki 5205', 'MoriSeiki 5305', 'MoriSeiki 5405'} and
+      lid(l)=locatedat(mi) and
+      mi(mi)=mi(si) and
+      m(mi)=m(m) and
+      s(ma)=si(si) and 
+      m(ma)=mi(si) and 
+      uri(l)=jdbcuri(ma);
+
+pc("newq5s");
+
+count(newq5s());
+
+
+/* identifies abnormal behaviors of machines of a measurement class based on 
+   absolute deviations: when and for which machine identifiers did the 
+   pressure reading of class A deviate more than @thA from its expected value 
+   ev? */
+create function newq6s()->(Integer, Number, Number) as
+select m(ma), bt(ma), et(ma)
+from SensorInstallation@metas si, Location@metas l, MeasuresA ma, 
+     MachineInstallation@metas mi, Machine@metas m
+where abs(mv(ma) - ev(si)) > th(si) and
+      lid(l)=locatedat(mi) and
+      mi(mi)=mi(si) and
+      m(mi)=m(m) and
+      s(ma)=si(si) and 
+      m(ma)=mi(si) and 
+      uri(l)=jdbcuri(ma);
+
+pc("newq6s");
+
+count(newq6s());
+
+
+/* When and for which machines were the pressure reading of class A were 
+   deviating 75 % from its expected value */
+create function newq7s()->(Integer, Number, Number) as
+select m(ma), bt(ma), et(ma)
+from SensorInstallation@metas si, Location@metas l, MeasuresA ma, 
+     MachineInstallation@metas mi, Machine@metas m
+where abs(mv(ma) - ev(si)) > 0.75*ev(si) and
+      lid(l)=locatedat(mi) and
+      mi(mi)=mi(si) and
+      m(mi)=m(m) and
+      s(ma)=si(si) and 
+      m(ma)=mi(si) and 
+      uri(l)=jdbcuri(ma);
+
+pc("newq7s");
+
+count(newq7s());
+
+
+/* retrieves the machine identifiers m for which a sensor has measured values 
+   mv of measurement class A higher than the dynamically increasing expected 
+   values ev by a threshold value @thA after one minute */
+/* the ev can be slightly increase after cutting many pieces, therefore, 
+   we times a constant coefficient with time */
+/**** measured value > (expected value + coefficient*time) + threshold ***/
+create function newq8s()->(Integer, Number, Number) as
+select m(ma), bt(ma), et(ma)
+from SensorInstallation@metas si, Location@metas l, MeasuresA ma, 
+     MachineInstallation@metas mi, Machine@metas m
+where mv(ma)> (ev(si)+ 0.003*60) + th(si) and
+      lid(l)=locatedat(mi) and
+      mi(mi)=mi(si) and
+      m(mi)=m(m) and
+      s(ma)=si(si) and 
+      m(ma)=mi(si) and 
+      uri(l)=jdbcuri(ma);
+
+pc("newq8s");
+
+count(newq8s());
+
+
+/* time serial query */
+/* which machine identifiers did the pressure reading of class A deviate more 
+   than @thA from its expected value ev? in less than one minute */
+create function newq9s()->Integer as
+select m(ma)
+from SensorInstallation@metas si, Location@metas l, MeasuresA ma, 
+     MachineInstallation@metas mi, Machine@metas m
+where abs(mv(ma) - ev(si)) > th(si) and
+      et(ma) < bt(ma) + 60 and
+      lid(l)=locatedat(mi) and
+      mi(mi)=mi(si) and
+      m(mi)=m(m) and
+      s(ma)=si(si) and 
+      m(ma)=mi(si) and 
+      uri(l)=jdbcuri(ma);
+
+pc("newq9s");
+
+count(newq9s());
+

@@ -1,0 +1,39 @@
+1. Register as a user with a given username.
+
+2.
+_________________________________________________________________________________________________________________________________________________________
+_________________________________________________________________________________________________________________________________________________________
+Example 1: (with two web service providers)
+
+ I. Import WSDL URLs by selecting the following URLs from the drop-down list and  then click on the Import WSDL button.
+
+   a).  http://terraservice.net/TerraService2.asmx?WSDL
+   b).  http://codebump.com/services/PlaceLookup.asmx?wsdl
+
+
+ II. Example SQL queries:
+
+   a). Find places start with 'Atlanta'
+
+     select gl.City ,  gl.PlaceTypeId from   GetPlaceList gl where   gl.placeName='Atlanta' and gl.MaxItems=100 and gl.imagePresence= 'true'
+
+   b). Find all states information in US
+
+       select * from  GetAllStates gs
+   
+   c). Find information about places located within 15 km from each city whose name starts with 'Atlanta' in all US states 
+       (Two web service operations GetAllStates, and GetPlacesWithin involved in join)
+
+        select gp.TOPLACE ,  gp.TOSTATE, gp.GEOPLACEDISTANCE_DISTANCE from   GetAllStates gs, GetPlacesWithin gp where  gs.State=gp.state and gp.distance=15.0 and gp.placeTypeToFind='City' and gp.place='Atlanta'
+
+   d). Find geographical information about places located within 15 km from each city whose name starts with 'Atlanta' in all US states
+       (Three web service operations GetAllStates, GetPlacesWithin and GetPlaceList involved in join)
+
+   select gl.City ,  gl.PlaceTypeId, gl.LON,gl.LAT from  GetAllStates gs, GetPlacesWithin gp, GetPlaceList gl where gs.State=gp.state and gp.distance=15.0 and gp.placeTypeToFind= 'City' and gp.place= 'Atlanta' and gl.placeName=gp.ToPlace + ' , ' + gp.ToState and gl.MaxItems=100 and gl.imagePresence= 'true' 
+     
+       Above query contains dependent web service operations. GetPlacesWithin depends on the GetAllStates and GetPlaceList depends on GetPlacesWithin.
+
+___________________________________________________________________________________________________________________________________________________________
+___________________________________________________________________________________________________________________________________________________________
+
+___________________________________________________________________________________________________________________________________________________________

@@ -1,0 +1,1 @@
+amos2 coord.dmp -o "generator('%1', %2);"

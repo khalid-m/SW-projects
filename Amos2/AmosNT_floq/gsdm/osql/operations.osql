@@ -1,0 +1,156 @@
+/***************************************************************************** * AMOS2 - GSDM * 
+* Author: (c) 2004 Milena Ivanova, UDBL 
+* $RCSfile: operations.osql,v $ 
+* $Revision: 1.12 $ $Date: 2005/07/22 17:11:06 $ 
+* $State: Exp $ $Locker:  $ 
+*       Library of AmosQL application-specific functions.
+*	Functions for user-defined partitioning
+****************************************************************************/
+
+
+
+create function fft3(testsignal s) -> testsignalWindow 
+as select testsignalWindow(vector(ts(v),fft(x(v)),fft(y(v)),fft(z(v))))
+from  testsignalWindow v
+where v = currentWindow(s);
+
+create function fft1(channel s) -> channelWindow 
+as select channelWindow(vector(ts(v),fft(x(v))))
+from  channelWindow v
+where v = currentWindow(s);
+
+create function pure_polar(testsignal s) -> polarizedWindow 
+as select polarizedWindow(polarization(ts(v),x(v),y(v),z(v)))
+from  testsignalWindow v
+where v = currentWindow(s);
+
+create function polar(testsignal s) -> polarizedWindow 
+as select polarizedWindow(polarization(ts(v),fft(x(v)),fft(y(v)),fft(z(v))))
+from  testsignalWindow v
+where v = currentWindow(s);
+
+create function dft3(testsignal s,integer sz, integer pno) -> testsignalWindow 
+as select testsignalWindow(ts(v),
+	dft(x(v),sz,pno),dft(y(v),sz,pno),dft(z(v),sz,pno))
+from  testsignalWindow v
+where v = currentWindow(s);
+
+create function dft3(testsignal s) -> testsignalWindow 
+as select testsignalWindow(ts(v),dft(x(v)),dft(y(v)),dft(z(v)))
+from  testsignalWindow v
+where v = currentWindow(s);
+
+/************* TIMESTAMPING ************************************************/
+
+create function ts_it(testsignal s) ->
+ 	testsignalWindow v
+as select testsignalWindow(vector(getts(),x(se),y(se),z(se))) 
+from testsignalWindow se
+where se=currentWindow(s);
+
+/************** PARTITIONING ******************************************/
+
+create function vect_range (vector of complex x,
+                              integer l, integer h)->
+			      vector of complex y		
+as foreign 'vector-rangebbbf';
+
+create function stream_part_ts(testsignal s, integer l, integer h) ->
+ 	testsignalWindow v
+as select testsignalWindow(vector(getts(),vect_range(x(se),l,h), 
+	vect_range(y(se),l,h),vect_range(z(se),l,h)))
+from testsignalWindow se
+where se=currentWindow(s);
+
+
+/* c- count of part, pno- number of this partition */
+create function vect_part(vector of complex x,
+                          integer c, integer pno)->
+			      vector of complex y		
+as select vect_range(x,l,h)
+from integer l, integer h, integer psize
+where psize=count(x)/c and l=psize*pno and h=l+psize-1;
+
+/*
+create function stream_part(testsignal s, integer c, integer pno) ->
+ 	testsignalWindow v
+as select testsignalWindow(vector(ts(se),vect_part(x(se),c,pno), 
+	vect_part(y(se),c,pno),vect_part(z(se),c,pno)))
+from testsignalWindow se
+where se=currentWindow(s);
+*/
+
+create function stream_part(testsignal s, integer c, integer pno) ->
+ 	testsignalWindow v
+as select testsignalWindow(vector(ts(se),vector_part(x(se),c,pno), 
+	vector_part(y(se),c,pno),vector_part(z(se),c,pno)))
+from testsignalWindow se
+where se=currentWindow(s);
+
+/*******************************/
+
+create function fft3part(testsignal s, integer c, integer pno) ->
+ 	testsignalWindow v
+as select testsignalWindow(vector(ts(se),fftpart(x(se),c,pno), 
+	fftpart(y(se),c,pno),fftpart(z(se),c,pno)))
+from testsignalWindow se
+where se=currentWindow(s);
+
+
+/*************************/
+
+create function round_robin_part(testsignal s,integer sz, integer no)
+	 -> testsignalWindow v
+as select se
+from vector of testsignalWindow w, testsignalWindow se
+where w = slidingWindow(s,sz,sz) and se=w[no];
+
+/****************/
+create function xchannel(testsignal s) ->
+ 	channelWindow v
+as select channelWindow(vector(ts(se),x(se)))
+from testsignalWindow se
+where se=currentWindow(s);
+
+create function ychannel(testsignal s) ->
+ 	channelWindow v
+as select channelWindow(vector(ts(se),y(se)))
+from testsignalWindow se
+where se=currentWindow(s);
+
+create function zchannel(testsignal s) ->
+ 	channelWindow v
+as select channelWindow(vector(ts(se),z(se)))
+from testsignalWindow se
+where se=currentWindow(s);
+
+
+/**************** AGGREGATING ****************************************/
+
+create function agg(testsignal s,integer n)
+	 -> testsignalWindow v
+as select testsignalWindow(aggregate_window(w))
+from vector of testsignalWindow w
+where w = slidingWindow(s,n,n) ;
+
+/************* ID query ************************************************/
+create function dummy(polarized s) -> polarizedWindow 
+as select v
+from  polarizedWindow v
+where v = currentWindow(s);
+
+create function dummy(testsignal s) -> testsignalWindow 
+as select v
+from  testsignalWindow v
+where v = currentWindow(s);
+
+create function dummy(channel s) -> channelWindow 
+as select v
+from  channelWindow v
+where v = currentWindow(s) ;
+
+create function dummy(testsignal s,real t) -> testsignalWindow 
+as begin
+	sleep(t);
+	result dummy(s);
+end;

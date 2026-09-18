@@ -1,0 +1,398 @@
+/*-*-sql-*-*******************************************************************/
+
+create function inputdir(Charstring)->Charstring;
+set inputdir("mei.it.uu.se") = "/home/zeitler/binbench";
+set inputdir("grad1.uppmax.uu.se") = "/home/erikz/binbench";
+set inputdir("gr49.uppmax.uu.se") = "/home/erikz/binbench";
+create function outputdir(Charstring)->Charstring;
+set outputdir("mei.it.uu.se") = "/home/zeitler/lroutput";
+set outputdir("grad1.uppmax.uu.se") = "/scratch/erikz/lroutput";
+set outputdir("gr49.uppmax.uu.se") = "/scratch/erikz/lroutput";
+create function lroutput()->vector;
+create function lroutputbin()->numarray;
+create function last_clock()->real;
+
+lisp;
+;"
+(imagesize 100000000)
+
+(checkequal "dxpartition of 200k tpls"
+((osql "clear_function('lroutput');
+set last_clock() = real(now());
+add lroutput() = in(zipstreams(mapstreams(s, #'stream.scount->stream')))
+from vector of stream of vector s 
+where s = splitstream(lreadfast(inputdir(
+  getenv('HOSTNAME')) + '/c10-200k', 10), 10 + 1, #'dxpartition');
+print({'duration CONVENTIONAL = ', real(now()) - last_clock()});")
+'((TRUE)))
+((osql "lroutput();")
+'((#(20688 20711 20702 20695 20813 20828 20797 20812 21178 20594 232)))))
+
+(checkequal "dxpartitionbin of 200k tpls"
+((osql "clear_function('lroutput');
+set last_clock() = real(now());
+add lroutput() = in(zipstreams(mapstreams(s, #'stream.scount->stream')))
+from vector of stream of iarray s 
+where s = splitstream(lreadfastbin(inputdir(
+  getenv('HOSTNAME')) + '/c10-200k.bin', 10), 10 + 1, #'dxpartitionbin');
+print({'duration BINARY = ', real(now()) - last_clock()});")
+'((TRUE)))
+((osql "lroutput();")
+'((#(20688 20711 20702 20695 20813 20828 20797 20812 21178 20594 232)))))
+
+(checkequal "hpartstreamv #'lrproute' of 200k tpls"
+((osql "clear_function('lroutput');
+set last_clock() = real(now());
+add lroutput() = in(zipstreams(mapstreams(s, #'stream.scount->stream')))
+from vector of stream of iarray s 
+where s = hpartstreamv(lreadfastbin(inputdir(
+  getenv('HOSTNAME')) + '/c10-200k.bin', 10), #'lrproute', 10, {2,5}, 0);
+print({'duration BINARY = ', real(now()) - last_clock()});")
+'((TRUE)))
+((osql "lroutput();")
+'((#(20688 20702 20813 20797 21178 20711 20695 20828 20812 20594)))))
+
+(stop-profile) (start-profile)
+(checkequal "L=10 conventional@200k: split-[map+MySQL]-lrfuse(merge)"
+((osql "clear_function('lroutput');
+set last_clock() = real(now());
+add lroutput() = lrfuse(mergestreams(concat(my,so)), L)
+from vector of stream of vector src, vector of stream so, vector of stream my,
+integer L
+where so = mapstreams(vselect src[i] from integer i where i in iota(0, L - 1),
+                      #'lr')
+and my = mapflexv({{'mei.it.uu.se', 'lr', src[L]}}, #'dailyexp',
+                 make_record({'hostname', 'mei.it.uu.se', 'exe', 'javascsq'}))
+and src = splitstream(
+  lreadfast(inputdir(getenv('HOSTNAME')) + '/c10-200k', 10),
+  L + 1, #'dxpartition')
+and L = 10;
+print({'duration CONVENTIONAL = ', real(now()) - last_clock()});")
+'((TRUE))))
+(profile)
+
+(checkequal "LR counts"
+((osql "
+count(select v from vector v where v=lroutput() and eventtype(v)=0);")
+'((90971)))
+((osql "
+count(select v from vector v where v=lroutput() and eventtype(v)=1);")
+'((19)))
+((osql "
+count(select v from vector v where v=lroutput() and eventtype(v)=2);")
+'((981)))
+((osql "
+count(select v from vector v where v=lroutput() and eventtype(v)=3);")
+'((4))))
+
+(stop-profile) (start-profile)
+(checkequal "L=10 binary@200k: split-[map+MySQL]-lrfuse(merge)"
+((osql "clear_function('lroutput');
+clear_function('lroutputbin');
+set last_clock() = real(now());
+add lroutputbin() = lrfusebin(m, L)
+from vector of stream of iarray src, vector of stream of numarray so,
+vector of stream my, vector of stream of numarray mybin, integer L,
+stream of numarray m
+where m = mergestreams(concat(mybin, so))
+and so = mapstreams(vselect src[i] from integer i where i in iota(0, L - 1),
+                    #'lrbin')
+and mybin = mapstreams(my, #'vstream2iastream')
+and my = mapflexv({{'mei.it.uu.se', 'lr', src[L]}}, #'dailyexp',
+                 make_record({'hostname', 'mei.it.uu.se', 'exe', 'javascsq'}))
+and src = splitstream(
+  lreadfastbin(inputdir(getenv('HOSTNAME')) + '/c10-200k.bin', 10),
+  L + 1, #'dxpartitionbin')
+and L = 10;
+print({'duration BINARY = ', real(now()) - last_clock()});")
+'((TRUE))))
+(profile)
+
+(checkequal "LRbin counts"
+((osql "
+count(select v from darray v where v=lroutputbin() and eventtype(v)=0.0);")
+'((90971)))
+((osql "
+count(select v from darray v where v=lroutputbin() and eventtype(v)=1.0);")
+'((19)))
+((osql "
+count(select v from darray v where v=lroutputbin() and eventtype(v)=2.0);")
+'((981)))
+((osql "
+count(select v from iarray v where v=lroutputbin() and eventtype(v)=3);")
+'((4))))
+
+(checkequal "L=10 binary@200k: split-[map-split+MySQL]-abagg(zip)-merge"
+ ((osql "clear_function('lroutputbin');
+set last_clock() = real(now());
+add lroutputbin() = in(mergestreams(concat({abagg}, concat(alla, mybin))))
+from vector of stream src, vector of stream proc, vector of stream postproc,
+vector of stream alla, stream abagg, vector of stream my, 
+vector of stream mybin, integer L
+where abagg = ostream(newsp(lrf(zipstreams(vectorize(select i, postproc[i*2+1]
+  from integer i where i in iota(0, dim(postproc)/2))))), 0)
+and alla = vectorize(select i, postproc[i*2]
+  from integer i where i in iota(0, dim(postproc)/2))
+and postproc = splitstreams(proc, 2, #'accbalsplit')
+and proc = mapstreams(
+(vselect src[i] from integer i where i in iota(0, L - 1)), #'lrbin')
+and mybin = mapstreams(my, #'vstream2iastream')
+and my = mapflexv({{'mei.it.uu.se', 'lr', src[L]}}, #'dailyexp',
+                 make_record({'hostname', 'mei.it.uu.se', 'exe', 'javascsq'}))
+and src = splitstream(lreadfast(
+		inputdir(getenv('HOSTNAME')) + '/c10-200k.bin', L),
+                L + 1, #'dxpartitionbin')
+and L = 10;
+print({'duration REALSTUFF ', real(now()) - last_clock()});")
+'((TRUE))))
+
+(checkequal "LRbin counts"
+((osql "
+count(select v from darray v where v=lroutputbin() and eventtype(v)=0.0);")
+'((90971)))
+((osql "
+count(select v from darray v where v=lroutputbin() and eventtype(v)=1.0);")
+'((19)))
+((osql "
+count(select v from darray v where v=lroutputbin() and eventtype(v)=2.0);")
+'((981)))
+((osql "
+count(select v from iarray v where v=lroutputbin() and eventtype(v)=3);")
+'((4))))
+
+(checkequal "L=10 binary@200k: split-[map-split+MySQL]-abagg(zip)-merge"
+ ((osql "clear_function('lroutputbin');
+set last_clock() = real(now());
+add lroutputbin() = in(mergestreams(concat({abagg}, concat(alla, mypost))))
+from vector of stream src, vector of stream proc, vector of stream postproc,
+vector of stream alla, stream abagg, vector of stream mypre,
+vector of stream my, vector of stream mypost, integer L
+where abagg = ostream(newsp(lrf(zipstreams(vectorize(select i, postproc[i*2+1]
+  from integer i where i in iota(0, dim(postproc)/2))))), 0)
+and alla = vectorize(select i, postproc[i*2]
+  from integer i where i in iota(0, dim(postproc)/2))
+and postproc = splitstreams(proc, 2, #'accbalsplit')
+and proc = mapstreams(
+(vselect src[i] from integer i where i in iota(0, L - 1)), #'lrbin')
+and mypost = mapstreams(my, #'vstream2iastream')
+and my = mapflexv({{'mei.it.uu.se', 'lr', mypre[0]}}, #'dailyexp',
+                 make_record({'hostname', 'mei.it.uu.se', 'exe', 'javascsq'}))
+and mypre = mapstreams({src[L]}, #'iastream2vstream')
+and src = splitstream(lreadfast(
+		inputdir(getenv('HOSTNAME')) + '/c10-200k.bin', L),
+                L + 1, #'dxpartitionbin_nc')
+and L = 10;
+print({'duration REALSTUFF ', real(now()) - last_clock()});")
+'((TRUE))))
+
+(checkequal "LRbin counts"
+((osql "
+count(select v from darray v where v=lroutputbin() and eventtype(v)=0.0);")
+'((90971)))
+((osql "
+count(select v from darray v where v=lroutputbin() and eventtype(v)=1.0);")
+'((19)))
+((osql "
+count(select v from darray v where v=lroutputbin() and eventtype(v)=2.0);")
+'((981)))
+((osql "
+count(select v from iarray v where v=lroutputbin() and eventtype(v)=3);")
+'((4))))
+
+
+(sleep 3)
+(send-form '(quit) (open-nameserver-port))
+:osql
+rollback;
+quit;
+
+
+/* comment!
+
+"
+
+-- Test L=20
+
+writefiles("/scratch/erikz/c20.bin", 20000000, iarray(in(lreadfast(vselect "/scratch/erikz/20/cdp" + i from integer i where i in iota(0,24), 20))));
+
+-- c20.bin11 and c20.bin12 (603 s real time) take 375 s on grad.
+
+writefiles("/scratch/erikz/c20.out", 10000000,
+in(select in(mergestreams(concat({abagg}, concat(alla, mybin))))
+from vector of stream src, vector of stream proc, vector of stream postproc,
+vector of stream alla, stream abagg, vector of stream my, 
+vector of stream mybin, integer L
+where abagg = ostream(newsp(lrf(zipstreams(vectorize(select i, postproc[i*2+1]
+  from integer i where i in iota(0, dim(postproc)/2))))), 0)
+and alla = vectorize(select i, postproc[i*2]
+  from integer i where i in iota(0, dim(postproc)/2))
+and postproc = splitstreams(proc, 2, #'accbalsplit')
+and proc = mapstreams(
+(vselect src[i] from integer i where i in iota(0, L - 1)),
+#'lrbin')
+and mybin = mapstreams(my, #'vstream2iastream')
+and my = mapflexv({{'mei.it.uu.se', 'lr', src[L]}}, #'dailyexp',
+                 make_record({'hostname', 'mei.it.uu.se', 'exe', 'javascsq'}))
+and src = splitflex(lreadfast(
+{'/scratch/erikz/c20.bin11','/scratch/erikz/c20.bin12'}, L),
+L + 1, #'dxpartitionbin', make_record({'hostname', 'gr41.uppmax.uu.se'}))
+and L = 20));
+
+-- L=30
+-- c30.bin2 and c30.bin3 (415 s real time) take 517 s on grad.
+-- Only c30.bin3 (13 s real time) takes 35 s on grad.
+
+writefiles("/scratch/erikz/c30.bin", 20000000, iarray(in(lreadfast(
+vselect "/scratch/erikz/ezgen/30/cdp" + i 
+from integer i where i in iota(30,36), 30))));
+
+writefiles("/scratch/erikz/c30.out", 10000000,
+in(select in(mergestreams(concat({abagg}, concat(alla, mybin))))
+from vector of stream src, vector of stream proc, vector of stream postproc,
+vector of stream alla, stream abagg, vector of stream my, 
+vector of stream mybin, integer L
+where abagg = ostream(newsp(lrf(zipstreams(vectorize(select i, postproc[i*2+1]
+  from integer i where i in iota(0, dim(postproc)/2))))), 0)
+and alla = vectorize(select i, postproc[i*2]
+  from integer i where i in iota(0, dim(postproc)/2))
+and postproc = splitstreams(proc, 2, #'accbalsplit')
+and proc = mapstreams(
+(vselect src[i] from integer i where i in iota(0, L - 1)),
+#'lrbin')
+and mybin = mapstreams(my, #'vstream2iastream')
+and my = mapflexv({{'mei.it.uu.se', 'lr', src[L]}}, #'dailyexp',
+                 make_record({'hostname', 'mei.it.uu.se', 'exe', 'javascsq'}))
+and src = splitflex(lreadfast({'/scratch/erikz/c30.bin3'}, L),
+  L + 1, #'dxpartitionbin',
+  make_record({'hostname', 'gr41.uppmax.uu.se'}))
+and L = 30));
+
+-- split dxpartition into dpartitionbin + xpartitionbin => 425 s on grad. 
+-- (Almost there...)
+
+writefiles("/scratch/erikz/c30.out", 10000000,
+in(select in(mergestreams(concat({abagg}, concat(alla, mybin))))
+from vector of stream of numarray xp, vector of stream of literal dp,
+vector of stream proc,
+vector of stream postproc, vector of stream alla, stream abagg,
+vector of stream my, vector of stream mybin, integer L
+where abagg = ostream(newsp(lrf(zipstreams(vectorize(select i, postproc[i*2+1]
+  from integer i where i in iota(0, dim(postproc)/2))))), 0)
+and alla = vectorize(select i, postproc[i*2]
+  from integer i where i in iota(0, dim(postproc)/2))
+and postproc = splitstreams(proc, 2, #'accbalsplit')
+and proc = mapstreams(xp, #'lrbin')
+and mybin = mapstreams(my, #'vstream2iastream')
+and my = mapflexv({{'mei.it.uu.se', 'lr', dp[1]}}, #'dailyexp',
+                  make_record({'hostname', 'mei.it.uu.se', 'exe', 'javascsq'}))
+and xp = splitstream(dp[0], L, #'xpartitionbin')
+and dp = splitflex(lreadfast({'/scratch/erikz/c30.bin2'
+, '/scratch/erikz/c30.bin3'
+}, L), 2, #'dpartitionbin',
+make_record({'hostname', 'gr41.uppmax.uu.se'}))
+and L = 30));
+
+-- split xpartitionbin into a tree of hashpartitionbins
+
+writefiles("/scratch/erikz/c30.out", 10000000,
+in(select in(mergestreams(concat({abagg}, concat(alla, mybin))))
+from vector of stream of numarray xp, vector of stream of literal dp,
+vector of stream proc,
+vector of stream postproc, vector of stream alla, stream abagg,
+vector of stream my, vector of stream mybin, integer L
+where abagg = ostream(newsp(lrf(zipstreams(vectorize(select i, postproc[i*2+1]
+  from integer i where i in iota(0, dim(postproc)/2))))), 0)
+and alla = vectorize(select i, postproc[i*2]
+  from integer i where i in iota(0, dim(postproc)/2))
+and postproc = splitstreams(proc, 2, #'accbalsplit')
+and proc = mapstreams(xp, #'lrbin')
+and mybin = mapstreams(my, #'vstream2iastream')
+and my = mapflexv({{'mei.it.uu.se', 'lr', dp[1]}}, #'dailyexp',
+                  make_record({'hostname', 'mei.it.uu.se', 'exe', 'javascsq'}))
+and xp = splitstream(dp[0], L, #'xpartitionbin')
+and dp = splitflex(lreadfast({'/scratch/erikz/c30.bin2'}, L), 2,
+#'dpartitionbin', make_record({'hostname', 'gr41.uppmax.uu.se'}))
+and L = 30));
+
+
+-- 
+
+select in(zipstreams(mapstreams(s, #'stream.scount->stream')))
+from vector of stream of iarray s 
+where s = splitstream(lreadfastbin(inputdir(
+  getenv('HOSTNAME')) + '/c10-20k.bin', 10), 10 + 1, #'dxpartitionbin');
+
+count(in(ostream(newspflex(lreadfast({'/scratch/erikz/c30.bin3'}, 30),
+make_record({'hostname', 'gr54.uppmax.uu.se'})), 0)));
+
+create function bush(integer width)->vector as
+select in(zipstreams(proc))
+from vector of stream proc, vector of stream sp, stream sr
+where proc = mapstreams(sp, #'stream.scount->stream')
+and sp = hpartstreamv(sr, #'lrproute', width, {width}, 0)
+and sr = ostream(newspflex(lreadfast({'/scratch/erikz/c30.bin3'}, 30),
+make_record({'hostname', 'gr54.uppmax.uu.se'})), 0); 
+
+"
+
+(checkequal "d + xpartition + MySQL + lr + abagg of 700k tpls"
+((osql "count(select in(mergestreams(concat({abagg}, concat(alla, my))))
+from vector of stream of vector dp, vector of stream xp, vector of stream proc,
+vector of stream my, vector of stream postproc, vector of stream alla, 
+stream abagg, integer L
+where abagg = ostream(newsp(lrf(zipstreams(vectorize(select i, postproc[i*2+1]
+  from integer i where i in iota(0, dim(postproc)/2))))), 0)
+and alla = vectorize(select i, postproc[i*2]
+  from integer i where i in iota(0, dim(postproc)/2))
+and postproc = splitstreams(proc, 2, #'accbalsplit')
+and proc = mapstreams(xp, #'lrbin')
+and my = mapflexv({{'mei.it.uu.se', 'lr', dp[1]}}, #'dailyexp',
+                  make_record({'hostname', 'mei.it.uu.se', 'exe', 'javascsq'}))
+and xp = splitstream(dp[0], L, #'xpartitionbin')
+and dp = splitflex(lreadfast({'/scratch/erikz/c30.bin3'}, L),
+                   2, #'dpartitionbin',
+  make_record({'hostname', 'gr41.uppmax.uu.se'}))
+and L=30);")
+'((784367))))
+
+
+
+(checkequal "d + xpartition + MySQL + lr of 700k tpls"
+((osql "count(select in(mergestreams(concat(postproc, mybin)))
+from vector of stream of vector dp, vector of stream xp, vector of stream proc,
+vector of stream my, vector of stream mybin, vector of stream postproc,
+integer L
+where postproc = splitstreams(proc, 2, #'accbalsplit')
+and proc = mapstreams(xp, #'lrbin')
+and mybin = mapstreams(my, #'vstream2iastream')
+and my = mapflexv({{'mei.it.uu.se', 'lr', dp[1]}}, #'dailyexp',
+                  make_record({'hostname', 'mei.it.uu.se', 'exe', 'javascsq'}))
+and xp = splitstream(dp[0], L, #'xpartitionbin')
+and dp = splitflex(lreadfast({'/scratch/erikz/c30.bin3'}, L),
+                   2, #'dpartitionbin',
+  make_record({'hostname', 'gr41.uppmax.uu.se'}))
+and L=30);")
+'((784367))))
+
+writefiles("/scratch/erikz/c30.out", 10000000,
+in(select in(mergestreams(concat({abagg}, concat(alla, mybin))))
+from vector of stream xp, vector of stream dp, vector of stream proc,
+vector of stream postproc, vector of stream alla, stream abagg,
+vector of stream my, vector of stream mybin, integer L
+where abagg = ostream(newsp(lrf(zipstreams(vectorize(select i, postproc[i*2+1]
+  from integer i where i in iota(0, dim(postproc)/2))))), 0)
+and alla = vectorize(select i, postproc[i*2]
+  from integer i where i in iota(0, dim(postproc)/2))
+and postproc = splitstreams(proc, 2, #'accbalsplit')
+and proc = mapstreams(xp, #'lrbin')
+and mybin = mapstreams(my, #'vstream2iastream')
+and my = mapflexv({{'mei.it.uu.se', 'lr', dp[1]}}, #'dailyexp',
+                  make_record({'hostname', 'mei.it.uu.se', 'exe', 'javascsq'}))
+and xp = splitstream(dp[0], L, #'xpartitionbin')
+and dp = splitflex(lreadfast({'/scratch/erikz/c30.bin3'}, L),
+                   2, #'dpartitionbin',
+  make_record({'hostname', 'gr41.uppmax.uu.se'}))
+and L = 30));
+
+
+*/

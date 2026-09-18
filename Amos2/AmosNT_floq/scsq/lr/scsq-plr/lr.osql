@@ -1,0 +1,94 @@
+/*-*-sql-*-*******************************************************************/
+
+logging off;
+create function lrinputfiles(integer num)->vector of charstring;
+
+set lrinputfiles(40) = {'/local/home/javad/AmosNT/scsq/lr/data/cdp_lite40.bin'};
+/*set lrinputfiles(64) = {'/home/edemar/AmosNT/scsq/lr/binbench/c64-last1mil.bin'};
+set lrinputfiles(52) = {'/scratch/erikz/c52-0', '/scratch/erikz/c52-1',
+'/scratch/erikz/c52-2'};
+
+set lrinputfiles(100) = vselect('/glob/edemar/lrdata/100o/c100-'+iota( 0, 121 ) );
+*/
+/*
+set lrinputfiles(100) = {'/home/edemar/c100-last1000000.bin'};
+*/
+
+/*
+How to generate large input data from smaller input data:
+writefiles("l64-", 10000000,
+  clrmultiplyf( in( lreadfastbins(lrinputfiles(64) ) ), 64, 1.5625 ) );
+*/
+
+/*
+Decoment this when running on a cluster:
+
+sp_basehostnum(1);
+sp_currenthostnum(0);
+*/
+set lroutputfiles() = "/local/home/javad/AmosNT/scsq/lr/scsq-plr/lrouput";
+/*create function dlrnomysepib(stream inputstream, vector of integer fo,
+                             integer L, charstring descr) -> object as
+select in(mergestreams({t2, t1, t0}))
+from stream of iarray input, charstring ofname,
+vector of stream xp, vector of stream proc, vector of stream postproc,
+stream t0, stream t1, stream t2
+where t2 = ostream(newspflex(streamof(writefiles(ofname + "-ib-2-", 10000000,
+  dtslrbin(lrf0(in(zipstreams(vectorize(select i, postproc[i*3 + 2]
+  from integer i where i in iota(0, dim(postproc)/3)))))))),
+  make_record({'hostname', 'udbl64.it.uu.se'})), 0)
+and t1 = ostream(newspflex(streamof(writefiles(ofname + "-ib-1-", 10000000,
+  dtslrbin(in_d(mergestreams(vectorize(select i, postproc[i*3 + 1]
+  from integer i where i in iota(0, dim(postproc)/3))))))),
+  make_record({'hostname', 'udbl64.it.uu.se'})), 0)
+and t0 = ostream(newspflex(streamof(writefiles(ofname + "-ib-0-", 10000000,
+  dtslrbin(in_d(mergestreams(vectorize(select i, postproc[i*3]
+  from integer i where i in iota(0, dim(postproc)/3))))))),
+  make_record({'hostname', 'udbl64.it.uu.se'})), 0)
+and postproc = splitstreams(proc, 3, #'oesplit')
+and proc = mapstreams(xp, #'lrbin')
+and xp = hpartstreamv(input, #'lrproute', L, fo, 0)
+and input = ostream(newspflex(inputstream,
+make_record({'hostname', 'udbl64.it.uu.se'})), 0)
+and ofname = lroutputfiles() + stringify(L) + descr;
+*/
+create function dlrnomysepib(stream inputstream, vector of integer fo,
+                             integer L, charstring descr) -> object as
+select in( mergestreams( {t2, t1, t0} ) )
+from stream of iarray input, charstring ofname,
+vector of stream xp, vector of stream proc, vector of stream postproc,
+stream t0, stream t1, stream t2
+where t2 = ostream(newspflex(streamof(writefiles(ofname + "-ib-2-", 10000000,
+  dtslrbin(lrf0(in(zipstreams(vectorize(select i, postproc[i*3 + 2]
+  from integer i where i in iota(0, dim(postproc)/3)))))))),
+  make_record({'hostname', 'localhost'})), 0)
+and t1 = ostream(newspflex(streamof(writefiles(ofname + "-ib-1-", 10000000,
+  dtslrbin(in_d(mergestreams(vectorize(select i, postproc[i*3 + 1]
+  from integer i where i in iota(0, dim(postproc)/3))))))),
+  make_record({'hostname', 'localhost'})), 0)
+and t0 = ostream(newspflex(streamof(writefiles(ofname + "-ib-0-", 10000000,
+  dtslrbin(in_d(mergestreams(vectorize(select i, postproc[i*3]
+  from integer i where i in iota(0, dim(postproc)/3))))))),
+  make_record({'hostname', 'localhost'})), 0)
+and postproc = splitstreams(proc, 3, #'oesplit')
+and proc = mapstreams(xp, #'lrbin')
+and xp = hpartstreamv(input, #'lrproute', L, fo, 0)
+and input = ostream(newspflex(inputstream,
+make_record({'hostname', 'localhost'})), 0)
+and ofname = lroutputfiles() + stringify(L);
+
+
+lisp;
+(imagesize 150000000)
+;"
+:osql
+
+
+dlrnomysepib(lreadfast(lrinputfiles(100), 128),
+                     {2, 5, 10}, 100, 'complete');
+/*
+dlrnomysepib(lreadfastbins(lrinputfiles(40)),
+                     {2 ,5 ,40}, 40, 'complete');
+*/		  
+
+q();

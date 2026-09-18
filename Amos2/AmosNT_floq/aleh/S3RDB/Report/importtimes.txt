@@ -1,0 +1,157 @@
+
+
+
+repeatid
+
+101
+functions
+
+fillevent(:ds);
+1.122 s
+filljetb1(:ds);
+5.768 s
+fillmuon1(:ds);
+0.251 s
+fillelectron1(:ds);
+0.28 s
+
+101
+views
+
+fillevent(:ds1b);
+0.421 s
+filljetb1(:ds1b);
+4.957 s
+fillmuon1(:ds1b);
+0.36 s
+fillelectron1(:ds1b);
+0.3 s
+
+
+25000
+function
+
+fillevent(:ds);
+107.014 s
+filljetb1(:ds);
+1495.33 s
+fillmuon1(:ds);
+42.241 s
+fillelectron1(:ds);
+9.556 s
+
+2500
+views
+
+fillevent(:ds1b);
+97.08 s
+filljetb1(:ds1b);
+1108.67 s
+fillmuon1(:ds1b);
+39.326 s
+fillelectron1(:ds1b);
+62.219 s
+
+duplicatedata
+
+101
+functions
+
+
+fillevent(:ds3);
+0.36 s
+filljetb3(:ds3);
+4.816 s
+fillmuon3(:ds3);
+0.351 s
+fillelectron3(:ds3);
+0.32 s
+
+101
+views
+
+
+fillevent(:dsb);
+0.34 s
+filljetb3(:dsb);
+4.687 s
+fillmuon3(:dsb);
+0.27 s
+fillelectron3(:dsb);
+0.311 s
+
+25000
+functions
+
+fillevent(:ds3);
+130.327 s
+filljetb3(:ds3);
+4288.82 s
+fillmuon3(:ds3);
+129.246 s
+fillelectron3(:ds3);
+165.779 s
+
+
+25000
+views
+
+
+fillevent(:dsb);
+88.787 s
+filljetb3(:dsb);
+6684.37 s
+fillmuon3(:dsb);
+202.842 s
+fillelectron3(:dsb);
+163.795 s
+
+
+bigtable
+
+101
+functions
+
+fillevent(:ds4);
+0.32 s
+filljetb4(:ds4);
+3.375 s
+fillmuon4(:ds4);
+0.151 s
+fillelectron4(:ds4);
+0.17 s
+
+101
+views
+
+fillevent(:ds4b);
+0.37 s
+filljetb4(:ds4b);
+3.545 s
+fillmuon4(:ds4b);
+0.16 s
+fillelectron4(:ds4b);
+
+25000
+functions
+
+fillevent(:ds4);
+112.852 s
+filljetb4(:ds4);
+4647.12 s
+fillmuon4(:ds4);
+139.491 s
+fillelectron4(:ds4);
+214.118 s
+
+25000
+views
+
+fillevent(:ds4b);
+196.622 s
+JavaAMOS 29> filljetb4(:ds4b);
+4614.12 s
+JavaAMOS 29> fillmuon4(:ds4b);
+123.017 s
+JavaAMOS 29> fillelectron4(:ds4b);
+125.811 s

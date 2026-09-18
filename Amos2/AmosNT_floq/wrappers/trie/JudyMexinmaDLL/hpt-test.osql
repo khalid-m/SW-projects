@@ -1,0 +1,76 @@
+
+register_exindextype("HPTRIE", "C:HPTRIE", FALSE);
+
+create function f0(Number a)-> Number b as stored;
+
+/*testing scalability of search without indexing*/
+
+add f0(x*11)=x from number x where x in iota(1,500000);
+
+f0(44);
+
+create function q1(number b)-> number a as
+select x from number x where f0(x)=b;
+
+f0(55);
+
+q1(444);
+
+pc("q1");
+
+create_index("f0", "b", "HPTRIE", "unique");
+
+recompile('q1');
+
+pc("q1");
+
+
+q1(444);
+
+remove f0(44)=4;
+
+drop_index("f0","b");
+
+indexes(#'f0');
+
+q1(333);
+
+f0(33);
+
+pc("f0");
+
+/*Tesing  range search re-write rules!*/
+
+
+register_exindextype("HPTRIE", "C:HPTRIE", FALSE);
+
+create function f1(Number a, Number b)-> Number c as stored;
+
+add f1(x*11,x)=x*10 from number x where x in iota(1,1000000);
+
+f1(440000,40000);
+
+create function range_search(number x,number y)-> <number a1,number b1,number c1> as
+select a,b,c from number a, number b,number c where b>x and b<y and f1(a,b)=c;
+
+range_search(100000,100011);
+
+indexes(#'f1');
+
+pc("range_search");
+
+create_index("f1", "b", "hptrie", "unique");
+
+recompile("range_search");
+
+/*drop_index('f1','a');*/
+
+indexes(#'f1');
+
+pc("range_search");
+
+range_search(100000,100011);
+
+pc("range_search");
+
+quit;

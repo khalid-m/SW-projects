@@ -1,0 +1,94 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Johan Petrini, UDBL
+	2010 Silvia Stefanova, UDBL
+ * 
+ * Description: Setup of master regression test of SWARD system exporting 
+ * and querying the eGovBus relational database with strategies END-P.
+ *****************************************************************************/
+/* Settings 
+ */
+lisp;
+(setq _save-intermediates_ t)
+:osql
+
+/* Define DS for EGOVBUS relational database.
+ * Only done once for each relational database by admin.
+ */
+defineDS("EGOVDS",
+         getenv("URLDB"),
+         getenv("DRIVERDB"),
+         getenv("CATALOGDB"),
+         "",
+         getenv("USERDB"),
+         getenv("PASSWORDDB"));
+
+/* Define UPV 'EGov' associated with data source 'EGOVDS'. 
+ */
+defineUPV("EGOVDS","EGov","http://udbl.it.uu.se/upv/eGov/");
+
+/* Populate SARD system tables 
+ */
+
+/* Set property and class mappings
+ */
+set pMap("lifeevent","LID","EGov")="http://udbl.it.uu.se/schemas/eGovern#LifeEventID";
+set pMap("lifeevent","NAME","EGov")="http://purl.org/dc/elements/1.1/title";
+set pMap("lifeevent","DESCR","EGov")="http://purl.org/dc/elements/1.1/description";
+/*Added by Silvia Stefanova*/
+set pMap("lifeevent","LANG","EGov")="http://purl.org/dc/elements/1.1/language";
+set pMap("lifeevent","LAW","EGov")="http://udbl.it.uu.se/schemas/eGovern#parag";
+set pMap("lifeevent","COUNTRY","EGov")="http://udbl.it.uu.se/schemas/eGovern#country";
+set pMap("form","FID","EGov")="http://udbl.it.uu.se/schemas/eGovern#FormID";
+set pmap("form","URL","EGov")="http://udbl.it.uu.se/schemas/eGovern#URL";
+set pMap("form","CREATOR","EGov")="http://www.egov_project.org/GovMLSchema#Creator";
+set pMap("form","NOFF","EGov")="http://udbl.it.uu.se/schemas/eGovern#NumberOfFields";
+set pMap("form","LIFEEVENT","EGov")="http://udbl.it.uu.se/schemas/eGovern#liveeventform";
+/*assignPropID("SERVICE","TITLE","EGov","http://purl.org/dc/elements/1.1/servicetitle");*/
+set pMap("eucountry","COUNTRY","EGov")="http://udbl.it.uu.se/schemas/eGovern#countryoftheevent";
+set pMap("eucountry","CURRENCY","EGov")="http://udbl.it.uu.se/schemas/eGovern#EUcurrency";
+
+set cMap("form","EGov")="http://udbl.it.uu.se/schemas/eGovern#Form"; 
+set cMap("eucountry","EGov")="http://udbl.it.uu.se/schemas/eGovern#EUcountry"; 
+set cMap("lifeevent","EGov")="http://udbl.it.uu.se/schemas/eGovern#LifeEvent";
+
+/*assignClassID("SERVICE","EGov",
+                "http://udbl.it.uu.se/schemas/eGovern#Service");*/
+
+
+/*Assigning properties for one-to-many relationships (Changed by Silvia Stefanova)*/
+
+set rcMap("form","lifeevent","EGov")="http://udbl.it.uu.se/schemas/eGovern#Concern";
+set rcMap("lifeevent","eucountry","EGov")="http://udbl.it.uu.se/schemas/eGovern#lifeev_country";
+
+/*assignCRID("SERVICE","LIFEEVENT","LIFEEVENT","EGov","http://udbl.it.uu.se/schemas/eGovern#Service_of_lifeevent");*/
+/*assignCRID("SERVICE","SNR","FORM","EGov","http://udbl.it.uu.se/schemas/eGovern#Service_of_lifeevent");*/
+
+/*Assigning properties for many-to-many relationships*/ 
+set rmmMap("service",{"SNR"},{"LIFEEVENT"},"form","lifeevent", "EGov")= "http://udbl.it.uu.se/schemas/eGovern#forms_of_thelifeevents";
+
+/*Assign data type mappings */
+set typemap("form","LIFEEVENT","EGov")="http://www.w3.org/2001/XMLSchema#string";
+set typemap("form","NOFF","EGov")="http://www.w3.org/2001/XMLSchema#integer";
+set typemap("form","CREATOR","EGov")="http://www.w3.org/2001/XMLSchema#string";
+set typemap("form","URL","EGov")="http://www.w3.org/2001/XMLSchema#string";
+set typemap("form","FID","EGov")="http://www.w3.org/2001/XMLSchema#string";
+
+set typemap("lifeevent","LAW","EGov")="http://www.w3.org/2001/XMLSchema#string";
+set typemap("lifeevent","DESCR","EGov")="http://www.w3.org/2001/XMLSchema#string";
+set typemap("lifeevent","LANG","EGov")="http://www.w3.org/2001/XMLSchema#string";
+set typemap("lifeevent","COUNTRY","EGov")="http://www.w3.org/2001/XMLSchema#string";
+set typemap("lifeevent","NAME","EGov")="http://www.w3.org/2001/XMLSchema#string";
+set typemap("lifeevent","LID","EGov")="http://www.w3.org/2001/XMLSchema#string";
+
+set typemap("eucountry","CURRENCY","EGov")="http://www.w3.org/2001/XMLSchema#string";
+set typemap("eucountry","COUNTRY","EGov")="http://www.w3.org/2001/XMLSchema#string";
+
+/* Connect to predefined data source assigned to UPV 'eGov'. 
+ */
+
+DSConnect("EGov");	
+
+
+

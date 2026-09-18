@@ -1,0 +1,62 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2008 Ruslan Fomkin, UDBL
+ * $RCSfile: stream.structs.rewritten.osql,v $
+ * $Revision: 1.2 $ $Date: 2008/09/04 16:00:39 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  AmosQL scripts for running stream with structs, where transformation 
+ * queries are rewritten with sobject_transpose.
+ ****************************************************************************
+ * $Log: stream.structs.rewritten.osql,v $
+ * Revision 1.2  2008/09/04 16:00:39  ruslan
+ * particle schema definition using sobject_transpose
+ *
+ * Revision 1.1  2008/09/03 12:26:59  ruslan
+ * master files
+ *
+ ****************************************************************************/
+
+<"stream.structs.basic.osql";
+
+delete function particles;
+delete function leptons;
+delete function electrons;
+delete function muons;
+delete function jets;
+
+/* Creating electron structs for a given event and streaming them. */
+create function new_electrons(event ev)-> bag of Electron as
+select sobject_transpose({2,3,4,5,6},ev,typenamed("ELECTRON"));
+
+/* Creating muon structs for a given event and streaming them. */
+create function new_muons(event ev)-> bag of Muon as
+select sobject_transpose({7,8,9,10,11},ev,typenamed("MUON"));
+
+/* Creating jetb structs for a given event and streaming them. */
+create function new_jets(event ev)-> bag of Jet as
+select sobject_transpose({12,13,14,15,16},ev,typenamed("JET"));
+
+create function electrons(event ev) -> bag of electron e as multidirectional
+("bf" select new_electrons(ev))
+("fb" select event(e));
+
+create function muons(event ev) -> bag of muon m as multidirectional
+("bf" select new_muons(ev))
+("fb" select event(m));
+
+create function jets(event ev) -> bag of jet j as multidirectional
+("bf" select new_jets(ev))
+("fb" select event(j));
+
+create function leptons(event ev)-> Lepton l as multidirectional
+("bf"	select l
+	where l=electrons(ev) or l=muons(ev))
+("fb"	select event(l));
+
+create function particles(event ev)-> Particle p as multidirectional
+("bf"	select p
+	where p=leptons(ev) or p=jets(ev))
+("fb"	select event(p));

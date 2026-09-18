@@ -1,0 +1,12 @@
+echo Making image...
+pushd system/Unix
+export releasing=1
+make clean
+make
+popd
+
+echo Removing old MacAmos.zip ...
+rm MacAmos.zip
+
+echo Building new MacAmos.zip ...
+zip MacAmos README bin/README bin/alisp bin/alisp.dmp bin/bt.so bin/xt.so bin/amos2 bin/amos2.dmp bin/libamos.so bin/bt.so bin/xt.so bin/libJavaAmos.jnilib bin/javaamos bin/javaamos.jar bin/ C/callin.h C/callout.h C/storage.h C/complex.h C/main.c C/environ.h C/alisp.h lsp/init.el demo/tutorial.amosql demo/wcdata.amosql demo/Foreign.java demo/mydbdef.amosql demo/Makefile demo/clientdemo.c demo/ClientDemo.java demo/foreign.c demo/myCdbdef.amosql demo/README 

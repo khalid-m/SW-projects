@@ -1,0 +1,538 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2007 Ruslan Fomkin, UDBL
+ * $RCSfile: static_cm.tunning.osql,v $
+ * $Revision: 1.16 $ $Date: 2008/01/31 12:25:26 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  
+ ****************************************************************************
+ * $Log: static_cm.tunning.osql,v $
+ * Revision 1.16  2008/01/31 12:25:26  ruslan
+ * bug in comments
+ *
+ * Revision 1.15  2008/01/31 12:02:43  ruslan
+ * reoptimizations on different levels
+ *
+ * Revision 1.14  2008/01/31 08:22:38  ruslan
+ * streaming only is commented
+ *
+ * Revision 1.13  2008/01/28 14:47:12  ruslan
+ * optimization of streaming
+ *
+ * Revision 1.12  2007/10/11 07:24:25  ruslan
+ * more general SH experiments
+ *
+ * Revision 1.11  2007/10/09 12:44:46  ruslan
+ * minor change
+ *
+ * Revision 1.10  2007/10/09 07:18:36  ruslan
+ * sh tuning
+ *
+ * Revision 1.9  2007/10/08 08:08:12  ruslan
+ * improving II tuning
+ *
+ * Revision 1.8  2007/10/08 07:46:18  ruslan
+ * static cm with reoptimize2
+ *
+ * Revision 1.7  2007/10/06 07:41:30  ruslan
+ * experiments over SH starting with SH=0
+ *
+ * Revision 1.6  2007/10/03 11:46:45  ruslan
+ * tuning confidence
+ *
+ * Revision 1.5  2007/10/03 08:42:36  ruslan
+ * tuning II and SH of randomopt
+ *
+ * Revision 1.4  2007/10/02 08:40:00  ruslan
+ * sh tunning
+ *
+ * Revision 1.3  2007/10/02 08:15:05  ruslan
+ * II tunning
+ *
+ * Revision 1.2  2007/09/29 12:07:44  ruslan
+ * collecting statistics and meand value function now with arguments
+ *
+ * Revision 1.1  2007/09/26 07:08:42  ruslan
+ * tunning static cost model approach
+ *
+ ****************************************************************************/
+
+<'../experiments/stream.osql';
+
+create function my_print(charstring, charstring, real, real, real,
+		real, real, real, integer, real, real) -> boolean as 
+	foreign 'myprint';
+
+create function my_print(charstring, integer, real, real, real,
+		real, real, real, integer, real, real) -> boolean as 
+	foreign 'myprint';
+
+create function reoptimize0(charstring fnname, integer rptAvg) ->
+		<real opt_avg, real opt_sqsum, real opt_stdev, real avgtime,
+		real sqsum, real stdev, integer passedevents, 
+		real cst, real fnt> as
+begin
+	select a,sq,sd into opt_avg, opt_sqsum, opt_stdev
+	from real a, real sq, real sd
+	where <a,sq,sd> = reoptfn0(fnname,rptAvg);
+
+	select c,f into cst, fnt
+	from real c, real f
+	where <c,f> = plan_cost(fnname);
+
+	select a,q,s,p into avgtime,sqsum,stdev,passedevents
+	from real a, real q, real s, integer p
+	where <a,q,s,p> = execute(fnname,rptAvg);
+
+	result <opt_avg,opt_sqsum,opt_stdev,
+		avgtime,sqsum,stdev,passedevents,cst,fnt>;
+end;
+
+create function reoptimize(charstring fnname, integer rptAvg) ->
+		<real opt_avg, real opt_sqsum, real opt_stdev, real avgtime,
+		real sqsum, real stdev, integer passedevents, 
+		real cst, real fnt> as
+begin
+	select a,sq,sd into opt_avg, opt_sqsum, opt_stdev
+	from real a, real sq, real sd
+	where <a,sq,sd> = reoptfn(fnname,rptAvg);
+
+	select c,f into cst, fnt
+	from real c, real f
+	where <c,f> = plan_cost(fnname);
+
+	select a,q,s,p into avgtime,sqsum,stdev,passedevents
+	from real a, real q, real s, integer p
+	where <a,q,s,p> = execute(fnname,rptAvg);
+
+	result <opt_avg,opt_sqsum,opt_stdev,
+		avgtime,sqsum,stdev,passedevents,cst,fnt>;
+end;
+
+create function reopt_level(integer rptAvg) -> boolean as
+begin
+	declare real opt_avg, real opt_sqsum, real opt_stdev, real avgtime,
+		real sqsum, real stdev, integer passedevents, 
+		real cst, real fnt, integer collected;
+
+	/* Optimization on top with no statistics */
+	select TRUE
+	where <opt_avg,opt_sqsum,opt_stdev,avgtime,sqsum,stdev,passedevents,
+			cst,fnt> = reoptimize0("bkgsexpcuts->event",rptAvg) and
+		my_print("Top level","No stat",opt_avg,opt_sqsum,opt_stdev,
+			avgtime,sqsum,stdev,passedevents,cst,fnt);
+
+	/* Collect full statistics and optimize on top again */
+	structstat();
+	set collected = count(select aleh_stream(location(f)) from bkgfile f);
+	structstat(FALSE);
+
+	select TRUE
+	where <opt_avg,opt_sqsum,opt_stdev,avgtime,sqsum,stdev,passedevents,
+			cst,fnt> = reoptimize0("bkgsexpcuts->event",rptAvg) and
+		my_print("Top level",collected,opt_avg,opt_sqsum,opt_stdev,
+			avgtime,sqsum,stdev,passedevents,cst,fnt);
+
+	/* Optimize everywhere with stat */
+	select TRUE
+	where <opt_avg,opt_sqsum,opt_stdev,avgtime,sqsum,stdev,passedevents,
+			cst,fnt> = reoptimize("bkgsexpcuts->event",rptAvg) and
+		my_print("All levels",collected,opt_avg,opt_sqsum,opt_stdev,
+			avgtime,sqsum,stdev,passedevents,cst,fnt);
+
+	/* With No stat */
+	drop_structstat();
+
+	select TRUE
+	where <opt_avg,opt_sqsum,opt_stdev,avgtime,sqsum,stdev,passedevents,
+			cst,fnt> = reoptimize("bkgsexpcuts->event",rptAvg) and
+		my_print("All levels","No stat",opt_avg,opt_sqsum,opt_stdev,
+			avgtime,sqsum,stdev,passedevents,cst,fnt);
+end;
+
+/*
+create function stat_tuning(integer rptAvg, vector of real alpha, 
+				vector of real delta) -> boolean as
+begin
+end;
+*/
+/*
+create function my_print(charstring, real, real, real, real, real, real,
+			integer)  -> boolean as foreign 'myprint';
+
+create function streaming_only(charstring opt, 
+				integer rptAvg) -> boolean as
+begin
+	declare real opt_avg, real opt_sqsum, real opt_stdev, real avgtime,
+		real sqsum, real stdev, integer passedevents;
+	optmethod(opt);
+	optlevel(100,100);
+
+	select a,sq,sd into opt_avg, opt_sqsum, opt_stdev
+	from real a, real sq, real sd
+	where <a,sq,sd> = reoptfn("charstring.aleh_stream->event",rptAvg);
+
+	select a,q,s,p into avgtime,sqsum,stdev,passedevents
+	from real a, real q, real s, integer p, bkgfile f
+	where <a,q,s,p> = execute("charstring.aleh_stream->event",location(f), 
+				rptAvg) and id(f)=0;
+
+	my_print(opt,opt_avg,opt_stdev,opt_sqsum,avgtime,stdev,sqsum,
+			passedevents);
+end;
+
+create function streaming_only(integer rptAvg) -> boolean as
+begin
+	declare charstring filename;
+
+	openwritefile('../experiments/TheBkg.streaming_only.txt');
+
+	/* Warming up 
+	select location(f) into filename from bkgfile f where id(f)=0;
+	execute("charstring.aleh_stream->event",filename,1);
+	/* Making experiments 
+	streaming_only("ranksort",rptAvg);
+	streaming_only("randomopt",rptAvg);
+	streaming_only("exhaustive",rptAvg);
+	/* Collecting stat 
+	structstat();
+	execute("charstring.aleh_stream->event",filename,1);
+	structstat(FALSE);
+	/* Making experiments with collected stat 
+	streaming_only("ranksort",rptAvg);
+	streaming_only("randomopt",rptAvg);
+	streaming_only("exhaustive",rptAvg);
+
+	closewritefile();
+end;
+*/
+/*
+create function my_print(integer i, integer calls, real elmean, real elstderr,
+			real mumean, real mustderr, real jbmean, real jbstderr,
+			real ctR, real fanR, real extR,
+			real ctG, real fanG, real extG) -> boolean as 
+							foreign 'myprint';
+
+create function myprint(integer fileid, real avgtime, real ct, real fan) ->
+	boolean as foreign 'myprint';
+
+create function myprint(integer fileid, real avgtimeG, real ctG, real fanG,
+	real avgtimeR,real ctR, real fanR) -> boolean as foreign 'myprint';
+
+create function myprint(integer fileId, real avgtimeNG, real ctNG, real fanNG,
+	real avgtimeNR, real ctNR, real fanNR, real avgtimeAG, real ctAG,
+	real fanAG, real avgtimeAR, real ctAR, real fanAR) -> boolean as
+	foreign 'myprint';
+
+create function myprint(integer SH, real avgtime, real ct, real fan, real ext,
+	real ste) -> boolean as foreign 'myprint';
+
+create function myprint(charstring optm0, integer ii0, integer sh0,
+	charstring optm, integer ii, integer sh, real optt, real optse,
+	real cst, real fnt, real ext, real ste) -> boolean 
+	as foreign 'myprint';
+
+create function myprint(real zAlpha, real Delta, real st, integer sn,
+			real extG, real steG, real extR, real steR)
+		-> boolean as foreign 'myprint';
+
+create function statCollecting(integer rpt, integer delta) -> boolean as
+begin
+	optmethod('randomopt');
+	optlevel(100,1000);
+	for each integer i, integer st where i=iota(1,rpt) and st=(i-1)*delta
+	begin
+		declare real calls, real results, real sqsum,
+			real elmean, real elstderr,
+			real mumean, real mustderr,
+			real jbmean, real jbstderr,
+			real ctR, real fanR, real extR,
+			real ctG, real fanG, real extG;
+		getstructstat("../bkg2Events_ruslan_000.root",st,delta);
+		structstat(false);
+		select c,r,s into calls,results,sqsum 
+			from integer c, integer r, integer s
+			where <c,r,s> =struct_stat(typenamed("event"),4);
+		set elmean = results/calls;
+		set elstderr = sqrt((sqsum/calls-elmean*elmean)/calls);
+		select c,r,s into calls,results,sqsum 
+			from integer c, integer r, integer s
+			where <c,r,s> =struct_stat(typenamed("event"),5);
+		set mumean = results/calls;
+		set mustderr = sqrt((sqsum/calls-mumean*mumean)/calls);
+		select c,r,s into calls,results,sqsum 
+			from integer c, integer r, integer s
+			where <c,r,s> =struct_stat(typenamed("event"),6);
+		set jbmean = results/calls;
+		set jbstderr = sqrt((sqsum/calls-jbmean*jbmean)/calls);
+		optmethod('randomopt');
+		optlevel(100,1000);
+		reoptimize('expcuts->event');
+		optlevel(100,10000);
+		reoptimize0('expcuts->event');
+		select c,f into ctR,fanR
+			from real c, real f
+			where <c,f> = plan_cost('expcuts->event');
+		set extR=expcuts_bkg(3);
+		optmethod('ranksort');
+		reoptimize('expcuts->event');
+		select c,f into ctG,fanG
+			from real c, real f
+			where <c,f> = plan_cost('expcuts->event');
+		set extG=expcuts_bkg(3);
+		my_print(i,calls,elmean,elstderr,mumean,mustderr,
+			jbmean,jbstderr,ctR,fanR,extR,ctG,fanG,extG);
+	end;
+end;
+
+create function noAndAllStat(integer filenr, charstring GNfile, 
+	charstring RNfile, charstring Afile) -> boolean as
+begin
+	optlevel(100,1000);
+	optmethod('ranksort');
+	reoptimize('charstring.expcuts->event');
+	openwritefile(GNfile);
+	for each bkgfile f, integer fileid 
+	where fileid=id(f) and fileid = iota(0,filenr)
+	begin
+		declare real avgtime, real stderror, integer passedevents,
+			real ct, real fan;
+		select a,s,p into avgtime,stderror,passedevents
+		from real a, real s, integer p
+		where <a,s,p> = 
+			execute("charstring.expcuts->event",location(f), 
+				3, 1);
+		select c,f into ct,fan
+		from real c, real f
+		where <c,f> = plan_cost("charstring.expcuts->event");
+		myprint(fileid,avgtime,ct,fan);
+	end;
+	closewritefile();
+	optmethod('randomopt');
+	reoptimize('charstring.expcuts->event');
+	openwritefile(RNfile);
+	for each bkgfile f, integer fileid 
+	where fileid=id(f) and fileid = iota(0,filenr)
+	begin
+		declare real avgtime, real stderror, integer passedevents,
+			real ct, real fan;
+		select a,s,p into avgtime,stderror,passedevents
+		from real a, real s, integer p
+		where <a,s,p> = 
+			execute("charstring.expcuts->event",location(f), 
+				3, 1);
+		select c,f into ct,fan
+		from real c, real f
+		where <c,f> = plan_cost("charstring.expcuts->event");
+		myprint(fileid,avgtime,ct,fan);
+	end;
+	closewritefile();
+	openwritefile(Afile);
+	for each bkgfile f, integer fileid 
+	where fileid=id(f) and fileid = iota(0,filenr)
+	begin
+		declare real avgtimeG, real stderror, integer passedevents,
+			real ctG, real fanG, 
+			real avgtimeR, real ctR, real fanR;
+		getstructstat(location(f),25000);
+		structstat(false);
+		optmethod('ranksort');
+		reoptimize('charstring.expcuts->event');
+		select a,s,p into avgtimeG,stderror,passedevents
+		from real a, real s, integer p
+		where <a,s,p> = 
+			execute("charstring.expcuts->event",location(f), 
+				3, 1);
+		select c,f into ctG,fanG
+		from real c, real f
+		where <c,f> = plan_cost("charstring.expcuts->event");
+		optmethod('randomopt');
+		reoptimize('charstring.expcuts->event');
+		select a,s,p into avgtimeR,stderror,passedevents
+		from real a, real s, integer p
+		where <a,s,p> = 
+			execute("charstring.expcuts->event",location(f), 
+				3, 1);
+		select c,f into ctR,fanR
+		from real c, real f
+		where <c,f> = plan_cost("charstring.expcuts->event");
+		myprint(fileid,avgtimeG,ctG,fanG,avgtimeR,ctR,fanR);
+		drop_structstat();
+	end;
+	closewritefile();
+end;
+
+create function NoAndAllStatSignal() -> boolean as
+begin
+	declare charstring signalFile, real avgtimeNG, real stderror, 
+		integer passedevents, real ctNG, real fanNG, real avgtimeNR, 
+		real ctNR, real fanNR, real avgtimeAG, real ctAG, real fanAG,
+		real avgtimeAR, real ctAR, real fanAR;
+	select location(f) into signalFile from signalfile f;
+	optlevel(100,1000);
+	optmethod('ranksort');
+	reoptimize('charstring.expcuts->event');
+	select a,s,p into avgtimeNG,stderror,passedevents
+		from real a, real s, integer p
+		where <a,s,p> = 
+			execute("charstring.expcuts->event",signalFile,3,1);
+	select c,f into ctNG,fanNG
+		from real c, real f
+		where <c,f> = plan_cost("charstring.expcuts->event");
+	optmethod('randomopt');
+	reoptimize('charstring.expcuts->event');
+	select a,s,p into avgtimeNR,stderror,passedevents
+		from real a, real s, integer p
+		where <a,s,p> = 
+			execute("charstring.expcuts->event",signalFile,3,1);
+	select c,f into ctNR,fanNR 
+		from real c, real f
+		where <c,f> = plan_cost("charstring.expcuts->event");
+	getstructstat(signalFile,8623);
+	structstat(false);
+	optmethod('ranksort');
+	reoptimize('charstring.expcuts->event');
+	select a,s,p into avgtimeAG,stderror,passedevents
+		from real a, real s, integer p
+		where <a,s,p> = 
+			execute("charstring.expcuts->event",signalFile,3,1);
+	select c,f into ctAG,fanAG
+		from real c, real f
+		where <c,f> = plan_cost("charstring.expcuts->event");
+	optmethod('randomopt');
+	reoptimize('charstring.expcuts->event');
+	select a,s,p into avgtimeAR,stderror,passedevents
+		from real a, real s, integer p
+		where <a,s,p> = 
+			execute("charstring.expcuts->event",signalFile,3,1);
+	select c,f into ctAR,fanAR 
+		from real c, real f
+		where <c,f> = plan_cost("charstring.expcuts->event");
+	myprint(0,avgtimeNG,ctNG,fanNG,avgtimeNR,ctNR,fanNR,avgtimeAG,ctAG,
+		fanAG,avgtimeAR,ctAR,fanAR);
+end;
+
+create function IItuning(integer nrII, integer stepII,
+	integer SH, charstring fn) -> boolean as
+begin
+	declare real rt, real rse, real cst, real fnt, real ext, real ste,
+		charstring theBkgFile;
+	set theBkgFile = "../../wrappers/ROOTWrap/t.root";
+	group_optmethods('randomopt','randomopt');
+	for each integer ii where ii=stepII*iota(1,nrII)
+	begin
+		group_optlevels(ii,SH,ii,SH);
+		select ot,se into rt,rse
+		from real ot, real se
+		where <ot,se> = reopt2(fn,3);
+		select c,f into cst,fnt
+		from real c, real f
+		where <c,f> = plan_cost(fn);
+		select e,s into ext,ste
+		from real e, real s, integer r
+		where <e,s,r> = 
+			execute(fn,theBkgFile,1,3);
+		myprint(ii,rt,rse,cst,fnt,ext,ste);
+	end;
+end;
+
+create function SHtuning(integer startSHnr, integer nrSH, integer stepSH,
+	integer II, charstring fn) -> boolean as
+begin
+	declare real rt, real rse, real cst, real fnt, real ext, real ste,
+		charstring theBkgFile;
+	set theBkgFile = "../../wrappers/ROOTWrap/t.root";
+	group_optmethods('randomopt','randomopt');
+	for each integer sh where sh=stepSH*iota(startSHnr,nrSH)
+	begin
+		group_optlevels(II,sh,II,sh);
+		select ot,se into rt,rse
+		from real ot, real se
+		where <ot,se> = reopt2(fn,1);
+		select c,f into cst,fnt
+		from real c, real f
+		where <c,f> = plan_cost(fn);
+		select e,s into ext, ste
+		from real e, real s, integer r
+		where <e,s,r> = 
+			execute(fn,theBkgFile,1,5);
+		myprint(sh,rt,rse,cst,fnt,ext,ste);
+	end;
+end;
+
+create function optimizationSubqueries(charstring optm0, integer ii0, 
+	integer sh0, bag iis, integer shnr, integer shstep) -> boolean as
+begin
+	declare real optt, real optse, real cst, real fnt, real ext, real ste,
+		charstring theBkgFile;
+	set theBkgFile = "../../wrappers/ROOTWrap/t.root";
+	group_optmethods(optm0,'ranksort');
+	group_optlevels(ii0,sh0,0,0);
+	select ot,se into optt,optse
+	from real ot, real se
+	where <ot,se> = reopt2('charstring.expcuts->event',1);
+	select c,f into cst,fnt
+	from real c, real f
+	where <c,f> = plan_cost('charstring.expcuts->event');
+	select e,s into ext,ste
+	from real e, real s, integer r
+	where <e,s,r> = 
+		execute('charstring.expcuts->event',theBkgFile,1,1);
+	myprint(optm0,ii0,sh0,'ranksort',0,0,optt,optse,cst,fnt,ext,ste);
+	for each integer ii, integer sh 
+	where ii in iis and sh=shstep*iota(0,shnr)
+	begin
+		group_optmethods(optm0,'randomopt');
+		group_optlevels(ii0,sh0,ii,sh);
+		select ot,se into optt,optse
+		from real ot, real se
+		where <ot,se> = reopt2('charstring.expcuts->event',1);
+		select c,f into cst,fnt
+		from real c, real f
+		where <c,f> = plan_cost('charstring.expcuts->event');
+		select e,s into ext,ste
+		from real e, real s, integer r
+		where <e,s,r> = 
+			execute('charstring.expcuts->event',theBkgFile,1,1);
+		myprint(optm0,ii0,sh0,'randomopt',ii,sh,optt,optse,cst,fnt,ext,
+			ste);
+	end;
+end;
+
+create function statTuning(bag zAlphas, bag Deltas, integer ii, integer shIn,
+			integer sh0) -> boolean as
+begin
+	declare real st, integer sn, real extG, real steG, real extR, 
+		real steR, charstring theBkgFile, charstring fn;
+	set theBkgFile = "../../wrappers/ROOTWrap/t.root";
+	set fn = "charstring.expcuts->event";
+	for each real zAlpha, real Delta where zAlpha in zAlphas
+						and Delta in Deltas
+	begin
+		drop_structstat();
+		select s,n into st,sn
+		from real s, integer n
+		where <s,n> = getstats("../../wrappers/ROOTWrap/t.root",
+					zAlpha,Delta,10);
+		optmethod('ranksort');
+		reoptimize('charstring.expcuts->event');
+		select e,s into extG,steG
+		from real e, real s, integer r
+		where <e,s,r> = 
+			execute(fn,theBkgFile,1,1);
+		optmethod('randomopt');
+		optlevel(ii,shIn);
+		reoptimize('charstring.expcuts->event');
+		optlevel(ii,sh0);
+		reoptimize0('charstring.expcuts->event');
+		select e,s into extR,steR
+		from real e, real s, integer r
+		where <e,s,r> = 
+			execute(fn,theBkgFile,1,1);
+		myprint(zAlpha,Delta,st,sn,extG,steG,extR,steR);
+	end;
+end;
+*/

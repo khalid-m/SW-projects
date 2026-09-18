@@ -1,0 +1,196 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2006 Ruslan Fomkin, UDBL
+ * $RCSfile: formulas.basic.osql,v $
+ * $Revision: 1.3 $ $Date: 2010/02/02 20:59:10 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  General arithmetic and vector calculations and calculations which are 
+ * needed for implementation of cuts in terms of vector results from ROOT 
+ * wrapper.
+ * 
+ ****************************************************************************
+ * $Log: formulas.basic.osql,v $
+ * Revision 1.3  2010/02/02 20:59:10  torer
+ * Integer overflow errors fixed
+ *
+ * Revision 1.2  2006/04/28 10:05:30  ruslan
+ * tuple brackets are inserted for result tuples
+ *
+ * Revision 1.1  2006/03/21 13:56:23  ruslan
+ * Streamed without ontology implementation is added
+ *
+ ****************************************************************************/
+
+/*****************************************************************/
+/* 
+ * General and vector operations
+ */
+
+load_lisp("../lsp/operations.lsp");
+create function plus(vector v1, vector v2) -> vector as foreign 'plus-vec';
+create function null_vector(vector v key) -> vector as foreign 'null-vec';
+create function log(number key) -> real key as foreign 'logn';
+create function atan2(number, number) -> real as foreign 'atan2f';
+/*create function ceiling(number key) -> integer as foreign 'ceilingf';*/
+/* create function cos(number) -> real as foreign 'cosf';*/
+
+create function magnitude(vector key) -> real as foreign 'magnitude';
+create function eta(vector key) -> real as foreign 'eta';
+create function pt(vector key) -> real as foreign 'pt';
+
+create function sum(bag of vector vs key) -> vector as
+begin
+	declare vector v0, integer size;
+	set v0 = null_vector(in(vs));
+	for each vector v where v=in(vs)
+		set v0=v0+v;
+	result v0;
+end;
+
+/* Mod of Vector */
+create function mod(vector v key) -> real as
+begin
+	declare real r;
+	set r=abs(sqrt(v*v));
+	result r;
+end;
+
+/*
+ * Calculation effective mass and vector2 specific operations
+ *
+ * Effective mass = sqrt(2*pt31*ptMiss*(1-cos(pt31.DeltaPhi(ptMiss))))
+ * DeltaPhi(v)=	Phi_mpi_pi(Phi()-v.Phi())
+ * Phi=			TMath::Pi()+TMath::ATan2(-fY,-fX)
+ * Phi_mpi_pi(x)=   while (x >= kPI) x -= kTWOPI;
+ *					while (x < -kPI) x += kTWOPI;
+ *					return x;
+ * kPI=				TMath::Pi
+ * kTOWPI=			2.0*kPI
+ * TMath::Pi=		3.14159265358979323846
+ * TMath::ATan2=	if (x != 0) return  atan2(y, x);
+ *					if (y == 0) return  0;
+ *					if (y >  0) return  Pi()/2;
+ *					else        return -Pi()/2; 
+ */
+
+create function pi() -> real as stored;
+set pi()=3.14159265358979323846;
+
+create function phi(Vector v key) -> real as
+	select atan2(-fy,-fx)+pi() from real fx, real fy where {fx,fy}=v;
+
+create function phi_mpi_pi(number x key) -> real as
+	select r from real r, integer k 
+	where r=x+k*2*pi() and k=ceiling(-1.0/2.0-x/(2.0*pi()));
+
+create function effectiveMass(Vector ptMiss, Vector pt31) -> real as
+begin
+	declare real r;
+	set r=abs(sqrt(abs(2.0*(pt31*ptMiss)*(1-cos(phi_mpi_pi(phi(pt31)-phi(ptMiss)))))));
+	result r;
+end;
+
+/****************************************************************/
+/*
+ * Generating particles and accessing values of them
+ */
+
+create function pxmiss(vector params) -> real as
+	select params[0];
+
+create function pymiss(vector params) -> real as
+	select params[1];
+
+/* 3D vector of momentum */
+create function momentum(vector particle) -> vector as
+	select {particle[1],particle[2],particle[3]};
+
+create function electrons(vector params) -> vector as
+select {cast(params[3] as vector)[i],cast(params[4] as vector)[i],
+	cast(params[5] as vector)[i],cast(params[6] as vector)[i],
+	cast(params[7] as vector)[i]}
+from integer i
+where i=iota(0,cast(cast(params[2] as integer)-1 as integer));
+
+create function electrons(vector vkey key, vector params) -> 
+	bag of <vector, vector> as
+select {vkey[0],vkey[1],i},
+	{cast(params[3] as vector)[i],cast(params[4] as vector)[i],
+	cast(params[5] as vector)[i],cast(params[6] as vector)[i],
+	cast(params[7] as vector)[i]}
+from integer i
+where i=iota(0,cast(cast(params[2] as integer)-1 as integer));
+
+create function muons(vector params) -> vector as
+select {cast(params[9] as vector)[i],cast(params[10] as vector)[i],
+	cast(params[11] as vector)[i],cast(params[12] as vector)[i],
+	cast(params[13] as vector)[i]}
+from integer i
+where i=iota(0,cast(cast(params[8] as integer)-1 as integer));
+
+create function muons(vector vkey key, vector params) -> 
+	bag of <vector, vector> as
+select {vkey[0],vkey[1],i},
+	{cast(params[9] as vector)[i],cast(params[10] as vector)[i],
+	cast(params[11] as vector)[i],cast(params[12] as vector)[i],
+	cast(params[13] as vector)[i]}
+from integer i
+where i=iota(0,cast(cast(params[8] as integer)-1 as integer));
+
+create function jetbs(vector params) -> vector as
+select {cast(params[15] as vector)[i],cast(params[16] as vector)[i],
+	cast(params[17] as vector)[i],cast(params[18] as vector)[i],
+	cast(params[19] as vector)[i]}
+from integer i
+where i=iota(0,cast(cast(params[14] as integer)-1 as integer));
+
+create function jetbs(vector vkey, vector params) -> 
+	bag of <vector, vector> as
+select {vkey[0],vkey[1],i},
+	{cast(params[15] as vector)[i],cast(params[16] as vector)[i],
+	cast(params[17] as vector)[i],cast(params[18] as vector)[i],
+	cast(params[19] as vector)[i]}
+from integer i
+where i=iota(0,cast(cast(params[14] as integer)-1 as integer));
+
+create function kf(vector particles) -> integer as
+	select particles[0];
+
+create function px(vector particles) -> real as
+	select particles[1];
+
+create function py(vector particles) -> real as
+	select particles[2];
+
+create function pz(vector particles) -> real as
+	select particles[3];
+
+create function ee(vector particles) -> real as
+	select particles[4];
+
+create function id(vector particle_key) -> integer as
+	select particle_key[2];
+
+/*******************************************************
+ * Invariant mass calculation of several particles
+*******************************************************/
+
+create function invMass(bag of vector vl) -> real as
+	select r from real e, real r, vector of real m
+	where e=sum(Ee(in(vl))) and	m=sum(momentum(in(vl))) 
+		and r=sqrt(abs(e*e-m*m)) and r>=0;
+
+/*
+create function invMass(bag of AbstractParticle vl key) -> real as
+	select r from real e, real r, real y, real xv, real z
+	where e=sum(Ee(in(vl))) and	y=sum(Py(in(vl))) and xv=sum(Px(in(vl))) and
+		z=sum(Pz(in(vl))) and r=sqrt(abs(e*e-(xv*xv+y*y+z*z))) and r>=0;
+*/
+/* Absolute value of difference between invariant mass of vector and
+   constant */
+
+create function absInvMass(bag of vector vs, real cMass) -> real as
+	select abs(invMass(vs)-cMass);

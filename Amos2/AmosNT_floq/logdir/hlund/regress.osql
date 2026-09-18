@@ -1,0 +1,51 @@
+/*-*-sql-*-*******************************************************************/
+
+< 'hlund_ex.osql';
+
+create function verify_tsorder(stream of vector s, integer tsindex) -> boolean
+ as begin
+  declare boolean result, real prev_ts;
+  set result=TRUE;
+  set prev_ts=0.0;
+  for each vector v where v in s
+   if v[tsindex]>=prev_ts then set prev_ts=v[tsindex] else set result=FALSE;
+  return result;
+end;
+
+lisp;
+
+(checkequal 
+ "q1a ts order"
+ ((osql "verify_tsorder(streamof(select {ts,var,toff,val,fname}
+         from number ts, number toff, number val,
+              charstring var, charstring fname
+              where (ts,var,toff,val,fname) in q1a()),0);")
+  '((TRUE))))
+
+(checkequal "count q1a"
+	    ((osql "count(q1a());") '((230))))
+
+(checkequal 
+ "q2a ts order"
+ ((osql "verify_tsorder(streamof(select {ts,val} from number ts, number val
+                                            where (ts,val) in q2a()),0);")
+  '((TRUE))))
+
+(checkequal 
+ "q2b ts order"
+ ((osql "verify_tsorder(streamof(select {ts,val} from number ts, number val
+                                            where (ts,val) in q2b()),0);")
+  '((TRUE))))
+
+(checkequal "q3a sum" ((last (osql "q3a_sum();")) '((230.0))))
+
+(checkequal "q4a sum" ((last (osql "q4a_sum();")) '((2810.0))))
+
+(checkequal "time skew"
+	    ((osql "count(synctest1());") '((180)))
+	    )
+
+:osql
+
+
+quit;

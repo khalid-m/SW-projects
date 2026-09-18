@@ -1,0 +1,119 @@
+Running the AMOS II system from a console window
+------------------------------------------------ 
+
+1. Unpack the downloaded zip file to some location of your choice in your
+   file system.
+
+2. Run the program
+      amos2
+   This program puts you in the Amos II top loop (console) where
+   AmosQL commands are entered and executed.
+
+3. (Optional) If you wish to run the system from the command line
+   anywhere in your file system you should set the environment
+   variable PATH to include first '.' and then the location of this 
+   'bin' directory. 
+
+AMOS II documentation and tutorials:
+------------------------------------
+
+To learn a little how to use Amos II:
+
+1. There is an introductory tutorial in
+       http://www.it.uu.se/research/group/udbl/amos/doc/intro.amosql
+   Open the file in a text editor, cut-and-paste the commands into
+   the Amos II console for evaluation, and study the responses. 
+
+2. The Amos II manual is in:
+       http://www.it.uu.se/research/group/udbl/amos/doc/amos_users_guide.html
+
+3. There is an introduction to object-oriented database design with
+   Amos II in:
+       http://www.it.uu.se/research/group/udbl/amos/doc/tut.pdf
+
+4. There is a tutorial on object-oriented database design with Amos II in:
+       http://www.it.uu.se/research/group/udbl/amos/doc/tutorial.amosql
+   Open the file in a text editor and cut-and-paste. 
+   There is extra data for the tutorial in
+       http://www.it.uu.se/research/group/udbl/amos/doc/wcdata.amosql
+
+ 
+Interface to Java language and GOOVI browser:
+---------------------------------------------
+
+Run Amos within the Java virtual machine by calling the command
+procedure (Windows) or executable (Unix):
+
+           javaamos <database image file> 
+
+   'javaamos' requires as first parameter the name of a database image file.
+   The default image is 'amos2.dmp' in the 'bin' folder.
+ 
+   With 'javaamos' You will enter the Amos II top loop (console) as with
+   'amos2', but 'javamos' runs inside the Java virtual machine. 
+
+   The multi-database browser Goovi can be started under 'javaamos' with the 
+   following function call:
+
+           goovi(); 
+
+
+Special for Linux:
+------------------
+
+Under Linux the variable LD_LIBRARY_PATH must be set to this 'bin'
+directory.
+
+
+Special for OSX:
+----------------
+
+Copy the Amos II root folder to your preferred location in your home
+folder. Notice that if you click on 'amos2' from the finder, an Amos
+II console will be opened with the current working directory being
+your home folder.
+
+
+Files:
+------
+
+amos2.exe (Windows)
+amos2     (Unix)
+          The Amos II executable. 
+
+amos2.dll (Windows)
+libamos.so (Unix)
+          The Amos kernel
+
+amos2.dmp The Amos II default database image. You may
+          specify alternative database image as parameter
+          to 'amos2' or 'javaamos'.
+
+javaamos.bat (Windows)
+javaamos (Unix) 
+          Command procedure (Windows) and executable (Unix) to run Amos II 
+          console from with the 32 bits Java virtual machine.
+
+amos2.lib (Windows)
+          Import library for MicroSoft Visual C++ applications
+
+javaamos.dll (Windows)
+javaamos.so (Linux)
+libJavaAmos.jnilib (OSX)
+          Dynamiclly loaded library required to run 'javaamos'. 
+
+javaamos.jar
+          Java library file implementing Java part of the interface
+          between Amos II and Java. Must be in CLASSPATH.
+
+php_amos.dll (Windows)
+          Dynamic Link Library required to call Amos II from PHP. 
+          See ..\embeddings\PHP\readme.txt
+            
+bt.dll (Windows)
+bt.so (Unix)
+          Implementation of main memory B-tree indexes
+
+xt.dll (Windows)
+xt.so (Unix)
+         Implementation of main memory X-tree indexes

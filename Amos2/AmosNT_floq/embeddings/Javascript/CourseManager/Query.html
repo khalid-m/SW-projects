@@ -1,0 +1,60 @@
+<html>
+    <head>
+        <title>Query Amos via AmosQL</title>
+        <script type="text/javascript" src="scripts/cookies.js"></script>
+        <script type="text/javascript" src="scripts/utility.js"></script>
+        <script type="text/javascript" src="scripts/SOAPClient.js"></script>
+        <script type="text/javascript" language="javascript">
+            var error;
+
+            function btnQuery_onclick() {
+                error = null;
+                var query = document.getElementById("txtQuery").value;
+                SOAPClient.invoke("EXECUTESQL", [query], true, excuteQuery_callBack, error_callBack);
+            }
+
+            function excuteQuery_callBack(o, xmlDoc)
+            {
+                if (o != null){
+                    var divBody = populateDiv(o);
+                    document.getElementById("oDivQueryResult").innerHTML = divBody;
+                }else{
+                    document.getElementById("oDivQueryResult").innerHTML = "null";
+                }
+            }
+
+            function error_callBack(e, errorCode){
+                if (e != null){
+                    error = e;
+                    document.getElementById("queryDiv").style.display='none';
+                    document.getElementById("errorDiv").innerHTML="Error callBack:<br>" + error + "<br><br>Error code:<br>" + errorCode;
+                }
+            }
+
+            function btnClose_onclick(){
+                returnValue='true';
+                window.close();
+            }
+
+            function window_onload(){
+                if (getCookie("name")==""||getCookie("name")==null){
+                    alert("You don't have authority to view this page.");
+                    document.all.aLogout.href='index.html';
+                    document.all.aLogout.click();
+                }
+            }
+        </script>
+    </head>
+    <body onload="return window_onload();">
+        <h2>Query Amos2 via AmosQL</h2>
+        <div id="queryDiv" style="display:block;">
+            <h3>Enter you query below:</h3>
+            <p><textarea id="txtQuery" cols="80" rows="5"></textarea></p>
+            <input id="btnQuery" type="button" value="Submit query" onclick="return btnQuery_onclick();">
+            <input id="btnClose" type="button" value="Close" onclick="return btnClose_onclick();">
+            <hr><br><b>The result of your query is :</b><br>
+            <div id="oDivQueryResult"></div><br>
+        </div>
+        <div id="errorDiv"></div>
+    </body>
+</html>

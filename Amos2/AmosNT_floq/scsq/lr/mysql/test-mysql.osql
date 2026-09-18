@@ -1,0 +1,602 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2009 Fredrik Edemar  UDBL
+ * $RCSfile: test-mysql.osql,v $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Regression test for MySQL Linear Road system
+ *
+ ****************************************************************************/
+set my_jdbc() = jdbc("lrdb", "com.mysql.jdbc.Driver");
+create function mysql_host()->charstring as select "localhost";
+create function mysql_db_name()->charstring as select "regress";
+create function mysql_user()->charstring as select "regress";
+create function mysql_password()->charstring as select "regress";
+create function mysql_port()->Number as select
+  cast( unstringify( getenv("PORTDB") ) as Integer );
+
+create function init_lr()->vector as
+  select sql( my_jdbc(), "CALL prepare_start();" );
+
+create function my_call_procedure(charstring proc, vector of integer x)->vector as
+  select sql( my_jdbc(), "CALL "+proc+"(?);",x);
+
+create function my_lr_query(vector of integer x)->vector as
+  select sql( my_jdbc(), "CALL lr0(?,?,?,?,?,?,?,?,?,?,?)",{x[0],x[1],x[2],x[3],x[4],x[5],x[6],x[7],x[8],x[9],x[14]});
+
+create function my_sql_query(charstring sql)->vector as
+  select sql( my_jdbc(), sql );
+
+connect(my_jdbc(), "jdbc:mysql://" + mysql_host() + ":" + mysql_port() + "/"
++ mysql_db_name(), mysql_user(), mysql_password());
+
+init_lr();
+/* ====================== */
+/* ======= lr.sql ======= */
+/* ====================== */
+
+lisp;
+(checkequal "get time"
+  ((osql "my_sql_query(\"SELECT get_minute(),(  SELECT get_second() )\");") 
+   '((#(1 0)))))
+:osql
+
+my_call_procedure("set_minute",{3});
+my_call_procedure("set_second",{142});
+
+lisp;
+(checkequal "set time"
+  ((osql "my_sql_query(\"SELECT get_minute(),(  SELECT get_second() )\");") 
+   '((#(3 142)))))
+:osql
+
+init_lr();
+my_sql_query("INSERT INTO stat_min1( segment, vid, dir, xway ) VALUES( 1, 1, 1, 1);");
+my_sql_query("INSERT INTO stat_min2( segment, vid, dir, xway ) VALUES( 2, 2, 2, 2);");
+my_sql_query("INSERT INTO stat_min4( segment, vid, dir, xway ) VALUES( 3, 3, 3, 3);");
+my_sql_query("INSERT INTO stat_min5( segment, vid, dir, xway ) VALUES( 5, 5, 5, 5);");
+my_sql_query("INSERT INTO stat_min6( segment, vid, dir, xway ) VALUES( 4, 4, 4, 4);");
+my_sql_query("CALL switch_stat_tables");
+
+lisp;
+(checkequal "switch_stat_tables"
+  ((osql "my_sql_query(\"SELECT (SELECT count(*) FROM stat_min1)=0 AND (SELECT vid FROM stat_min2)=1 AND (SELECT vid FROM stat_min3)=2 AND (SELECT count(*) FROM stat_min4)=0 AND (SELECT vid FROM stat_min5)=3 AND (SELECT vid FROM stat_min6)=5\");") 
+   '((#(1)))))
+:osql
+
+lisp;
+(checkequal "get_stat_nov1"
+  ((osql "my_sql_query(\"SELECT get_stat_nov(5,0,1)=0;\");") 
+   '((#(1)))))
+(checkequal "get_stat_nov2"
+  ((osql "my_sql_query(\"SELECT count(*) FROM stat_nov_cached WHERE segment=5 AND nov=0 AND dir=1 AND xway=0;\");") 
+   '((#(1)))))
+:osql
+my_sql_query("INSERT INTO stat_nov_cached( segment, nov, dir, xway ) VALUES( 10, 42, 0, 1 );");
+lisp;
+(checkequal "get_stat_nov3"
+  ((osql "my_sql_query(\"SELECT get_stat_nov(10,1,0)=42\");") 
+   '((#(1)))))
+:osql
+my_sql_query("INSERT INTO stat_min2( segment, dir, xway, vid ) VALUES( 15, 0, 1, 13 );");
+my_sql_query("INSERT INTO stat_min2( segment, dir, xway, vid ) VALUES( 15, 0, 1, 14 );");
+my_sql_query("INSERT INTO stat_min2( segment, dir, xway, vid ) VALUES( 15, 0, 1, 15 );");
+lisp;
+(checkequal "get_stat_nov4"
+  ((osql "my_sql_query(\"SELECT get_stat_nov(15,1,0)=3;\");") 
+   '((#(1)))))
+(checkequal "get_stat_nov5"
+  ((osql "my_sql_query(\"SELECT count(*) FROM stat_nov_cached WHERE segment=15 AND nov=3 AND dir=0 AND xway=1;\");") 
+   '((#(1)))))
+:osql
+
+init_lr();
+lisp;
+(checkequal "get_stat_avgv1"
+  ((osql "my_sql_query(\"SELECT get_stat_avgv(5,0,1)=-1;\");") 
+   '((#(1)))))
+(checkequal "get_stat_avgv2"
+  ((osql "my_sql_query(\"SELECT count(*) FROM stat_lav_cached WHERE segment=5 AND avgv=-1 AND dir=1 AND xway=0;\");") 
+   '((#(1)))))
+:osql
+my_sql_query("INSERT INTO stat_lav_cached( segment, avgv, dir, xway ) VALUES( 10, 42, 0, 1 );");
+lisp;
+(checkequal "get_stat_avgv3"
+  ((osql "my_sql_query(\"SELECT get_stat_avgv(10,1,0)=42\");") 
+   '((#(1)))))
+:osql
+my_sql_query("INSERT INTO stat_min2( segment, dir, xway, vid, lav ) VALUES( 15, 0, 1, 13, 42 );");
+my_sql_query("INSERT INTO stat_min2( segment, dir, xway, vid, lav ) VALUES( 15, 0, 1, 14, 12 );");
+my_sql_query("INSERT INTO stat_min3( segment, dir, xway, vid, lav ) VALUES( 15, 0, 1, 15, 96.3 );");
+my_sql_query("INSERT INTO stat_min5( segment, dir, xway, vid, lav ) VALUES( 15, 0, 1, 13, 12.3 );");
+my_sql_query("INSERT INTO stat_min6( segment, dir, xway, vid, lav ) VALUES( 15, 0, 1, 14, 0 );");
+my_sql_query("INSERT INTO stat_min6( segment, dir, xway, vid, lav ) VALUES( 15, 0, 1, 15, 19 );");
+lisp;
+(checkequal "get_stat_avgv4"
+  ((osql "my_sql_query(\"SELECT get_stat_avgv(15,1,0)=36;\");") 
+   '((#(1)))))
+(checkequal "get_stat_avgv5"
+  ((osql "my_sql_query(\"SELECT count(*) FROM stat_lav_cached WHERE segment=15 AND avgv=36 AND dir=0 AND xway=1;\");") 
+   '((#(1)))))
+:osql
+
+init_lr();
+my_sql_query("CALL add_stat(42, 50, 2, 0, 13);");
+lisp;
+(checkequal "add_stat1"
+  ((osql "my_sql_query(\"SELECT count(*)=1 from stat_min1 WHERE segment=13 AND vid=42 AND lav=50 AND number=1 AND dir=0 AND xway=2;\");") 
+   '((#(1)))))
+:osql
+my_sql_query("CALL add_stat(42, 100, 2, 0, 13);");
+lisp;
+(checkequal "add_stat2"
+  ((osql "my_sql_query(\"SELECT count(*)=1 from stat_min1 WHERE segment=13 AND vid=42 AND lav=75 AND number=2 AND dir=0 AND xway=2;\");") 
+   '((#(1)))))
+:osql
+
+init_lr();
+my_sql_query("CALL seg_stat(0, 42, 50, 2, 0, 13);");
+lisp;
+(checkequal "seg_stat1"
+  ((osql "my_sql_query(\"SELECT get_minute()=1,(  SELECT get_second()=0 );\");") 
+   '((#(1 1)))))
+:osql
+my_sql_query("CALL seg_stat(4, 42, 50, 2, 0, 13);");
+lisp;
+(checkequal "seg_stat2"
+  ((osql "my_sql_query(\"SELECT get_minute()=1,(  SELECT get_second()=4 );\");") 
+   '((#(1 1)))))
+:osql
+my_sql_query("INSERT INTO accident_remove_order(xway,min) VALUES( 7, 3 );");
+my_sql_query("INSERT INTO accident_remove_order(xway,min) VALUES( 2, 3 );");
+my_sql_query("CALL seg_stat(400, 42, 50, 2, 0, 13);");
+lisp;
+(checkequal "seg_stat3"
+  ((osql "my_sql_query(\"SELECT get_minute()=7,( SELECT get_second()=400 ), ( SELECT count(*)=1 FROM accident_remove_order WHERE xway=7);\");") 
+   '((#(1 1 1)))))
+:osql
+my_sql_query("INSERT INTO accident_remove_order(xway,min) VALUES( 2, 30 );");
+my_sql_query("INSERT INTO stat_min3( segment, vid, dir, xway ) VALUES( 3, 3, 3, 3 );");
+my_sql_query("CALL seg_stat(700, 42, 50, 2, 0, 13);");
+lisp;
+(checkequal "seg_stat4"
+  ((osql "my_sql_query(\"SELECT (SELECT count(*)=1 FROM stat_min3), ( SELECT count(*)=2 FROM accident_remove_order) AS acc_remove;\");") 
+   '((#(1 1)))))
+:osql
+
+my_sql_query("INSERT INTO historical_toll(vid, day, xway, toll) VALUES( 4242, 43, 44, 42 );");
+lisp;
+(checkequal "hist_toll"
+  ((osql "my_sql_query(\"SELECT (SELECT hist_toll( 3232, 33, 34) IS NULL), (SELECT hist_toll( 4242, 43, 44)=42 );\");") 
+   '((#(1 1)))))
+:osql
+my_sql_query("DELETE FROM historical_toll WHERE vid=4242 AND day=43 AND xway=44 LIMIT 1;");
+
+init_lr();
+my_sql_query("CALL toll_calc(1,2,3,4,5,6,7,4);");
+lisp;
+(checkequal "toll_calc1"
+  ((osql "my_sql_query(\"SELECT count(*)=0 FROM output_toll_alert;\");") 
+   '((#(1)))))
+:osql
+my_sql_query("CALL toll_calc(1,2,3,4,5,6,7,2);");
+lisp;
+(checkequal "toll_calc2"
+  ((osql "my_sql_query(\"SELECT count(*)=1 FROM output_toll_alert WHERE time=1 AND emit_time=0 and vavg=-1 AND toll=0.0 AND vid=2;\");") 
+   '((#(1)))))
+:osql
+my_sql_query("CALL toll_calc(1,2,3,4,5,6,7,2);");
+lisp;
+(checkequal "toll_calc3"
+  ((osql "my_sql_query(\"SELECT count(*)=1 FROM output_toll_alert WHERE time=1 AND emit_time=0 and vavg=-1 AND toll=0.0 AND vid=2;\");") 
+   '((#(1)))))
+:osql
+
+init_lr();
+my_sql_query("INSERT INTO smashed_cars(pos,xway,direction,segment,vid,lane) VALUES( 1, 2, 3, 4, 5, 6 );");
+my_sql_query("CALL check_accident_cleared(1,2,3,4,5);"); /* not a smashed vehicle */
+my_sql_query("CALL check_accident_cleared(1,5,42,4,5);"); /* not different position */ 
+/*my_sql_query("CALL check_accident_cleared(1,5,3,4,5);");*/ /* not type 0 */
+my_sql_query("CALL check_accident_cleared(1,5,3,4,5);"); /* should be cleared */
+lisp;
+(checkequal "check_accident_cleared"
+  ((osql "my_sql_query(\"SELECT count(*)=1 FROM accident_remove_order WHERE xway=2 AND min=3;\");") 
+   '((#(1)))))
+:osql
+
+init_lr();
+my_sql_query("CALL lr0( 0, 1, 2, 0, 4, 2, 1, 7, 8, 9, 14 );");
+lisp;
+(checkequal "lr01"
+  ((osql "my_sql_query(\"SELECT (SELECT count(*)=1 FROM output_toll_alert WHERE vid=2 AND toll=0 AND vavg=-1), (SELECT count(*)=1 FROM stopped_cars WHERE vid=2 AND pos=8 AND direction=1 AND lane=2);\");") 
+   '((#(1 1)))))
+:osql
+my_sql_query("INSERT INTO smashed_cars(pos,xway,direction,segment,vid,lane) VALUES( 17, 20, 1, 14, 5, 3 );");
+my_sql_query("CALL lr0( 0, 1, 5, 0, 4, 2, 1, 7, 8, 9, 14 );");
+lisp;
+(checkequal "lr02"
+  ((osql "my_sql_query(\"SELECT (SELECT count(*)=1 FROM output_toll_alert WHERE vid=5 AND toll=0 AND vavg=-1), (SELECT count(*)=1 FROM accident_remove_order WHERE xway=20 AND min=3), (SELECT count(*)=1 FROM smashed_cars WHERE vid=5 AND pos=17 AND direction=1 AND lane=3), (SELECT count(*)=0 FROM stopped_cars WHERE vid=5);\");") 
+   '((#(1 1 1 1)))))
+:osql
+init_lr();
+my_sql_query("INSERT INTO historical_toll(vid, day, xway, toll) VALUES( 4242, 43, 44, 42 );");
+my_sql_query("CALL lr0( 3, 1, 4242, 0, 44, 2, 1, 7, 8, 9, 43 );");
+my_sql_query("CALL lr0( 3, 1, 4249, 0, 44, 2, 1, 7, 8, 9, 43 );");
+my_sql_query("CALL lr0( 3, 1, 4242, 0, 44, 2, 1, 7, 8, 9, 55 );");
+my_sql_query("CALL lr0( 3, 1, 4242, 0, 50, 2, 1, 7, 8, 9, 55 );");
+lisp;
+(checkequal "lr03"
+  ((osql "my_sql_query(\"SELECT (SELECT count(*)=1 FROM output_daily_exp WHERE quid=9 AND expenditure=42.0), (SELECT count(*)=0 FROM smashed_cars), (SELECT count(*)=1 FROM stopped_cars WHERE vid=4242);\");") 
+   '((#(1 1 1)))))
+:osql
+my_sql_query("DELETE FROM historical_toll WHERE vid=4242 AND day=43 AND xway=44 LIMIT 1;");
+init_lr();
+my_sql_query("INSERT INTO vehicle_info(vid, xway, segment, direction, pos, balance, lastupdate, vav, nextexp) VALUES( 2, 4, 5, 1, 20, 5.0, 6, 7, 8.0);");
+my_sql_query("CALL lr0( 2, 1, 2, 10, 44, 2, 1, 7, 8, 9, 43 );");
+my_sql_query("CALL lr0( 2, 111, 42, 10, 44, 2, 1, 7, 8, 13, 43 );");
+lisp;
+(checkequal "lr04"
+  ((osql "my_sql_query(\"SELECT (SELECT count(*)=1 FROM output_account_balance WHERE quid=9 AND lasttime=6 AND balance=5.0), (SELECT count(*)=1 FROM output_account_balance WHERE quid=13 AND lasttime=111 AND balance=0.0), (SELECT count(*)=0 FROM stopped_cars);\");") 
+   '((#(1 1 1)))))
+:osql
+init_lr();
+my_sql_query("CALL lr0( 4, 111, 42, 10, 44, 2, 1, 7, 8, 10, 43 );");
+lisp;
+(checkequal "lr05"
+  ((osql "my_sql_query(\"SELECT (SELECT count(*)=0 FROM output_accident_alert), (SELECT count(*)=0 FROM output_account_balance), (SELECT count(*)=0 FROM output_daily_exp), (SELECT count(*)=0 FROM output_toll_alert);\");") 
+   '((#(1 1 1 1)))))
+:osql
+init_lr();
+my_sql_query("INSERT INTO stat_nov_cached(segment, xway, dir, nov) VALUES( 4, 2, 1, 60 );");
+my_sql_query("INSERT INTO stat_lav_cached(segment, xway, dir, avgv) VALUES( 4, 2, 1, 5 );");
+my_sql_query("INSERT INTO vehicle_info(vid, xway, segment, direction, pos, balance, lastupdate, vav, nextexp) VALUES( 1, 2, 3, 0 , 4, 5.0, 6, 7, 8.0);");
+my_sql_query("CALL lr0( 0, 20, 1, 17, 2, 2, 1, 4, 3, 10, 43 );");
+lisp;
+(checkequal "lr05"
+  ((osql "my_sql_query(\"SELECT  (SELECT count(*)=1 FROM output_toll_alert WHERE vid=1 AND time=20 AND emit_time=0 AND vavg=5 AND toll=200), (SELECT count(*)=1 FROM vehicle_info WHERE vid=1 AND balance=13.0 AND nextexp=200.0 AND vav=17), (SELECT count(*)=0 FROM smashed_cars), (SELECT count(*)=0 FROM stopped_cars);\");") 
+   '((#(1 1 1 1)))))
+:osql
+my_sql_query("INSERT INTO smashed_cars(pos,xway,direction,segment,vid,lane) VALUES( 17, 20, 1, 14, 5, 3 );");
+my_sql_query("CALL lr0( 0, 1, 5, 0, 4, 2, 1, 7, 8, 9, 14 );");
+lisp;
+(checkequal "lr06"
+  ((osql "my_sql_query(\"SELECT (SELECT count(*)=1 FROM output_toll_alert WHERE vid=5 AND toll=0 AND vavg=-1), (SELECT count(*)=1 FROM smashed_cars WHERE vid=5 AND pos=17 AND direction=1 AND lane=3),  (SELECT count(*)=1 FROM accident_remove_order WHERE xway=20 AND min=3), (SELECT count(*)=0 FROM stopped_cars WHERE vid=5);\");") 
+   '((#(1 1 1 1)))))
+:osql
+
+/* ====================== */
+/* === accidents.sql ==== */
+/* ====================== */
+init_lr();
+my_sql_query("CALL add_accident(1,20,0,4,5);");
+my_sql_query("CALL add_accident(1,20,0,4,5);"); /* do not crash here */
+lisp;
+(checkequal "add_accident"
+  ((osql "my_sql_query(\"SELECT count(*)=1 FROM accidents WHERE xway=1 AND segment=20 and direction=0 AND time=4 AND min=5;\");") 
+   '((#(1)))))
+:osql
+
+my_sql_query("CALL add_accident(5,30,1,3,7);");
+my_sql_query("CALL set_minute(42);");
+lisp;
+(checkequal "is_accident_area1"
+  ((osql "my_sql_query(\"SELECT is_accident_area(1,20,0)=1 AND is_accident_area(1,21,0)=0 AND is_accident_area(1,16,0)=1 AND is_accident_area(1,15,0)=0 AND is_accident_area(5,30,1)=1 AND is_accident_area(5,29,1)=0 AND is_accident_area(5,34,1)=1 AND is_accident_area(5,35,1)=0;\");") 
+   '((#(1)))))
+:osql
+my_sql_query("CALL set_minute(4);");
+lisp;
+(checkequal "is_accident_area2"
+  ((osql "my_sql_query(\"SELECT is_accident_area(1,20,0)=0 AND is_accident_area(1,21,0)=0 AND is_accident_area(1,16,0)=0 AND is_accident_area(1,15,0)=0 AND is_accident_area(5,30,1)=0 AND is_accident_area(5,29,1)=0 AND is_accident_area(5,34,1)=0 AND is_accident_area(5,35,1)=0;\");") 
+   '((#(1)))))
+:osql
+
+my_sql_query("CALL add_accident(5,33,1,5,7);");
+lisp;
+(checkequal "get_accident_seg"
+  ((osql "my_sql_query(\"SELECT get_accident_seg(1)=20 AND get_accident_seg(5)=33 AND get_accident_seg(42) IS NULL;\");") 
+   '((#(1)))))
+:osql
+
+my_sql_query("CALL add_stopped_car(5,6,7,0,9,2);");
+my_sql_query("CALL add_stopped_car(5,6,7,0,9,2);"); /* do not crash here */
+lisp;
+(checkequal "add_stopped_car"
+  ((osql "my_sql_query(\"SELECT count(*)=1 FROM stopped_cars WHERE vid=5 AND xway=6 AND pos=7 AND direction=0 AND time=9 AND lane=2;\");") 
+   '((#(1)))))
+:osql
+
+my_sql_query("CALL add_stopped_car(5,6,7,0,77,2);");
+my_sql_query("CALL add_stopped_car(5,6,7,0,90,2);");
+my_sql_query("CALL add_stopped_car(8,6,7,0,90,2);");
+my_sql_query("CALL add_stopped_car(5,6,7,0,130,2);");
+my_sql_query("CALL add_stopped_car(5,6,7,0,300,2);");
+my_sql_query("CALL remove_stopped_cars(250);");
+lisp;
+(checkequal "remove_stopped_cars"
+  ((osql "my_sql_query(\"SELECT count(*)=2 FROM stopped_cars\");") 
+   '((#(1)))))
+:osql
+
+init_lr();
+my_sql_query("CALL add_smashed_car(5,6,7,8,1,3);");
+my_sql_query("CALL add_smashed_car(5,6,7,8,1,3);"); /* do not crash here */
+lisp;
+(checkequal "add_smashed_car"
+  ((osql "my_sql_query(\"SELECT count(*)=1 FROM smashed_cars WHERE vid=5 AND pos=6 AND xway=7 AND segment=8 AND direction=1 AND lane=3;\");") 
+   '((#(1)))))
+:osql
+
+lisp;
+(checkequal "is_smashed_car"
+  ((osql "my_sql_query(\"SELECT is_smashed(5)=1 AND is_smashed(42)=0;\");") 
+   '((#(1)))))
+:osql
+
+lisp;
+(checkequal "giveme_smashed_pos"
+  ((osql "my_sql_query(\"SELECT giveme_smashed_pos(5)=6 AND giveme_smashed_pos(42) IS NULL;\");") 
+   '((#(1)))))
+:osql
+
+lisp;
+(checkequal "giveme_smashed_xway"
+  ((osql "my_sql_query(\"SELECT giveme_smashed_xway(5)=7 AND giveme_smashed_xway(42) IS NULL;\");") 
+   '((#(1)))))
+:osql
+
+lisp;
+(checkequal "collided_vids_at1"
+  ((osql "my_sql_query(\"SELECT count(*)=0 FROM collided_cars;\");") 
+   '((#(1)))))
+:osql
+my_sql_query("CALL add_stopped_car(51,6,7,0,77,2);");
+lisp;
+(checkequal "collided_vids_at2"
+  ((osql "my_sql_query(\"SELECT count(*)=0 FROM collided_cars;\");") 
+   '((#(1)))))
+:osql
+my_sql_query("CALL add_stopped_car(51,6,7,0,90,2);");
+my_sql_query("CALL add_stopped_car(51,6,7,0,90,2);");
+my_sql_query("CALL collided_vids_at(6,7,0,2);");
+lisp;
+(checkequal "collided_vids_at3"
+  ((osql "my_sql_query(\"SELECT count(*)=0 FROM collided_cars;\");") 
+   '((#(1)))))
+:osql
+my_sql_query("CALL add_stopped_car(51,6,7,0,130,2);");
+my_sql_query("CALL collided_vids_at(6,7,0,2);");
+lisp;
+(checkequal "collided_vids_at4"
+  ((osql "my_sql_query(\"SELECT count(*)=0 FROM collided_cars;\");") 
+   '((#(1)))))
+:osql
+my_sql_query("CALL add_stopped_car(51,6,7,0,300,2);");
+my_sql_query("CALL collided_vids_at(6,7,0,2);");
+lisp;
+(checkequal "collided_vids_at5"
+  ((osql "my_sql_query(\"SELECT count(*)=1 FROM collided_cars WHERE vid=51 AND nr_stopped=4;\");") 
+   '((#(1)))))
+:osql
+
+my_sql_query("CALL add_accident_remove_order(7,5);");
+my_sql_query("CALL add_accident_remove_order(7,5);"); /* do not crash here */
+lisp;
+(checkequal "add_accident_remove_order"
+  ((osql "my_sql_query(\"SELECT count(*)=1 FROM accident_remove_order WHERE xway=7 AND min=5;\");") 
+   '((#(1)))))
+:osql
+
+my_sql_query("CALL add_accident(1,20,0,4,5);");
+my_sql_query("CALL add_accident(7,20,0,4,5);");
+my_sql_query("CALL add_smashed_car(55,6,32,8,1,3);");
+my_sql_query("CALL add_accident_remove_order(19,42);");
+my_sql_query("CALL remove_accidents(7);");
+lisp;
+(checkequal "add_accident_remove_order"
+  ((osql "my_sql_query(\"SELECT ( SELECT count(*)=1 FROM accidents), (SELECT count(*)=1 FROM smashed_cars), (SELECT count(*)=1 FROM accident_remove_order);\");") 
+   '((#(1 1 1)))))
+:osql
+
+my_sql_query("CALL check_kill_accident(19);");
+lisp;
+(checkequal "check_kill_accident1"
+  ((osql "my_sql_query(\"SELECT count(*)=1 FROM accident_remove_order WHERE xway=19 AND min=42;\");") 
+   '((#(1)))))
+:osql
+my_sql_query("CALL set_minute(50);");
+my_sql_query("CALL check_kill_accident(19);");
+lisp;
+(checkequal "check_kill_accident2"
+  ((osql "my_sql_query(\"SELECT count(*)=0 FROM accident_remove_order;\");") 
+   '((#(1)))))
+:osql
+my_sql_query("CALL add_accident_remove_order(19,42);");
+my_sql_query("CALL check_kill_accident(39);");
+lisp;
+(checkequal "check_kill_accident3"
+  ((osql "my_sql_query(\"SELECT count(*)=1 FROM accident_remove_order WHERE xway=19 AND min=42;\");") 
+   '((#(1)))))
+:osql
+
+my_sql_query("CALL accident_check(400, 55, 7, 2, 0, 63, 19);");
+lisp;
+(checkequal "accident_check1"
+  ((osql "my_sql_query(\"SELECT count(*)=0 FROM stopped_cars WHERE vid=55;\");") 
+   '((#(1)))))
+:osql
+init_lr();
+my_sql_query("CALL add_stopped_car(55,7,19,0,77,2);");
+my_sql_query("CALL add_stopped_car(55,7,19,0,90,2);");
+my_sql_query("CALL add_stopped_car(55,7,19,0,130,2);");
+my_sql_query("CALL add_stopped_car(55,7,19,0,300,2);");
+my_sql_query("CALL accident_check(400, 55, 7, 2, 0, 63, 19);");
+lisp;
+(checkequal "accident_check2"
+  ((osql "my_sql_query(\"SELECT ( SELECT count(*)=5 FROM stopped_cars WHERE vid=55 ), (SELECT count(*)=1 FROM collided_cars WHERE vid=55 AND nr_stopped=5);\");") 
+   '((#(1 1)))))
+:osql
+my_sql_query("CALL add_stopped_car(51,7,19,0,77,2);");
+my_sql_query("CALL add_stopped_car(51,7,19,0,90,2);");
+my_sql_query("CALL add_stopped_car(51,7,19,0,130,2);");
+my_sql_query("CALL add_stopped_car(51,7,19,0,150,2);");
+my_sql_query("CALL add_stopped_car(51,7,19,0,300,2);");
+my_sql_query("CALL accident_check(400, 55, 7, 2, 0, 63, 19);");
+lisp;
+(checkequal "accident_check3"
+  ((osql "my_sql_query(\"SELECT (SELECT count(*)=1 FROM accidents WHERE xway=7 AND segment=63 AND time=400 AND min=1), (SELECT count(*)=1 FROM smashed_cars WHERE vid=55 AND pos=19 AND segment=63 AND direction=0 AND lane=2), (SELECT count(*)=1 FROM smashed_cars WHERE vid=51 AND pos=19 AND segment=63 AND direction=0 AND lane=2);\");") 
+   '((#(1 1 1)))))
+:osql
+
+/* ====================== */
+/* ====== toll.sql ====== */
+/* ====================== */
+init_lr();
+my_sql_query("CALL set_vehicle_info(1, 2, 3, 4, 0, 45.3, 20, 12.5, 19.2);");
+lisp;
+(checkequal "set_vehicle_info1"
+  ((osql "my_sql_query(\"SELECT count(*)=1 FROM vehicle_info WHERE vid=1 AND xway=2 AND segment=4 AND direction=0 AND pos=3 AND balance=45.3 AND lastupdate=20 AND vav=13 AND nextexp=19.2;\");") 
+   '((#(1)))))
+:osql
+my_sql_query("CALL set_vehicle_info(1, 6, 7, 8, 1, 35.3, 58, 22, 49);");
+lisp;
+(checkequal "set_vehicle_info2"
+  ((osql "my_sql_query(\"SELECT count(*)=1 FROM vehicle_info WHERE vid=1 AND xway=6 AND segment=8 AND direction=1 AND pos=7 AND balance=35.3 AND lastupdate=58 AND vav=22 AND nextexp=49.0;\");") 
+   '((#(1)))))
+:osql
+
+init_lr();
+my_sql_query("CALL add_vehicle_info(1, 2, 3, 4, 0, 45.3, 20, 12.5, 19.2);");
+lisp;
+(checkequal "add_vehicle_info1"
+  ((osql "my_sql_query(\"SELECT count(*)=1 FROM vehicle_info WHERE vid=1 AND xway=2 AND segment=4 AND direction=0 AND pos=3 AND balance=45.3 AND lastupdate=20 AND vav=13 AND nextexp=19.2;\");") 
+   '((#(1)))))
+:osql
+my_sql_query("CALL add_vehicle_info(1, 2, 3, 4, 0, 45.3, 20, 12.5, 19.2);");
+lisp;
+(checkequal "add_vehicle_info2"
+  ((osql "my_sql_query(\"SELECT count(*)=1 FROM vehicle_info WHERE vid=1 AND xway=2 AND segment=4 AND direction=0 AND pos=3 AND balance=45.3 AND lastupdate=20 AND vav=13 AND nextexp=19.2;\");") 
+   '((#(1)))))
+:osql
+
+lisp;
+(checkequal "check_new_seg_report"
+  ((osql "my_sql_query(\"SELECT (SELECT check_new_seg_report(42, 84, 12)=0 ), (SELECT check_new_seg_report(1, 8, 2)=0 ),(SELECT check_new_seg_report(1, 4, 2)=1 );\");") 
+   '((#(1 1 1)))))
+:osql
+
+my_sql_query("CALL add_previous_toll( 30,1, 7, 8, 9, 1, 15);");
+lisp;
+(checkequal "add_previous_toll1"
+  ((osql "my_sql_query(\"SELECT count(*)=1 FROM vehicle_info WHERE vid=1 AND xway=7 AND segment=9 AND direction=1 AND pos=8 AND balance=64.5 AND lastupdate=30 AND vav=15 AND nextexp=0.0;\");") 
+   '((#(1)))))
+:osql
+my_sql_query("CALL add_previous_toll( 30,1, 10, 11, 12, 0, 33);");
+my_sql_query("CALL add_previous_toll( 30,5, 10, 11, 12, 0, 33);");
+lisp;
+(checkequal "add_previous_toll2"
+  ((osql "my_sql_query(\"SELECT ( SELECT count(*)=1 FROM vehicle_info WHERE vid=1 AND xway=10 AND segment=12 AND direction=0 AND pos=11 AND balance=64.5 AND lastupdate=30 AND vav=33 AND nextexp=0.0 ), ( SELECT count(*)=1 FROM vehicle_info WHERE vid=5 AND xway=10 AND segment=12 AND direction=0 AND pos=11 AND balance=0.0 AND lastupdate=30 AND vav=33 AND nextexp=0.0 );\");") 
+   '((#(1 1)))))
+:osql
+
+lisp;
+(checkequal "giveme_balance"
+  ((osql "my_sql_query(\"SELECT ( SELECT giveme_balance(1)=64.5 ), ( SELECT giveme_balance(2) IS NULL );\");") 
+   '((#(1 1)))))
+:osql
+
+lisp;
+(checkequal "giveme_lasttime"
+  ((osql "my_sql_query(\"SELECT ( SELECT giveme_lasttime(1)=30 ), ( SELECT giveme_lasttime(2) IS NULL );\");") 
+   '((#(1 1)))))
+:osql
+
+my_sql_query("CALL update_vehicle_info( 30,1, 7, 8, 9, 1, 15);");
+lisp;
+(checkequal "update_vehicle_info1"
+  ((osql "my_sql_query(\"SELECT count(*)=1 FROM vehicle_info WHERE vid=1 AND xway=7 AND segment=9 AND direction=1 AND pos=8 AND balance=64.5 AND lastupdate=30 AND vav=15 AND nextexp=0.0;\");") 
+   '((#(1)))))
+:osql
+my_sql_query("CALL update_vehicle_info( 30,1, 10, 11, 12, 0, 33);");
+my_sql_query("CALL update_vehicle_info( 30,50, 10, 11, 12, 0, 33);");
+lisp;
+(checkequal "update_vehicle_info2"
+  ((osql "my_sql_query(\"SELECT ( SELECT count(*)=1 FROM vehicle_info WHERE vid=1 AND xway=10 AND segment=12 AND direction=0 AND pos=11 AND balance=64.5 AND lastupdate=30 AND vav=33 AND nextexp=0.0 ), ( SELECT count(*)=1 FROM vehicle_info WHERE vid=5 AND xway=10 AND segment=12 AND direction=0 AND pos=11 AND balance=0.0 AND lastupdate=30 AND vav=33 AND nextexp=0.0 );\");") 
+   '((#(1 1)))))
+:osql
+
+my_sql_query("CALL update_vehicle_toll(20, 1, 2, 3, 4, 1, 12.5, 19.2);");
+lisp;
+(checkequal "update_vehicle_toll1"
+  ((osql "my_sql_query(\"SELECT count(*)=1 FROM vehicle_info WHERE vid=1 AND xway=2 AND segment=4 AND direction=1 AND pos=3 AND balance=64.5 AND lastupdate=20 AND vav=13 AND nextexp=19.2;\");") 
+   '((#(1)))))
+:osql
+my_sql_query("CALL update_vehicle_toll(20, 2, 2, 3, 4, 1, 12.5, 19.2);");
+lisp;
+(checkequal "update_vehicle_toll2"
+  ((osql "my_sql_query(\"SELECT count(*)=0 FROM vehicle_info WHERE vid=2 AND xway=6 AND segment=8 AND direction=1 AND pos=7 AND balance=35.3 AND lastupdate=58 AND vav=22 AND nextexp=49.0;\");") 
+   '((#(1)))))
+:osql
+
+init_lr();
+my_sql_query("CALL calc_toll(20, 1, 2, 3, 4, 1, 12.5);");
+lisp;
+(checkequal "calc_toll1"
+  ((osql "my_sql_query(\"SELECT (SELECT count(*)=0 FROM vehicle_info), (SELECT count(*)=1 FROM output_toll_alert WHERE vid=1 AND time=20 AND emit_time=0 AND vavg=-1 AND toll=0);\");") 
+   '((#(1 1)))))
+:osql
+init_lr();
+my_sql_query("INSERT INTO stat_nov_cached(segment, xway, dir, nov) VALUES( 4, 2, 1, 60 );");
+my_sql_query("INSERT INTO stat_lav_cached(segment, xway, dir, avgv) VALUES( 4, 2, 1, 5 );");
+my_sql_query("INSERT INTO vehicle_info(vid, xway, segment, direction, pos, balance, lastupdate, vav, nextexp) VALUES( 1, 2, 3, 0 , 4, 5.0, 6, 7, 8.0);");
+my_sql_query("CALL calc_toll(20, 1, 2, 3, 4, 1, 12.5);");
+lisp;
+(checkequal "calc_toll2"
+  ((osql "my_sql_query(\"SELECT (SELECT count(*)=1 FROM vehicle_info WHERE vid=1 AND balance=5.0 AND nextexp=200.0), (SELECT count(*)=1 FROM output_toll_alert WHERE vid=1 AND time=20 AND emit_time=0 AND vavg=5 AND toll=200);\");") 
+   '((#(1 1)))))
+:osql
+init_lr();
+my_sql_query("INSERT INTO stat_nov_cached(segment, xway, dir, nov) VALUES( 5, 2, 1, 50 );");
+my_sql_query("INSERT INTO stat_nov_cached(segment, xway, dir, nov) VALUES( 6, 2, 1, 50 );");
+my_sql_query("INSERT INTO stat_nov_cached(segment, xway, dir, nov) VALUES( 7, 2, 1, 50 );");
+my_sql_query("INSERT INTO stat_nov_cached(segment, xway, dir, nov) VALUES( 8, 2, 1, 49 );");
+my_sql_query("INSERT INTO stat_nov_cached(segment, xway, dir, nov) VALUES( 9, 2, 1, 49 );");
+my_sql_query("INSERT INTO stat_nov_cached(segment, xway, dir, nov) VALUES( 10, 2, 1, 49 );");
+my_sql_query("INSERT INTO stat_nov_cached(segment, xway, dir, nov) VALUES( 11, 2, 1, 51 );");
+my_sql_query("INSERT INTO stat_nov_cached(segment, xway, dir, nov) VALUES( 12, 2, 1, 51 );");
+my_sql_query("INSERT INTO stat_nov_cached(segment, xway, dir, nov) VALUES( 13, 2, 1, 51 );");
+my_sql_query("INSERT INTO stat_lav_cached(segment, xway, dir, avgv) VALUES( 5, 2, 1, 39 );");
+my_sql_query("INSERT INTO stat_lav_cached(segment, xway, dir, avgv) VALUES( 6, 2, 1, 40 );");
+my_sql_query("INSERT INTO stat_lav_cached(segment, xway, dir, avgv) VALUES( 7, 2, 1, 41 );");
+my_sql_query("INSERT INTO stat_lav_cached(segment, xway, dir, avgv) VALUES( 8, 2, 1, 39 );");
+my_sql_query("INSERT INTO stat_lav_cached(segment, xway, dir, avgv) VALUES( 9, 2, 1, 40 );");
+my_sql_query("INSERT INTO stat_lav_cached(segment, xway, dir, avgv) VALUES( 10, 2, 1, 41 );");
+my_sql_query("INSERT INTO stat_lav_cached(segment, xway, dir, avgv) VALUES( 11, 2, 1, 39 );");
+my_sql_query("INSERT INTO stat_lav_cached(segment, xway, dir, avgv) VALUES( 12, 2, 1, 40 );");
+my_sql_query("INSERT INTO stat_lav_cached(segment, xway, dir, avgv) VALUES( 13, 2, 1, 41 );");
+my_sql_query("CALL calc_toll(20, 2, 2, 3, 5, 1, 12);"); 
+my_sql_query("CALL calc_toll(20, 3, 2, 3, 6, 1, 12);");
+my_sql_query("CALL calc_toll(20, 4, 2, 3, 7, 1, 12);");
+my_sql_query("CALL calc_toll(20, 5, 2, 3, 8, 1, 12);");
+my_sql_query("CALL calc_toll(20, 6, 2, 3, 9, 1, 12);");
+my_sql_query("CALL calc_toll(20, 7, 2, 3, 10, 1, 12);");
+my_sql_query("CALL calc_toll(20, 8, 2, 3, 11, 1, 12);");
+my_sql_query("CALL calc_toll(20, 9, 2, 3, 12, 1, 12);");
+my_sql_query("CALL calc_toll(20, 10, 2, 3, 13, 1, 12);");
+lisp;
+(checkequal "calc_toll3"
+  ((osql "my_sql_query(\"SELECT (SELECT count(*)=8 FROM output_toll_alert WHERE toll=0 AND vid<>8), (SELECT count(*)=1 FROM output_toll_alert WHERE vid=8 AND toll=2);\");") 
+   '((#(1 1)))))
+:osql
+init_lr();
+my_sql_query("CALL add_accident( 4, 5, 1, 20, 0);");
+my_sql_query("INSERT INTO vehicle_info(vid, xway, segment, direction, pos, balance, lastupdate, vav, nextexp) VALUES( 2, 4, 5, 1, 20, 5.0, 6, 7, 8.0);");
+my_sql_query("INSERT INTO stat_lav_cached(segment, xway, dir, avgv) VALUES( 7, 4, 1, 39 );");
+my_sql_query("CALL calc_toll(20, 2, 4, 3, 7, 1, 25);");
+lisp;
+(checkequal "calc_toll4"
+  ((osql "my_sql_query(\"SELECT (SELECT count(*)=1 FROM output_toll_alert WHERE vid=2 AND toll=0 AND vavg=39 AND time=20), (SELECT count(*)=1 FROM output_accident_alert WHERE vid=2 AND segment=5 AND time=20), (SELECT count(*)=1 FROM vehicle_info WHERE vid=2 AND segment=7 AND vav=25 AND lastupdate=20);\");") 
+   '((#(1 1 1)))))
+:osql
+
+rollback;

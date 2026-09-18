@@ -1,0 +1,23 @@
+< "../src/TMSchema.amosql";
+/*< "../src/crInstances.amosql";*/
+ < "../src/TMForeign.amosql"; 
+<'../../../SWARD/src/AmosQL/h.amosql';
+/* <'../../../SWARD/src/AmosQL/sparql.amosql'; OLD SparQL PARSER REMOVED */
+/* <'../../../SWARD/src/AmosQL/rdql.amosql'; RDQL Parser removed 2011-01-25 */
+<'../../../SWARD/src/AmosQL/sql.amosql';
+< "../src/newTMO.amosql";
+< "../src/TMRDFSchemaT.amosql";
+< "../src/RDFMap.amosql";
+
+
+
+
+lisp;
+(setq _prompter_ "SWATM")
+(load "../../../SWARD/src/lsp/h.lsp")
+; (load "../../../lsp/sparql-lsp-parser/sparql-wrapper.lsp") ; New parser by Andrej
+(load "../../../SQoND/lsp/string-based-wrapper.lsp") ; String-based mode of SSDM, by Andrej
+
+:osql
+save "../TAmos.dmp";
+quit;

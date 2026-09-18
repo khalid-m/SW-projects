@@ -1,0 +1,1 @@
+sparqlParser amos2.dmp -O$AMOS_HOME/SWARD/src/AmosQL/ds.amosql -L$AMOS_HOME/SWARD/src/lsp/h.lsp -O$AMOS_HOME//SWARD/src/AmosQL/h.amosql -O$AMOS_HOME/SWARD/src/AmosQL/sparql.amosql

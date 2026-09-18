@@ -1,0 +1,137 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Erik Zeitler, UDBL
+ * $RCSfile: analyze.osql,v $
+ * $Revision: 1.3 $ $Date: 2012/05/11 14:14:01 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Analyze cross xway visits
+ *
+ ****************************************************************************
+ * $Log: analyze.osql,v $
+ * Revision 1.3  2012/05/11 14:14:01  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.2  2012/05/04 22:03:00  zeitler
+ * Fixed transfer percentage
+ *
+ * Revision 1.1  2012/04/27 22:21:05  zeitler
+ * Anallysis of vids moving between xways
+ *
+ ****************************************************************************/
+
+create function posrepcount(Integer vid) -> Integer;
+create function first_seen(Integer vid) -> Integer;
+create function last_seen(Integer vid) -> Integer;
+
+create function clearstat() -> Integer as begin
+clear_function("posrepcount");
+clear_function("first_seen");
+clear_function("last_seen");
+end;
+
+create function increase_posrepcount(Integer vid) -> Boolean as begin
+  if notany(posrepcount(vid)) then
+    set posrepcount(vid) = 1
+  else
+    set posrepcount(vid) = posrepcount(vid) + 1;
+end;
+
+create function addstat0(Vector of Integer rep) -> Boolean as begin
+  set first_seen(vid(rep)) = second(rep) where count(first_seen(vid(rep))) < 1;
+  set last_seen(vid(rep)) = second(rep);
+  increase_posrepcount(vid(rep));
+  result(TRUE);
+end;
+
+create function addstat(Vector of Integer rep) -> Boolean as begin
+  if posrep(rep) then
+  result(addstat0(rep));
+end;
+
+create function statread(Vector of Charstring filenames) -> Vector of Integer
+as readfiles(filenames);
+
+create function distinct_diffs() -> Integer as
+select distinct diff
+from integer i, integer diff
+where diff = 30 + last_seen(i) - first_seen(i) - 30*posrepcount(i)
+and diff != 0;
+
+select diff, i
+from integer i, integer diff
+where diff = 30 + last_seen(i) - first_seen(i) - 30*posrepcount(i)
+and diff = -1049;
+
+create function num_vids() -> Integer as
+count(
+select i
+from integer i, integer cnt
+where cnt = posrepcount(i));
+
+create function num_aliased_vids() -> Integer as
+count(select
+from integer i, integer diff
+where diff = 30 + last_seen(i) - first_seen(i) - 30*posrepcount(i)
+and diff > 0);
+
+create function num_posreps() -> Integer as
+sum(select posrepcount(i) from integer i);
+
+/*
+
+count(statread({"data/c10k-0"}));
+
+clearstat();
+
+count(addstat(statread({"data/c10k-0"})));
+
+num_aliased_vids();
+
+num_posreps();
+
+num_vids();
+
+num_aliased_vids()/num_vids();
+
+
+
+clearstat();
+
+count(addstat(statread({"c:/temp/2/cdp"})));
+
+select v
+from vector of integer v
+where v=statread({"data/expected-2"})
+and vid(v) = 116;
+
+*/
+
+/*
+
+L=1.5
+
+count(addstat(statread({"/data/cdp15.out"})));
+
+
+count(addstat(statread({"C:/Temp/5/cdp"})));
+
+
+write_ntuples(
+(select {v[0], dim(v[1])}
+from vector of vector v
+where v in groupagg(60,
+(select k, v
+from integer k, integer v
+where {k,v} in sort(
+select diff, i
+from integer i, integer diff
+where diff = 30 + last_seen(i) - first_seen(i) - 30*posrepcount(i)
+and diff > 0)))), 
+
+"c:/temp/aliashistogram");
+
+
+*/
+

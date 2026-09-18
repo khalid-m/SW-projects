@@ -1,0 +1,29 @@
+This folder contains examples of Amos II application programs.
+
+An example database containing socker World Cup data is defined by the
+scripts:
+  tutorial.amosql
+  wcdata.amosql
+Load World Cup database with the command:
+  amos2 -O tutorial.amosql
+
+Example of application program in Java:
+  ClientDemo.java
+Includes comment describing how to compile and run the program.
+
+Example of application program in C:
+  clientdemo.c
+Includes comment describing how to compile and run the program.
+
+Example of foreign functions implemented in Java:
+  Foreign.java
+Includes comment describing how to compile and use the foreign functions.
+
+Example of foreign functions implemented in C:
+  foreign.c
+Includes comment describing how to compile and use the foreign functions.
+
+Unix installations contains a Makefile to compile all C code.
+
+Windows installations have *.vcxproj files for compiling C code using
+Microsoft Visual Studio.

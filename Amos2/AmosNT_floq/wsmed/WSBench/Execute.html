@@ -1,0 +1,152 @@
+<html>
+    <head>
+        <title>Execute</title>
+        <SCRIPT LANGUAGE="JavaScript" src="Soap_Client.js"></SCRIPT> 
+        <SCRIPT LANGUAGE="JavaScript" src="functions.js"></script>
+        <SCRIPT type="text/javascript" LANGUAGE="javascript">
+            var error,oname,delay,delay1,oname1,tnumber,tnumber1,opara,opara1,opara2,time;
+
+            
+            function executeoperation() {	
+                error = null;
+                var soapParams=[oname1,opara2,delay1,tnumber1];
+                var start = new Date();
+                time=start.getTime();
+                document.getElementById('message1').innerHTML = "Executing the Query ..";
+                SOAPClient.invoke("EXECUTE_OPERATION", soapParams, true, executeoperation_callBack, error_callBack);
+            }
+
+            
+            function executeoperation_callBack(o,xmlDoc)
+            {   
+                if (o != null){
+                    var divBody = populateDiv(o);
+                    var end = new Date();
+                    var difference = (end.getTime() - time)/1000;
+                    document.getElementById('message1').innerHTML = " Query execution time = "+ difference+"  seconds";
+                    document.getElementById("DivQueryResult").innerHTML = divBody;
+                    
+                }
+                else{
+                    document.getElementById("DivQueryResult").innerHTML = "There is no data for your operation";
+                }
+            }
+
+
+            function error_callBack(e, errorCode){
+                if (e != null){
+                    error = e;
+                    document.getElementById("executeDiv").style.display='none';
+                    document.getElementById("showDiv").style.display='none';
+                    document.getElementById("errorDiv").innerHTML="Error callBack:<br>" + error + "<br><br>Error code:<br>" + errorCode;
+                }
+            }
+            
+            function btnexecute_onclick(){
+                oname = document.getElementById("txt_oname").value;
+                delay = document.getElementById("txt_delay").value;  
+                tnumber = document.getElementById("txt_tnumber").value; 
+                opara  = document.getElementById("txt_opara").value; 
+                oname1 = "ws"+oname;
+                delay1 = delay;
+                tnumber1 = parseInt(tnumber);
+                opara1=separate(opara); 
+                opara2="{"+opara1+"}";
+                var v = executeForm();
+                if (v == true){
+                    executeoperation();
+                }
+            }   
+            
+            
+            function executeForm(){
+                var va = true;
+                document.getElementById("onameDiv").style.display='none';
+                document.getElementById("delayDiv").style.display='none';
+                document.getElementById("tnumberDiv").style.display='none';
+               
+                if (oname == null||oname == ""){
+                    document.getElementById("onameDiv").style.display='block';
+                    va = (va && false);
+                }
+                
+
+                if (delay == null||delay == ""){
+                    document.getElementById("delayDiv").style.display='block';
+                    va = (va && false);
+                }
+                
+                if (tnumber == null||tnumber == ""){
+                    document.getElementById("tnumberDiv").style.display='block';
+                    va = (va && false);
+                }
+                               
+                return va;
+            }    
+                       
+            function btnReset_onclick(){
+            
+                document.getElementById("txt_oname").value="";
+                document.getElementById("txt_opara").value="";
+                document.getElementById("txt_delay").value="";   
+                document.getElementById("txt_tnumber").value="";
+
+               
+            }
+
+            function btnClose_onclick(){
+                window.close();
+            }
+
+
+        </script>
+    </head>
+    <body>
+        <h1>Execute existing operations.</h1><br>
+        <div id="showDiv" style="display:block;">
+         <A HREF="http://localhost/information/user_defined.txt" target="_blank">Information about the existing operations.</A> <br \> 
+        </div>
+        <br>
+        <div id="executeDiv" style="display:block;">
+            <p>Please enter the necessary information .</p>
+            <table width="90%" border="1" cellspacing="0">
+                <tr>
+                    <td>Name of the Operation:</td>
+                    <td><input type="text" value="" id="txt_oname" size="30">
+                        <div id="onameDiv" style="display:none;"><font color="red">Name of Operation should not be empty.</font></div>
+                    </td>
+                </tr>
+
+                <tr>                    
+                    <td>Operation parameters:<br>You <b>dont need</b> to fill this if an operation does not have parameters.</td>
+                    <td><input type="text" value="" id="txt_opara" size="30"> </td>
+                </tr>
+         
+                <tr>    
+                    <td>Time delays:</td>
+                    <td><input type="text" value="" id="txt_delay" size="30" >
+                        <div id="delayDiv" style="display:none;"><font color="red">Please input a time deplay.</font></div>
+                    </td>
+                </tr>
+                
+                <tr>    
+                    <td>Number of Tuples:</td>
+                    <td><input type="text" value="" id="txt_tnumber" size="30" onkeyup="value=this.value.replace(/\D+/g,'')">
+                        <div id="tnumberDiv" style="display:none;"><font color="red">Please input the Number of Tuples.</font></div>
+                    </td>
+                </tr>
+                
+            </table><br>
+            
+            <input type="button" value="Execute" name="btnexecute" onclick="return btnexecute_onclick();">
+            <input type="button" id="reset" value="Reset form" onclick="return btnReset_onclick();">
+            <input type="button" id="close" value="Close" onclick="return btnClose_onclick();">
+            
+            <hr><br><b>The result of operation is :</b> <strong><span id="message1" style="color:blue"></span></strong>
+            <div id="DivQueryResult"></div><br>
+         </div>
+        
+        <div id="errorDiv"></div>  <hr>
+ 
+    </body>
+</html>

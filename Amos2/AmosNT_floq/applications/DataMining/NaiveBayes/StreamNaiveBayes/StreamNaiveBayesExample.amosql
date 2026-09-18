@@ -1,0 +1,153 @@
+/* Demonstration file for the Stream Naive Bayes classifier */
+
+
+/* The file StreamNaiveBayes.amosql must previously have been run. */
+/* We want to predict the sex of a set of persons given their attributes. */
+set :testPopulation = {{"hair":"long hair", "clothes":"skirt", "footsize":38, "height":161, "weight":62},
+                       {"hair":"short hair", "clothes":"pants", "footsize":40, "height":175, "weight":88}};
+
+/* The attributes "hair" is categorical. 
+Therefore, the classifier HistogramGenerator will be used to generate the distribution. */
+create HistogramGenerator instances :c1;
+
+/* The attributes "clothes" is categorical, but the "zero-probability poblem" might appear. 
+Therefore, the classifier SmoothHistogramGenerator will be used to generate the distribution. 
+The smoothing coefficient is 1 (Laplace smoothing)*/
+create SmoothHistogramGenerator(smoothingStrengh) instances :c2(1);
+
+/* The attributes "foot size" and "height" are numeric. 
+They will respectively be represented by a Poisson distribution and a Normal distribution. */
+create PoissonGenerator instances :c3;
+create NormalGenerator instances :c4;
+
+/* The attribute "weight" is numeric. It will be discretized */
+/* Bins will be generated,with a width of 30 and centered around 80*/
+create BinHistogramGenerator(binningParameters) instances :c5({50,20});
+
+
+set :attributes={
+    {'hair',:c1}, 
+    {'clothes',:c2}, 
+    {'footsize',:c3}, 
+    {'height',:c4}, 
+    {'weight',:c5}
+};
+
+
+/* Fisrt approach */
+/*----------------*/
+/* Main procedure call to initialize the bayesian model. Outputs a NB_model object. */
+set :bayesModel=B_INITIALIZE_MODEL(:attributes, 
+                              'gender',
+                              {'male', 'female'});
+/* Shows detail of the (empty) generated model :*/                    
+print(outputDetail(:bayesModel)); 
+
+
+
+/* A first batch of examples - our classifier does not know much about women */
+set :population={{"hair":"short hair", "clothes":"pants", "footsize":42, "height":180, "weight":75, "gender":"male"}, 
+                 {"hair":"long hair", "clothes":"pants", "footsize":40, "height":166, "weight":50, "gender":"female"},
+                 {"hair":"long hair", "clothes":"pants", "footsize":43, "height":169, "weight":65, "gender":"male"},
+                 {"hair":"short hair", "clothes":"pants", "footsize":44, "height":172, "weight":90, "gender":"male"}};
+
+/* Updates the model*/
+B_UPDATE_MODEL(:bayesModel, :population);
+
+/* Predicts class for 2 new persons */
+B_CLASSIFY(:bayesModel, :testPopulation);
+
+
+/* A second batch of learning examples */
+set :population={{"hair":"long hair", "clothes":"skirt", "footsize":39, "height":160, "weight":60, "gender":"female"}, 
+                 {"hair":"short hair", "clothes":"skirt", "footsize":38, "height":175, "weight":58, "gender":"female"}};
+/* Updates the model*/
+B_UPDATE_MODEL(:bayesModel, :population);
+/* Shows detail of the generated model :*/                    
+print(outputDetail(:bayesModel)); 
+/* Performs classification for the same sample : it got better */
+B_CLASSIFY(:bayesModel, :testPopulation);
+
+
+
+/* Second approach */
+/*-----------------*/
+/* Alternative implementation */
+create function population2()-> Vector of Record as stored;
+set population2()={{'hair':'short hair', 'clothes':'pants', 'footsize':42, 'height':180, 'weight':75, 'gender':'male'}, 
+                   {'hair':'long hair', 'clothes':'pants', 'footsize':40, 'height':166, 'weight':50, 'gender':'female'},
+                   {'hair':'long hair', 'clothes':'pants', 'footsize':43, 'height':169, 'weight':65, 'gender':'male'},
+                   {'hair':'short hair', 'clothes':'pants', 'footsize':44, 'height':172, 'weight':90, 'gender':'male'},
+                   {'hair':'long hair', 'clothes':'skirt', 'footsize':39, 'height':160, 'weight':60, 'gender':'female'}, 
+                   {'hair':'short hair', 'clothes':'skirt', 'footsize':38, 'height':175, 'weight':58, 'gender':'female'}};
+
+create function bayesModel2()-> NB_Model as stored;
+
+/* Initializes model */
+set bayesModel2()=B_INITIALIZE_MODEL(:attributes, 
+                                     'gender',
+                                     {'male', 'female'});
+ 
+/* Feeds it incrementally with examples */ 
+for each Record item where item in population2()
+B_UPDATE_MODEL(bayesModel2(), item);
+ 
+outputDetail(bayesModel2());
+/* Classifies with MAP rule */
+print("Classification with MAP rule");
+B_CLASSIFY(bayesModel2(), :testPopulation); 
+/* Classifies with Log likelihood ratio*/
+print("Classification Log likelihood ratio");
+B_CLASSIFY_BINARY(bayesModel2(), :testPopulation); 
+
+
+
+
+/* Free text classifier */
+/*----------------------*/
+
+/* Choice of classifiers */
+create TextDistribGenerator instances :textGenerator;
+create ZipfGenerator instances :wrapped;
+set parameters(:wrapped)={0.18539, 1.028969};
+set wordsDistribGenerator(:textGenerator)=:wrapped;
+set parsingOptions(:textGenerator)={
+     {" ", ",",":",".","?"},
+     {"i","a","the","is","have","than","not","do","don't",
+      "or","it","any","than","and","more","to","of","that","on","because","many"},
+     {"*:-)*"}
+};
+
+create NormalGenerator instances :normalGenerator;
+
+set :classifiers={
+     {'WorkingHours',:normalGenerator},
+     {'Conversation',:textGenerator}
+};
+
+/* Learning */
+create function population3()-> Vector of Record as stored;
+set population3()={
+     {"WorkingHours":50,"Conversation":"I tend to use much more C++ than Java bacause it's definitely more fun:-)","Occupation":"Computer scientist"},
+    /* {"WorkingHours":60,"Conversation":"Python or Java ? Emacs or VI ? Scalability or accuracy ?","Occupation":"Computer scientist"},*/
+     {"WorkingHours":55,"Conversation":"Come on, VI is not THAT complicated...","Occupation":"Computer scientist"},
+     {"WorkingHours":50,"Conversation":"I believe rythm is more important than anything","Occupation":"Musician"},
+     {"WorkingHours":55,"Conversation":"Many Xenakis stuff don't have any rythm nor harmony, makes it kind of hard...","Occupation":"Musician"}
+};
+
+create function bayesModel3()-> NB_Model as stored;
+
+set bayesModel3()=B_INITIALIZE_MODEL(:classifiers, 
+                                     'Occupation',
+                                     {'Computer scientist', 'Musician'});
+                                     
+for each Record item where item in population3()
+     B_UPDATE_MODEL(bayesModel3(), item);
+
+print("Model updated");
+
+outputDetail(bayesModel3());
+
+set :test={{"WorkingHours":55, "Conversation":"lililolo"},
+           {"WorkingHours":60, "Conversation":"Xenakis actually used some C++ ! Doesnt give it more harmony though..."}};
+B_CLASSIFY_BINARY(bayesModel3(), :test);

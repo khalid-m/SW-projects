@@ -1,0 +1,333 @@
+/*;;; ============================================================
+;;; AMOS
+;;; 
+;;; Author: (c) 1995 Salah-Eddine Machani, EDSLAB
+;;; $RCSfile: eca_rules.osql,v $
+;;; $Revision: 1.7 $ $Date: 2011/01/28 09:18:11 $
+;;; $State: Exp $ $Locker:  $
+;;;
+;;; Description: set of tests on ECA rules and Event monitoring
+;;;
+;;; Requirements: 
+;;;	the osql file base_sample should be available in the
+;;;	regress subdirectory. The eca rules files should be in 
+;;;	the Lisp subdirectory as well	
+;;; =============================================================
+;;; $Log: eca_rules.osql,v $
+;;; Revision 1.7  2011/01/28 09:18:11  torer
+;;; 'result' -> 'return'
+;;;
+;;; Revision 1.6  2006/03/20 16:03:44  torer
+;;; Test with ECA rules initially disabled
+;;;
+;;; Revision 1.5  2001/08/16 07:43:14  torer
+;;; 1) More robust OID operators
+;;; 2) Big array bug fixed
+;;;
+;;; Revision 1.4  2000/10/24 12:44:17  torer
+;;; ECA rules OK
+;;;
+# Revision 1.2  1997/08/31  19:24:54  marsk
+# Removed rollback test.
+#
+# Revision 1.1  1996/12/05  14:23:29  marsk
+# Added regression tests for ECA-rule system.
+#
+;;;
+*/
+
+enable_eca();
+
+<'base_sample.osql';
+
+/* Updated event specification on a stored function*/
+
+create rule rule1(department d) as
+	from employee e
+	on updated(income(e))
+	when dept(e) = d and income(e) > income(mgr(e))
+	do set income(e) = income(mgr(e));
+
+activate rule rule1(:toys);
+set income(:e1) = 15000;
+
+rulecheck();
+
+deactivate rule rule1(:toys);
+
+/*Updated triggering event on a derived function*/
+
+create rule rule2(department d) as
+	from employee e
+	on updated(employee.netincome->number(e))
+	when dept(e) = d and income(e) > income(mgr(e))
+	do 
+          set income(e) = income(mgr(e)) - 1000;
+ 
+
+activate rule rule2(:toys) priority 1;
+set income(:e2) = 15000;
+rulecheck();
+deactivate rule rule2(:toys);
+
+
+
+/* Added triggering event on a bag result function*/
+
+create rule rule3(department d) as
+	from employee e
+	on added(addr(e))
+	when dept(e) = d and city(addr(e)) != city(addr(d))
+	do set income(e) = income(e) + 500;
+
+activate rule rule3(:toys) priority 3;
+add addr(:e3) = :addr6;
+
+rulecheck();
+deactivate rule rule3(:toys);
+
+
+/* Removed triggering event on a bag result function*/
+
+create rule rule4(department d) as
+	from employee e, timeval t
+	on removed(dept(e))
+	when timeval.employee.dept_removed->department(e)@t = d 
+	do set income(e) = income(e) - 5000;
+
+activate rule rule4(:toys) priority 4;
+remove dept(:e4) = :toys;
+rulecheck();
+
+deactivate rule rule4(:toys);
+
+
+/*Updated triggering event on a stored function for a given object*/
+
+create rule rule5(employee e) as
+	on updated(income(e))
+	when employee.netincome->number(e) > netincome(mgr(e))
+	do  set income(e) = income(mgr(e));
+
+activate rule rule5(:e5);
+set income(:e5) = 15000;
+
+rulecheck();
+
+lisp;
+(checkequal
+	"ECA rules for updated/added/removed triggering events "
+	((osql "income(:e1);") '((12000)))
+	((osql "income(:e2);") '((11000)))
+	((osql "income(:e3);") '((10500)))
+	((osql "income(:e4);") '((5000)))
+	((osql "income(:e5);") '((12000))))
+:osql
+
+deactivate rule rule5(:e5);
+
+/*Created triggering event on an object instance*/
+
+create rule rule6(department d) as
+	from employee e
+	on created(e)
+	when dept(e) = d and income(e) > 10000
+	do set income(e) = 10000;
+
+activate rule rule6(:toys) priority 5;
+create employee (name, income, dept, addr, taxes) instances 
+	:e6 ("employee6", 14000, :toys, :addr6, .25),
+	:e7 ("employee7", 14000, :toys, :addr7, .25),
+	:e8 ("employee8", 10000, :toys, :addr8, .25);
+
+rulecheck();
+deactivate rule rule6(:toys);
+
+lisp;
+(checkequal
+	"ECA rule with the created triggering event "
+	((osql "income(:e6);") '((10000)))
+	((osql "income(:e7);") '((10000))))
+:osql
+
+rollback;
+
+<  'base_sample.osql';
+
+/* ECA rules with priority numbers*/
+
+
+/* composite event as a disjunction of two simple events*/
+
+create rule rule7() as
+	from employee e
+	on updated(taxes(e)) or updated(income(e))
+	when employee.netincome->number(e) > netincome(mgr(e))
+	do set income(e) = 10000;
+
+activate rule rule7();
+set taxes(:e1) = .3;
+set income(:e2) = 16000;
+set income(:e3) = 11000;
+
+rulecheck();
+deactivate rule rule7();
+
+/*composite event as conjunction of two simple events*/
+
+create rule rule8(department d) as
+	from employee e
+	on updated(dept(e)) and updated(addr(e))
+	when dept(e) = d 
+	     and city(addr(e)) != city(addr(d))
+	do set income(e) = income(e) + 900;
+
+activate rule rule8(:shoes) priority 3;
+set addr(:e4) = :addr8;
+set dept(:e4) = :shoes;
+set dept(:e5) = :shoes;
+
+rulecheck();
+deactivate rule rule8(:shoes);
+
+create employee (name, income, dept, addr, taxes) instances 
+	:e6 ("employee6", 14000, :toys, :addr6, .25),
+	:e7 ("employee7", 14000, :toys, :addr7, .25),
+	:e8 ("employee8", 10000, :toys, :addr8, .25);
+
+/*composite event as a disjunction of a simple event and another composite event*/
+
+create rule rule9(department d, manager m) as
+	from employee e
+	on (updated(income(e)) and updated(dept(e))) or added(dept(e))
+	when (dept(e) != d or mgr(e) != m) and income(e) < 20000
+	do begin
+		set income(e) = 20000;
+		set dept(e) = d;
+		set mgr(d) = m;
+ 	  end;
+
+activate rule rule9(:shoes, :harold);
+
+
+set income(:e6) = 15000;
+set dept(:e6) = :toys;
+set income(:e7) = 15000;
+add dept(:e8) = :cloths;
+
+rulecheck();
+deactivate rule rule9(:shoes, :harold);
+
+lisp;
+(checkequal
+	"ECA rules with composite events "
+	((osql "income(:e1);") '((10000)))
+	((osql "income(:e2);") '((10000)))
+	((osql "income(:e3);") '((11000)))
+	((osql "income(:e4);") '((10900)))
+	((osql "income(:e5);") '((10000)))
+	((osql "income(:e6);") '((20000)))
+	((caar (osql "dept(:e6);")) amos_shoes)
+	((caar (osql "mgr(:e6);")) amos_harold)
+	((osql "income(:e7);") '((20000)))
+	((osql "income(:e8);") '((20000)))
+	((caar (osql "dept(:e8);")) amos_shoes)
+	((caar (osql "mgr(:e8);")) amos_harold))
+:osql
+
+
+set income(:e3) = 10000;
+set taxes(:e3) = .25;
+
+
+
+/* example of rule termination*/
+
+create rule rule12() as
+	from employee e
+	on updated(income(e))
+	when income(e) > 20000
+	do set taxes(e) = .2;
+
+create rule rule13() as
+	from employee e
+	on updated(taxes(e))
+	when employee.netincome->number(e) < 10000
+	do set income(e) = 25000;
+
+activate rule rule12();
+activate rule rule13();
+
+set income(:e1) = 22000;
+
+rulecheck();
+deactivate rule rule12();
+deactivate rule rule13();
+
+lisp;
+(checkequal
+	"Rule termination "
+	((osql "income(:e1);") '((25000))))
+:osql
+
+set income(:e1) = 10000;
+
+
+
+/* a simple EA rule*/
+
+create rule rule14() as
+	from employee e
+	on updated(dept(e))
+	do set income(e) = income(e) - 1000;
+
+activate rule rule14();
+set dept(:e2) = :cloths;
+
+rulecheck();
+deactivate rule rule14();
+
+
+/*  A parameterized EA rule */
+
+create rule rule15(department d) as
+	from employee e
+	on updated(dept(e))
+	do set dept(e) = d;
+
+activate rule rule15(:toys);
+set dept(:e3) = :cloths;
+
+rulecheck(4);
+deactivate rule rule15(:toys);
+
+lisp;
+(checkequal
+	"EA rules "
+	((osql "income(:e2);") '((9000)))
+	((caar (osql "dept(:e3);")) amos_toys))
+:osql
+
+rollback;
+
+/* Jesper's bugs */
+
+create type DDataSource properties(createdd integer);
+
+create type CompProxy properties(nrIndata integer);
+create function indata(CompProxy cp) -> bag of DDataSource as stored;
+create function outdata(CompProxy cp) -> bag of DDataSource as stored;
+
+create function indataPresent(CompProxy cp) -> integer as
+  select 1;
+
+create rule executerule() as
+  from DDataSource ds, CompProxy cp
+  on updated(createdd(ds))
+  when indataPresent(cp) = 1 and indata(cp) = ds
+  do for each DDataSource dds where outdata(cp) = dds
+    set createdd(dds) = 1;
+
+rollback;
+
+

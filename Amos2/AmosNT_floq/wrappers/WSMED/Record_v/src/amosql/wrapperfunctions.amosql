@@ -1,0 +1,29 @@
+create function findservice(charstring wsdluri)->service as select s from service s where wsdluri(s)=wsdluri;
+create function findservicename(charstring wsdluri)->charstring as select name(s) from service s where wsdluri(s)=wsdluri;
+create function  vectorele(vector r)->element as select in(r);
+create function  countvectorele(vector of element r)->integer as select count(in(r));
+create function wrapperfunction(charstring cs)-> charstring as foreign  "JAVA:wrapperFunctions/initiate";
+create function populatesoapheader(charstring wsdlurl)->boolean as 
+				begin
+                                for each  Service s, Operation op where wsdluri(s)=wsdlurl and port(s)=op
+				 begin
+				  if (soapheader(op)={}) then
+				    putsoaphvalue(op,{});
+				 end;
+				end;
+				
+
+
+/****************************************************/
+/* Generic Functions*/
+/****************************************************/
+create function generate_wsdl_metadata(charstring wsdlurl)-> boolean  as foreign  "JAVA:intiateSchema/initoperation"; 
+
+create function importwsdl(charstring wsdlurl) -> boolean as
+begin
+  generate_wsdl_metadata(wsdlurl);
+  load_amosql("populatewsdl.amosql");
+  load_amosql(wrapperfunction(wsdlurl));
+  populatesoapheader(wsdlurl);
+  result true;
+end;

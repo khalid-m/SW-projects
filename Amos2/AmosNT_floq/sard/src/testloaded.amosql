@@ -1,0 +1,13 @@
+set :a = jdbc("ibds", "interbase.interclient.Driver");
+set :dbdir = "jdbc:interbase://localhost/"+getenv("INTERBASE_BIN")+"/";
+connect(:a,:dbdir+"reloadDB.gdb", "SYSDBA", "masterkey");
+lisp;
+(checkequal "SARD"
+  ((osql "sql(:a,'select * from authors;');")
+   '((#(1 "GREG" "BARISH")) (#(2 "TIMOTHY" "BUDD"))))
+  ((osql "sql(:a,'select * from relatedservices;');")
+   '((#("ABC1234H" 1 "Issuing a birth certificate")) (#("ABC1234H" 2 "Online payment"))))
+)
+:osql
+disconnect(:a);
+quit;

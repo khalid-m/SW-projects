@@ -1,0 +1,1 @@
+ntriples.cmd sparql-lsp-parser.lsp regress.lsp -o "quit;"

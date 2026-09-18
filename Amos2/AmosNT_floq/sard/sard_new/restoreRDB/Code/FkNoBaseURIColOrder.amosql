@@ -1,0 +1,107 @@
+
+/*****************************************************************************/
+/* Returns the information about primary Value. The primary keys can be single or composite attribute/s.*/
+create function get_pkVal_Col(Charstring rowID)->Charstring
+as begin
+	declare Vector pkVal, Vector pkVal1,Charstring pkV;
+	set pkVal=row_ident(rowID,ret_tableURIFromRowIDNoURI(rowID));
+	for each Integer i where i in iota(1,dim(pkVal)) 
+		set pkVal1=concat(pkVal1,{pkVal[dim(pkVal)-i]});	
+	set pkV=concatagg(inject(vectorbag(pkVal1),','));
+	return pkV;
+end;
+/*****************************************************************************/
+
+create function get_fkVal_NameColNoURI(Charstring p,Charstring RefID,Vector v1,Vector v4)->(Charstring,Charstring,Vector,Vector)
+/* Returns the information about foreign key name and Value. The foreign keys can be single or composite attribute/s.*/
+as begin 
+     	declare Vector fkname,Vector fkVal,Vector fkVal1,Charstring c1,Charstring fkV,Charstring fkN;
+	set fkVal=row_ident(refID,ret_tableURIFromRowIDNoURI(refId));
+	for each Charstring ch where ret_fkMap(p)=ch
+	begin for each Integer i where i in iota(1,dim(v4))
+			if(ch=v4[i-1]) then set c1=v1[i-1];		
+		set fkname=concat(fkname,{c1});
+	end;
+	for each Integer i where i in iota(1,dim(fkName))
+		set fkN=fkName[i-1];
+	for each Integer i where i in iota(1,dim(fkVal)) 
+		set fkVal1=concat(fkVal1,{fkVal[dim(fkVal)-i]});
+	set fkV=concatagg(inject(vectorbag(fkVal1),','));	
+	return (fkN,fkV,fkname,fkVal);
+end;
+/*****************************************************************************/
+create function ColOrderInsertLoader(JDBC jd,Charstring filename2)
+->Boolean
+/*Generates CALL PROCEDURE_NAME  statements to insert data into the database. These CAll Procedure_name statements calls the stored procedures in the database for the data insertion.*/
+as begin
+        declare Vector v5,Number time1,Number time2, Number total,Vector cnt,Vector v1,Vector v4,Vector fk,Vector tab1,Vector tab2,Charstring z,Charstring tname,Charstring t,Charstring t1,Charstring t2,Charstring t3,
+		Charstring t4,Charstring t5,Charstring pkV,Charstring c1,Charstring c2,Charstring cont3,Charstring cont1,Charstring cont2;
+	set t="";set cont3="";	set total=0;
+	
+	/*Retrieves all connecting tables from the NT file and stores in a vector.*/
+	for each charstring ch where ret_tableURIs_CT()=ch set cnt=concat(cnt,{ch});
+	for each Charstring ch1,Charstring ch2 where ret_tableNameURIs()=<ch1,ch2>
+	begin 	
+		set tab1=concat(tab1,{ch1});set tab2=concat(tab2,{ch2});
+		for each Charstring ch where ret_fkInNt(ch1)=ch
+			set fk=concat(fk,{ch});
+		for each Charstring colURI,Charstring col where ret_columnNameURIs(ch1,ch2)=<colURI,col>
+		begin 	set v1=concat(v1,{col});set v5=concat(v5,{tab1});set v4=concat(v4,{colURI}); end;
+	end;
+	for each charstring s, charstring p,charstring v, Charstring i where readtuples1(filename2)=<s,p,v,i>
+	begin   if(p in cnt) then 
+		begin	if (p!=t) then 
+			begin 	
+				set cont1=ret_pknamefromRowIdNoURI(s);
+				set cont2=ret_pknamefromRowIdNoURI(v);
+				set cont3=ret_pkURIs(p); set t=p;
+
+			end;
+             		set c1=concatagg(inject(vectorbag(row_ident(s,ret_tableURIfromRowIDNoURI(s))),','));
+			set c2=concatagg(inject(vectorbag(row_ident(v,ret_tableURIfromRowIDNoURI(v))),','));
+			
+			set time1=real(now());
+				sql(jd,"CALL SP_"+ret_tableNameFromRowIdNoURI(s)+"_"+cont1+"("+c1+");");
+				sql(jd,"CALL SP_"+ret_tableNameFromRowIdNoURI(v)+"_"+cont2+"("+c2+");");
+				sql(jd,"CALL SP_"+ret_tabNameNoURI(p)+"_"+mapColumnName(p,cont3)+"("+c1+","+c2+");");
+			set time1=real(now())-time1; 
+			set total=time1+total;	
+		end
+		else if(p!="<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>") then
+		begin 
+			if (s!=t) then 
+				begin set pkV=get_pkVal_Col(s);
+				set tname=ret_tableNamefromRowIDNoURI(s);set t=s; end;
+
+			if(v!="") then
+			begin 	
+				if(p in fk) then 
+				begin 	set t1=ret_tableNameFromRowIDNoURI(v);
+					for each Integer i where i in iota(1,dim(v4)) 
+					/*	if (v4[i-1]=ret_pkURIFromRowIDNoURI(v)and v5[i-1]=ret_tableURIFromRowIDNoURI(v)) then set t2=v1[i-1];*/set t2=mapColumnName(ret_tableURIFromRowIDNoURI(v),ret_pkURIFromRowIDNoURI(v));
+					for each Charstring ch1,Charstring ch2,Vector vec1,Vector vec2 where get_fkVal_NameColNoURI(p,v,v1,v4)=<ch1,ch2,vec1,vec2> 
+					begin set t3=ch1;set t4=ch2;
+					set time1=real(now());
+						sql(jd,"CALL SP_"+t1+"_"+t2+"("+t4+");"); 
+						for each integer j where j in iota(1,dim(vec1))
+							sql(jd,"CALL SP_"+tname+"_"+vec1[j-1]+"("+pkV+","+vec2[j-1]+");");
+					set time1=real(now())-time1;
+					set total=time1+total;end;	
+				end
+				else 
+				begin  for each Integer j where j in iota(1,dim(v4)) 
+					if p=v4[j-1] then set t3=v1[j-1];
+					set t4="'"+v+"'";
+					set time1=real(now());
+						sql(jd,"CALL SP_"+tname+"_"+t3+"("+pkV+","+t4+");");
+					set time1=real(now())-time1;set total=time1+total; 
+				end;
+			end;
+		end;
+	end;
+	print(total);
+end;
+/*****************************************************************************/
+
+
+

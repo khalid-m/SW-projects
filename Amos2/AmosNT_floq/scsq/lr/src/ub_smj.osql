@@ -1,0 +1,127 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 Erik Zeitler, UDBL
+ * $RCSfile: ub_smj.osql,v $
+ * $Revision: 1.10 $ $Date: 2012/05/15 21:32:18 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: micro benchmark of stream merge:
+ *              sequential merge (Zaniolo's union)
+ *              zip (join w/ window size 1)
+ *              union-all
+ *
+ ****************************************************************************
+ * $Log: ub_smj.osql,v $
+ * Revision 1.10  2012/05/15 21:32:18  torer
+ * result -> return
+ *
+ * Revision 1.9  2012/03/13 10:49:09  zeitler
+ * Type warnings eliminated by casting
+ * Assignment replaced by in
+ *
+ * Revision 1.8  2011/04/06 12:10:27  zeitler
+ * Changed type of stored functions from tuple to vector of number
+ *
+ * Revision 1.7  2011/02/20 22:22:24  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.6  2010/12/07 23:09:25  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.5  2010/12/07 19:15:34  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.4  2010/11/27 10:47:47  zeitler
+ * ub of coroutine uall
+ *
+ * Revision 1.3  2010/08/26 11:24:59  zeitler
+ * documented mfn
+ *
+ * Revision 1.2  2010/08/16 09:05:45  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.1  2010/07/26 14:00:55  zeitler
+ * u-benchmark sequential stream merge
+ *
+ *
+ ****************************************************************************/
+
+/* hybrid_enumc_streams, hybrid_enumc_layer: Help functions */
+
+create function hybrid_enumc_streams(integer w, integer rep)
+-> (integer, stream) as begin
+for each integer i where i in viota(0, integer(w-1)) begin
+return (i, ostream(newsp(i_hybrid_enumc(1, 0, rep)), 0));
+end;
+end;
+
+create function hybrid_enumc_layer(integer w, integer rep)->vector of stream as
+vectorize(hybrid_enumc_streams(w, rep));
+
+/* ub_smj: smj of a number of streams */
+
+create function ub_smj(integer w, integer rep)
+-> vector as
+select in(mapstreams({(smjstreamsna(src, 1))}, #'stcount')[0])
+from vector of stream src
+where src = hybrid_enumc_layer(w, rep);
+
+/* ub_conv_zip: conventional zip */
+
+create function ub_conv_zip(integer w, integer rep)
+-> vector as
+select in(mapstreams({(zipstreams(src))}, #'stcount')[0])
+from vector of stream src
+where src = hybrid_enumc_layer(w, rep);
+
+/* ub_uall: conventional uall */
+
+create function ub_uall(integer w, integer rep)
+-> vector as
+select in(mapstreams({(mergestreams(src))}, #'stcount')[0])
+from vector of stream src
+where src = hybrid_enumc_layer(w, rep);
+
+/* ub_couall: union-all with each receiver in co-routine
+   Problematic because of the amount of context switching */
+
+create function ub_couall(integer w, integer rep)
+-> vector as
+in(mapstreams({comerge(hybrid_enumc_layer(w, rep), 1.0)}, #'stcount')[0]);
+
+/* ub_bguall: uall with bg recv thread */
+
+create function ub_bguall(integer w, integer rep)
+-> vector as
+select in(mapstreams({(bgmerge(src, 1.0))}, #'stcount')[0])
+from vector of stream src
+where src = hybrid_enumc_layer(w, rep);
+
+create function x_ub_merge(integer w, integer rep, function mfn)
+-> (integer, real exetime, integer countsum, real mcpu)
+as begin
+declare vector res;
+reset_ipr();
+set res = apply(mfn, {w,rep})[0];
+set mcpu = psum(mergecpu());
+print({w, res, mcpu});
+set exetime = res[2];
+set countsum = res[3];
+return(select w, exetime, countsum, mcpu);
+end;
+
+create function ub_merge_res() -> vector of number;
+
+/* mfn is #'ub_uall', #'ub_smj', #'ub_conv_zip', or variants */
+
+create function scale_merge(integer rep, vector of integer ws, function mfn)
+-> charstring outputfilename as begin
+clear_function("ub_merge_res");
+for each integer i where i in ws begin
+set outputfilename = name(mfn) + "w" + stringify(i) + "_r" + stringify(rep);
+add ub_merge_res() = {x_ub_merge(i, rep, mfn)};
+writefile("dp-" + outputfilename, {dprofile()});
+end;
+return write_ntuples(ub_merge_res(), "ub_" + name(mfn) + timestamp());
+end;

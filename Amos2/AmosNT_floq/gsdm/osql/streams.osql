@@ -1,0 +1,179 @@
+/***************************************************************************** * AMOS2 - GSDM * 
+* Author: (c) 2004 Milena Koparanova, UDBL 
+* $RCSfile: streams.osql,v $ 
+* $Revision: 1.38 $ $Date: 2005/12/01 21:47:22 $ 
+* $State: Exp $ $Locker:  $ 
+* * Description: Stream implementation in GSDM. Stream elements 
+*	represented internally as instances of tuple type 
+*	Window of stream is a function returning an object of tuple type
+****************************************************************************/
+
+create type stream;
+
+create function ts(Window t)-> timeval 
+as select cast(field(t,0) as timeval);
+
+create function currentWindow(stream s)-> Window t 
+as foreign 'currentWindowfn';
+
+create function slidingWindow(stream s,integer sz, integer st)
+   -> vector of Window t 
+as foreign 'slidingWindowfn';
+
+create function timeWindow(stream s, real span, real st)
+   -> vector of Window t 
+as foreign 'timeWindowfn';
+
+create function register_stream(charstring strtype,
+		charstring sourceid, charstring sourceaddr, 
+		charstring destaddr, charstring kind)-> stream 
+as foreign 'register-streamfn';
+
+create function register_stream(charstring strtype,
+		charstring sourceid, charstring sourceaddr, 
+		charstring destaddr, charstring kind,charstring logname)-> stream 
+as foreign 'register-stream1fn';
+
+
+/******************QUERY ********/
+create function register_query(charstring qid,
+                charstring functionname,
+                vector arguments,
+                vector sourceid)-> boolean 
+	as foreign 'register-queryfn';
+
+create function register_operator(charstring qid,
+                charstring functionname,
+                vector sourceid,
+                vector arguments)-> boolean 
+	as foreign 'register-operatorfn';
+
+/* qid (box-id)functionname - operation to be executed (box-op)
+arguments of the function (box-paraml)
+stream sourceids (box-inputstreaml) */
+
+/******************RESULT STREAMS = PRODUCERS ********/
+
+create function register_producer(charstring pid, 
+		charstring qid,	
+	        charstring dest,
+                charstring kind)-> stream 
+as foreign 'register-producerfn';
+
+create function register_producer(charstring pid, 
+		charstring qid,	
+	        charstring dest,
+                charstring kind,
+		charstring logname)-> stream 
+as foreign 'register-producer1fn';
+
+/* pid producer(result stream) id
+produces the result of query qid
+towards destination dest with communication channel of kind ) */
+
+create function unregister_producer(charstring pid)-> boolean 
+as foreign 'unregister-producerfn';
+
+/************** Other OPERATIONS ********************/
+create function register_merge_old(charstring id,
+                        vector sourceid)-> boolean 
+as foreign 'register-mergefn';
+
+create function register_merge(charstring id,
+                        vector sourceid, real timeout)-> boolean 
+as foreign 'register-mergefn';
+
+create function register_tsjoin_old(charstring id,
+                        vector sourceid)-> boolean 
+as foreign 'register-tsjoinfn';
+
+create function register_tsjoin(charstring id,
+                        vector sourceid,
+			charstring combmethod
+/*			charstring restype */
+)-> boolean 
+as foreign 'register-tsjoinfn';
+
+create function register_chop(charstring id,
+                        charstring strname,
+			integer n)-> boolean 
+as foreign 'register-chopfn';
+/***********************************************************************/
+create function cur_scenario()->charstring as stored;
+
+create function set_scenario(charstring s)-> boolean
+as set cur_scenario()= s;
+
+set_scenario("Not set");
+
+create function print_all_stat()-> boolean as
+begin
+	declare charstring out_file;
+	
+	set out_file= concat(concat(cur_scenario(),"-"),this_amosid());
+	println("",out_file,"a");
+	print(cur_scenario(),out_file,"a");
+	println(" - " + this_amosid(),out_file,"a");
+
+	print_stream_stat(out_file);
+	print_box_stat(out_file);
+	print_fn_profiles(out_file);
+	print_sched_stat(out_file);
+	print_image_size(out_file);
+       
+end;
+
+
+create function load_script(charstring scriptname) -> boolean
+as begin
+	declare charstring script_dir;
+
+	set script_dir=getenv('AMOS_HOME') + "/gsdm/osql/scripts/";
+	load_amosql(script_dir + scriptname);
+end;
+
+create function load_recorded_stream(charstring streamname) -> boolean
+as begin
+	declare charstring test_dir;
+
+	set test_dir=getenv('AMOS_HOME') + "/gsdm/";
+	load_amosql(test_dir + lower(streamname) + ".osql");
+end;
+
+/***********************************************************************/
+/* Predefined stream types */
+create_stream_type("TESTSIGNAL",
+		     vector of charstring ("ts","x","y","z"),
+		     vector of charstring ("timeval","vector of complex",
+		"vector of complex","vector of complex"));
+
+/*create function open_stream(testsignal s)-> boolean as foreign 'openfn'; */
+
+create_stream_type("CHANNEL",
+		     vector of charstring ("ts","x"),
+		     vector of charstring ("timeval","vector of complex")); 
+
+create_stream_type("POLARIZED",
+		     vector of charstring ("ts","phi","theta","I","Q","U","V"),
+		     vector of charstring ("timeval","vector of real",
+		"vector of real","vector of real",
+		"vector of real","vector of real","vector of real")); 
+
+create_stream_type("TEST",
+		     vector of charstring ("ts","data"),
+		     vector of charstring ("timeval","integer")); 
+
+create_stream_type("DEBUG",
+		     vector of charstring ("ts"),
+		     vector of charstring ("timeval"));
+
+register_stream_interface("TESTSIGNAL", "PLAY", "openplayfn", 
+		"nextplayfn", "insertplayfn", "closeplayfn");
+
+register_stream_interface("TESTSIGNAL", "LATENCY", "openlatencyfn", 
+		"nextlatencyfn", "insertlatencyfn", "closelatencyfn");
+
+
+register_stream_interface("POLARIZED", "LATENCY", "openlatencyfn", 
+		"nextlatencyfn", "insertlatencyfn", "closelatencyfn");
+

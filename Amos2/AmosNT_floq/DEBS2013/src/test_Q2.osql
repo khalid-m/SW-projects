@@ -1,0 +1,57 @@
+lisp;
+(osql "set :testQ4 = 'data/testQ4.csv';")
+
+(checkequal 
+ "Test ballhitter on small data"
+ ((osql "count(select v from Numarray v where v in ballhitter_bag(inputstreamna(:testQ4)) and isballhitter(v));")
+  '((2))))
+
+(checkequal 
+ "Test Ball hitter + ball events"
+ ((osql "count(in(select v from Numarray v where v in ballhitter_process(inputstreamna('data/testQ4.csv')) and v[1]!= -1));")
+  '((1570))))
+
+
+(checkequal 
+ "Test Player possession"
+ ((osql "count(playerposs_bag(streamof(select v from Numarray v where v in ballhitter_bag(inputstreamna('data/testQ4.csv')) and isballhitter(v))));")
+  '((0))))
+
+(quote (checkequal 
+ "Heavy test 1"
+ ((osql "select v[1], v[3] from Numarray v where v in playerposs_bag(ballhitter_process(inputstreamna('data/head4M.csv'))) and v[1]!=-1;")
+  '((13.0,2.0) (11.0,3.0) (13.0,2.0) (14.0,2.0) (10.0,2.0) (14.0,2.0) (11.0,2.0) (13.0,2.0) (15.0,1.0) (6.0,1.0) 
+    (7.0,1.0)  (6.0,1.0)  (4.0,1.0)  (14.0,2.0) (13.0,3.0) (14.0,1.0) (10.0,1.0) (11.0,3.0) (14.0,2.0) (12.0,2.0)
+    (13.0,2.0) (11.0,3.0) (4.0,1.0)  (1.0,2.0)  (4.0,2.0)  (1.0,2.0)  (3.0,2.0)  (5.0,3.0)  (4.0,1.0)  (6.0,1.0)
+    (4.0,2.0) (2.0,2.0)   (3.0,2.0) (5.0,2.0)  (4.0,4.0) (11.0,1.0) (2.0,1.0) (10.0,1.0) (11.0,2.0) (4.0,1.0) 
+    (3.0,2.0) (5.0,1.0) (4.0,3.0) (2.0,3.0) (3.0,1.0) (4.0,2.0) (5.0,2.0) (7.0,1.0) (4.0,3.0) (2.0,3.0) (12.0,1.0)
+    (7.0,1.0) (12.0,4.0) (3.0,1.0) (12.0,1.0) (6.0,1.0) (5.0,1.0) (7.0,3.0) (11.0,1.0) (12.0,2.0) (11.0,1.0)
+   (10.0,3.0) (6.0,1.0) (13.0,2.0) (10.0,1.0)))) 
+)
+
+:osql
+
+
+
+/*
+  '((#(2.297715259916 "Leo Langhans" 1.250370733468 1)) 
+    (#(3.41017224439 "Christopher Lee" 1.112456984474 2)) 
+    (#(6.6720606619 "Vale Reitstetter" 3.26188841751 4)) 
+    (#(11.727716591186 "Luca Ziegler" 5.055655929286 5)) 
+    (#(13.359738352448 "Vale Reitstetter" 1.632021761262 3)) 
+    (#(16.448099882342 "Christopher Lee" 3.088361529894 3)) 
+    (#(18.96932511705 "Kevin Baer" 2.521225234708 3)) 
+    (#(21.431023018988 "Christopher Lee" 2.461697901938 3)) 
+    (#(26.142119339198 "Luca Ziegler" 4.71109632021 3)) 
+    (#(27.882975090492 "Vale Reitstetter" 1.740855751294 4)) 
+    (#(28.08941803513 "Wili Sommer" 0.206442944637999 1)) 
+    (#(29.003037874634 "Leon Heinze" 0.913619839504001 1)) 
+    (#(30.000113371136 "Roman Hartleb" 0.997075496501999 2)) 
+    (#(30.902020135116 "Erik Engelhardt" 0.901906763980001 2)) 
+    (#(34.603855978364 "Roman Hartleb" 3.701835843248 2)) 
+    (#(40.846035877276 "Wili Sommer" 6.242179898912 3)) 
+    (#(43.582887780572 "Vale Reitstetter" 2.736851903296 4)) 
+    (#(48.759265946992 "Christopher Lee" 5.17637816642 7)) 
+    (#(53.192001536432 "Vale Reitstetter" 4.43273558944 3)) 
+    (#(55.41114116594 "Christopher Lee" 2.219139629508 2)))))
+*/

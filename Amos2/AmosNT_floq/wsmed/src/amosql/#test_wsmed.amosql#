@@ -1,0 +1,59 @@
+
+/* creating WSDL document */
+
+lisp;
+;; wait until WSMOS server started
+(while (not (osql "select 'WSMOS' in other_peers();")) )
+:osql
+
+
+ship("wsmos","create function intPlus(integer num1, integer num2)->integer as select num1+num2;");
+ship("wsmos","create function intBag()->Bag of integer as select iota(1,4);");
+
+
+
+
+ship("wsmos","set deploy_dir()= getenv('AMOS_HOME')+'/wsmed/wsdl/';");
+
+ship("wsmos","deploy_wsdl({'intPlus','intBag'},'sum.wsdl','summation');");
+
+
+
+/*import the wsdl document */
+importwsdl("wsdl/sum.wsdl");
+
+/*invoke operation intPlus */
+
+lisp;
+(checkequal "WSMED SOAP Call >>"
+   ((osql "sql('select p.VWSMOS11 from intplus p where p.NUM1=1 and p.NUM2=2');")
+    '((#(3)))))
+
+(checkequal "WSMED SOAP Call >>"
+   ((osql "sql('select b.OUT0 from intbag b');")
+    '((#(1)) (#(2)) (#(3)) (#(4))  )))
+(sleep 4)
+:osql
+
+
+/*set fanout */
+setfanout({2});
+create function query3()-> integer as select count(
+                  sql("select p.VWSMOS11
+                       from   intPlus p, intBag b
+                       where  p.NUM1 in (b.OUT0) and p.NUM2=10"));
+
+lisp;
+(checkequal "Web Service Calls with PAP Operator >>"
+   ((osql "query3();")
+    '((4))))
+
+:osql
+
+kill_peer("wsmos");
+kill_the_federation();			
+
+quit;
+
+
+

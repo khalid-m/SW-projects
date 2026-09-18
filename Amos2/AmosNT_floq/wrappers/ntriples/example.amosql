@@ -1,0 +1,21 @@
+count(ntriples("nt/w3.nt"));
+
+select v[2] into :elem from Vector v where v = ntriples("nt/w3.nt");
+select v[1] into :elem2 from Vector v where v = ntriples("nt/simple.nt");
+
+select k, d, l, dt 
+  from Integer k, Charstring d, Charstring l, Object dt
+  where rdfr(k, d, l, dt) = :elem;
+  
+select rdfr_data(o)
+  from RDFResource s, RDFResource p, RDFResource o, Charstring data
+  where <s, p, o> = ntriples("nt/w3.nt") and
+  data = rdfr_data(p) and
+  LIKE(data, "*property");
+  
+select rdfr_data(o) from RDFResource s, RDFResource p, RDFResource o where <s, p, o> = ntriples("nt/test.nt");
+
+select data + data
+from Integer kind, Real data, Charstring lang, Object datatype
+where rdfr(kind, data, lang, datatype) = 
+      rdfr(1, "22.2", "", rdfr(0, "http://www.w3.org/2001/XMLSchema#decimal", "", ""));

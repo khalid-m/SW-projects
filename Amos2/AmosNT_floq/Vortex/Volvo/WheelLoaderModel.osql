@@ -1,0 +1,96 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2013 Cheng Xu, Tore Risch, UDBL, Elisabeth Ibeh, Volvo CE
+ * $RCSfile: WheelLoaderModel.osql,v $
+ * $Revision: 1.7 $ $Date: 2013/11/20 21:16:32 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: the wheel loader model
+ *
+ ****************************************************************************/
+
+create function forwardPressureStream(Stream of Vector s) 
+                                    -> Stream of (Real, Real)
+  as streamof(select timeStamp(f), forwardPressure(f)
+              from Vector of Number f
+	      where isFrameA(f) and f in s);
+
+create function forwardPressureStream(Charstring cid) -> Stream of (Real, Real)
+  as forwardPressureStream(canBusStream(theCanBusStream(cid)));
+
+create function simForwardPressureStream(Charstring cid) -> Stream of (Real, Real)
+  as forwardPressureStream(simCanBusStream(theCanBusStream(cid)));
+
+create function partitionBy(Vector of Number f) -> Real
+  as select Gear(f) where isFrameCF00F03(f);
+
+create function functionsnamed(Vector of Charstring fns) -> Vector of Function
+  as vectorof(select theresolvent(fn) from Charstring fn where fn in fns);
+
+create function mapw(Window part, Vector of Function mapfnv) -> Bag of Vector
+  as mapv(in(part), mapfnv);
+
+create function maxAllowedKurtosis(Charstring signal) -> Number as stored;
+
+set maxAllowedKurtosis("pressureForward1") = 8.0;
+set maxAllowedKurtosis("pressureForward2") = 7.5;
+set maxAllowedKurtosis("mainPressure") = 9.5;
+set maxAllowedKurtosis("forwardPressure") = 8.6;
+set maxAllowedKurtosis("pressureR") = 7.8;
+set maxAllowedKurtosis("rearTorque") = 7.9;
+set maxAllowedKurtosis("frontTorque") = 6.6;
+set maxAllowedKurtosis("inputSpeed") = 2.5;
+set maxAllowedKurtosis("turbTorque") = 3.5;
+set maxAllowedKurtosis("TrmOilTemp") = 3.2;
+set maxAllowedKurtosis("OffgSlipping") = 6.0;
+set maxAllowedKurtosis("diffSpeed1") = 5.1;
+set maxAllowedKurtosis("diffSpeed2") = 5.7;
+set maxAllowedKurtosis("turbSpeed") = 4.5;
+set maxAllowedKurtosis("outgSpeed") = 2.5;
+set maxAllowedKurtosis("outputCoolerTemp") = 2.7;
+
+create function substv(Number x, Number y, Number z) -> Number
+  as if z = x then return y else return z;
+
+create function kurtosis(Bag of Number signal) -> Number
+  as select normSum / substv(0, 1, ((n - 1) * power(stdv, 4)))
+     from Number stdv, Number normSum, Number n, Bag of Number sig
+     where stdv = stdev(sig) and
+	   n = count(sig) and
+	   sig = remove_null(signal) and
+	   normSum = sum(select power(e - averg, 4)
+                         from Number e, Number averg
+                         where e in sig and
+                         averg = avg(sig));
+
+create function windowKurtosis(Window part, Vector of Charstring signals) 
+                             -> Vector of Number
+  as myaggv(mapw(part, functionsnamed(signals)), #'kurtosis');
+
+create function invalidKurtosis(Window part, Vector of Charstring signals)
+                              -> Window
+  as select part
+     from Vector of Number wkurtosis 
+     where wkurtosis = windowKurtosis(part, signals) and
+           some(select wkurtosis[i] > maxAllowedKurtosis(signals[i]) 
+                from Integer i);
+
+create function invalidIndxw(Window part, Vector of Charstring signals) -> Bag of Integer
+  as for each Integer i, Vector of Number wkurtosis
+	where i in iota(0, dim(wkurtosis) - 1) and
+              wkurtosis = windowKurtosis(part, signals)
+	if wkurtosis[i] > maxAllowedKurtosis(signals[i]) then return i;
+
+/* this function first gets of indexs where the signals are invalid according to the kurtosis
+   and then returns the timestamped invalid signal measurements based on the index */
+create function invalidSignal(Window part, Vector of Charstring signals) -> (Number ts, Charstring signalName, Number measured)
+  as for each Integer idx where idx in invalidIndxw(part, signals)
+	for each Vector of Number v, Vector of Number measuredSignals
+	   where v in part and measuredSignals = mapv(v, functionsnamed(signals))
+	     if measuredSignals[idx] then return (timeStamp(v), signals[idx], measuredSignals[idx]);
+
+
+lisp;
+(setq _print-delay_ 0.1);; To slow down printing on terminal
+:osql

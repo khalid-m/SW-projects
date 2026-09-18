@@ -1,0 +1,6 @@
+< "stream.wrap.closed.osql";
+load_lisp("../lsp/grouping.lsp");
+load_lisp("../lsp/dyngroups.stream.lsp");
+load_lisp("../lsp/ineqrewrite.lsp");
+<"files.osql";
+save "../aleh_stream.limited.dmp";

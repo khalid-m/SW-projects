@@ -1,0 +1,58 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2009 Gyozo Gidofalvi, UDBL
+ * $RCSfile: stream_spectrum.osql,v $
+ * $Revision: 1.2 $ $Date: 2009/08/03 13:26:46 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Definitions of functions to perform basic 
+ * spectrum analysis / monitoring of number streams. 
+ *
+ ****************************************************************************
+ * $Log: stream_spectrum.osql,v $
+ * Revision 1.2  2009/08/03 13:26:46  gyogi445
+ * Novelty detection via independently trained "compression" neural networks
+ *
+ * Revision 1.1  2009/05/09 06:18:38  gyogi445
+ * Updated stream_transducer code, vectorized stream aggregators, spectrum monitoring
+ *
+ * Revision 1.1  2009/05/06 20:01:08  gyogi445
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+ 
+/* Function winagg for streams, i.e., swinagg */ 
+create function swinagg(Stream st, Integer w, Integer s)
+                        -> Stream of Vector
+  as streamof(winagg(in(st),w,s));
+
+/* Function to apply rfft on a number stream (number is cast to real) */ 
+create function srfft(Stream of Number ns, Integer w, Integer s)
+                      -> Stream of Vector of Real
+  as streamof(na2vec(rfft(darray(cast(in(swinagg(ns,w,s)) as Vector of Real)))));   
+
+/* Function to stream a column of a vector file */ 
+create function streamColFromFile(Charstring fname, Integer c)
+                              -> Stream
+  as streamof(cast(in(streamfile(fname)) as vector)[c]);
+
+/* Function that selects a subset of the elements of a vector */
+create function subelem(Vector v, Vector of Integer c)-> Vector 
+  as vselect v[c[i]] from Integer i where i in iota(0,dim(c)-1); 
+
+/* Function to stream selected columns of a vector file */ 
+create function streamColsFromFile(Charstring fname, Vector of Integer cs)
+                              	   -> Stream of Vector
+  as streamof(select subelem(cast(in(streamfile(fname)) as vector), cs));
+
+/* Function to monitor the spectrum of a number stream (Number is cast to Real)*/
+create function sspectrummonitor(Stream of Number st,
+                                 Integer w, Integer s,
+                                 Number devthr)
+                                 -> Stream of Vector of Vector
+  as select smonitor(ss, devthr)
+     from Stream of Vector of Number ss
+     where ss = srfft(st, w, s);
+
+ 

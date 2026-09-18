@@ -1,0 +1,89 @@
+<rdf:RDF
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:edu="http://www.edutella.org/qel#"
+    xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+    xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <edu:Variable rdf:about="http://kmr.nada.kth.se/shame/URDquery#X"/>
+  <edu:Variable rdf:about="http://kmr.nada.kth.se/shame/URDquery#T"/>
+  <edu:QueryLiteral rdf:about="http://kmr.nada.kth.se/shame/URDquery#st3">
+    <edu:arguments>
+      <rdf:Seq>
+        <rdf:li>
+          <edu:Variable rdf:about="http://kmr.nada.kth.se/shame/URDquery#AT"/>
+        </rdf:li>
+        <rdf:li rdf:resource="http://www.edutella.org/qel#AnonymousResource"/>
+      </rdf:Seq>
+    </edu:arguments>
+    <edu:predicate rdf:resource="http://www.edutella.org/qel#nodeType"/>
+  </edu:QueryLiteral>
+  <edu:Variable rdf:about="http://kmr.nada.kth.se/shame/URDquery#D"/>
+  <edu:QueryLiteral rdf:about="http://kmr.nada.kth.se/shame/URDquery#st2">
+    <edu:arguments>
+      <rdf:Seq>
+        <rdf:li>
+          <edu:Variable rdf:about="http://kmr.nada.kth.se/shame/URDquery#AD"/>
+        </rdf:li>
+        <rdf:li rdf:resource="http://www.edutella.org/qel#AnonymousResource"/>
+      </rdf:Seq>
+    </edu:arguments>
+    <edu:predicate rdf:resource="http://www.edutella.org/qel#nodeType"/>
+  </edu:QueryLiteral>
+  <edu:QueryLiteral rdf:about="http://kmr.nada.kth.se/shame/URDquery#st0">
+    <edu:arguments>
+      <rdf:Seq>
+        <rdf:li rdf:resource="http://kmr.nada.kth.se/shame/URDquery#AD"/>
+        <rdf:li rdf:resource="http://kmr.nada.kth.se/shame/URDquery#D"/>
+      </rdf:Seq>
+    </edu:arguments>
+    <edu:predicate rdf:resource="http://www.edutella.org/qel#member"/>
+  </edu:QueryLiteral>
+  <edu:StatementLiteral rdf:about="http://kmr.nada.kth.se/shame/URDquery#st5">
+    <rdf:predicate rdf:resource="http://purl.org/dc/elements/1.1/title"/>
+    <rdf:object rdf:resource="http://kmr.nada.kth.se/shame/URDquery#AT"/>
+    <rdf:subject rdf:resource="http://kmr.nada.kth.se/shame/URDquery#X"/>
+  </edu:StatementLiteral>
+  <edu:QueryLiteral rdf:about="http://kmr.nada.kth.se/shame/URDquery#st1">
+    <edu:arguments>
+      <rdf:Seq>
+        <rdf:li rdf:resource="http://kmr.nada.kth.se/shame/URDquery#AT"/>
+        <rdf:li rdf:resource="http://kmr.nada.kth.se/shame/URDquery#T"/>
+      </rdf:Seq>
+    </edu:arguments>
+    <edu:predicate rdf:resource="http://www.edutella.org/qel#member"/>
+  </edu:QueryLiteral>
+  <edu:Variable rdf:about="http://kmr.nada.kth.se/shame/URDquery#A"/>
+  <edu:Variable rdf:about="http://kmr.nada.kth.se/shame/URDquery#S"/>
+  <edu:StatementLiteral rdf:about="http://kmr.nada.kth.se/shame/URDquery#st4">
+    <rdf:object rdf:resource="http://kmr.nada.kth.se/shame/URDquery#AD"/>
+    <rdf:predicate rdf:resource="http://purl.org/dc/elements/1.1/description"/>
+    <rdf:subject rdf:resource="http://kmr.nada.kth.se/shame/URDquery#X"/>
+  </edu:StatementLiteral>
+  <edu:Query rdf:about="http://kmr.nada.kth.se/shame/URDquery#query">
+    <edu:literal>
+      <edu:QueryLiteral>
+        <edu:predicate rdf:resource="http://www.edutella.org/qel#like"/>
+        <edu:arguments>
+          <rdf:Seq>
+            <rdf:li rdf:resource="http://kmr.nada.kth.se/shame/URDquery#D"/>
+            <rdf:li>fysik</rdf:li>
+          </rdf:Seq>
+        </edu:arguments>
+      </edu:QueryLiteral>
+    </edu:literal>
+    <edu:literal rdf:resource="http://kmr.nada.kth.se/shame/URDquery#st2"/>
+    <edu:literal rdf:resource="http://kmr.nada.kth.se/shame/URDquery#st1"/>
+    <edu:literal rdf:resource="http://kmr.nada.kth.se/shame/URDquery#st0"/>
+    <edu:resultVariables>
+      <rdf:Seq>
+        <rdf:li rdf:resource="http://kmr.nada.kth.se/shame/URDquery#X"/>
+        <rdf:li rdf:resource="http://kmr.nada.kth.se/shame/URDquery#T"/>
+        <rdf:li rdf:resource="http://kmr.nada.kth.se/shame/URDquery#D"/>
+        <rdf:li rdf:resource="http://kmr.nada.kth.se/shame/URDquery#S"/>
+        <rdf:li rdf:resource="http://kmr.nada.kth.se/shame/URDquery#A"/>
+      </rdf:Seq>
+    </edu:resultVariables>
+    <edu:literal rdf:resource="http://kmr.nada.kth.se/shame/URDquery#st4"/>
+    <edu:literal rdf:resource="http://kmr.nada.kth.se/shame/URDquery#st3"/>
+    <edu:literal rdf:resource="http://kmr.nada.kth.se/shame/URDquery#st5"/>
+  </edu:Query>
+</rdf:RDF>

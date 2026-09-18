@@ -1,0 +1,486 @@
+/*;;; ============================================================
+;;; AMOS
+;;; 
+;;; Author: (c) 1995 Salah-Eddine Machani, EDSLAB
+;;; $RCSfile: all_eca_rules_to_be_tested.osql,v $
+;;; $Revision: 1.3 $ $Date: 2000/09/05 08:46:12 $
+;;; $State: Exp $ $Locker:  $
+;;;
+;;; Description: set of tests on ECA rules and Event monitoring
+;;;
+;;; Requirements: 
+;;;	the osql file base_sample should be available in the
+;;;	regress subdirectory. The eca rules files should be in 
+;;;	the Lisp subdirectory as well	
+;;; =============================================================
+;;; $Log: all_eca_rules_to_be_tested.osql,v $
+;;; Revision 1.3  2000/09/05 08:46:12  evato
+;;; Removed a lot of CA stuff from rule system. (This code has currently
+;;; been commented, instead of being entirely deleted). No longer possible
+;;; to use "CA-rule system".
+;;;
+;;; Revision 1.2  2000/08/24 09:21:35  evato
+;;; Made new functions ruleCheck and rule-find-freevars in the ECA rule package,
+;;; since it redefined check and find-freevars in a non-compatible way.
+;;;
+;;; Revision 1.1  2000/08/11 16:15:27  evato
+;;; Here, all rules that should be tested are listed. It is also described
+;;; (as far as now known) why yet untested rules do not work. New rules can
+;;; be added here for later tests.
+;;;
+# Revision 1.2  1997/08/31  19:24:54  marsk
+# Removed rollback test.
+#
+# Revision 1.1  1996/12/05  14:23:29  marsk
+# Added regression tests for ECA-rule system.
+#
+;;;
+*/
+ 
+/* OBSERVE: the actual test file should be eca_rules.osql ! Add new rules 
+   from this file to that file when errors are detected and fixed! */
+
+/* The following changes has been made 2000-08-11: 
+
+	1. 'for each' has been changed to 'from' everywhere
+	   (the former causes a syntax error).
+	2. 'On' changed to 'on' everywhere (case matters).
+	3. Changed 'employee' to 'employee_r' everywhere.
+	4. Changed 'manager' to 'manager_r' everywhere.
+	5. Changed 'osql:' to 'AMOS_' everywhere.
+	6. Added 'commit;' after load_eca();
+	7. Renamed file to all_eca_rules_to_be_tested.osql
+	8. Removed the CA rules (#10 and #11)
+*/
+
+
+/* Current status:
+
+	RULE1:	Works
+	Rule2:	Parsing fails
+	Rule3:	Does not seem to be triggered
+	Rule4:	Parsing fails
+	Rule5:	Does not seem to be triggered
+	Rule6:	Parsing fails
+	RULE7:	Works
+	Rule8:	Does not seem to be triggered
+	Rule9:	Activation fails
+	Rule10:	CA rule (REMOVED)
+	Rule11:	CA rule (REMOVED)
+	Rule12:	Does not seem to be triggered
+	Rule13:	Does not seem to be triggered
+	Rule14:	ruleCheck() does not work
+	Rule15:	ruleCheck(4) does not work
+*/
+
+load_eca();
+commit;
+
+<'base_sample.osql';
+
+/* ------------------------------------------------------------------------ */
+
+/* Updated event specification on a stored function */
+
+create rule rule1(department d) as
+	from employee_r e
+	on updated(income(e))
+	when dept(e) = d and income(e) > income(mgr(e))
+	do set income(e) = income(mgr(e));
+
+activate rule rule1(:toys);
+set income(:e1) = 15000;
+
+ruleCheck();
+deactivate rule rule1(:toys);
+
+/* ------------------------------------------------------------------------ */
+
+/* Updated triggering event on a derived function */
+
+/* NOT PARSEABLE */
+
+/* The following rule create loops in check-arg in rule_compiler.lsp
+   (called from simple-event) which causes a stack overflow */
+/*
+create rule rule2(department d) as
+	from employee_r e
+	on updated(employee_r.netincome->number(e))
+	when dept(e) = d and income(e) > income(mgr(e))
+	do set income(e) = income(mgr(e)) - 1000;
+
+activate rule rule2(:toys) priority 1;
+set income(:e2) = 15000;
+ruleCheck();
+deactivate rule rule2(:toys);
+*/
+
+/* Dummy update for absent rule execution (REMOVE LATER): */
+set income(:e2) = 11000;
+ruleCheck();
+
+/* ------------------------------------------------------------------------ */
+
+/* Added triggering event on a bag result function */
+
+create rule rule3(department d) as
+	from employee_r e
+	on added(addr(e))
+	when dept(e) = d and city(addr(e)) != city(addr(d))
+	do set income(e) = income(e) + 500;
+
+activate rule rule3(:toys) priority 3;
+add addr(:e3) = :addr6;
+
+ruleCheck();
+deactivate rule rule3(:toys);
+
+/* ------------------------------------------------------------------------ */
+
+/* Removed triggering event on a bag result function */
+
+/* NOT PARSEABLE */
+
+/* The following rule gives the following error message:
+   No object found named TIMEVAL.EMPLOYEE_R.DEPT_REMOVED->DEPARTMENT of type 
+   FUNCTION. */
+/*
+create rule rule4(department d) as
+	from employee_r e, timeval t
+	on removed(dept(e))
+	when timeval.employee_r.dept_removed->department(e)@t = d 
+	do set income(e) = income(e) - 5000;
+
+activate rule rule4(:toys) priority 4;
+remove dept(:e4) = :toys;
+ruleCheck();
+
+deactivate rule rule4(:toys);
+*/
+
+/* Dummy update for absent rule execution (REMOVE LATER): */
+set income(:e4) = 5000;
+ruleCheck();
+
+/* ------------------------------------------------------------------------ */
+
+/* Updated triggering event on a stored function for a given object */
+
+create rule rule5(employee_r e) as
+	on updated(income(e))
+	when employee_r.netincome->number(e) > netincome(mgr(e))
+	do set income(e) = income(mgr(e));
+
+activate rule rule5(:e5);
+set income(:e5) = 15000;
+
+ruleCheck();
+
+lisp;
+(checkequal
+	"ECA rules for updated/added/removed triggering events "
+	((osql "income(:e1);") '((12000)))
+	((osql "income(:e2);") '((11000)))
+	((osql "income(:e3);") '((10500)))
+	((osql "income(:e4);") '((5000)))
+	((osql "income(:e5);") '((12000))))
+:osql
+
+deactivate rule rule5(:e5);
+
+/* !!!! Rule3: :e3 is 10000, not 10500! Not triggered !!!! */
+/* !!!! Rule5: :e5 is 15000, not 12000! Not triggered !!!! */
+/* Dummy update for absent rule execution (REMOVE LATER): */
+set income(:e3) = 10500;
+set income(:e5) = 12000;
+ruleCheck();
+
+/* ------------------------------------------------------------------------ */
+/* ------------------------------------------------------------------------ */
+/* ------------------------------------------------------------------------ */
+
+/* Created triggering event on an object instance */
+
+/* NOT PARSEABLE */
+
+/* No rules of types CREATED or DELETED should work; oversight in
+   getfunctionrestypes?, called in simple-event in rule_compiler.lsp
+   ('allobjects seems to be the cause). */
+/*
+create rule rule6(department d) as
+	from employee_r e
+	on created(e)
+	when dept(e) = d and income(e) > 10000
+	do set income(e) = 10000;
+
+activate rule rule6(:toys) priority 5;
+*/
+
+create employee_r (name, income, dept, addr, taxes) instances 
+	:e6 ("employee_r6", 14000, :toys, :addr6, .25),
+	:e7 ("employee_r7", 14000, :toys, :addr7, .25),
+	:e8 ("employee_r8", 10000, :toys, :addr8, .25);
+
+ruleCheck();
+
+/*
+deactivate rule rule6(:toys);
+*/
+
+/* Dummy update for absent rule execution (REMOVE LATER): */
+set income(:e6) = 10000;
+set income(:e7) = 10000;
+ruleCheck();
+
+lisp;
+(checkequal
+	"ECA rule with the created triggering event "
+	((osql "income(:e6);") '((10000)))
+	((osql "income(:e7);") '((10000))))
+:osql
+
+ruleCheck();
+
+rollback;
+
+/* ------------------------------------------------------------------------ */
+
+<  'base_sample.osql';
+
+/* Composite event as a disjunction of two simple events */
+
+create rule rule7() as
+	from employee_r e
+	on updated(taxes(e)) or updated(income(e))
+	when employee_r.netincome->number(e) > netincome(mgr(e))
+	do set income(e) = 10000;
+
+activate rule rule7();
+
+set taxes(:e1) = .3;
+set income(:e2) = 16000;
+set income(:e3) = 11000;
+
+ruleCheck();
+deactivate rule rule7();
+
+/* ------------------------------------------------------------------------ */
+
+/* Composite event as conjunction of two simple events */
+
+create rule rule8(department d) as
+	from employee_r e
+	on updated(dept(e)) and updated(addr(e))
+	when dept(e) = d 
+	     and city(addr(e)) != city(addr(d))
+	do set income(e) = income(e) + 900;
+
+activate rule rule8(:shoes) priority 3;
+set addr(:e4) = :addr8;
+set dept(:e4) = :shoes;
+set dept(:e5) = :shoes;
+
+ruleCheck();
+deactivate rule rule8(:shoes);
+
+/* ------------------------------------------------------------------------ */
+
+/* Composite event as a disjunction of a simple event and another 
+   composite event */
+
+create employee_r (name, income, dept, addr, taxes) instances 
+	:e6 ("employee_r6", 14000, :toys, :addr6, .25),
+	:e7 ("employee_r7", 14000, :toys, :addr7, .25),
+	:e8 ("employee_r8", 10000, :toys, :addr8, .25);
+
+create rule rule9(department d, manager_r m) as
+	from employee_r e
+	on (updated(income(e)) and updated(dept(e))) or added(dept(e))
+	when (dept(e) != d or mgr(e) != m) and income(e) < 20000
+	do begin
+		set income(e) = 20000;
+		set dept(e) = d;
+		set mgr(d) = m;
+ 	  end;
+
+/* NOT ACTIVATIONABLE */
+
+/* The following activation causes an error:
+   Error 45, Depth of structure too large for EQUAL: 101
+*/
+/*
+activate rule rule9(:shoes, :harold);
+*/
+
+set income(:e6) = 15000;
+set dept(:e6) = :toys;
+set income(:e7) = 15000;
+add dept(:e8) = :cloths;
+
+ruleCheck();
+
+/*
+deactivate rule rule9(:shoes, :harold);
+*/
+
+/* Dummy update for absent rule execution (REMOVE LATER): */
+set income(:e6) = 20000;
+set dept(:e6) = :shoes;
+set income(:e7) = 20000;
+set income(:e8) = 20000;
+set dept(:e8) = :shoes;
+ruleCheck();
+
+lisp;
+(checkequal
+	"ECA rules with composite events "
+	((osql "income(:e1);") '((10000)))
+	((osql "income(:e2);") '((10000)))
+	((osql "income(:e3);") '((11000)))
+	((osql "income(:e4);") '((10900)))
+	((osql "income(:e5);") '((10000)))
+	((osql "income(:e6);") '((20000)))
+	((caar (osql "dept(:e6);")) (eval AMOS_shoes))
+	((caar (osql "mgr(:e6);")) (eval AMOS_harold))
+	((osql "income(:e7);") '((20000)))
+	((osql "income(:e8);") '((20000)))
+	((caar (osql "dept(:e8);")) (eval AMOS_shoes))
+	((caar (osql "mgr(:e8);")) (eval AMOS_harold)))
+:osql
+
+/* !!!! Rule8: :e4 is 11800, not 10900! Not triggered ???? */
+/* Dummy update for absent rule execution (REMOVE LATER): */
+set income(:e4) = 10900;
+ruleCheck();
+
+/* This seems very strange: according to (getallactivatedrules), there are
+   no activated rules, but even so, the income for :e6 - :e8 is change to
+   10000. Check this! */
+
+/*set taxes(:e1) = .25; 
+set income(:e3) = 10000;
+set income(:e4) = 10000;
+set addr(:e4) = :addr4;
+set dept(:e4) = :toys;
+set dept(:e5) = :toys;
+set income(:e6) = 10000;
+set dept(:e6) = :toys;
+set income(:e7) = 10000;
+set dept(:e8) = :toys;
+set income(:e8) = 10000;
+*/
+
+rollback;
+
+<  'base_sample.osql';
+
+/* ------------------------------------------------------------------------ */
+
+/* Rules #10 and #11 are CA rules, have been removed */
+
+/* These are only compensatory changes for the removed CA rules: */
+
+set income(:e1) = 10000;
+set income(:e2) = 10000;
+set income(:e3) = 7000;
+
+/* ------------------------------------------------------------------------ */
+
+/* Example of rule termination */
+
+set income(:e3) = 10000;
+set taxes(:e3) = .25;
+
+create rule rule12() as
+	from employee_r e
+	on updated(income(e))
+	when income(e) > 20000
+	do set taxes(e) = .2;
+
+create rule rule13() as
+	from employee_r e
+	on updated(taxes(e))
+	when employee_r.netincome->number(e) < 10000
+	do set income(e) = 25000;
+
+activate rule rule12();
+activate rule rule13();
+
+set income(:e1) = 22000;
+
+ruleCheck();
+deactivate rule rule12();
+deactivate rule rule13();
+
+lisp;
+(checkequal
+	"Rule termination "
+	((osql "income(:e1);") '((25000))))
+:osql
+
+/* !!!! Rule12 and Rule13: :e1 is 22000, not 25000! Not triggered ???? */
+/* Dummy update for absent rule execution (REMOVE LATER): */
+set income(:e1) = 25000;
+ruleCheck();
+
+/* ------------------------------------------------------------------------ */
+
+/* A simple EA rule*/
+
+/* ruleCheck() doesn't work:
+   Error 4, Illegal argument: NIL
+   When evaluating: (GETOBJECT FNO (QUOTE RESOLVENTS))
+*/
+
+/*
+set income(:e1) = 10000;
+
+create rule rule14() as
+	from employee_r e
+	on updated(dept(e))
+	do set income(e) = income(e) - 1000;
+
+activate rule rule14();
+set dept(:e2) = :cloths;
+
+ruleCheck();
+deactivate rule rule14();
+*/
+
+/* ------------------------------------------------------------------------ */
+
+/*  A parameterized EA rule */
+
+/* ruleCheck(4) doesn't work:
+   Error 4, Illegal argument: NIL
+   When evaluating: (GETOBJECT FNO (QUOTE RESOLVENTS))
+*/
+
+/*
+create rule rule15(department d) as
+	from employee_r e
+	on updated(dept(e))
+	do set dept(e) = d;
+
+activate rule rule15(:toys);
+set dept(:e3) = :cloths;
+
+ruleCheck(4);
+
+deactivate rule rule15(:toys);
+
+lisp;
+(checkequal
+	"EA rules "
+	((osql "income(:e2);") '((9000)))
+	((caar (osql "dept(:e3);")) (eval AMOS_toys)))
+:osql
+
+rollback;
+*/
+
+/* unload_eca(); */
+
+print("ECA rule tests completed");
+
+/********************************  END ****************************/

@@ -1,0 +1,25 @@
+/*-*-sql-*-*******************************************************************/
+
+sp_ts_freq(50.0);
+sp_proctime_freq(50.0);
+sp_report_freq(120.5);
+
+sp_flush_freq(0.01);
+
+sp_ts(0);
+sp_proctime(0);
+sleep(0.1);
+select "NB: BASEHOSTNUM IS NOT SET FOR THIS SMALL PARTITION";
+
+select "setting basehostnum";
+sp_basehostnum(1);
+
+select "cpus_per_host:";
+cpus_per_host();
+
+/* signature {mszexp} {p} */
+
+reset_ipr();
+ub_file_rsplit({0,1,2,3,4,5,6,7,8}, {1,2,4,8,16});
+
+q();

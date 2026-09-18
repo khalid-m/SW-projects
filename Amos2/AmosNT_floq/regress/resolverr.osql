@@ -1,0 +1,45 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Tore Risch, UDBL
+ * $RCSfile: resolverr.osql,v $
+ * $Revision: 1.3 $ $Date: 2011/01/27 11:26:16 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Testing strict type checking
+ *
+ ****************************************************************************
+ * $Log: resolverr.osql,v $
+ * Revision 1.3  2011/01/27 11:26:16  torer
+ * Changed from <...> to SQL's (...) notation for tuples (much nicer)
+ *
+ * Revision 1.2  2008/11/24 10:17:41  torer
+ * Test without datattype STREAM
+ *
+ * Revision 1.1  2008/11/23 15:00:29  torer
+ * Stricter type checking
+ *
+ ****************************************************************************/
+
+create function f1(Integer x) -> Real y;
+create function f2(Integer z) -> Real a;
+create function f5(Integer x) -> (Integer y, Vector v);
+
+lisp;
+
+(defmacro re (stmt)
+   `(equal (errstring (osql , stmt))
+           "Cannot resolve function call"))
+
+(checkequal "Type checking"
+   ((re "create function f3(Integer i)->Integer as f1(i);")
+    t)
+   ((re "create function f4(Integer z) -> Integer as 'a'+'b';") t)
+   ((re "select i, v from Integer i, Integer v where f5(1)= (i, v);") t)
+   ((re "select o from number o where o = maxagg(bag(1,2,3));") nil) 
+   ((errstring (osql "create function f5()->Integer as a;")) 
+    "Undefined variable: A")
+)
+
+:osql
+rollback;

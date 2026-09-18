@@ -1,0 +1,107 @@
+/*-*-sql-*-*******************************************************************/
+
+/* Use knownclasses to store the data points with known class belonging */
+
+create function knownclasses(Vector of Number x) -> Number v as stored;
+
+create function add_kc(Vector of Number w) -> Boolean
+  as add knownclasses({w[0], w[1], w[2], w[3], w[4], w[5], w[6], w[7], w[8]})
+                    =w[9];
+
+create function readnumfile(Charstring f) -> Vector of Number w
+  as read_ntuples(f);
+
+create function unknown() -> Vector of Number as stored;
+
+/* Read data files */
+
+add_kc(readnumfile("../data/glassdata.nt"));
+
+add unknown() = readnumfile("../data/testdata.nt");
+
+/* Use testclasses() and k() to store the result of your assignment */
+
+create function testclasses(Vector of Number) -> Number as stored;
+
+create function k() -> Integer as stored;
+
+/* Pass knownclasses() on (coord, class) tuple form as argument to functions */
+
+create function knowntuples() -> Bag of (Vector of Number x, Number v)
+  as select ww, cc
+     from Vector of Number ww, Number cc
+     where cc in knownclasses(ww);
+
+/* Projecting the knownclasses to its coordinates is useful when normalizing */
+
+create function knowncoordinates() -> vector of number
+  as select ww
+     from vector of number ww, number cc
+     where cc in knownclasses(ww);
+
+/* all_but_this is useful for leave-one-out cross-validation */
+
+create function all_but_this(Vector of Number x)
+  -> Bag of (Vector of Number, Number)
+  as select ww, cc
+     from Vector of Number ww, Number cc
+     where (ww, cc) in knowntuples()
+     and ww != x;
+
+/* Basic functions for kNN */
+
+create function classdistances(Vector of Number x,
+                               Bag of (Vector of Number, Number) P)
+                           -> Bag of (Number distance, Number class)
+  as select euclid(x, v), class
+     from Vector of Number v
+     where (v, class) in P;
+
+create function k_nearest(Vector of Number x, Integer k, 
+                          Bag of (Vector of Number, Number) P)
+                      -> Bag of <Object, Object>
+  as leastk(classdistances(x, P), k);
+
+create function k_votes(Vector of Number x, Integer k,
+                        Bag of (Vector of Number, Number) P)
+                    -> Bag of (Integer class, Number count)
+  as groupby((select cl 
+              from Number cl, Real dist
+              where (dist, cl) in k_nearest(x, k, P)),
+             #'count');
+
+/* TODO:
+  (1) Implement knnclassify (replace '...' below with code).
+
+  (2) Implement cross validation on known data. Leave-One-Out Cross-Validation
+      on the known data should correctly classify approx. 90 of the 163 known
+      points for k = 3.
+
+  (3) Try to improve classifier performance by normalizing and find best k.
+      Which normalization is the best, and why?
+      Hint: You might find it appropriate to implement normalization using
+            aggregates (aggv(..., 'avg') and aggv(..., 'stdev') or 
+                        aggv(..., 'maxagg') and aggv(..., 'minagg'))
+            and pass the results of these aggregates as parameters (input
+            arguments) to the classdistances() function. This means that you 
+            will have to add more input parameters to classdistances,
+            k_nearest, k_votes, and knnclassify!
+
+  (4) Classify the unknown data using the best possible classifier based
+      on your findings in (3). Should the unknown data be normalized too? 
+      If so, how?
+      == Don't forget to store your results in k() and testclasses() ==
+
+  (5) (optional): Try to improve classifier performance by changing distance
+      function. Generalize classdistances() to take a functional argument
+      (Function distance_fn), where the distance function is specified
+      (#'euclid', #'minkowski' etc). Apply distance_fn using apply() (cf 
+      AmosII Users Guide, sec 2.4.4). You might want to add another argument
+      to classdistances, specifying the Minkowski parameter. Which distance
+      function achieved the best classifier performance? Why? */
+
+
+/*create function knnclassify(Vector of Number x, Integer k,
+                            Bag of (Vector of Number, Number) P)
+  -> Number
+  as ... */

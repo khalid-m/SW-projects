@@ -1,0 +1,259 @@
+How to find database image memory leaks
+=======================================
+
+The system has several tools to trace memory leaks. First of all the
+following call turns on storage statistics reporting after each
+evaluated expression:
+
+storagestat(true);
+
+When turned on you will get a report on how many objects of different
+types have been allocated and deallocated. For example:
+
+  AmosQL 1> 1+2;
+  3
+  0.001 s
+  Imagesize: 4038137, high watermark: 3960960
+  Type LIST: allocated: 74, deallocated 75 total 215447
+  Type CLOSURE: allocated: 4, deallocated 4 total 0
+  Type STRING: allocated: 2, deallocated 2 total 11237
+  Type ARRAY: allocated: 3, deallocated 3 total 2031
+  Type TEXTSTREAM: allocated: 2, deallocated 2 total 4
+  Type BINARY: allocated: 2, deallocated 2 total 4
+  AmosQL 1> 
+
+Here it seems that 1 LIST cell has not been deallocated. However,
+since the system compiles code (expands macros) and initializes
+caches, it may be necessary to run the command several time before a
+storage leak is tracked. Thus we call plus one again:
+
+  AmosQL 1> 1+2;
+  3
+  0.001 s
+  Imagesize: 4038137, high watermark: 3960960
+  Type LIST: allocated: 74, deallocated 74 total 215447
+  Type CLOSURE: allocated: 4, deallocated 4 total 0
+  Type STRING: allocated: 2, deallocated 2 total 11237
+  Type ARRAY: allocated: 3, deallocated 3 total 2031
+  Type TEXTSTREAM: allocated: 2, deallocated 2 total 4
+  Type BINARY: allocated: 2, deallocated 2 total 4
+  AmosQL 1> 
+
+Now there was no leak. Let's try another query:
+
+  AmosQL 1> 1+2+3;
+  6
+  0.005 s
+  Imagesize: 4038137, high watermark: 3961056
+  Type LIST: allocated: 723, deallocated 649 total 215521
+  Type REAL: allocated: 4, deallocated 4 total 599
+  Type CLOSURE: allocated: 95, deallocated 95 total 0
+  Type STRING: allocated: 2, deallocated 2 total 11237
+  Type ARRAY: allocated: 38, deallocated 37 total 2032
+  Type TEXTSTREAM: allocated: 2, deallocated 2 total 4
+  Type HASHTAB: allocated: 1, deallocated 1 total 41
+  Type HASHBUCKET: allocated: 2, deallocated 2 total 8790
+  Type BINARY: allocated: 2, deallocated 2 total 4
+  Type HISTEVENT: allocated: 2, deallocated 0 total 2
+  AmosQL 2> 
+
+Here one may believe that there is a major storage leak. However, the
+reason for the perceived storage leak is that data produced during
+query processing is logged by the transaction system. This can be seen
+by the presence of not deallocated HISTEVENT objects and that the
+history number at the prompt is increased.
+
+To release logged data one should rollback the transaction
+afterwards. One way to do that is to make a script file and end it
+with a 'rollback;' statement. For example, make a file 'myscript.osql'
+with this contents:
+
+  1+2+3;
+  rollback;
+
+Now first empty the log by doing a rollback:
+
+  AmosQL 2> rollback;
+  NIL
+  Imagesize: 4038137, high watermark: 3961056
+  Type LIST: allocated: 1, deallocated 36 total 215486
+  AmosQL 1> 
+
+Notice how LIST cells held by the log now are released.  
+
+Then load myscript.osql
+
+  AmosQL 1> <'myscript.osql';
+  Reading AmosQL statements from "myscript.osql"
+  6
+  "myscript.osql"
+  0.005 s
+  Imagesize: 4038137, high watermark: 3961704
+  Type LIST: allocated: 730, deallocated 789 total 215427
+  Type REAL: allocated: 4, deallocated 4 total 599
+  Type CLOSURE: allocated: 95, deallocated 95 total 0
+  Type STRING: allocated: 6, deallocated 5 total 11238
+  Type ARRAY: allocated: 38, deallocated 39 total 2031
+  Type STREAM: allocated: 1, deallocated 1 total 5
+  Type TEXTSTREAM: allocated: 4, deallocated 4 total 4
+  Type HASHTAB: allocated: 1, deallocated 1 total 41
+  Type HASHBUCKET: allocated: 2, deallocated 2 total 8790
+  Type BINARY: allocated: 4, deallocated 4 total 4
+  Type HISTEVENT: allocated: 2, deallocated 4 total 0
+  AmosQL 1> 
+
+Load again:
+
+  AmosQL 1> <'myscript.osql';
+  Reading AmosQL statements from "myscript.osql"
+  6
+  "myscript.osql"
+  0.006 s
+  Imagesize: 4038137, high watermark: 3961704
+  Type LIST: allocated: 729, deallocated 729 total 215427
+  Type REAL: allocated: 4, deallocated 4 total 599
+  Type CLOSURE: allocated: 95, deallocated 95 total 0
+  Type STRING: allocated: 6, deallocated 6 total 11238
+  Type ARRAY: allocated: 38, deallocated 38 total 2031
+  Type STREAM: allocated: 1, deallocated 1 total 5
+  Type TEXTSTREAM: allocated: 4, deallocated 4 total 4
+  Type HASHTAB: allocated: 1, deallocated 1 total 41
+  Type HASHBUCKET: allocated: 2, deallocated 2 total 8790
+  Type BINARY: allocated: 4, deallocated 4 total 4
+  Type HISTEVENT: allocated: 2, deallocated 2 total 0
+  AmosQL 1> 
+
+No leak this time!
+
+If the storage statistics determines a leak the challenge is how to
+find where the leak happened. Let's make the following Lisp function
+with a deliberate leak:
+
+  lisp;
+  (defglobal _leak_ nil)
+  (defun leak (x)(push x _leak_))
+
+Test it twice:
+
+  Lisp 1> (leak "a")
+  ("a")
+  Imagesize: 4038137, high watermark: 3961704
+  Type LIST: allocated: 18, deallocated 14 total 215536
+  Type STRING: allocated: 1, deallocated 0 total 11241
+  Lisp 1> (leak "a")
+  ("a" "a")
+  Imagesize: 4038137, high watermark: 3961704
+  Type LIST: allocated: 3, deallocated 2 total 215537
+  Type STRING: allocated: 1, deallocated 0 total 11242
+  Lisp 1> 
+
+The leak typically happens somwhere deep inside some Lisp code. To
+find out what code leaked use the function (storage-trace t 4) and rerun
+the leaky code:
+
+  Lisp 1> (storage-trace t 4)
+  T
+  Imagesize: 4038137, high watermark: 3961704
+  Type LIST: allocated: 2, deallocated 2 total 215537
+  Lisp 1> (leak "a")
+  ("a" "a" "a")
+  Imagesize: 4038137, high watermark: 3961704
+  Type LIST: allocated: 3, deallocated 2 total 215538
+  Type STRING: allocated: 1, deallocated 0 total 11243
+  Lisp 1>
+
+To investigate what data was leaked, call (print-storage-trace):
+
+  Lisp 1> (print-storage-trace)
+  (CONS SETQ LEAK  *BOTTOM*): #3955956# ("a" "a" "a" "a")
+  ( *BOTTOM*): #278828# (PRINT-STORAGE-TRACE)
+  NIL
+  Imagesize: 4038137, high watermark: 3961704
+  Type LIST: allocated: 1, deallocated 1 total 215539
+  Lisp 1> 
+
+The non-deallocated objects are printed. You get a backtrace of length
+4 before every object that was not deallocated. Here one can se that
+it was a CONS in a SETQ in LEAK called from the top level that
+leaked. (PUSH is macro expanded to a SETQ and a CONS).
+
+Another way is to use the break loop command :su when suspecting a
+leak. Put a break on LEAK and run it:
+
+  Lisp 1> (break leak)
+  (LEAK)
+  Imagesize: 4038137, high watermark: 3961704
+  Type LIST: allocated: 95, deallocated 45 total 215589
+  Type STRING: allocated: 1, deallocated 1 total 11244
+  Type TEXTSTREAM: allocated: 1, deallocated 1 total 4
+  Type BINARY: allocated: 1, deallocated 1 total 4
+  Lisp 1> (leak "a")
+  (LEAK BROKEN)
+  At LEAK brk>
+
+The break command :su evaluates the body of the function and prints a
+report of how many objects are not deallocated:
+
+  At LEAK brk>:su
+  Storage-used LEAK
+  Type LIST used 1 cells
+  (LEAK BROKEN)
+  At LEAK brk>
+
+Here one can see that the body of LEAK leaked 1 LIST object.
+
+All regression scripts should end with a rollback statement. Thene one
+can the entire script for storage leaks. E.g.:
+
+  AmosQL 1> <'tuple.osql';
+  Reading AmosQL statements from "tuple.osql"
+  [Testing Tuple updates ...OK]
+  "tuple.osql"
+  0.116 s
+  Imagesize: 4038137, high watermark: 3991288
+  Type LIST: allocated: 14965, deallocated 14845 total 215761
+  Type SYMBOL: allocated: 13, deallocated 0 total 7368
+  Type INTEGER: allocated: 67, deallocated 66 total 255
+  Type REAL: allocated: 141, deallocated 141 total 599
+  Type CLOSURE: allocated: 1720, deallocated 1720 total 0
+  Type STRING: allocated: 160, deallocated 146 total 11260
+  Type ARRAY: allocated: 706, deallocated 706 total 2031
+  Type STREAM: allocated: 1, deallocated 1 total 5
+  Type TEXTSTREAM: allocated: 132, deallocated 132 total 4
+  Type HASHTAB: allocated: 22, deallocated 22 total 41
+  Type HASHBUCKET: allocated: 125, deallocated 112 total 8806 
+  Type OID: allocated: 7, deallocated 7 total 1427
+  Type BINARY: allocated: 133, deallocated 133 total 4
+  Type INDEX: allocated: 4, deallocated 4 total 25
+  Type HISTEVENT: allocated: 122, deallocated 122 total 0
+  Type GENERATOR: allocated: 1, deallocated 1 total 0
+  AmosQL 1> 
+
+Run again:
+
+  AmosQL 1> <'tuple.osql';
+  Reading AmosQL statements from "tuple.osql"
+  [Testing Tuple updates ...OK]
+  "tuple.osql"
+  0.104 s
+  Imagesize: 4038137, high watermark: 3991288
+  Type LIST: allocated: 14666, deallocated 14666 total 215761
+  Type INTEGER: allocated: 67, deallocated 67 total 255
+  Type REAL: allocated: 141, deallocated 141 total 599
+  Type CLOSURE: allocated: 1720, deallocated 1720 total 0
+  Type STRING: allocated: 140, deallocated 140 total 11260
+  Type ARRAY: allocated: 706, deallocated 706 total 2031
+  Type STREAM: allocated: 1, deallocated 1 total 5
+  Type TEXTSTREAM: allocated: 125, deallocated 125 total 4
+  Type HASHTAB: allocated: 22, deallocated 22 total 41
+  Type HASHBUCKET: allocated: 112, deallocated 112 total 8806
+  Type OID: allocated: 7, deallocated 7 total 1427
+  Type BINARY: allocated: 126, deallocated 126 total 4
+  Type INDEX: allocated: 4, deallocated 4 total 25
+  Type HISTEVENT: allocated: 122, deallocated 122 total 0
+  Type GENERATOR: allocated: 1, deallocated 1 total 0
+  AmosQL 1> 
+
+No leak in regress/tuple.osql.
+
+--- Tore

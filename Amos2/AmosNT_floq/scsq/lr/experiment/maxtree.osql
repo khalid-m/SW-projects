@@ -1,0 +1,35 @@
+/*-*-sql-*-*******************************************************************/
+
+sp_ts_freq(50.0);
+sp_proctime_freq(50.0);
+sp_report_freq(120.5);
+
+sp_flush_freq(0.01);
+
+sp_ts(0);
+sp_proctime(0);
+sleep(0.1);
+/*select "NB: BASEHOSTNUM IS NOT SET FOR THIS SMALL PARTITION";*/
+
+select "setting basehostnum";
+sp_basehostnum(1);
+
+select "cpus_per_host:";
+cpus_per_host();
+
+/* signature file inl {mszexp} {p} */
+
+reset_ipr();
+
+ub_file_maxtree(getenv("HOME") + "/glob/c10-1M-multi8.bin", 10, {1});
+ub_file_maxtree(getenv("HOME") + "/glob/c10-1M-multi8.bin", 10, {1});
+ub_file_maxtree(getenv("HOME") + "/glob/c10-1M-multi8.bin", 10, {2});
+ub_file_maxtree(getenv("HOME") + "/glob/c10-1M-multi8.bin", 10, {4});
+
+ub_file_maxtree(getenv("HOME") + "/glob/c64-5M-m8.bin", 64, {1});
+ub_file_maxtree(getenv("HOME") + "/glob/c64-5M-m8.bin", 64, {1});
+ub_file_maxtree(getenv("HOME") + "/glob/c64-5M-m8.bin", 64, {2});
+ub_file_maxtree(getenv("HOME") + "/glob/c64-5M-m8.bin", 64, {4});
+ub_file_maxtree(getenv("HOME") + "/glob/c64-5M-m8.bin", 64, {8});
+
+q();

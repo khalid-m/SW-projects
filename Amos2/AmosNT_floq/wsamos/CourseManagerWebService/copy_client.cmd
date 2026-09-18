@@ -1,0 +1,1 @@
+xcopy /S /Y CMWSClient\* "%CATALINA_HOME%\webapps\CMWSClient\"	

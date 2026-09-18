@@ -1,0 +1,848 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2013 Silvia Stefanova UDBL
+ * $RCSfile: patch.amosql,v 
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Fix for some RDBreloader functions
+ ******************************************************************************/
+create function tName(Charstring tabURI)->Charstring 
+as select v from Charstring s,Charstring p, Charstring v,Charstring t
+where schema(s,p,v,t)=true and p="<http://user.it.uu.se/~udbl/sard#TName>"
+and s=tabURI;
+
+create function lName(Charstring tabURI)->Charstring 
+as select v from Charstring s,Charstring p, Charstring v,Charstring t
+where schema(s,p,v,t)=true and p="<http://user.it.uu.se/~udbl/sard#LName>"
+and s=tabURI;
+
+create function attName(Charstring tabURI)->Charstring 
+as select v from Charstring s,Charstring p, Charstring v,Charstring t
+where schema(s,p,v,t)=true and p="<http://user.it.uu.se/~udbl/sard#AName>"
+and s=tabURI;
+
+create function tabName(Charstring tabURI)->Charstring 
+as select ch from Charstring ch where
+ch=tName(tabURI) or ch= lName(tabURI);
+
+create function ret_fkMap(Charstring fkURI)->Charstring
+/*Retrieve the URI of the Mapped Column that is represented by FK in NT file*/
+as select v1 from Charstring s1,Charstring p1, Charstring v1,Charstring t1
+where schema(s1,p1,v1,t1)=true and s1=fkURI 
+and (p1="<http://www.w3.org/1999/02/22-rdf-syntax-ns#_1>" or  
+p1="<http://www.w3.org/1999/02/22-rdf-syntax-ns#_2>");
+
+
+create function ret_fkattr(Charstring fkattr)->Charstring
+/*Retrieves the URI of the FK from the URI of the FK attribute*/
+as select s1 from Charstring s1,Charstring p1, Charstring v1,Charstring t1,
+		 Charstring s,Charstring p, Charstring v,Charstring t
+where schema(s,p,v,t)=true and p="<http://user.it.uu.se/~udbl/sard#FOREIGN_KEY>" and v=s1 and
+schema(s1,p1,v1,t1)=true and v1=fkattr and (p1="<http://www.w3.org/1999/02/22-rdf-syntax-ns#_1>" 
+or  p1="<http://www.w3.org/1999/02/22-rdf-syntax-ns#_2>");
+
+create function ret_fkDetails(Charstring tabURI,Charstring fkURI)->(Charstring fka,Charstring pka,Charstring ot)
+/*Retrieve FK attributes, referenced primary keys and owning table*/
+as select ret_fkattr(v1),v2,v3 from Charstring s1,Charstring p1, Charstring v1,Charstring t1,
+Charstring s2,Charstring p2, Charstring v2,Charstring t2,
+Charstring s3,Charstring p3, Charstring v3,Charstring t3
+where schema(s1,p1,v1,t1)=true and s1=fkURI 
+and (p1="<http://www.w3.org/1999/02/22-rdf-syntax-ns#_1>" or  
+p1="<http://www.w3.org/1999/02/22-rdf-syntax-ns#_2>") and 
+schema(s2,p2,v2,t2)=true and p2="<http://user.it.uu.se/~udbl/sard#REFERENCES>"
+and s2=v1 and schema(s3,p3,v3,t3)=true and p3="<http://www.w3.org/2000/01/rdf-schema#range>"
+and s3=fkURI ;
+
+
+
+create function ret_pkURI_woct(Charstring tableURI)->Charstring
+/*Retrieve the URIs of the PK of the table except for the connecting table represented by tableURI*/
+as select v1 from Charstring s,Charstring p,Charstring v ,Charstring t, charstring s1, Charstring p1, Charstring v1,Charstring t1
+where schema(s,p,v,t)=true and p="<http://user.it.uu.se/~udbl/sard#PRIMARY_KEY>" and s=tableURI 
+and schema(s1,p1,v1,t1) and like(p1,"<http://www.w3.org/1999/02/22-rdf-syntax-ns#_*") and s1=v ;
+
+
+create function ret_domain_tabURI(Charstring colURI)->Charstring 
+/*Retrieves the domain table URI for the colURI*/
+as select val from Charstring s,Charstring p, Charstring val,Charstring t
+where schema(s,p,val,t)=true and s=colURI and
+p="<http://www.w3.org/2000/01/rdf-schema#domain>"; 
+
+
+create function isPK(Charstring colURI)-> Boolean
+  as select true from Charstring tURI where tURI=ret_domain_tabURI(colURI) and
+  colURI in ret_pkURI_woCT(tURI);
+
+create function ret_columnURIs_withCT0(Charstring tableURI,Charstring baseURI)->(Charstring,Charstring,Charstring,Integer)
+/*Retrieves URIs and Name of the left column for connecting table.*/
+as 
+	select v,pk,attName(pk),i from Charstring pk,Charstring s,Charstring p, Charstring v,Charstring t,Integer i 
+	where schema(s,p,v,t)=true  and p="<http://www.w3.org/2000/01/rdf-schema#domain>" and i=0 and
+	s=tableURI and pk=ret_pkURI_woct(v);
+
+create function ret_columnURIs_withCT1(Charstring tableURI,Charstring baseURI)->(Charstring,Charstring,Charstring,Integer)
+/*Retrieves URIs and Name of the right column for connecting table.*/
+as 
+	select v,pk,attName(pk),i from Charstring pk,Charstring s,Charstring p, Charstring v,Charstring t,Integer i 
+	where schema(s,p,v,t)=true  and p="<http://www.w3.org/2000/01/rdf-schema#range>" and i=1 and 
+	s=tableURI and pk=ret_pkURI_woct(v);
+
+create function ret_columnURIs_withCT2(Charstring tableURI,Charstring baseURI)->(Charstring,Charstring,Integer)
+/*Retrieves URIs and Name of the column for connecting table.*/
+as 
+	select coluri,col,num from Charstring rtabURI,Charstring coluri,Charstring col, integer num 
+	where (rtabURI,coluri,col,num)=ret_columnURIs_withCT0(tableURI,baseURI) or  
+		(rtabURI,coluri,col,num)=ret_columnURIs_withCT1(tableURI,baseURI);
+
+
+
+create function orderByS(JDBC ds,Charstring filent)->Boolean
+/*Orders by triple subject a data archive under the name 'C:/AmosNT/sard/sard_new/tripledata.NT' 
+  and writes it out as NT file with the name filent */
+as begin
+   declare Number time;
+   set time=real(now()); 
+   sql(ds,"exec archive.bulkinsertTriple ;");
+    print("Time to insert triples for ordering: " + (real(now())-time));
+    set time=real(now());
+   sql(ds,"exec archive.bcpoutTriple '" + filent+ "';");
+    print("Time to order by s and write out archive: " + (real(now())-time));
+ end;
+
+
+
+
+create function addAllcolumnsToTA(Charstring baseURI)->Boolean
+as begin declare Integer i;	
+        for each Charstring tableURI,Charstring pk where tableURI in ret_tableURIs1() and pk=ret_pkURIs(tableURI) 
+          begin   
+                set i=0;
+		for each Charstring ch1,Charstring ch2 where (ch1,ch2) in ret_columnURIs(tableURI,baseURI)
+		 begin 
+		   set Alltableattributes(i,tableURI,ch1,pk)=true;	
+		   set i=i+1;
+                 end;
+ 	  end;
+end;
+
+
+
+create function addAllcolumnsToTA2(Charstring baseURI)->Boolean
+/*Sets tables attributes for non-link tables*/
+as begin
+	declare Integer ii;  
+        for each Charstring tableURI,Charstring pk where tableURI in ret_tableURIs1() and pk=ret_pkURIs(tableURI)    
+	  begin
+	    set ii=0;
+	    for each Charstring ch1,Charstring ch2 where (ch1,ch2) in ret_columnURIs(tableURI,baseURI)
+	      begin 		
+		  if ( ret_fkattr(ch1)) then
+		     set Alltableattributes(ii,tableURI,ret_fkattr(ch1),pk)=true
+		  else
+		      set Alltableattributes(ii,tableURI,ch1,pk)=true;	
+		  set ii=ii+1;
+	      end; 	 
+	  end;
+end;
+
+
+create function addLinkTColumn_toAllT(Charstring baseURI)->Boolean
+/*Sets table attributes for link tables */
+as 
+  begin
+    declare real n;
+    set n=-1;
+	for each Charstring tabURI where tabURI in ret_tableURIsCT() 	
+	  begin
+		set Alltableattributes(n,tabURI,tabURI,'')=true;	
+		set n=n-1;
+	  end;
+  end;
+
+
+
+create function ret_columnURIs_woct2(Charstring tabURI,Charstring baseURI)->(Charstring,Charstring,Integer)
+/*Retrieve URI and Name of the column or property of given table represented by tabelURI*/
+as 
+	select colURI,clearURI(colURI,baseURI),i from integer i, Charstring colURI, Charstring pkURI 
+	where Alltableattributes(i,tabURI,colURI,pkURI)=true;
+
+
+
+create function ret_columnURIs2(Charstring tableURI,Charstring baseURI)->(Charstring,Charstring,Integer)
+/*Retrieves URIs and Name of the columns for all the table.*/
+as	
+    begin
+	if (tableURI in ret_tableURIs_CT()) 
+		then return ret_columnURIs_withCT2(tableURI,baseURI)
+	else return ret_columnURIs_woCT2(tableURI,baseURI);
+    end;
+
+
+create function isCT(Charstring tabURI)->Boolean
+/*true if table with tabURI is a link-table*/
+as
+	select true from Charstring tab where tab in ret_tableURIs_CT() and tab=tabURI;
+
+
+create function isnotCT(Charstring tabURI)->Boolean
+/*true if table with tabURI is a non-link table*/
+as
+	select true where notany(isCT(tabURI));
+
+
+create function colInfo_mod_new(Charstring tableURI,Charstring baseURI)->(Charstring,Charstring,Charstring,Charstring,Charstring,Integer)
+as
+begin
+ declare Charstring colsize, Charstring colname;
+ for each Charstring ch1,Charstring ch2,integer num where (ch1,ch2,num) in ret_columnURIs2(tableURI,baseURI)
+   begin
+	 set colsize=""; set colname="";
+	if (ret_ColSize(ch1)) then
+		set colsize=ret_ColSize(ch1);
+	if (ret_fkMap(ch1)) then
+		set colname=ch2
+	else
+		/*set colname=str_exp(ch2,"/");*/
+		set colname=attName(ch1);
+	return (tabName(tableURI),ch1,colname,ret_ColdataType(ch1),colsize,num);
+    end; 
+end;
+
+
+create function orderColumns(Charstring tableURI,Charstring baseURI)->(Charstring,Charstring,Charstring,Charstring,Charstring,Integer)
+/*Orders the table attributes */
+as
+   select ch1,ch2,ch3,ch4,ch5,ii from Charstring ch1, Charstring ch2,Charstring ch3, Charstring ch4,Charstring ch5, integer ii
+   where {ch1,ch2,ch3,ch4,ch5,ii}=in(sortbagby((select ch11,ch21,ch31,ch41,ch51,ii1 from Charstring ch11, Charstring ch21,Charstring ch31, 
+	Charstring ch41,Charstring ch51, integer ii1 where (ch11,ch21,ch31,ch41,ch51,ii1)=colinfo_mod_new(tableURI,baseURI)),6,'inc'));
+
+
+
+
+create function get_info(Charstring tableURI,Charstring baseURI)->Charstring
+as begin 
+	declare charstring temp;
+	set temp="";
+	for each Charstring tname,Charstring dsize,Charstring colURI, Charstring colname, Charstring dtype,Integer numb 
+	 where <tname,colURI,colname,dtype,dsize,numb> = orderColumns(tableURI,baseURI)
+		if dsize="" then set temp = temp + colname + " " + dtype +","
+			else set temp = temp + colname + " " + dtype +"("+ dsize+")"+",";	 
+		return substring(temp,0,char_length(temp)-2);
+   end;
+
+
+
+
+
+create function addcolumn(Charstring tableURI)->Boolean
+as
+	for each Integer id,Charstring colURI,Charstring pk where AllTableAttributes(id,tableURI,colURI,pk)=true
+	begin set tableattributes(id,colURI)='\\N';
+end;
+
+
+		
+
+create function populateAttributes_mssql(Jdbc jd,Charstring baseURI)->Boolean
+/*Populate MS SQL table Attributes with the URIs for the restored attributes*/
+as
+	begin
+	   declare Charstring fname;
+	   sql(jd,"delete from Attributes;");
+	   for each integer nu, Charstring ch1, Charstring ch2, 
+		Charstring ch3 where allTableAttributes(nu,ch1,ch2,ch3)=true
+		begin
+		  set fname=tabName(ch1)+".csv";
+		/*  if (ch1 in valueofCT()) then
+		    set fname=clearURI(ch1,baseURI)+".csv"
+		  else
+	    	    set fname= ret_tableName(ch1,baseURI)+".csv";*/
+		  sql(jd,"insert into Attributes(Attribute,Pos,Fil) 
+			values('"+ch2+"',"+nu+",'"+fname+"');");
+		end;
+	end;
+
+create function countAttributes()->Bag of (Charstring turi key, Integer number) 
+as
+	 groupby((select ch1, ch2 from integer ii, Charstring ch1, 
+		Charstring ch2, Charstring ch3 where 
+	Alltableattributes(ii,ch1,ch2,ch3)=true),#'count');
+
+
+create function attributes_perTable(Charstring baseURI, Charstring tname)-> Integer
+as
+	select ii from Integer ii, Charstring ch where clearURI(ch,baseURI)=tname
+	and (ch,ii) in countAttributes();
+
+create function numberAttributes(Charstring tname key)-> integer number as stored;
+
+create function set_numberAttributes(Charstring baseURI)-> Boolean
+as
+  begin
+	for each Charstring turi, integer numb
+	  where (turi,numb) in  countAttributes()
+      		add numberAttributes(tabName(turi))=numb;
+  end;
+
+
+create function importSchema(Charstring filename,Charstring baseURI)->Boolean
+as
+begin
+	importS(filename);
+	/*addAllcolumnsToTA(baseURI);*/
+	/*Stored table holding columns for given table info.*/
+	addAllcolumnsToTA2(baseURI);
+	set_numberAttributes(baseURI);
+	 addLinkTColumn_toAllT(baseURI);
+	addCTcolumn();/*Stored table holding all column for given connecting table info.*/
+	/*addmapVal();*/
+	/*Stored table holding all tableURI, columnURI,mapped name for table and column.*/
+end;
+
+		
+
+create function orderByFileSPos_old(JDBC ds,Charstring filent,Charstring baseURI)->Boolean
+/*Order triples by file,subject and position of the attribute in the restored table
+ and store them in a file called filent */
+as begin
+   declare Number time;
+   populateAttributes_mssql(ds,baseURI);
+   set time=real(now()); 
+   sql(ds,"exec archive.bulkinsertTriple ;");
+    print("Time to insert triples for ordering: " + (real(now())-time));
+    set time=real(now());
+   sql(ds,"exec archive.orderbyFileS '" + filent+ "';");
+    print("Time to order by File,s,pos and write out archive: " + (real(now())-time));
+ end;
+
+
+create function produce_sorted(JDBC ds,Charstring baseURI)->Boolean
+/*Order triples in 'C:/triples.nt' by file,subject and position of the attribute in the restored table */
+as begin
+   declare Number time;
+   populateAttributes_mssql(ds,baseURI);
+   set time=real(now()); 
+   sql(ds,"exec archive.bulkinsertTriple ;");
+    print("Time to insert triples for ordering: " + (real(now())-time));
+    set time=real(now());
+    populateAttributes_mssql(ds,baseURI);
+   end;
+
+  
+
+lisp;
+
+
+(defun writeto-openstream-a (fno filename str)
+ (let ((output-stream (OPENSTREAM filename "a")))
+	(progn
+	 (PRINC str output-stream)
+	  (TERPRI output-stream))
+	(osql-result filename str filename)))
+	
+
+
+(defun writeto-openfile (fno filename str)
+ (let ((output-stream (OPENSTREAM filename "a")))
+  (unwind-protect
+   (progn
+    (PRINC str output-stream)
+    (TERPRI output-stream))
+  (closestream output-stream)))
+ (osql-result filename str filename))
+	
+
+
+(defun writeto-open-file (filename str)
+	(WITH-OPEN-FILE (output-stream filename 
+		     :direction :append)
+	   (PRIN1 str output-stream)))
+
+
+(defun writeto-open-file-a (fno filename str)
+  (WITH-OPEN-FILE (output-stream filename 
+		     :direction :append)
+	   (PRINC str output-stream)
+           (TERPRI output-stream))
+	(osql-result filename str filename))
+
+
+(defun del-file (fno filename)
+  (if (file-exists-p filename)
+    (progn 
+	(delete-file filename)
+	(print (concat filename " deleted")))
+  (print (concat filename " doesn't exist"))
+  (osql-result filename filename)))
+
+
+(defun open-predefinedstreams (fno)
+	(setq _product-stream_ (openstream "product.csv" "w"))
+	(setq _offer-stream_ (openstream "offer.csv" "w"))
+	(setq _product_to_productfeature-stream_ (openstream "product_to_productfeature.csv" "w"))
+	(setq _product_to_producttype-stream_ (openstream "product_to_producttype.csv" "w"))
+	(setq _producer-stream_ (openstream "producer.csv" "w"))
+	(setq _person-stream_ (openstream "person.csv" "w"))
+	(setq _vendor-stream_ (openstream "vendor.csv" "w"))
+	(setq _review-stream_ (openstream "review.csv" "w"))
+	(setq _productfeature-stream_ (openstream "productfeature.csv" "w"))
+	(setq _producttype-stream_ (openstream "producttype.csv" "w")))
+  
+(defun writeto-gen_stream (fno filename str)
+ (let ((output-stream nil))
+  (cond ((equal filename "product_to_productfeature.csv")
+	 (setf output-stream _product_to_productfeature-stream_))
+	((equal filename "product_to_producttype.csv")
+	 (setf output-stream _product_to_producttype-stream_))
+	((equal filename "offer.csv")
+	 (setf output-stream _offer-stream_))
+	((equal filename "person.csv")
+	 (setf output-stream _person-stream_))
+	((equal filename "producer.csv")
+	 (setf output-stream _producer-stream_))
+	((equal filename "vendor.csv")
+	 (setf output-stream _vendor-stream_))
+	((equal filename "review.csv")
+	 (setf output-stream _review-stream_))
+	((equal filename "producttype.csv")
+	 (setf output-stream _producttype-stream_))
+	((equal filename "product.csv")
+	 (setf output-stream _product-stream_))
+	(t
+	  (setf output-stream _productfeature-stream_)))
+  (progn
+	(PRINC str output-stream)
+        (TERPRI output-stream)))
+  (osql-result filename str filename))
+
+
+(defun close-predefinedstreams (fno)
+	(closestream _product-stream_)
+	(closestream _offer-stream_)
+	(closestream _producer-stream_)
+	(closestream _person-stream_)
+	(closestream _producttype-stream_)
+	(closestream _productfeature-stream_)
+	(closestream _vendor-stream_)
+	(closestream _review-stream_)
+	(closestream _product_to_productfeature-stream_)
+	(closestream _product_to_producttype-stream_))
+
+
+(defun separate-CKels (uri)
+"Retrieves the values of the separate elements that were stringified, i.e. '_66_per' returns ('66' 'per')"
+ (let ((lista nil)
+       (urr nil))
+   (cond
+    ((null(string-pos uri "_")) urr);;if there is not '_'
+    ((null(eq (string-pos uri "_") 0)) urr);;if '_' is not on 0-position
+    (t
+     (setf urr (substring 1 (length uri) uri)) 
+     (if (null(string-pos urr "_"))
+  	  (list urr );;if there are no more "_"
+	(cons (substring 0 (- (string-pos urr "_") 1 ) urr) (separate-CKels (substring (string-pos urr "_") (length urr) urr))))))));;if there are more "_"
+
+(defun row-ident (fno rid cid pks)
+"Decodes the row identifier from the string rid, subject identifier cid" 
+    (if (stringp rid) ;;if rid is a string and cid is a valid class URI
+       (progn
+	(cond 
+	  ((null (string-pos rid "/_")) nil);;if /_ is not included in the rid	
+          (t 
+		  (if (null (string-like-i rid (concat (substring 0 (- (length cid) 2) cid) "*")))
+			nil    ;;if rid and cid do not belong to the same table
+		   (progn
+		      (if  (null (equal ">" (substring (- (length rid) 1) (length rid) rid)));;unload case
+                        (let ((concvec (substring (+ (length cid) 1) (length rid) rid)))
+ 	                       (osql-result rid cid (listtoarray (separate-CKels concvec))))
+	                (let ((concvec (substring (length cid)  (- (length rid) 2) rid)));; restore case
+                               (osql-result rid cid (listtoarray (separate-CKels concvec)))))))
+	)))))
+
+
+:osql
+
+create function row_ident(Charstring rid ,Charstring cid )-> Vector pks key
+as foreign 'row-ident';
+
+
+create function writeto_open_file(Charstring file,Object ob)
+                            -> Charstring                           
+  /* Opens a file stream and writes in it, and closes it */
+   as foreign 'writeto-open-file-a';
+
+create function open_file_a(Charstring file)
+                            -> Boolean                         
+  /* Opens a file to append */
+   as foreign 'openwritefilea-';
+
+create function writeto_gen_stream(Charstring file,Charstring str)
+                            -> Charstring                    
+  /* Writes to an alreday open general file stream  */
+   as foreign 'writeto-gen_stream';
+
+create function openstreams()->Boolean
+	as foreign 'open-predefinedstreams';
+
+create function closestreams()->Boolean
+	as foreign 'close-predefinedstreams';
+
+create function delete_file(Charstring filename)->Charstring
+	as foreign 'del-file';
+
+
+
+
+create function bulkload_intoMySQL(JDBC jd,Charstring baseURI)
+->Boolean
+as
+begin
+	declare Charstring tname;
+	for each Charstring tableURI where ret_tableURIs()=tableURI
+	begin
+		set tname=clearURI(tableURI,baseURI);
+		sql(jd, "LOAD DATA LOCAL INFILE "+"'"+ tname+".csv'"+" INTO TABLE  "+ tname+" FIELDS TERMINATED BY  ',';") ;
+	end;	
+end;
+
+
+create function deleteCSVfiles(Charstring baseURI)->Boolean
+as
+ for each Charstring tableURI where ret_tableURIs()=tableURI
+	delete_file(clearURI(tableURI,baseURI)+".csv");
+
+
+create function addcolumn(Charstring tableURI)->Boolean
+as
+	for each Integer id,Charstring colURI,Charstring pk where AllTableAttributes(id,tableURI,colURI,pk)=true
+	begin set tableattributes(id,colURI)='';
+end;
+
+
+create function ret_pkVal2(Charstring baseURI,Charstring rowID)->Charstring 
+/*Retrieves primary key value from row identifier (no compound key)*/
+as select ch from Charstring ch,charstring t1 where t1=str_exp(rowID,"_") 
+   and ch=substring(t1,0,char_length(t1)-2);
+
+create function ret_tableName(Charstring taburi)->Charstring
+/*Retrieves table name from table URI*/
+as
+   select  ch from Charstring ch, Charstring t where t=str_exp(taburi,'#')
+	and ch=substring(t,0,char_length(t)-2);
+
+
+create function ret_tableURI(Charstring rowuri)->Charstring
+/*Retrieves table URI from row identifier */
+as
+  select tabURI from Charstring tabURI,Charstring p,Charstring ch,
+       Charstring v,Charstring t where schema(tabURI,p,v,t)=true and
+	v="<http://www.w3.org/2000/01/rdf-schema#Class>" and
+	ch=concat(substring(tabURI,0,char_length(tabURI)-2),'/_*') 
+	and like(rowuri,ch);
+
+
+create function ret_FK_fromURI(Charstring rowuri,Charstring baseURI)->Charstring
+/*Retrieves FK value from rowuri */
+as
+  	 select ret_pkVal2(baseURI,rowURI) from Charstring ch where
+	ch=concat("<",concat(substring(baseURI,0,char_length(baseURI)-2),'*'))
+	and like(rowuri,ch);
+
+
+create function ret_ColSize_noFK(Charstring colURI)->Charstring
+/*Retrieves the size for the data type for the non-fk attribute with colURI*/
+as select v from Charstring s, Charstring p, Charstring v,Charstring t 
+where schema(s,p,v,t)=true
+and s=colURI and p="<http://user.it.uu.se/~udbl/sard#size>";
+
+
+create function ret_ColSize_FK(Charstring colURI)->Charstring
+/*Retrieves the size for the data type for the fk attribute with colURI*/
+as select ret_ColSize(ret_fkMap(colURI)) from Charstring s, Charstring p, Charstring v,Charstring t 
+where schema(s,p,v,t)=true
+and s=ret_fkMap(colURI) and p="<http://user.it.uu.se/~udbl/sard#size>";
+ 
+
+create function ret_ColDataType_noFK(Charstring colURI)->Charstring
+/*Retrieve the relational datatype for a non fk attribute*/
+as select ret_mappeddatatype(substring(v,1,char_length(v)-2)) from Charstring s, Charstring p, Charstring v,Charstring t
+where schema(s,p,v,t) and s=colURI and p="<http://www.w3.org/2000/01/rdf-schema#range>";
+
+
+create function ret_ColDataType_FK(Charstring colURI)->Charstring
+/*Retrieve the relational datatype for a fk attribute*/
+as select ret_ColDataType_noFK(fk) from Charstring fk
+where fk=ret_fkMap(colURI);
+
+create function ret_ColDataType(Charstring colURI)->Charstring
+as select ch from Charstring ch where ch in ret_ColDataType_noFK(colURI) 
+or ch in ret_ColDataType_FK(colURI);
+
+
+create function ret_ColSize(Charstring colURI)->Charstring
+as
+	if (ret_fkMap(colURI)) then
+		return ret_ColSize_FK(colURI)
+	else		
+		return ret_ColSize_noFK(colURI);
+
+
+create function clean_tableVal()-> Boolean
+as set tableAttributes(id,attr)=''
+    from integer id, Charstring attr, Object value where tableAttributes(id,attr)=value;
+
+
+create function fkAtts(Charstring tabURI,Charstring fkURI,Charstring baseURI)->
+				(Charstring tn,Charstring cn,Charstring otn,Charstring ocn)
+/*Returns foreign key attributes, referenced attributes and owning table*/
+as select ch1,ch3,cho1,cho3 from
+Charstring ch1,Charstring ch2, Charstring ch3,Charstring ch4,Charstring ch5,integer i1,
+Charstring cho1,Charstring cho2, Charstring cho3,Charstring cho4,Charstring cho5,integer io1,
+Charstring otabURI
+where (ch2,cho2,otabURI) in ret_fkDetails(tabURI,fkURI)
+and (ch1,ch2,ch3,ch4,ch5,i1)=colinfo_mod_new(tabURI,baseURI)
+and (cho1,cho2,cho3,cho4,cho5,io1)=colinfo_mod_new(otabURI,baseURI);
+
+
+create function CSVwriter_time(Charstring filename, Charstring baseURI)->Boolean
+as
+begin
+	declare Charstring fname,Charstring t,Charstring tu,Charstring tableURI,Bag of Charstring ct,Charstring c1, Charstring c2,Bag of Charstring colURIs, real total1, real tt1,real total2, real tt2,real total3, real tt3, real total22, real tt22, real tt5,real total5,real tt6, real total6,real total11, real total222, real tt;
+	set total1=0; set total2=0; set total3=0; set total22=0; set total6=0;set total5=0;set total11=0;set total222=0;
+	set t="";
+	set tableURI="";
+	set  tt1= real(now());
+	openstreams();
+	set tt=real(now());
+	for each Charstring s, Charstring p, Charstring v,Charstring i where readTuples1(filename)=(s,p,v,i)
+	begin 
+	   set tt6=real(now());
+		if(p in valueofCT()) then 
+		begin
+		/*Inserting in AV table the last attribute in a row for the last seen regular table, 
+		and print out to CSV, before parsing a link table.*/
+		     if ( t!="" ) then
+		      begin 	
+		  	  set tt1=real(now());
+		    	  addValue(ret_pkURIfromRowID2(tu),ret_pkVal(baseURI,t));
+			  set total1= ( real(now())-tt1 ) + total1;
+			  set tt2=real(now());
+			  writeto_gen_stream(fname,concatagg(inject(valueofattr1(),"|")));
+			  set total2= ( real(now())-tt2 ) + total2; 
+		      end;
+		      set t="";
+		/* Printing out attribute values to a CSV for link tables.*/
+             	      if tableURI!=p then 
+               		begin 
+                           set fname=clearURI(p,baseURI)+".csv";						
+ 	             	end;	
+		     set c1=ret_pkVal(baseURI,s);
+		     set c2=ret_pkVal(baseURI,v);
+		     set tt22=real(now());
+   		     writeto_gen_stream(fname,c1+"|"+c2);
+		     set total22= ( real(now())-tt22 ) + total22;
+		     set tableURI=p;
+  		end	
+		else if(p!="<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>") then
+		/* Populate AV Table for non-link tables.*/
+  		begin 
+		     if(s!=t) then
+			/*Checking whether the previous row ID(t) is same as the current ID (s)*/
+	      		begin 	
+		          if ( t!="" )then 
+			/*1st attr in a row of a new non-link table is seen; 
+			For the last seen table: insert primary key values in Values in the AV table 
+						and write out the old table row values*/
+			       begin  
+				 set tt1=real(now());
+                                  addValue(ret_pkURIfromRowID2(tu),ret_pkVal(baseURI,t));
+				  set total1= ( real(now())-tt1 ) + total1;
+				  set tt2=real(now());
+				  writeto_gen_stream(fname,concatagg(inject(valueofattr1(),"|")));
+				  set total2= ( real(now())-tt2 ) + total2;
+				  clean_tableVal();
+				end;
+			    set t=s;
+			  /*Populate Order and Attribute in the AV table for the new seen table*/
+			   set tu=ret_tableURIfromRowID1(baseURI,t);
+			   if(tableURI!=tu) then 
+				begin 
+			 	   set fname=str_exp1(clearURI(t,baseURI),'/')+".csv";
+			   	   set tt5=real(now());
+				   remove_attr();
+				   set total5=real(now()) - tt5;
+				   set tt3=real(now());
+				   addcolumn(tu);
+				   set total3= ( real(now())-tt3 ) + total3;
+				end; 
+			   set tableURI=tu;
+			end;
+		    if(v!="") then
+			begin 	
+			   if some(ret_fkMap(p)) then
+			      begin				
+				/* If p repressents foreign key,
+				insert foreign values in Values in the AV table*/
+				 set tt1=real(now());
+				 addValue(ret_fkMap(p),ret_pkVal(baseURI,v));						
+				set total1= ( real(now())-tt1 ) + total1
+			      end	
+			   else  		
+			      begin	
+				/* If p repressents an attribute that is not a foreign key,
+				insert attr value in Values in the AV table*/
+				set tt1=real(now());		
+				addValue(p,v);
+				set total1= ( real(now())-tt1 ) + total1 ;
+			      end;
+			end;
+		    set t=s;			
+	        end;	 
+	       set total6=total6 +(real(now()) - tt6) ;	
+	end;
+	print("Total reading: " + (real(now())-tt ) );
+	if notany(tableURI in valueofCT()) then 
+	/*Processing the last triple- if it doesn't repr a link table */
+	begin	
+	  set tt1=real(now());
+	  /*For the last seen table: insert primary key values in Values in the AV table*/ 	
+	  addValue(ret_pkURIfromRowID2(tu),ret_pkVal(baseURI,t));
+	  set total11= ( real(now())-tt1 ) + total11;
+	  set tt2=real(now());
+	  /*Prints out Values to CSV*/
+	  writeto_gen_stream(fname,concatagg(inject(valueofattr1(),"|")));
+	  set total222= ( real(now())-tt2 ) + total222;	
+	end;
+	closestreams();
+	print ("Time to add attribute value: " + total1);
+	print ("Time to sort + write out a row: " + total2);
+	print ("Time to write out (linked tables): " + total22);
+	/*print ("Time to populate tableAttributes: " + total3);
+	print ("Time to remove attribute: " + total5);
+	print ("total11 " + total11);
+	print ("total222 " + total222);*/
+	print("Rest :" + total6 );
+end;
+
+
+
+
+/* The algorithm doesn't work for compound primary and foreign keys*/
+create function CSVwriter(Charstring filename, Charstring baseURI)->Boolean
+as
+begin
+	declare Charstring fname,Charstring t,Charstring tu,Charstring tableURI,Bag of Charstring ct,Charstring c1, Charstring c2,Bag of Charstring colURIs;
+	set t="";
+	set tableURI="";
+	openstreams();
+	for each Charstring s, Charstring p, Charstring v,Charstring i where readTuples1(filename)=(s,p,v,i)
+	begin 
+	  if(p in valueofCT()) then 
+		begin
+		/*Inserting in AV table the last attribute in a row for the last seen regular table, 
+		and print out to CSV, before parsing a link table. Happens when a link table triple is seen*/
+		     if ( t!="" ) then
+		      begin 	
+		  	  addValue(ret_pkURI_woct(tu),ret_pkVal2(baseURI,t));
+			  writeto_gen_stream(fname,concatagg(inject(valueofattr1(),"|")));
+		      end;
+		      set t="";
+		/* Printing out attribute values to a CSV file for link tables.*/
+             	      if tableURI!=p then 
+               		begin 
+                           set fname=clearURI(p,baseURI)+".csv";						
+ 	             	end;	
+		     set c1=ret_pkVal2(baseURI,s);
+		     set c2=ret_pkVal2(baseURI,v);		    
+   		     writeto_gen_stream(fname,c1+"|"+c2);		    
+		     set tableURI=p;
+  		end	
+		else if(p!="<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>") then
+		/* Populate AV Table for non-link tables.*/
+  		begin 
+		     if(s!=t) then
+			/*Checking whether the previous row ID(t) is same as the current ID (s)*/
+	      		begin 	
+		          if ( t!="" )then 
+			/*1st attr in a row of a new non-link table is seen; 
+			For the last seen table: insert primary key values in Values in the AV table 
+						and write out the old table row values*/
+			       begin  				 
+                                  addValue(ret_pkURI_woct(tu),ret_pkVal2(baseURI,t));				 
+				  writeto_gen_stream(fname,concatagg(inject(valueofattr1(),"|")));			 
+				  clean_tableVal();
+				end;
+			    set t=s;
+			  /*Populate Order and Attribute in the AV table for the new seen table*/
+			   set tu= ret_tableURI(t);
+			   if(tableURI!=tu) then 
+				begin 
+			 	   /*set fname=str_exp1(clearURI(t,baseURI),'/')+".csv";*/
+				   set fname=ret_tableName(tu)+".csv";			   	  
+				   remove_attr();				   
+				   addcolumn(tu);				  
+				end; 
+			   set tableURI=tu;
+			end;		  
+			   if some(ret_fkMap(p)) then			      				
+				/* If p repressents foreign key,
+				insert foreign values in Values in the AV table*/				 
+				 addValue(ret_fkMap(p),ret_pkVal2(baseURI,v))				      	
+			   else  					      	
+				/* If p repressents an attribute that is not a foreign key,
+				insert attr value in Values in the AV table*/			
+				addValue(p,v);				      			
+		    set t=s;			
+	        end;	 	      
+	end;	
+	if notany(tableURI in valueofCT()) then 
+	/*Processing the data from the last triple- if it doesn't repr a link table */
+	begin		  
+	  /*For the last seen table: insert primary key values in Values in the AV table*/ 	
+	  addValue(ret_pkURI_woct(tu),ret_pkVal2(baseURI,t));	  
+	  /*Prints out Values to CSV*/
+	  writeto_gen_stream(fname,concatagg(inject(valueofattr1(),"|")));	 
+	end;
+	closestreams();	
+end;
+
+
+
+
+
+
+
+
+create function BulkLoader(JDBC jd,Charstring filename,Charstring baseURI)->Boolean
+as begin
+	declare Number time;
+	/*Create all tables.*/
+	set time=real(now());
+	makeAllTable(jd,baseURI);
+	set time=real(now())-time;
+	print ("Time to create tables: "+time);
+	set time=real(now());
+	CSVwriter(filename,baseURI);
+	print("Time to create CSV: " + ( real(now())- time));
+	set time=real(now());
+	bulkload_intoMySQL(jd,baseURI);
+	print("Time to bulk load: " + (real(now())-time));
+	/*Create the FK Constraints.*/
+	set time=real(now());
+	makeAllConstraint(jd,baseURI);
+	set time=real(now())-time;
+	print ("Time for adding constraints: "+time);
+	deleteCSVfiles(baseURI);
+end;
+
+
+
+
+
+
+
+	
+
+

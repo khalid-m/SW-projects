@@ -1,0 +1,25 @@
+ cwo("C:/AmosNT/wrappers/WSMED/Record_v/wsdl/PlaceLookup.wsdl","GeoPlaces","GetPlaceDetails",make_record({'place','Atlanta','state','GA'}),make_record({'AuthenticationHeader',make_record({'SessionID','5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'})}));
+
+cwo("C:/AmosNT/wrappers/WSMED/Record_v/wsdl/TerraService2.wsdl","TerraService","GetPlaceList",make_record({'GetPlaceList',make_record({'placeName','Atlanta','MaxItems',100,'imagePresence','true'})}),make_record({}))
+
+
+cwo("C:/AmosNT/wrappers/WSMED/Record_v/wsdl/TerraService2.wsdl","TerraService","GetPlaceList",{'Atlanta',100,'true'},{});
+
+cwo("C:/AmosNT/wrappers/WSMED/Record_v/wsdl/PlaceLookup.wsdl","GeoPlaces","GetPlaceDetails",{'Atlanta','GA'},{'5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'});
+
+GetPlaceDetails('Atlanta','GA','5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q');
+
+cwo('C:/AmosNT/wrappers/WSMED/Record_v/wsdl/PlaceLookup.wsdl', 'GeoPlaces', 'GetAllStates', {}, { SessionID}) 
+
+ cwo('C:/AmosNT/wrappers/WSMED/Record_v/wsdl/PlaceLookup.wsdl', 'GeoPlaces', 'GetPlaceDetails', {'Atlanta','GA'}, { '5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'}) 
+
+select GetPlaceDetailsResult['Name'], GetPlaceDetailsResult['Type'], GetPlaceDetailsResult['State'], GetPlaceDetailsResult['LatDegrees'], GetPlaceDetailsResult['LonDegrees'], GetPlaceDetailsResult['LatRadians'], GetPlaceDetailsResult['LonRadians']
+from sequence out , sequence GetPlaceDetailsResult1, record GetPlaceDetailsResult
+where out=cwo('C:/AmosNT/wrappers/WSMED/Record_v/wsdl/PlaceLookup.wsdl', 'GeoPlaces', 'GetPlaceDetails', {'Atlanta','GA'}, { '5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'})and GetPlaceDetailsResult=in(out) ;
+
+/******************************SQL queries**********************************/
+  sql("select  s.placename,p.name, s.lon, s.lat,p.type,s.placetypeid from PlaceDetails p, Place s where s.city='Atlanta' and p.place=s.city and p.state='GA' and p.SessionID='5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q' and s.imagepresence='true' and s.maxitems=100");
+
+
+/*************no execution*****************/
+sql("select  s.placename,p.name, s.lon, s.lat,p.type,s.placetypeid from PlaceDetails p, Place s where s.city='Atlanta' and p.place=s.city and s.state=p.state and p.SessionID='5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q' and s.imagepresence='true' and s.maxitems=100");

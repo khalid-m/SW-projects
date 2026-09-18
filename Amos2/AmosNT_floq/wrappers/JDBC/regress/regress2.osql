@@ -1,0 +1,194 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Erik Zeitler, UDBL
+ * Description: Test #2 of JDBC interface
+ *
+ ****************************************************************************
+ * $Log: regress2.osql,v $
+ * Revision 1.12  2013/01/05 17:49:38  torer
+ * Added mapped SQL test
+ *
+ * Revision 1.11  2013/01/04 14:16:53  torer
+ * Testing SQL mapping
+ *
+ * Revision 1.10  2013/01/04 13:59:31  torer
+ * Core cluster function of external relation queryable from SQL
+ *
+ * Revision 1.9  2013/01/03 21:42:45  torer
+ * Revert
+ *
+ * Revision 1.7  2012/01/10 07:31:59  torer
+ * New tuple format
+ *
+ * Revision 1.6  2011/04/14 11:47:12  torer
+ * Relational wrapper now null tolerant
+ *
+ * Revision 1.5  2010/10/06 16:37:23  torer
+ * Testing substituting very long string in JDBC
+ *
+ * Revision 1.4  2008/08/07 19:38:15  torer
+ * Making regression scripts DBMS independent
+ *
+ * Revision 1.3  2008/08/07 17:22:11  torer
+ * One more regression test works under MySQL
+ *
+ * Revision 1.2  2008/08/07 12:55:10  zeitler
+ * Table names uppercase
+ *
+ * Revision 1.1  2008/07/31 20:30:05  torer
+ * Added SQL script to load regression database
+ *
+ * Revision 1.6  2008/07/31 11:13:47  torer
+ * New table for basic SQL testing: PERSON2
+ *
+ * Revision 1.5  2008/07/28 14:18:54  torer
+ * SQLU -> SQL
+ *
+ * Revision 1.3  2008/07/14 19:35:25  zeitler
+ * Syntax compatible with more MySQL versions
+ *
+ * Revision 1.2  2008/07/14 16:51:31  zeitler
+ * Portable mysql test
+ *
+ ****************************************************************************/
+
+lisp;
+
+(checkequal "Recursive prepared statement"
+	    ((osql "select sql(:a,'select * from PERSON2 where ssn=?',{1234}),
+                          sql(:a,'select * from PERSON2 where ssn=?',{1234});")
+             '((#(1234 "Kalle" 1000.0) #(1234 "Kalle" 1000.0))))
+	    ((osql "select sql(:a,'select * from PERSON2 where ssn=?',{1234}),
+                          sql(:a,'select * from PERSON2 where ssn=?',{2345});")
+             '((#(1234 "Kalle" 1000.0) #(2345 "Ulla" 2000.0))))
+	    ((osql "count(select 
+                          sql(:a,'select * from PERSON2 where ssn>?',{1000}),
+                         sql(:a,'select * from PERSON2 where ssn>?',{2000}));")
+             '((6)))
+	    )
+
+
+:osql 
+
+import_table(:a, 'PERSON',true);
+
+import_relation(:a, 'person_telephones','ssn','phone_number',
+                'phone_number',true);
+
+create function phone_number(person_ibds p) -> integer n as
+  select n where (_decode_(p), n) in sql:phone_number();
+
+create function add_phone_number(person_ibds p, integer n)->integer as 
+  begin add phone_number(_decode_(p))=n end;
+
+set add_function(functionnamed('PERSON_IBDS.PHONE_NUMBER->INTEGER')) = 
+      functionnamed('PERSON_IBDS.INTEGER.ADD_PHONE_NUMBER->INTEGER');
+
+create function set_phone_number(person_ibds p, integer n)->integer as 
+  begin set phone_number(_decode_(p))=n end;
+
+set set_function(functionnamed('PERSON_IBDS.PHONE_NUMBER->INTEGER')) = 
+      functionnamed('PERSON_IBDS.INTEGER.SET_PHONE_NUMBER->INTEGER');
+
+import_table(:a, 'SWEDISH_PERSON',true);
+
+create person_ibds (ssn, name) instances (10,'Pelle');
+create person_ibds (ssn, name) instances (20,'Bosse');
+
+lisp;
+
+(checkequal "constructors"  
+	    ((osql "select name(p) from person_ibds p;") 
+	     '(("Pelle") ("Bosse"))))
+
+:osql
+select p into :p from person_ibds p where name(p)="Pelle";
+
+set name(:p)="lill-Pelle";
+
+lisp;
+
+(checkequal "keyed add function" 
+	    ((osql "select name(p) from person_ibds p;") 
+	     '(("lill-Pelle") ("Bosse"))))
+
+:osql 
+
+remove name(:p)="lill-Pelle";
+remove name(:p)="lill-Pelle";
+
+lisp					;
+
+(checkequal "keyed remove function" 
+	    ((osql "select name(p) from person_ibds p;") '((nil) ("Bosse")))
+	    ((osql "count(select p from person_ibds p);") '((2))))
+
+:osql 
+
+/* you should be able to do this twice as long as you set to the same value
+   (set semantics) */
+
+add name(:p)="stor-Pelle";
+add name(:p)="stor-Pelle";
+
+lisp;
+
+(checkequal 
+ "keyed add function" 
+ ((osql "select name(p) from person_ibds p;") '(("stor-Pelle") ("Bosse")))
+ ((osql "count(select p from person_ibds p);") '((2)))
+ ((catch-error (osql "add name(:p)='Lasse';"))
+  '(:ERRCOND (-1 
+  "error: Violating a unique index in colum (CHARSTRING NAME) in table PERSON" 
+    NIL))))
+
+:osql 
+
+select p into :p2 from person_ibds p where name(p)="Bosse";
+
+add phone_number(:p)=101010;
+add phone_number(:p)=202020;
+add phone_number(:p)=303030;
+add phone_number(:p2)=303030;
+add phone_number(:p2)=505050;
+
+lisp;
+
+(checkequal 
+ "bagged add function" 
+ ((osql "select phone_number(p) from person@ibds p;")
+  '((101010) (202020) (303030) (303030) (505050)))
+ ((osql "select phone_number(p) from person@ibds p where name(p)='Bosse';")
+  '((303030) (505050)))
+ ((osql 
+   "select phone_number(p) from person@ibds p where name(p)='stor-Pelle';")
+  '((101010) (202020) (303030))))
+
+:osql 
+
+set phone_number(:p)=121212;
+
+lisp;
+
+(checkequal 
+ "bagged set function" 
+ ((osql "select phone_number(p) from person@ibds p where name(p)='Bosse';")
+  '((303030) (505050)))
+ ((osql 
+   "select phone_number(p) from person@ibds p where name(p)='stor-Pelle';")
+  '((121212))))
+
+:osql
+
+set :longn = concatagg(iota(1,100));
+set name(:p)=:longn;
+
+lisp;
+
+(checkequal "Long SQL string"
+	    ((osql "name(:p)= :longn;") '((true)))
+	    )
+
+:osql
+

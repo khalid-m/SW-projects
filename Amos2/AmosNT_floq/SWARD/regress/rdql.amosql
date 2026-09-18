@@ -1,0 +1,156 @@
+/* RDQL test queries from HP labs benchmark: 
+ * RDQL-tests-2003-04-10, 
+ * http://swordfish.rdfweb.org/rdfquery/tests/old/tests/rdql-tests-2003-04-10
+ */
+set :q1 = 
+'SELECT ?x
+FROM <vc-db-1.rdf>
+WHERE (?x, <http://www.w3.org/2001/vcard-rdf/3.0#FN>, "John Smith")';
+
+set :q2 =
+'SELECT ?x, ?fname
+FROM <vc-db-1.rdf>
+WHERE (?x, <http://www.w3.org/2001/vcard-rdf/3.0#FN>, ?fname)';
+
+set :q3 = 
+'SELECT ?givenName
+FROM <vc-db-1.rdf>
+WHERE (?y, <http://www.w3.org/2001/vcard-rdf/3.0#Family>, "Smith") ,
+      (?y, <http://www.w3.org/2001/vcard-rdf/3.0#Given>, ?givenName)';
+
+set :q4 =
+'SELECT ?resource, ?givenName
+FROM <vc-db-1.rdf>
+WHERE (?resource, <http://www.w3.org/2001/vcard-rdf/3.0#N>, ?z) ,
+      (?z, <http://www.w3.org/2001/vcard-rdf/3.0#Given>, ?givenName)';
+
+set :q5 =
+'SELECT ?resource
+FROM <vc-db-2.rdf>
+WHERE (?resource, <info:age>, ?age)
+AND ?age >= 24
+USING info FOR <http://somewhere/peopleInfo#>';
+
+set :q6 =
+'SELECT ?resource, ?familyName
+FROM <vc-db-2.rdf>
+WHERE (?resource, <info:age>, ?age) ,
+      (?resource, <vCard:N>, ?y) , (?y, <vCard:Family>, ?familyName)
+AND ?age >= 24
+USING  info  FOR <http://somewhere/peopleInfo#> ,
+       vCard FOR <http://www.w3.org/2001/vcard-rdf/3.0#>';
+
+set :q7 =
+'SELECT ?prop
+FROM <vc-db-2.rdf>
+WHERE (<http://somewhere/JohnSmith/> , ?prop, "John Smith")
+USING vCard FOR <http://www.w3.org/2001/vcard-rdf/3.0#>';
+
+set :q8 =
+'SELECT ?b
+FROM <vc-db-2.rdf>
+WHERE (<http://somewhere/JohnSmith/> , <vCard:N>, ?b)
+USING vCard FOR <http://www.w3.org/2001/vcard-rdf/3.0#>';
+
+set :q9 =
+'SELECT ?property
+FROM <vc-db-3.rdf>
+WHERE (?person, <vCard:FN>, "John Smith") ,
+      (?person, ?property, ?obj)
+USING 
+   vCard FOR <http://www.w3.org/2001/vcard-rdf/3.0#> ,
+   rdf   FOR <http://www.w3.org/1999/02/22-rdf-syntax-ns#>';
+
+set :q10 =
+'SELECT ?telephoneNumber
+FROM <vc-db-3.rdf>
+WHERE (?person, <vCard:FN>, "John Smith") ,
+      (?person, <vCard:TEL>, ?tel) ,
+      (?tel, <rdf:type>, <vCard:work>) ,
+      (?tel, <rdf:value>, ?telephoneNumber)
+USING
+  vCard FOR <http://www.w3.org/2001/vcard-rdf/3.0#> ,
+  rdf   FOR <http://www.w3.org/1999/02/22-rdf-syntax-ns#>';
+
+
+/********************* Regression test ***************/
+
+/* Define dummy UPV 'test' and 'default' associated with dummy data source 'TESTDS' and 'DEFAULTDS'. 
+ */
+defineUPV("TEST1DS","test1","vc-db-1.rdf");
+defineUPV("TEST2DS","test2","vc-db-2.rdf");
+defineUPV("TEST3DS","test3","vc-db-3.rdf");
+
+lisp;
+(defglobal _q1_res_ 
+(list(list "select x from Charstring x where test1() = <x,'http://www.w3.org/2001/vcard-rdf/3.0#FN',\"John Smith\"> ; ")))
+
+(defglobal _q2_res_ 
+(list(list "select x, fname from Charstring x, Charstring fname where test1() = <x,'http://www.w3.org/2001/vcard-rdf/3.0#FN',fname> ; ")))
+
+(defglobal _q3_res_ 
+(list(list "select givenName from Charstring givenName, Charstring y where test1() = <y,'http://www.w3.org/2001/vcard-rdf/3.0#Family',\"Smith\"> and test1() = <y,'http://www.w3.org/2001/vcard-rdf/3.0#Given',givenName> ; "
+)))
+
+(defglobal _q4_res_ 
+(list(list "select resource, givenName from Charstring resource, Charstring givenName, Charstring z where test1() = <resource,'http://www.w3.org/2001/vcard-rdf/3.0#N',z> and test1() = <z,'http://www.w3.org/2001/vcard-rdf/3.0#Given',givenName> ; ")))
+
+(defglobal _q5_res_ 
+(list(list "select resource from Charstring resource, Charstring age where test2() = <resource,'http://somewhere/peopleInfo#age',age> and age >= '24' ; ")))
+
+(defglobal _q6_res_ 
+(list(list "select resource, familyName from Charstring resource, Charstring familyName, Charstring age, Charstring y where test2() = <resource,'http://somewhere/peopleInfo#age',age> and test2() = <resource,'http://www.w3.org/2001/vcard-rdf/3.0#N',y> and test2() = <y,'http://www.w3.org/2001/vcard-rdf/3.0#Family',familyName> and age >= '24' ; ")))
+
+(defglobal _q7_res_ 
+(list(list "select prop from Charstring prop where test2() = <'http://somewhere/JohnSmith/',prop,\"John Smith\"> ; ")))
+
+(defglobal _q8_res_ 
+(list(list "select b from Charstring b where test2() = <'http://somewhere/JohnSmith/','http://www.w3.org/2001/vcard-rdf/3.0#N',b> ; ")))
+
+(defglobal _q9_res_ 
+(list(list "select property from Charstring property, Charstring person, Charstring obj where test3() = <person,'http://www.w3.org/2001/vcard-rdf/3.0#FN',\"John Smith\"> and test3() = <person,property,obj> ; ")))
+
+(defglobal _q10_res_ 
+(list(list "select telephoneNumber from Charstring telephoneNumber, Charstring person, Charstring tel where test3() = <person,'http://www.w3.org/2001/vcard-rdf/3.0#FN',\"John Smith\"> and test3() = <person,'http://www.w3.org/2001/vcard-rdf/3.0#TEL',tel> and test3() = <tel,'http://www.w3.org/1999/02/22-rdf-syntax-ns#type','http://www.w3.org/2001/vcard-rdf/3.0#work'> and test3() = <tel,'http://www.w3.org/1999/02/22-rdf-syntax-ns#value',telephoneNumber> ; ")))
+
+(checkequal "RDQL query Q1"
+	    ((osql "parse_rdql(:q1);")
+	     _q1_res_))
+
+(checkequal "RDQL query Q2"
+	    ((osql "parse_rdql(:q2);")
+	     _q2_res_))
+
+(checkequal "RDQL query Q3"
+	    ((osql "parse_rdql(:q3);")
+	     _q3_res_))
+
+(checkequal "RDQL query Q4"
+	    ((osql "parse_rdql(:q4);")
+	     _q4_res_))
+
+(checkequal "RDQL query Q5"
+	    ((osql "parse_rdql(:q5);")
+	     _q5_res_))
+
+(checkequal "RDQL query Q6"
+	    ((osql "parse_rdql(:q6);")
+	     _q6_res_))
+
+(checkequal "RDQL query Q7"
+	    ((osql "parse_rdql(:q7);")
+	     _q7_res_))
+
+(checkequal "RDQL query Q8"
+	    ((osql "parse_rdql(:q8);")
+	     _q8_res_))
+
+(checkequal "RDQL query Q9"
+	    ((osql "parse_rdql(:q9);")
+	     _q9_res_))
+
+(checkequal "RDQL query Q10"
+	    ((osql "parse_rdql(:q10);")
+	     _q10_res_))
+
+:osql

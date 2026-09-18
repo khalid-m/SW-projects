@@ -1,0 +1,372 @@
+
+create type Person properties ( 
+	key Name Charstring key,
+	key Age  Integer nonkey
+	);
+
+create function PersonNamed (Charstring n key) -> Person p key
+	as select p where Name(p)=n ;
+
+create function Married (Person husband key, Person wife key) -> Boolean as stored;
+
+create function Husband (Person w) -> Person h
+	as select h where Married ( h, w );
+
+create function Wife (Person h) -> Person w
+	as select w where Married ( h, w );
+
+create function ParentChild (Person parent nonkey, Person child nonkey) ->
+	Boolean as stored;
+
+create function Parent ( Person c) -> Person p
+	as select p where ParentChild ( p, c );
+
+create function Child ( Person p) -> Person c
+	as select c where ParentChild ( p, c );
+
+create function Sibling ( Person p) -> Person s
+	as select s
+	   where s = Child(Parent(p)) and s != p;
+
+create function Grandparent ( Person p) -> Person g
+	as select g where g = Parent(Parent(p));
+
+create function Grandchild ( Person p) -> Person g
+	as select Child(Child(p));
+
+create function Cousin ( Person p ) -> Person
+	as select Child(Sibling(Parent(p)));
+
+create type Course properties (
+	key CourseName Charstring key
+	);
+
+create function CourseNamed (Charstring n key) -> Course c 
+	as select c where CourseName(c)=n;
+
+create type Student under Person properties (
+	key GraduationYear Integer nonkey
+	);
+
+create function Enrollment (Student s nonkey, Course c nonkey, 
+	Charstring t nonkey, Charstring g nonkey) -> Boolean as stored;
+
+create function TakenBy (Student s) -> Course c
+	as select c from Course c, Charstring t, Charstring g
+	   where Enrollment(s, c, t, g);
+
+create type Instructor under Student properties (
+	key Salary Integer nonkey
+	);
+
+create function Assignment (Instructor i nonkey, Course c nonkey,
+	Charstring t nonkey) -> Boolean as stored;
+
+create function Taught (Instructor i) ->  Course
+	as select c from Course c, Charstring t where Assignment(i, c, t);
+
+/*Commit;*/
+
+		/* Instantiation */
+
+create Student (Name, Age, Parent, GraduationYear)
+instances
+	:Mary ('Mary', 77, nil, 1930),
+	:Joanne ('Joanne', 18, nil, 1984),
+	:Shirley ('Shirley', 22, nil, 1983),
+	:Stacee ('Stacee', 19, nil, 1983),
+	:John ('John', 81, nil, 1921),
+	:Victor('Victor', 78, nil, 1924);
+
+create Instructor (Name, Age, Parent, Salary)
+instances
+	:Susan ('Susan', 72, nil, 444);
+
+create Instructor (Name, Age, Parent, Salary)
+instances
+	:Alice ('Alice', 44, bag(:Susan, :John), 534),
+	:Pam ('Pam', 25, nil, 378),
+	:Henry ('Henry', 72, nil, 888);
+
+create Student (Name, Age, Parent, GraduationYear)
+instances
+	:Michael ('Michael', 45, bag(:Susan, :John), 1959);
+
+create Person (Name, Age, Parent)
+instances
+	:Lisbeth ('Lisbeth', 69, nil),
+	:Linda ('Linda', 81, nil);
+
+create Person (Name, Age, Parent)
+instances
+	:Kim ('Kim', 46, bag(:Linda, :Henry)),
+	:Tim ('Tim', 76, nil),
+	:Dan ('Dan', 48, bag(:Lisbeth, :Victor)),
+	:Arthur ('Arthur', 108, nil);
+
+create Student (Name, Age, Parent, GraduationYear)
+instances
+	:Bill ('Bill', 50, bag(:Mary, :Tim), 1953),
+	:Barbara ('Barbara', 51, bag(:Lisbeth, :Victor), 1960),
+	:Jim ('Jim', 52, bag(:Linda, :Henry), 1948),
+	:Helen ('Helen', 48, bag(:Mary, :Tim), 1955),
+	:Joe ('Joe', 21, bag(:Alice, :Dan), 1986);
+
+create Student (Name, Age, Parent, GraduationYear)
+instances
+	:Dennis ('Dennis', 18, bag(:Helen, :Jim), 1983);
+
+create Instructor (Name, Age, Parent, Salary)
+instances
+	:Peter ('Peter', 25, bag(:Kim, :Bill), 734);
+
+create Person (Name, Age, Parent)
+instances
+	:Tom ('Tom', 18, bag(:Barbara, :Michael));
+
+add type Instructor (Salary)
+to
+	:Dennis (289),
+	:Michael (222),
+	:Helen (222);
+
+set GraduationYear(:peter)=1986;
+
+set Married( :Dennis,  :Pam) = True;
+set Married( :Joe,  :Stacee) = True;
+set Married( :Tom,  :Shirley) = True;
+set Married( :Peter,  :Joanne) = True;
+set Married( :Bill,  :Kim) = True;
+set Married( :Michael,  :Barbara) = True;
+set Married( :Dan,  :Alice) = True;
+set Married( :Jim,  :Helen) = True;
+set Married( :Henry,  :Linda) = True;
+set Married( :Victor,  :Lisbeth) = True;
+set Married( :John,  :Susan) = True;
+set Married( :Tim,  :Mary) = True;
+
+create Course (CourseName)
+instances
+	:Biology ('Biology'),
+        :Math ('Math'),
+        :English ('English'),
+        :Science ('Science'),
+        :Tennis ('Tennis');
+ 
+set Enrollment(:Mary, :Biology, 'Spring 1929', 'B') = True;
+set Enrollment(:Mary, :Tennis, 'Fall 1928', 'A') = True;
+set Enrollment(:Mary, :English, 'Spring 1929', 'B+') = True;
+set Enrollment(:Mary, :Science, 'Fall 1928', 'A-') = True;
+set Enrollment(:Helen, :Biology, 'Spring 1955', 'B') = True;
+set Enrollment(:Helen, :Math, 'Spring 1955', 'A') = True;
+set Enrollment(:Helen, :Science, 'Fall 1954', 'B') = True;
+set Enrollment(:Barbara, :Science, 'Fall 1959', 'A+') = True;
+set Enrollment(:Barbara, :Math, 'Spring 1960', 'A+') = True;
+set Enrollment(:Joanne, :Tennis, 'Spring 1984', 'B-') = True;
+set Enrollment(:Joanne, :English, 'Spring 1983', 'C+') = True;
+set Enrollment(:Joanne, :Biology, 'Fall 1983', 'B') = True;
+set Enrollment(:Shirley, :Biology, 'Spring 1983', 'C') = True;
+set Enrollment(:Shirley, :English, 'Spring 1983', 'C') = True;
+set Enrollment(:Shirley, :Science, 'Fall 1982', 'B+') = True;
+set Enrollment(:Shirley, :Math, 'Fall 1982', 'C-') = True;
+set Enrollment(:Stacee, :Math, 'Fall 1982', 'A-') = True;
+set Enrollment(:Stacee, :English, 'Fall 1982', 'B') = True;
+set Enrollment(:Stacee, :Science, 'Spring 1983', 'A') = True;
+set Enrollment(:John, :Science, 'Spring 1921', 'A') = True;
+set Enrollment(:John, :Math, 'Spring 1921', 'A-') = True;
+set Enrollment(:John, :English, 'Spring 1920', 'D') = True;
+set Enrollment(:Victor, :Tennis, 'Spring 1924', 'C-') = True;
+set Enrollment(:Victor, :English, 'Spring 1924', 'B') = True;
+set Enrollment(:Jim, :Science, 'Spring 1947', 'B') = True;
+set Enrollment(:Jim, :Math, 'Spring 1948', 'A+') = True;
+set Enrollment(:Jim, :Biology, 'Fall 1948', 'B') = True;
+set Enrollment(:Michael, :Tennis, 'Fall 1958', 'F') = True;
+set Enrollment(:Michael, :Tennis, 'Spring 1959', 'C') = True;
+set Enrollment(:Michael, :English, 'Spring 1959', 'B+') = True;
+set Enrollment(:Bill, :English, 'Spring 1953', 'C+') = True;
+set Enrollment(:Bill, :Science, 'Fall 1952', 'B-') = True;
+set Enrollment(:Joe, :English, 'Fall 1985', 'B+') = True;
+set Enrollment(:Joe, :Math, 'Fall 1985', 'A') = True;
+set Enrollment(:Joe, :Biology, 'Spring 1986', 'C+') = True;
+set Enrollment(:Dennis, :Science, 'Spring 1982', 'A+') = True;
+set Enrollment(:Dennis, :Math, 'Fall 1982', 'A+') = True;
+set Enrollment(:Dennis, :Biology, 'Spring 1983', 'A+') = True;
+set Enrollment(:Peter, :Biology, 'Spring 1983', 'A+') = True;
+
+set Assignment(:Susan, :Biology, 'Fall 1983') = True;
+
+/*Commit;*/
+
+
+		/*  Queries  */
+
+
+
+/* Find names and ages of all persons: */
+/* ----------------------------------- */
+
+lisp;
+(checkequal "Find names and ages of all persons"
+	((sorttuples(osql "select n, a
+		 	from Person p, Charstring n, Integer a
+			where Name (p) = n and Age (p) = a;"))
+  	'(("Alice" 44) ("Arthur" 108) ("Barbara" 51) ("Bill" 50) ("Dan" 48) 
+	 ("Dennis" 18) ("Helen" 48) ("Henry" 72) ("Jim" 52) ("Joanne" 18) 
+	 ("Joe" 21) ("John" 81) ("Kim" 46) ("Linda" 81) ("Lisbeth" 69) 
+	 ("Mary" 77) ("Michael" 45) ("Pam" 25) ("Peter" 25) ("Shirley" 22) 
+	 ("Stacee" 19) ("Susan" 72) ("Tim" 76) ("Tom" 18) ("Victor" 78)))) 
+
+
+; Find names of all students who enrolled in biology: */
+; --------------------------------------------------- */
+
+(checkequal "Find names of all students who enrolled in biology"
+	((sorttuples(osql "select n	
+		from Charstring n, Student s
+		where Name(s) = n and CourseNamed('Biology') = TakenBy(s);"))
+	     '(("Dennis") ("Helen") ("Jim") ("Joanne") ("Joe") ("Mary") 
+		("Peter") ("Shirley"))))
+
+; Find names of all cousins of Joe: */
+; -------------------------------- */
+
+(checkequal "Find names of all cousins of Joe"
+	((osql "select distinct n
+		from Charstring n
+		where Name(Cousin(PersonNamed('Joe'))) = n;")
+	 '(("Tom"))))
+
+;Find all students who enrolled in classes in which their cousins enrolled: */
+;-------------------------------------------------------------------------- */
+
+(checkequal "Find all students who enrolled in classes in which their cousins enrolled"
+	((osql "select distinct n1, n2, cn
+		from Charstring n1, Charstring n2, Charstring cn, 
+			Student s1, Student s2, Person s3, Course c, 
+			Charstring t, Charstring g
+		where Name(s1) > Name(s2) and
+			Enrollment(s1, c, t, g) and Enrollment(s2, c, t, g)
+			and s3 = Cousin(s1) and s2 = s3 and Name (s1) = n1 and
+			Name (s2) = n2 and CourseName (c) = cn;")
+	 '(("Peter" "Dennis" "Biology"))))
+:osql
+/* Translation of above query:						*/
+/* select distinct Name(s1), Name(s2), CourseName			*/
+/* from Student s1, Student s2, Person s3, Course, Charstring t, Charstring g */
+/* where Name(s1) > Name(s2) and					*/
+/*       Enrollment(s1, Course, t, g) and Enrollment(s2, Course, t, g)	*/
+/* 	    and s3 = Cousin(s1) and s2 = s3;				*/
+
+/* (Ordering on names imposed to avoid pairs coming up permuted.)	*/
+/* Note:  Stricter type checking under present Iris no longer allows	*/
+/* this form of query: 							*/
+/* 									*/
+/* select distinct Name(s1), Name(s2), CourseName			*/
+/* from Student s1, Student s2, Course, Charstring t, Charstring g	*/
+/* where Name(s1) > Name(s2) and					*/
+/*       Enrollment(s1, Course, t, g) and Enrollment(s2, Course, t, g)	*/
+/*       and s2 = Cousin(s1);						*/
+
+		/*  Updates  */
+
+
+select p into :Mary
+	from Person p where p = PersonNamed('Mary');
+
+add type Instructor to :Mary;
+
+select p into :Peter
+	from Person p where p = PersonNamed('Peter');
+
+remove Salary(:Peter) = 734;
+remove type Instructor from :Peter;
+
+select p into :Susan
+	from Person p where p =  PersonNamed('Susan');
+
+select p into :Linda
+	from Person p where p =  PersonNamed('Linda');
+
+select p into :Lisbeth
+	from Person p where p =  PersonNamed('Lisbeth');
+
+select p into :Shirley
+	from Person p where p =  PersonNamed('Shirley');
+
+select p into :Stacee
+	from Person p where p =  PersonNamed('Stacee');
+
+select p into :Alice
+	from Person p where p =  PersonNamed('Alice');
+
+select p into :Arthur
+	from Person p where p =  PersonNamed('Arthur');
+
+select p into :Dennis
+	from Person p where p =  PersonNamed('Dennis');
+
+select p into :Pam
+	from Person p where p =  PersonNamed('Pam');
+
+select p into :Joe
+	from Person p where p =  PersonNamed('Joe');
+
+select p into :Helen
+	from Person p where p =  PersonNamed('Helen');
+
+select p into :Barbara
+	from Person p where p =  PersonNamed('Barbara');
+
+select p into :Joanne
+	from Person p where p =  PersonNamed('Joanne');
+
+select p into :Henry
+	from Person p where p =  PersonNamed('Henry');
+
+set Name(:Mary) = 'Maggie';
+set Name(:Susan) = 'Sue';
+set Name(:Lisbeth) = 'Lizzie';
+set Name(:Linda) = 'Lin';
+
+set Age(:Shirley) = 25;
+set Age(:Stacee) = 20;
+set Age(:Alice) = 26;
+set Age(:Arthur) = 109;
+
+set Married(:Dennis, :Pam) = False;
+set Married(:Joe, :Stacee) = False;
+set Married(:Dennis, :Stacee) = True;
+set Married(:Joe, :Pam) = True;
+
+remove Parent(:Helen) = :Mary;
+add Parent(:Helen) = :Susan;
+
+remove Parent(:Alice) = :Susan;
+add Parent(:Alice) = :Mary;
+
+
+select p into :Biology
+	from Course p where p =  CourseNamed('Biology');
+
+select p into :Tennis
+	from Course p where p =  CourseNamed('Tennis');
+
+select p into :Math
+	from Course p where p =  CourseNamed('Math');
+
+
+set GraduationYear(:Mary)=1931;
+set GraduationYear(:Helen)=1956;
+set GraduationYear(:Peter)=1960;
+
+set Enrollment(:Mary, :Biology, 'Spring 1930', 'A-') = True;
+set Enrollment(:Helen, :Tennis, 'Spring 1955', 'B') = True;
+set Enrollment(:Barbara, :Tennis, 'Fall 1959', 'A+') = True;
+set Enrollment(:Joanne, :Math, 'Spring 1960', 'A+') = True;
+
+set Assignment(:Henry, :Biology, 'Fall 1983') = True;
+set Assignment(:Susan, :Math, 'Spring 1961') = True;
+
+rollback;
+
+

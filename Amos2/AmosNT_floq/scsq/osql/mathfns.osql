@@ -1,0 +1,5 @@
+create function euclid(real, real, real, real)->real
+	as foreign 'euclid';
+
+create function co_e(vector, vector)->real
+	as foreign 'cosched_e';

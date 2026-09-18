@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="utf-8"?>
+<definitions xmlns:http="http://schemas.xmlsoap.org/wsdl/http/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:s="http://www.w3.org/2001/XMLSchema" xmlns:s0="http://www.strikeiron.com/" xmlns:si="http://www.strikeiron.com" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:tm="http://microsoft.com/wsdl/mime/textMatching/" xmlns:mime="http://schemas.xmlsoap.org/wsdl/mime/" targetNamespace="http://www.strikeiron.com/" xmlns="http://schemas.xmlsoap.org/wsdl/">
+  <types>
+    <s:schema elementFormDefault="qualified" targetNamespace="http://www.strikeiron.com/">
+      <s:element name="SearchFoodByDescription">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="FoodKeywords" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="FoodGroupCode" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="SearchFoodByDescriptionResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="SearchFoodByDescriptionResult" type="s0:ArrayOfSearchByKeywordsOutput" />
+            <s:element minOccurs="0" maxOccurs="1" name="ResponseStatus" type="s0:ResponseStatus" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="ArrayOfSearchByKeywordsOutput">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="SearchByKeywordsOutput" nillable="true" type="s0:SearchByKeywordsOutput" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="SearchByKeywordsOutput">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="NDBNumber" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="LongDescription" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="FoodGroupCode" type="s:string" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="ResponseStatus">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="response_code" type="s:int" />
+          <s:element minOccurs="0" maxOccurs="1" name="response_string" type="s:string" />
+        </s:sequence>
+      </s:complexType>
+      <s:element name="CalculateNutrientValues">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="LicenseKey" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="NDBNumber" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="AmountInGrams" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="AmountInOunces" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CalculateNutrientValuesResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CalculateNutrientValuesResult" type="s0:NutrientReport" />
+            <s:element minOccurs="0" maxOccurs="1" name="ResponseStatus" type="s0:ResponseStatus" />
+            <s:element minOccurs="0" maxOccurs="1" name="LicenseStatus" type="s0:LicenseStatus" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="NutrientReport">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="NDBNumber" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="LongDescription" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="Nutrients" type="s0:ArrayOfNutrientValues" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="ArrayOfNutrientValues">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="NutrientValues" nillable="true" type="s0:NutrientValues" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="NutrientValues">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="NutrientNumber" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="NutrientDescription" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="Unit" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="NutrientGramValue" type="s:double" />
+          <s:element minOccurs="1" maxOccurs="1" name="NumDatPts" type="s:long" />
+          <s:element minOccurs="1" maxOccurs="1" name="StdError" type="s:double" />
+          <s:element minOccurs="1" maxOccurs="1" name="NutrientOzValue" type="s:double" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="LicenseStatus">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="status_string" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="status_code" type="s:int" />
+          <s:element minOccurs="1" maxOccurs="1" name="remaining" type="s:int" />
+        </s:sequence>
+      </s:complexType>
+      <s:element name="GetAllFoodGroupCodes">
+        <s:complexType />
+      </s:element>
+      <s:element name="GetAllFoodGroupCodesResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="GetAllFoodGroupCodesResult" type="s0:ArrayOfFoodGroup" />
+            <s:element minOccurs="0" maxOccurs="1" name="ResponseStatus" type="s0:ResponseStatus" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="ArrayOfFoodGroup">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="FoodGroup" nillable="true" type="s0:FoodGroup" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="FoodGroup">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="FoodGroupCode" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="FoodGroupDescription" type="s:string" />
+        </s:sequence>
+      </s:complexType>
+      <s:element name="GetWeightMethods">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="NDBNumber" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetWeightMethodsResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="GetWeightMethodsResult" type="s0:ArrayOfWeightMethod" />
+            <s:element minOccurs="0" maxOccurs="1" name="ResponseStatus" type="s0:ResponseStatus" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="ArrayOfWeightMethod">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="WeightMethod" nillable="true" type="s0:WeightMethod" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="WeightMethod">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="Amount" type="s:double" />
+          <s:element minOccurs="0" maxOccurs="1" name="Description" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="GramWeight" type="s:double" />
+        </s:sequence>
+      </s:complexType>
+      <s:element name="GetRemainingHits">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="LicenseKey" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetRemainingHitsResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="GetRemainingHitsResult" type="s0:RemainingHitsData" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="RemainingHitsData">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="LicenseStatus" type="s0:LicenseStatus" />
+          <s:element minOccurs="0" maxOccurs="1" name="ResponseStatus" type="s0:ResponseStatus" />
+        </s:sequence>
+      </s:complexType>
+      <s:element name="RemainingHitsData" nillable="true" type="s0:RemainingHitsData" />
+    </s:schema>
+  </types>
+  <message name="SearchFoodByDescriptionSoapIn">
+    <part name="parameters" element="s0:SearchFoodByDescription" />
+  </message>
+  <message name="SearchFoodByDescriptionSoapOut">
+    <part name="parameters" element="s0:SearchFoodByDescriptionResponse" />
+  </message>
+  <message name="CalculateNutrientValuesSoapIn">
+    <part name="parameters" element="s0:CalculateNutrientValues" />
+  </message>
+  <message name="CalculateNutrientValuesSoapOut">
+    <part name="parameters" element="s0:CalculateNutrientValuesResponse" />
+  </message>
+  <message name="GetAllFoodGroupCodesSoapIn">
+    <part name="parameters" element="s0:GetAllFoodGroupCodes" />
+  </message>
+  <message name="GetAllFoodGroupCodesSoapOut">
+    <part name="parameters" element="s0:GetAllFoodGroupCodesResponse" />
+  </message>
+  <message name="GetWeightMethodsSoapIn">
+    <part name="parameters" element="s0:GetWeightMethods" />
+  </message>
+  <message name="GetWeightMethodsSoapOut">
+    <part name="parameters" element="s0:GetWeightMethodsResponse" />
+  </message>
+  <message name="GetRemainingHitsSoapIn">
+    <part name="parameters" element="s0:GetRemainingHits" />
+  </message>
+  <message name="GetRemainingHitsSoapOut">
+    <part name="parameters" element="s0:GetRemainingHitsResponse" />
+  </message>
+  <message name="GetRemainingHitsHttpGetIn">
+    <part name="LicenseKey" type="s:string" />
+  </message>
+  <message name="GetRemainingHitsHttpGetOut">
+    <part name="Body" element="s0:GetRemainingHitsResponse" />
+  </message>
+  <message name="GetRemainingHitsHttpPostIn">
+    <part name="LicenseKey" type="s:string" />
+  </message>
+  <message name="GetRemainingHitsHttpPostOut">
+    <part name="Body" element="s0:GetRemainingHitsResponse" />
+  </message>
+  <portType name="USDADataSoap">
+    <operation name="SearchFoodByDescription">
+      <documentation>Search the food with provided key words</documentation>
+      <input message="s0:SearchFoodByDescriptionSoapIn" />
+      <output message="s0:SearchFoodByDescriptionSoapOut" />
+    </operation>
+    <operation name="CalculateNutrientValues">
+      <documentation>Report the nutrient values of provided food</documentation>
+      <input message="s0:CalculateNutrientValuesSoapIn" />
+      <output message="s0:CalculateNutrientValuesSoapOut" />
+    </operation>
+    <operation name="GetAllFoodGroupCodes">
+      <documentation>Get the group list of foods from the USDA Nutrient database</documentation>
+      <input message="s0:GetAllFoodGroupCodesSoapIn" />
+      <output message="s0:GetAllFoodGroupCodesSoapOut" />
+    </operation>
+    <operation name="GetWeightMethods">
+      <documentation>Provide the quantity of methods that can be used to calculate the nutrient weights of specific food</documentation>
+      <input message="s0:GetWeightMethodsSoapIn" />
+      <output message="s0:GetWeightMethodsSoapOut" />
+    </operation>
+    <operation name="GetRemainingHits">
+      <documentation>Get remaining hits of current month</documentation>
+      <input message="s0:GetRemainingHitsSoapIn" />
+      <output message="s0:GetRemainingHitsSoapOut" />
+    </operation>
+  </portType>
+  <binding name="USDADataSoap" type="s0:USDADataSoap">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" style="document" />
+    <operation name="SearchFoodByDescription">
+      <soap:operation soapAction="http://www.strikeiron.com/SearchFoodByDescription" style="document" />
+      <input>
+        <soap:body use="literal" />
+      </input>
+      <output>
+        <soap:body use="literal" />
+      </output>
+    </operation>
+    <operation name="CalculateNutrientValues">
+      <soap:operation soapAction="http://www.strikeiron.com/CalculateNutrientValues" style="document" />
+      <input>
+        <soap:body use="literal" />
+      </input>
+      <output>
+        <soap:body use="literal" />
+      </output>
+    </operation>
+    <operation name="GetAllFoodGroupCodes">
+      <soap:operation soapAction="http://www.strikeiron.com/GetAllFoodGroupCodes" style="document" />
+      <input>
+        <soap:body use="literal" />
+      </input>
+      <output>
+        <soap:body use="literal" />
+      </output>
+    </operation>
+    <operation name="GetWeightMethods">
+      <soap:operation soapAction="http://www.strikeiron.com/GetWeightMethods" style="document" />
+      <input>
+        <soap:body use="literal" />
+      </input>
+      <output>
+        <soap:body use="literal" />
+      </output>
+    </operation>
+    <operation name="GetRemainingHits">
+      <soap:operation soapAction="http://www.strikeiron.com/GetRemainingHits" style="document" />
+      <input>
+        <soap:body use="literal" />
+      </input>
+      <output>
+        <soap:body use="literal" />
+      </output>
+    </operation>
+  </binding>
+  <service name="USDAData">
+    <documentation>Provide USDA National Nutrient data</documentation>
+    <port name="USDADataSoap" binding="s0:USDADataSoap">
+      <soap:address location="http://ws.strikeiron.com/StrikeIron/USDAData" />
+    </port>
+  </service>
+</definitions>

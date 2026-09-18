@@ -1,0 +1,34 @@
+load_lisp("C:/amosnt/wrappers/wsmed/src/patch.lsp");
+load_lisp("C:/amosnt/wrappers/wsmed/src/hjoin.lsp");
+load_lisp("C:/amosnt/wrappers/wsmed/src/qplan.lsp");
+
+create function SearchFoodByDescription(charstring foodkeywords,charstring foodgroupcode)-><charstring ndbnumber,charstring longdescr,charstring foodcode>
+as select v[0],v[1],v[2]
+   from vector of vector r, integer i, vector v
+   where r = callwebservice("http://ws.strikeiron.com/USDAData?WSDL",
+                            "SearchFoodByDescription",{foodkeywords,foodgroupcode}) and
+         v = r[0][i];
+
+/* right hashjoin help function*/
+create function hjoin_SearchFoodByDescription(charstring foodgroupcode)-><charstring ndbnumber,charstring longdescr,charstring foodcode>
+as select righthjoin(SearchFoodByDescription("",foodgroupcode),SearchFoodByDescription("",""));
+
+
+/*SQL view definition*/
+/*create function #food(charstring ndbnumber)-> <charstring longdescr,charstring foodcode> as
+ select longdescr, foodcode where hjoin_SearchFoodByDescription(foodcode)= <ndbnumber, longdescr,foodcode>;*/
+ 
+
+/*testsql("select longdescr from food where foodcode='1900'");*/
+
+
+create function testhj(Charstring fg)->Real c 
+as begin set c = clock();
+         hjoin_SearchFoodByDescription(fg);
+         result clock()-c;
+   end;
+testhj('1900');
+
+/*lisp;
+(sql-query-plan "select longdescr from charstring ndbnumber,charstring longdescr, charstring foodcode where hjoin_SearchFoodByDescription('1900')= <ndbnumber,longdescr,foodcode>")
+:osql;*/

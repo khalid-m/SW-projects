@@ -1,0 +1,24 @@
+The table shows performance of different indexes on consecutive
+operations.
+
+Measurement on one index is done several times 
+resulting in several rows groupped together.
+
+Configuration
+--------------------------------
+Size        : 10.000.000 items
+Imagesize   : 1000000000
+CPU         : 64 bit
+Main memory : 8 GB (a Windows process has no more than 2GB address space)
+
+           1         2         3          4         5       6
+-------------------------------------------------------------------
+Index | Insertion | Access | Deletion| Insertion| Access | Deletion 
+-------------------------------------------------------------------
+BT      32.3       1.055     16.551     33.128    1.065    16.904 
+BT      32.613     1.016     16.508     33.386    1.006    16.552 
+BT	32.486     1.042     16.859     33.19     1.039    16.859
+-------------------------------------------------------------------
+MBTree  33.512     1.085     17.135     31.714    1.099    17.025  
+MBTree  33.906     1.107     17.393     32.595    1.107    17.22
+MBTree  34.312     1.087     17.152     32.299    1.125    17.004

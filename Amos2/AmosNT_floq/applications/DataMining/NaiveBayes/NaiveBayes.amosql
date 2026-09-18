@@ -1,0 +1,530 @@
+
+
+/* -------------- NAIVE BAYES CLASSIFIER FOR AMOS II --------------- */
+ 
+/* Utilities */
+
+    
+create function pi()-> Real as 3.14159265358979323;
+
+create function e()-> Real as 2.7182818284590452;
+
+create function factorial(Integer x)->Integer
+  as max(1, power(10, sum(log10(iota(1,x)))));
+
+create function computeNormalDensity(Real mean, Real stdDev, Number x) -> Real
+  as power(e(),((-1/2)*power((x-mean)/stdDev,2))) / (sqrt(2*pi())*stdDev);
+
+create function computePoissonDensity(Real mean, Number x)-> Real
+  as power(mean,x) * power(e(), -1 * mean) / factorial(x);
+    
+create function skipline()->Charstring as '
+';
+
+create function outputDetail(Object)-> Charstring
+   as foreign 'abstract-function';
+        
+    
+/* SIMPLE ATTRIBUTE MODELS AND GENERATORS */
+
+/* Generic generator and model */
+/*-----------------------------*/
+
+create type AttributeDistribution;
+
+create function attribute(AttributeDistribution)-> Function as stored; 
+/* To be overridden according to distribution type 
+   (Normal distribution, histogram...)*/
+
+create function getProbability(AttributeDistribution, Object value)
+                -> Real probability
+  as foreign 'abstract-function';
+
+create function outputDetail(AttributeDistribution)-> Charstring
+  as foreign 'abstract-function';
+
+create type DistributionGenerator;
+/* To be overloaded for each attribute classification type*/
+
+create function generateDistribution(Vector, DistributionGenerator)
+                -> AttributeDistribution
+  as foreign 'abstract-function';
+
+/* Normal distribution -> continuous values */
+/*------------------------------------------*/
+/* Model */
+
+create type NormalDistribution under AttributeDistribution;
+
+create function parameters(NormalDistribution)
+                -> <Real mean, Real stdDeviation>
+  as stored;
+
+create function getProbability(NormalDistribution distribution, 
+                               Number value)-> Real probability
+  as maxagg(select proba from Real proba where 
+        proba in 
+            (select computeNormalDensity(mean, stdDev, value)
+            from Real mean, Real stdDev
+            where <mean, stdDev> = parameters(distribution)
+                and stdDev!=0)
+        or proba in 
+            (select 1.0
+            from Real mean, Real stdDev
+            where <mean, stdDev> = parameters(distribution)
+                and stdDev=0 and mean=value)
+        or proba=0); /* avoids numerical issues when stdDev=0 */
+
+/* Generator */
+
+create type NormalGenerator under DistributionGenerator;
+
+create function generateDistribution(Vector items, NormalGenerator)
+                ->NormalDistribution
+ as begin
+    declare NormalDistribution distribution, Real mean, Real stdDeviation;
+    create NormalDistribution instances distribution;
+    set mean=vavg(items);
+    set stdDeviation=vstdev(items);
+    set parameters(distribution)=<mean, stdDeviation>;
+    result distribution;
+    end;
+    
+/* Poisson distribution -> numerical discrete values */
+/*---------------------------------------------------*/
+/* Model */
+
+create type PoissonDistribution under AttributeDistribution;
+
+create function parameter(PoissonDistribution)-> Real mean as stored;
+
+create function getProbability(PoissonDistribution distribution, Integer value)
+                -> Real probability
+  as computePoissonDensity(parameter(distribution), value);
+
+/* Generator */
+
+create type PoissonGenerator under DistributionGenerator;
+
+create function generateDistribution(Vector items, 
+                                     PoissonGenerator)
+                ->PoissonDistribution
+  as begin
+     declare PoissonDistribution distribution;
+     create PoissonDistribution instances distribution;
+     set parameter(distribution)=vavg(items);
+     result distribution;
+     end;    
+
+/* Histogram -> discrete values */
+/*------------------------------*/
+/* Model */
+
+create type HistogramDistribution under AttributeDistribution;
+
+create function valueOccurences(HistogramDistribution)
+                -> Bag of <Object value, Integer countOccurences>
+  as stored;
+
+create_index("valueOccurences", "value", "hash", "multiple");
+
+create function countClassItems(HistogramDistribution)-> Integer
+  as stored;
+
+create function countOccurences(HistogramDistribution distribution, 
+                                Object value)-> Integer
+  as maxagg(
+        select countOccurences
+        from Integer countOccurences
+        where <value, countOccurences> in valueOccurences(distribution)
+            or countOccurences=0);
+
+create function getProbability(HistogramDistribution distribution, 
+                               Object value)-> Real probability
+  as countOccurences(distribution, value)/countClassItems(distribution);
+
+/* Generator */
+
+create type HistogramGenerator under DistributionGenerator;
+
+create function countOccurences(Vector items)
+                -> Bag of <Object value, Integer count>
+  as groupby(
+        (select items[i] from Integer i)
+    ,#'count');
+
+create function generateDistribution(Vector items, 
+                                     HistogramGenerator)
+                ->HistogramDistribution
+  as begin
+     declare HistogramDistribution distribution;
+     create HistogramDistribution instances distribution;
+     set valueOccurences(distribution)= 
+       (select value, count 
+        from Object value, Integer count 
+        where <value, count> in countOccurences(items)); 
+     set countClassItems(distribution)=dim(items); /* Skips missing values */
+     result distribution;
+     end; 
+
+
+
+/* GENERATORS REQUIRING PREPROCESSING */
+
+/* Generic preprocesed generator */
+
+create type PreprocessedGenerator;
+
+create function preprocess(PreprocessedGenerator, Vector items)-> Boolean
+  as foreign 'abstract-function';
+
+/* Attribute binning */
+/*-------------------*/
+/* General class declarations */
+
+create type BinSet;
+
+create type BinHistogramDistribution under HistogramDistribution;    
+
+create type BinHistogramGenerator 
+       under HistogramGenerator, PreprocessedGenerator;
+
+/* Binning functions */
+
+create function getAttributeGenerator(BinSet)-> BinHistogramGenerator
+  as stored;
+
+create function parameters(BinSet)-> <Number minBound, Number classWidth>
+  as stored;
+
+create function getBin(Number value, BinSet group)-> Vector bin
+  as select {infBound, supBound}
+     from Number infBound, Number supBound, Number min, Number classWidth
+     where <min, classWidth> =  parameters(group)
+       and ((infBound = value - mod(value-min, classWidth)
+            and supBound = infBound + classWidth and value>=min)
+        or (supBound = value - mod(value-min, classWidth)
+            and infBound = supBound - classWidth and value<min));
+
+/* Attribute Model */ 
+
+create function bins(BinHistogramDistribution)-> BinSet as stored;
+
+create function countOccurences(BinHistogramDistribution distribution, 
+                                Number value)-> Integer
+  as  maxagg(
+        select countOccurences
+        from Vector bin, Integer countOccurences
+        where (bin=getBin(value, bins(distribution)) 
+               and <bin, countOccurences> in valueOccurences(distribution))
+           or countOccurences=0);
+    
+/* General bin-based attribute distribution generator */ 
+
+create function bins(BinHistogramGenerator generator)-> BinSet
+  as select bins 
+     from BinSet bins 
+     where getAttributeGenerator(bins)=generator;    
+    
+create function getAllAttributeBins(Vector items, 
+                                    BinHistogramGenerator generator)
+                -> Vector of Vector
+  as vectorof(
+        select getBin(cast(items[i] as Number),bins(generator))
+        from Integer i
+    );
+
+create function generateDistribution(Vector items, 
+                                     BinHistogramGenerator generator)
+                -> BinHistogramDistribution
+  as begin
+     declare BinHistogramDistribution distribution;
+     create BinHistogramDistribution instances distribution;
+     set bins(distribution)=bins(generator);
+     set valueOccurences(distribution)= 
+        (select bin, count 
+         from Vector bin, Integer count 
+         where <bin, count> 
+               in countOccurences(getAllAttributeBins(items,generator)));  
+     set countClassItems(distribution)=dim(items);
+     result distribution;
+     end;     
+
+/* Attribute distribution : Binning based on k uniform intervals between min 
+   and max */ 
+
+create type UniformBinGenerator under BinHistogramGenerator;
+
+create function nbBins(UniformBinGenerator)-> Integer as stored;
+
+create function preprocess(UniformBinGenerator generator, Vector items)
+                -> Boolean
+  as begin    
+     declare BinSet binSet, Number min, Number max, Number classWidth;
+     create BinSet instances binSet;
+     set min=minagg(select items[i] from Integer i);
+     set max=maxagg(select items[i] from Integer i);
+     set classWidth=roundto((max-min)/nbBins(generator),2);
+     set parameters(binSet)=<min, classWidth>;
+     set getAttributeGenerator(BinSet)=generator;
+     end;
+
+/* Attribute distribution : Binning based on multiples of the std deviation 
+   around the mean */
+ 
+create type StdDeviationBinGenerator under BinHistogramGenerator;
+
+create function preprocess(StdDeviationBinGenerator generator, Vector items)
+                -> Boolean
+  as begin    
+     declare BinSet binSet;
+     create BinSet instances binSet;
+     set parameters(binSet)=<roundto(vavg(items),2), roundto(vstdev(items),2)>;
+     set getAttributeGenerator(BinSet)=generator;
+     end;
+
+/* Smoothened histogram */
+/* -------------------- */
+/* General class declarations */
+
+create type SmoothHistogramGenerator 
+       under HistogramGenerator, PreprocessedGenerator;
+
+create type SmoothHistogramDistribution under HistogramDistribution;
+
+/* Number of distinct values in all classes */
+
+create function getSmoothHistogram(Integer)-> Bag of SmoothHistogramGenerator
+  as stored; 
+
+create function countAllValues(SmoothHistogramGenerator generator)
+                -> Integer countValues
+  as select countValues where generator in getSmoothHistogram(countValues);
+
+/* Smooth histogram model */
+   
+create function smoothingStrengh(SmoothHistogramDistribution distribution)
+                -> Real as stored;     
+
+create function getProbability(SmoothHistogramDistribution distribution, 
+                               Object value)-> Real probability
+  as (countOccurences(distribution, value) +  smoothingStrengh(distribution))
+      / countClassItems(distribution);
+    
+/* Smooth histogram generator */
+
+create function smoothingStrengh(SmoothHistogramGenerator)-> Real as stored;
+
+create function preprocess(SmoothHistogramGenerator generator, Vector items)
+                -> Boolean
+  as begin
+     declare Integer countValues;
+     set countValues=count(select distinct items[i] 
+                           from Integer i);
+     add getSmoothHistogram(countValues)=generator;
+     end;
+  
+create function generateDistribution(Vector items, 
+                                     SmoothHistogramGenerator generator)
+                ->SmoothHistogramDistribution
+  as begin
+     declare SmoothHistogramDistribution distribution;
+     create SmoothHistogramDistribution instances distribution;
+     set valueOccurences(distribution)= 
+       (select value, count 
+        from Object value, Integer count 
+        where <value, count> in countOccurences(items));
+     set smoothingStrengh(distribution)=smoothingStrengh(generator);
+     /* Incorporates "virtual" examples */
+     set countClassItems(distribution)= dim(items) + 
+                                        smoothingStrengh(generator) * 
+                                        countAllValues(generator);
+     result distribution;
+     end; 
+
+/* BAYESIAN MODEL TO BE GENERATED BY THE GENERATOR */
+
+/* Model basic types and functions */
+
+create type NB_Model;
+
+create type ClassModel;
+
+create function inBayesModel(ClassModel)-> NB_Model as stored;
+
+create function classModel(NB_Model NBModel)-> ClassModel classModel
+  as select classModel where inBayesModel(classModel)=NBModel;
+
+create function inClassModel(AttributeDistribution)->ClassModel as stored;
+
+create_index("inClassModel", "ClassModel", "hash", "multiple");
+
+create function attributeDistributions(ClassModel classModel)
+                -> AttributeDistribution distribution
+  as select distribution where inClassModel(distribution)=classModel; 	
+
+create_index("attributeDistributions", "distribution", "hash", "unique");
+  
+  
+create function targetClass(ClassModel)-> Object classAttribute as stored;
+
+create function priorProba(ClassModel)-> Real as stored;
+
+/* Classification with the generated model NB_Model */ 
+
+create function posteriorClassLogProba(ClassModel classModel, Object item)
+                -> Real probabilityLog
+  as log10(priorProba(classModel)) + 
+     sum((select log10(getProbability(distribution, 
+                                      applyFunction1(attribute(distribution), 
+                                                    item)))
+          from AttributeDistribution distribution
+          where distribution in attributeDistributions(classModel))
+         );
+
+create function maxClassLogProba(NB_Model model, Object item)
+                -> <Real probabilityLog, Object class>
+  as topk((select posteriorClassLogProba(classModel, item), 
+                  targetClass(classModel)
+           from ClassModel classModel
+           where classModel in classModel(model)),
+          1);
+	
+create function B_CLASSIFY(NB_Model model, Bag data)
+                -> Bag of <Object item, Object class, Real probability>
+  as select item, class, power(10,probabilityLog)
+     from Real probabilityLog
+     where item in data 
+       and <probabilityLog, class> = maxClassLogProba(model, item);      
+      
+/* GENERIC MODEL CREATION */
+
+/* Learning necessary types and functions */
+              
+create function orderItemsByAttribute(Function attribute, Bag data)
+                -> <Object class, Vector items>
+  as groupby((select applyFunction1(attribute,item),item
+              from Object item
+              where item in data),
+             #'vectorof');
+
+create function getAttributeValuesByClass(Bag data, 
+                                          Vector attributeTypes, 
+                                          Function targetClasses)
+                -> Bag of <Vector classData, Vector attributeData>
+  as  groupby((select {class, classCount}, 
+                      {attribute, generator, attributeValues}
+               from Object class, Integer classCount, Function attribute, 
+                    DistributionGenerator generator, Vector attributeValues,
+                    Vector items 
+               where <class, items> in 
+                     orderItemsByAttribute(targetClasses, data)
+                 and classCount=dim(items)
+                 and attributeValues=mapVector(attribute, items)
+                 and {attribute, generator} in attributeTypes),
+              #'vectorof');
+        
+/* Main function for model generation */
+
+create function b_preprocess(Bag data, Vector attributeTypes)-> Boolean
+  as for each original Function attribute, PreprocessedGenerator generator
+         where {attribute,generator} in attributeTypes
+         begin
+            preprocess(generator, mapVector(attribute, vectorof(data)));
+         end;
+
+create function b_generateModel(Vector attributesValues, ClassModel classModel)
+                ->Boolean
+  as for each original Function attribute, DistributionGenerator generator,
+                       Vector items
+         where {attribute, generator, items} in attributesValues
+         begin
+         declare AttributeDistribution distribution;
+         set distribution = generateDistribution(items,generator);
+         set attribute(distribution)=attribute;
+         set inClassModel(distribution)=classModel;
+         end;
+
+create function B_LEARN(Bag data, Vector attributeTypes, 
+                        Function targetClasses)-> NB_Model outputModel
+   as begin
+      declare Integer countTotal;
+      print('');
+      print('Naive Bayes Classification');
+    
+      /* Preprocessing */
+      b_preprocess(data, attributeTypes);   
+    
+      /* Model building */        
+      set countTotal=count(data); 
+      create NB_Model instances outputModel;
+    
+      for each original Vector classData, Vector attributesValues, 
+                        Object class, Integer classCount 
+          where <classData, attributesValues> in 
+                getAttributeValuesByClass(data, attributeTypes, targetClasses)
+            and {class, classCount} = classData
+          begin
+          declare ClassModel classModel;
+          print('Generating models for class '+class);
+          create ClassModel instances classModel;
+          set priorProba(classModel)=classCount/countTotal;
+          set targetClass(classModel)=class;
+          set inBayesModel(classModel)=outputModel;
+        
+          b_generateModel(attributesValues, classModel);
+
+          end;
+      result outputModel;
+      end;
+
+
+/* DISPLAY FUNCTIONS */
+
+create function outputDetail(HistogramDistribution distribution)
+                -> Charstring
+  as '...Attribute : ' + name(attribute(distribution)) + 
+     ' - Type : Histogram' +skipline() + 
+     '...Frequency of occurence in class :' + skipline() +
+     concatagg(
+        select '.....' + stringify(value)+' - ' +
+               stringify(roundto(getProbability (distribution, value),3)) + 
+               skipline()
+        from Object value, Integer count
+        where <value, count> in valueOccurences(distribution)
+              );
+    
+create function outputDetail(NormalDistribution distribution)-> Charstring
+  as '...Attribute : ' + name(attribute(distribution)) + 
+     ' - Type : Normal ' +skipline()+ '...Parameters :' + skipline() +
+     concatagg(
+        select '..... Mean : ' + stringify(roundto(mean,3)) + 
+               ' - Square deviation : '+stringify(roundto(stdDev,3)) + 
+               skipline()
+        from Real mean, Real stdDev
+        where <mean, stdDev> = parameters(distribution)
+              );
+    
+create function outputDetail(PoissonDistribution distribution)-> Charstring
+  as '...Attribute : ' + name(attribute(distribution)) + 
+     ' - Type : Poisson ' +skipline()+ '...Parameter :' + skipline() +
+     '..... Mean : ' + roundto(parameter(distribution),3) +skipline();
+    
+create function outputDetail(ClassModel class)-> Charstring
+  as '.Class : ' + targetClass(class) + ' - Prior proba : ' + 
+     priorProba(class) +' - Attribute models :' + skipline() +
+     concatagg(
+        select outputDetail(attModel) 
+        from AttributeDistribution attModel 
+        where attModel in attributeDistributions(class)
+              ) + skipline();
+
+create function outputDetail(NB_Model model)-> Charstring
+  as skipline() + 'Naive Bayes model' + skipline() +skipline() +
+     concatagg(
+        select outputDetail(class) 
+        from ClassModel class 
+        where class in classModel(model)
+              );
+
+commit;

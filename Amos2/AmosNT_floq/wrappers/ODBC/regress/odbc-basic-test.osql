@@ -1,0 +1,140 @@
+/*****************************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 1999 Vanja Josifovski, Timour Katchaounov, EDSLAB
+ * $RCSfile: odbc-basic-test.osql,v $
+ * $Revision: 1.5 $Date: 2006/12/06 22:22:17 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Basic test of the Amos II ODBC wrapper against an MS Access 
+ *              ODBC data source. The ODBC DSN must be: "ODBCTEST".
+ *              TODO: remove the .MDB file, and generate schema & data from
+ *                    the script.
+ ****************************************************************************
+ * $Log: odbc-basic-test.osql,v $
+ * Revision 1.5  2006/12/06 22:22:17  torer
+ * Improper typing removed
+ *
+ ****************************************************************************/
+
+/* make a new datasource object and connect it to a data source */
+set :odbc = odbc('DS');
+connect(:odbc, 'ODBCTEST');
+import_table(:odbc, 'IDAEMP');
+
+/* test the basic ODBC interface functions */
+tables(:odbc);
+columns(:odbc, 'IDAEMP');
+primary_keys(:odbc, 'IDAEMP');
+
+/* direct SQL execution */
+sql(:odbc, 'select name, dept from idaemp', {});
+sql(:odbc, 'select name from idaemp where dept = ?', {'IDA'});
+sql(:odbc, 'select name from idaemp where ssn = ?', {5});
+sql(:odbc, 'select name from idaemp where ssn > ? and dept = ?', {2, "IDA"});
+sql(:odbc, 'update idaemp set name = ? where ssn = ?', {"newname", 5});
+sql(:odbc, 'update idaemp set name = ? where ssn = ?', {"EmpNAME5", 5});
+
+/* must be fixed
+driver_info(1);
+dbms_info(1);
+catalog(1);
+*/
+
+/* Test the ODBC Wrapper */
+create function f1(idaemp@ds e) -> <charstring, integer, integer,  charstring, integer, charstring>
+as select name(e), salary(e), ssn(e), hobby(e), age(e), dept(e);
+
+create function f2(integer sal, charstring dept) -> integer
+as select salary(e)
+   from idaemp@ds e
+   where salary(e) = sal and
+         dept(e) = dept;
+
+create function f3(integer sal) -> charstring
+as select name(e) 
+   from idaemp@ds e
+   where salary(e) > sal;
+
+create function f4(integer minsal, integer maxage) -> <charstring, charstring>
+as select name(e), dept(e)
+  from  idaemp@ds e
+  where salary(e) > minsal and
+        age(e) < maxage;
+
+create function f5(integer minsal, integer maxage, charstring name) ->
+  <charstring, integer, integer,  charstring, integer, charstring>
+as select f1(e)
+  from  idaemp@ds e
+  where salary(e) > minsal and
+        name(e) > name and
+        age(e) < maxage;
+select e, ssn(e) from idaemp@ds e;
+
+select e from idaemp@ds e where salary(e) = 6;
+
+select e, name(e) from idaemp@ds e where salary(e) = 6;
+
+select e, e1 
+  from idaemp@ds e, idaemp@ds e1 
+  where salary(e) = 6 and salary(e1) = 7; 
+
+select e, e1 
+  from idaemp@ds e, idaemp@ds e1 
+  where salary(e) = 6 and salary(e1) = 7 and salary(e1) > salary(e); 
+
+create function sps(integer i)-> idaemp@ds e as
+  select e from idaemp@ds e where ssn(e) = i;
+
+sps(5);
+
+create function salps(integer i)-> idaemp@ds e as
+  select e from idaemp@ds e where salary(e) = i;
+
+create function salps1(integer i)-> idaemp@ds e as
+  select e from idaemp@ds e where salary(e) = i and ssn(e) > 5;
+
+create function check_salps1() -> <charstring n, integer sal, integer s>
+  as select name(e), salary(e), ssn(e)
+     from idaemp@ds e
+     where e = salps1(6);
+
+check_salps1();
+
+/* Derived types over relational tables */
+create derived type hiidaemp subtype of idaemp@ds e where ssn(e) > 9;
+
+select name(e) from hiidaemp e;
+
+select name(e) from hiidaemp e where like(name(e),"*7");
+
+select dept(e), name(e) from hiidaemp e where name(e)="EmpNAME5"; 
+
+create function argin(idaemp@ds e)-> integer s
+  as select ssn(e);
+
+create function argin1(idaemp@ds e)-> <charstring n, integer s>
+  as select name(e1), ssn(e1) from idaemp@ds e1 where salary(e1) < salary(e);
+
+select e into :e5  from idaemp@ds e where name(e) = 'EmpNAME5'; 
+
+argin(:e5);
+argin1(:e5);
+
+/* Direct calls to ODBC proxy functions */
+dept(:e5);
+age(:e5);
+hobby(:e5);
+ssn(:e5);
+salary(:e5);
+name(:e5);
+
+select n from charstring n where n = name(:e5);
+
+create function getname(idaemp@ds e) -> charstring as
+  select name(e);
+
+getname(:e5);
+
+
+quit;

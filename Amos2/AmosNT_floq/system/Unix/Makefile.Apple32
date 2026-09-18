@@ -1,0 +1,39 @@
+JAVA_INCLUDE=/System/Library/Frameworks/JavaVM.framework/Versions/A/Headers
+
+SRCDIR = $(AMOS_HOME)/system/C
+
+CFLAGS =  -I$(JAVA_INCLUDE)/linux -I$(JAVA_INCLUDE) -I$(AMOS_HOME)/C \
+          -I$(AMOS_HOME)/system/include -I$(SRCDIR) \
+          -O2 -DUNIX=1 -DLINUX=1 -m32 -mmacosx-version-min=10.6
+
+BINDIR = $(AMOS_HOME)/bin
+
+all:  $(BINDIR)/javaamos $(BINDIR)/libJavaAmos.jnilib $(BINDIR)/javaamos.jar
+
+$(BINDIR)/javaamos: $(SRCDIR)/javaamos.o $(SRCDIR)/getexename.o
+	cc $(CFLAGS) -o $(BINDIR)/javaamos -m32 $(SRCDIR)/javaamos.c \
+           $(SRCDIR)/getexename.c
+
+$(BINDIR)/libJavaAmos.jnilib: $(BINDIR)/libamos.so $(SRCDIR)/JavaCallin.o \
+                              $(SRCDIR)/JavaCallout.o
+	g++ -m32 -O2 -shared -rdynamic -o $(BINDIR)/libJavaAmos.jnilib \
+            $(SRCDIR)/JavaCallin.o $(SRCDIR)/JavaCallout.o \
+            $(BINDIR)/libamos.so -framework JavaVM -lm -lpthread 
+	install_name_tool -change libamos.so @loader_path/libamos.so \
+                          $(BINDIR)/libJavaAmos.jnilib
+$(SRCDIR)/JavaCallin.o: $(SRCDIR)/JavaCallin.cpp
+	cd $(SRCDIR) && cc $(CFLAGS) -c JavaCallin.cpp
+
+$(SRCDIR)/JavaCallout.o: $(SRCDIR)/JavaCallout.cpp
+	cd $(SRCDIR) && cc $(CFLAGS) -c JavaCallout.cpp
+
+JAVADIR = $(AMOS_HOME)/java
+
+$(BINDIR)/javaamos.jar: $(JAVADIR)/callin/*.java $(JAVADIR)/callout/*.java
+	cd $(AMOS_HOME)/Java && make 
+	cd ../../wrappers/JDBC && export CLASSPATH=../../bin/javaamos.jar:. && make
+clean:
+	rm -f $(SRCDIR)/JavaCallout.o $(SRCDIR)/JavaCallin.o \
+              $(SRCDIR)/getexename.o $(SRCDIR)/javaamos.o \
+              $(BINDIR)/javaamos.jar $(BINDIR)/libJavaAmos.jnilib \
+              $(BINDIR)/javaamos

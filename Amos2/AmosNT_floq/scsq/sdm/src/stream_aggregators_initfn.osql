@@ -1,0 +1,412 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2009 Gyozo Gidofalvi, UDBL
+ * $RCSfile: stream_aggregators_initfn.osql,v $
+ * $Revision: 1.2 $ $Date: 2009/08/03 13:26:46 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Set of basic stream aggregates(/ors) defined using the 
+ * stream transducer operator strans (i.e. it uses initfn instead of init state).
+ * In additions to the definitions of stream aggregators for single valued 
+ * streams, easy-to-use facilities are provided and demonstrated how to 
+ * element-wise extend the single-valued stream aggregators to vector-valued 
+ * streams.   
+ *
+ ****************************************************************************
+ * $Log: stream_aggregators_initfn.osql,v $
+ * Revision 1.2  2009/08/03 13:26:46  gyogi445
+ * Novelty detection via independently trained "compression" neural networks
+ *
+ * Revision 1.1  2009/05/09 06:18:38  gyogi445
+ * Updated stream_transducer code, vectorized stream aggregators, spectrum monitoring
+ *
+ * Revision 1.1  2009/04/09 10:20:10  gyogi445
+ * Basic stream operators
+ *
+ * Revision 1.1  2009/04/08 20:01:08  gyogi445
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+
+/* Stream aggregator: smycount */
+/* State initialization function for stream aggregator scount: one */
+create function constone(Object x)-> Integer 
+/* Function constant 1: one */
+  as select 1;
+/* State transition function for stream aggregator scount: add1 */ 
+create function add1(Integer i, Object x)-> Integer 
+/* Function that adds 1 to its first argument */ 
+  as select i+1;
+/* Output function of stream aggregator scount: id1 */
+create function id1(Object q, Object x)-> Object 
+/* Function that returns its first argument */
+  as q;
+create function smycount(Stream s)-> Stream of Integer 
+/* Stream aggregator: scount */
+  as strans(s, #"constone", #"add1", #"id1");  
+
+
+
+create function initrandfn(Charstring fname)->Function 
+  as eval("create function "+fname+"(Object x)->Number as rand(10);");
+
+create function srandcount(Stream s)-> Stream of Integer 
+/* Stream aggregator: scount */
+  as strans(s, initrandfn("foo"), #"add1", #"id1");
+
+
+
+
+
+
+/* Facilitties to element-wise extend a single-valued 
+   stream aggregators to a vector-valued stream aggregator,
+   e.g., scount(Stream-Number)->Stream-Number should be
+   easily extendable to scount(Stream-Vector-Number)->
+   Stream-Vector-Number. The facilities also assume that 
+   the functions used by the single-valued stream aggregator
+   are all single valued. This is not a limitation as several
+   values can be formed into a single vector. */
+
+create function vf_initfn(Charstring vfname, Function initfn)
+                          -> Function
+/* Fn that creates a vectorized named-function of a initfn */
+  as eval("create function " + vfname + "(Vector of Object X)
+                                          -> Vector of Object
+             as vselect in(apply(" + initfn + ", {X[i]})) from integer i;");  
+ 
+parteval("vf_initfn");
+
+create function vf_transfn(Charstring vfname, Function transfn)
+                           -> Function
+/* Function that creates a vectorized named-function of a transfn */
+  as eval("create function " + vfname + "(Vector of Object Q, Vector of Object X)
+                                          -> Vector of Object
+             as vselect in(apply(" + transfn + ", {Q[i], X[i]})) from integer i;");  
+ 
+parteval("vf_transfn");
+
+create function vf_outpfn(Charstring vfname, Function outpfn)
+                          -> Function
+/* Functionn that creates a vectorized named-function of an outpfn */
+  as eval("create function " + vfname + "(Vector of Object Q, Vector of Object X)
+                                          -> Vector of Object
+             as vselect in(apply(" + outpfn + ", {Q[i], X[i]})) from integer i;");  
+ 
+parteval("vf_outpfn");
+
+create function smycount(Stream of Vector s)-> Stream of Vector of Integer 
+/* Vectorized stream aggregator: scount (perhaps not the best example :-))*/
+  as strans(s, vf_initfn("vconstone", #"constone"), 
+               vf_transfn("vadd1", #"add1"),
+               vf_outpfn("vid1", #"id1"));  
+
+/* Stream aggregator: ssum */
+/* State initialization function: id */ 
+/* State transition function: NUMBER.NUMBER.PLUS->NUMBER */
+/* Output function: id1 */
+/* Aggregator definition: ssum */
+create function ssum(Stream of Number s)-> Stream of Number 
+  as strans(s, #"id", #"NUMBER.NUMBER.PLUS->NUMBER", #"id1");
+
+/* First attempt to vectorize stream aggregators. The approach 
+   assums that the control functions can be simply re-written
+   to work for vector inputs. While this seems straight forward 
+   for simple control functions such as plus, it is not trivial
+   for more complex control functions like the ones used in the 
+   later defined stream aggregator savgstdev. 
+   
+/* Stream aggregator: ssumv (for vectors) */
+/* State initialization function: id */ 
+/* State transition function: VECTOR-NUMBER.VECTOR-NUMBER.PLUS->VECTOR.NUMBER */
+/* Output function: id1 */
+/* Aggregator definition: ssum */
+/* 
+
+create function ssumv(Stream of Vector of Number s)-> Stream of Vector of Number 
+  as strans(s, #"id", #"VECTOR-NUMBER.VECTOR-NUMBER.PLUS->VECTOR-NUMBER", #"id1"); 
+
+*/
+
+create function ssum(Stream of Vector of Number s)
+                     -> Stream of Vector of Number 
+/* Vectorized stream aggregator: ssum */
+  as strans(s, vf_initfn("vid", #"id"), 
+               vf_transfn("vplus", #"NUMBER.NUMBER.PLUS->NUMBER"),
+               vf_outpfn("vid1", #"id1"));  
+
+/* Stream aggregator: smax */
+/* State initialization furnction: id */
+/* State transition function: max */
+/* Output function: id1 */
+create function smax(Stream s)-> Stream of Integer 
+/* Stream aggregator: smax */
+  as strans(s, #"id", #"max", #"id1");  
+
+create function smax(Stream of Vector of Number s)
+                     -> Stream of Vector of Number 
+/* Vectorized stream aggregator: smax */
+  as strans(s, vf_initfn("vid", #"id"), 
+               vf_transfn("vmax", #"max"),
+               vf_outpfn("vid1", #"id1"));  
+
+/* Stream aggregator: smin */
+/* State initialization function: id */
+/* State transition function: min */
+/* Output function: id1 */
+create function smin(Stream s)-> Stream of Integer 
+/* Stream aggregator: smin */
+  as strans(s, #"id", #"min", #"id1");  
+
+create function smin(Stream of Vector of Number s)
+                     -> Stream of Vector of Number 
+/* Vectorized stream aggregator: smin */
+  as strans(s, vf_initfn("vid", #"id"), 
+               vf_transfn("vmin", #"min"),
+               vf_outpfn("vid1", #"id1"));  
+
+/* Stream aggregator: savgstdev */
+create function initCMSS(Number x)-> Vector of Number 
+/* State intialization function for stream aggregator 
+   savgstdev: initCMSS */
+  as select {x, 1, x, 0.00000001, 0.00000001};
+
+/* State transitions function based on incremental formula: incCMSS */
+/* Old coding style with vector dereferencing
+ 
+create function incCMSS(Vector of Number cmss, Number x)
+                        -> Vector of Number 
+  as select {x, newC, newM, newS, newSIGMA}
+     from Number newC, Number newM, Number newS, Number newSIGMA
+     where newC = cmss[1] + 1
+       and newM = cmss[2] + (x - cmss[2]) / newC
+       and newS = cmss[3] + (x - cmss[2]) * (x - newM)    
+       and newSIGMA = sqrt(newS / cmss[1]);
+
+*/
+
+create function incCMSS(Vector of Number cmss, Number x) 
+                        -> Vector of Number 
+/* State transitions function for savgstdev 
+   based on incremental formula: incCMSS */
+  as select {x, newC, newM, newS, newSIGMA}
+     from Number newC, Number newM, Number newS, Number newSIGMA,
+          Number oldx, Number oldC, Number oldM, Number oldS, Number oldSIGMA
+     where {oldx, oldC, oldM, oldS, oldSIGMA} = cmss
+       and newC = oldC + 1
+       and newM = oldM + (x - oldM) / newC
+       and newS = oldS + (x - oldM) * (x - newM)    
+       and newSIGMA = sqrt(newS / oldC);
+
+create function outMS(Vector of Number cmss, Number x)-> Vector of Number 
+/* Output function for savgstdev: outMS */
+  as select {cmss[0], cmss[2], cmss[4]};
+ 
+create function savgstdev(Stream of Number s)
+                          -> Stream of Vector of Number  
+/* Stream aggregator: savgstdev */   
+  as strans(s, #"initCMSS", #"incCMSS", #"outMS");
+
+create function savgstdev(Stream of Vector of Number s)
+                          -> Stream of Vector of Number 
+/* Vectorized stream aggregator: savgstdev */
+  as strans(s, vf_initfn("vinitCMSS", #"initCMSS"), 
+               vf_transfn("vincCMSS", #"incCMSS"),
+               vf_outpfn("voutMS", #"outMS"));   
+
+create function smonitor0(Stream of Number s, Number devthr)
+                          -> Bag of Vector of Number 
+/* Stream aggregator: smonitor
+   based on stream aggregator savgstdev (returns bag) */
+  as select {x, mean, std, abs(x-mean)/std}  
+     from Number x, Number mean, Number std
+     where {x, mean, std} in savgstdev(s)
+       and abs(x-mean) > devthr * std;
+
+create function smonitor(Stream of Number s, Number devthr)
+                         -> Stream of Vector of Number 
+/* Function to turn bag result of smonitor0 to stream */
+  as streamof(smonitor0(s, devthr));
+
+/* Alternatively, one could define a stream aggregator 
+   diviate, which returns the number of standard deviations
+   that the current value is away from the mean. Basically,
+   only the output function of savgstdev needs to be modified.
+   A monitor can then be defined by applying a threshold-predicate 
+   function on the deviation stream aggregate. */  
+
+/* Vectorized stream aggregator: smonitor */
+
+create function vdev(Vector of Vector of Number vs, Number devthr)
+                     -> Vector of Vector of Number 
+/* Helper function to convert a vector of statistics 
+   obtained from vectorized stream aggregator savgstdev to a vector 
+   of allerts, where an alert on a statistic is triggered if the
+   monitored value is more than devthr number of standard deviation
+   away from the mean of the monitored value. To identify the value(s)
+   that trigger the alert along with the number of deviations the 
+   monitored values' position in the vector of statistics are also 
+   returned. */
+  as vselect {i, (vs[i][0]-vs[i][1])/vs[i][2]} 
+     from integer i, Number x, Number mean, Number std
+     where {x, mean, std} = vs[i]
+       and abs(x-mean) > devthr * std; 
+
+create function smonitor0(Stream of Vector of Number s, Number devthr)
+                          -> Bag of Vector of Vector of Number
+/* Vectorized stream aggregator: smonitor 
+   based on stream aggregator savgstdev (returns bag)*/
+  as select alert
+     from vector of vector of Number alert, Vector of Vector of Number vs
+     where vs in savgstdev(s)
+       and alert = vdev(vs, devthr)
+       and dim(alert) > 0;    
+
+create function smonitor(Stream of Vector of Number s, Number devthr)
+                         -> Stream of Vector of Vector of Number 
+/* Function to turn bag result of smonitor0 to stream */
+  as streamof(smonitor0(s, devthr));
+
+/* Stream aggregator: snorm */
+/* State intialization function: initCMSS */
+/* State transitions function: incCMSS */
+create function normoutMS(Vector of Number cmss, Number x)-> Number 
+/* Output function of stream aggregator snorm: normoutMS */
+  as select (x-mean)/std
+     from Number x, Number c, Number mean, Number ss, Number std
+     where {x, c, mean, ss, std} = cmss;
+
+create function snorm(Stream of Number s)->Stream of Vector of Number  
+/* Stream aggregator: snorm */    
+  as strans(s, #"initCMSS", #"incCMSS", #"normoutMS");
+
+create function snorm(Stream of Vector of Number s)
+                      -> Stream of Vector of Number 
+/* Vectorized stream aggregator: snorm */
+  as strans(s, vf_initfn("vinitCMSS", #"initCMSS"), 
+               vf_transfn("vincCMSS", #"incCMSS"),
+               vf_outpfn("vnormoutMS", #"normoutMS"));  
+
+/* Stream transducer / aggregator: sNN */
+/* State initialization function: initrandNN(fn) */
+create function initrandNN(Vector of Number x, 
+                           Vector of Integer nn,
+                           Function tf)
+                           -> Vector
+/* State initialization function for the sNNet stream
+   transcuder. The state is initialized to a vector 
+   representation of a randomly initialized NN 
+   specified by the parameters:
+     - nn: number of neurons in layers 
+     - tf: neurnon transfer / activation function 
+   and the output of the NN given the input vector x */ 
+  as select {output, ws, tfs}
+     from Vector of Number output,
+          Vector of Vector of Vector of Number ws,
+          Vector of Function tfs
+     where ws = randNNweights(nn)
+       and tfs = vrep({tf}, dim(ws)) 
+       and output = eval_nn(x, ws, tfs); 
+
+create function initrandNNfn(Vector of Integer nn,
+                             Function tf,
+                             Charstring fname)
+                             -> Function
+/* Partially evaluated wrapper function to create a 
+   named state initialization function for the sNNet 
+   stream transducer */
+as eval("create function "+fname+" (Vector of Number x)
+                                    -> Vector 
+           as initrandNN(x, "+nn+", "+tf+");");
+
+/* parteval("initrandNNfn"); */
+ 
+/* State transfer function: eval_nn_tfn */
+create function eval_nn_tfn(Vector NNstate, Vector of Number si)
+                            -> Vector  
+/* Function to expose the eval_nn fn as a state transfer function 
+   to be used in a stream transducer. Essentially, the state is
+   a vector of the output of the NN and the NN definition to 
+   facilitate easy output function for the stream transducer. */
+  as select {NNoutput, ws, tfs}
+     from Vector of Number NNoutput,
+          Vector of Vector of Vector of Number ws,
+          Vector of Function tfs
+     where ws = NNstate[1]
+       and tfs = NNstate[2]
+       and NNoutput = eval_NN(si, ws,tfs); 
+
+/* Output function of stream transducer sNNet: outNN */
+create function outNN(Vector NNstate, Vector of Number x)
+                      -> Vector of Number 
+  as NNstate[0];
+
+/* Stream transdurer: sNNet */     
+create function sNNet(Stream of Vector of Number s,
+                      Vector of Integer nn,
+                      Function tf,
+                      Charstring NNname) 
+                      -> Stream of Vector of Number 
+/* Stream transducer: sNNet */
+  as strans(s, initrandNNfn(nn, tf, NNname), #"eval_nn_tfn",#"outNN"); 
+
+/* Stream transducer sANN */
+/* State initialization function: initrandANN(fn)*/   
+create function initrandANN(Vector of Vector of Number input, 
+                            Vector of Integer nn,
+                            Number gain,
+                            Charstring mode,
+                            Charstring NNtaskType)
+                           -> Vector
+/* State initialization function for the sANN stream
+   transcuder. The state is initialized to a vector 
+   representation of a randomly initialized two-layer 
+   feedforward NN specified by the parameter:
+     - nn: number of neurons in layers 
+   and the output state of the ANN given the the input 
+   vector input */ 
+  as select ffbp_ann2_tfn({cast({} as Vector of Number), /*prevX*/
+                           cast({} as Vector of Number), /*prevT*/          
+                           cast({{}} as Vector of Vector of Number), /*prevO*/
+                           ws, /*prevWS*/
+                           cast({{}} as Vector of Vector of Number), /*prevDelta*/                           
+                           gain,
+                           mode,
+                           NNtaskType},
+                          input)
+     from Vector of Vector of Vector of Number ws
+     where ws = randNNweights(nn); 
+
+create function initrandANNfn(Vector of Integer nn,
+                              Number gain,
+                              Charstring mode,
+                              Charstring NNtaskType,
+                              Charstring fname)
+                             -> Function
+/* Partially evaluated wrapper function to create a 
+   named state initialization function for the sNNet 
+   stream transducer */
+as eval("create function "+fname+" (Vector of Vector of Number input)
+                                    -> Vector 
+           as initrandANN(input, "+nn+", "+gain+", '"+mode+"', '"+NNtaskType+"');");
+
+/* parteval("initrandANNfn"); */
+
+/* State transitions function: ffbp_ANN2_tfn */
+/* Output function: outT_ANN */
+create function outOT_ANN(Vector NNstate,
+                          Vector of Vector of Number input)
+                          -> Vector of Vector of Number 
+  as {cast(NNstate[2] as Vector)[1], NNstate[1]};
+ 
+/* Stream transdurer: sANN */     
+create function sANN(Stream of Vector of Vector of Number s,
+                     Vector of Integer nn,
+                     Number gain,
+                     Charstring mode,
+                     Charstring NNtaskType, 
+                     Charstring NNname) 
+                     -> Stream of Vector of Vector of Number 
+/* Stream transducer: sANN */
+  as strans(s, initrandANNfn(nn, gain, mode, NNTaskType, NNname), #"ffbp_ANN2_tfn", #"outOT_ANN"); 

@@ -1,0 +1,363 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2008 Ruslan Fomkin, UDBL
+ * $RCSfile: stream.naive.osql,v $
+ * $Revision: 1.13 $ $Date: 2008/09/06 11:29:11 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  For naive query optimization model. Code is moved from stream.osql.
+ ****************************************************************************
+ * $Log: stream.naive.osql,v $
+ * Revision 1.13  2008/09/06 11:29:11  ruslan
+ * with new file layout
+ *
+ * Revision 1.12  2008/07/08 13:25:29  ruslan
+ * less arguments in signal called functions
+ *
+ * Revision 1.11  2008/06/28 11:37:28  ruslan
+ * bug is fixed
+ *
+ * Revision 1.10  2008/06/22 11:30:19  ruslan
+ * reoptimize before execute manual strategy
+ *
+ * Revision 1.9  2008/05/29 15:00:39  ruslan
+ * Christian's order on signal
+ *
+ * Revision 1.8  2008/05/29 14:30:31  ruslan
+ * Chrisitan's order. bkgs experiments
+ *
+ * Revision 1.7  2008/05/20 08:11:21  ruslan
+ * filename in file schema
+ *
+ * Revision 1.6  2008/05/11 12:47:46  ruslan
+ * MAN for signal 2003 and 2005
+ *
+ * Revision 1.5  2008/05/10 15:28:29  ruslan
+ * warming was missing in MAN
+ *
+ * Revision 1.4  2008/05/10 13:56:02  ruslan
+ * renaming bkg with bkg2 according the Thesis
+ *
+ * Revision 1.3  2008/05/08 10:26:53  ruslan
+ * MAN for bkgs 2003
+ *
+ * Revision 1.2  2008/04/11 10:11:31  ruslan
+ * scaling experiments over the signal file
+ *
+ * Revision 1.1  2008/03/25 14:50:21  ruslan
+ * reorganization: split experiments, which run without safisticated query optimization, and experiments on advanced system. experiment to tune zAplah and delta are added
+ *
+ ****************************************************************************/
+load_lisp('../experiments/stream.naive.lsp');
+
+create function sendmessage(charstring m) -> boolean as
+select tosystem("echo "+m+" | mail ruslan@it.uu.se -s \""+m+" is done\"");
+
+create function myprint (integer, real, real, real, integer,
+			real) -> boolean as foreign 'myprint';
+create function myprint (integer, real, real, real, integer, integer,
+			real) -> boolean as foreign 'myprint';
+/*
+create function MANsingleBkgs(integer repeatForAvg) -> boolean as
+begin
+	for each eventfile f, integer fileid where fileid=id(f) and
+		name(experiment(f))="bkg2"
+	begin
+		declare real avgtime, real sqsum, real stdev, 
+			integer passedevents, real filefanout;
+		select a,q,s,p into avgtime,sqsum,stdev,passedevents
+		from real a, real q, real s, integer p
+		where <a,q,s,p> = 
+			execute("charstring.optallcuts->event",filename(f), 
+				repeatForAvg);
+		set filefanout = cast(passedevents as real)/size(f);
+		myprint(fileid,avgtime,stdev,sqsum,passedevents,filefanout);
+	end;
+end;
+
+create function MANsignal(integer repeatForAvg) -> boolean as
+begin
+	declare real avgtime, real sqsum, real stdev, integer passedevents,
+		real filefanout, eventfile f;
+	select sf into f from eventfile sf where name(experiment(sf))="signal";
+	select a,q,s,p into avgtime,sqsum,stdev,passedevents
+	from real a, real q, real s, integer p
+	where <a,q,s,p> = 
+		execute("charstring.optallcuts->event",filename(f), 
+			repeatForAvg);
+	set filefanout = cast(passedevents as real)/size(f);
+	myprint(0,avgtime,stdev,sqsum,passedevents,filefanout);
+end;
+*/
+create function bkgsoptsixcuts() -> event as
+select ev
+from eventfile f
+where name(experiment(f))="bkg2" and ev=optsixcuts(filename(f));
+
+create function bkgsoptfourcuts() -> event as
+select ev
+from eventfile f
+where name(experiment(f))="bkg2" and ev=optfourcuts(filename(f));
+/*
+create function MANbkgs(integer repeatForAvg) -> boolean as
+begin
+	declare real avgtime, real sqsum, real stdev, integer passedevents,
+		real filefanout;
+	select a,q,s,p into avgtime,sqsum,stdev,passedevents
+	from real a, real q, real s, integer p
+	where <a,q,s,p> = 
+		execute("bkgsoptallcuts->event",repeatForAvg);
+	select ff into filefanout
+	from real ff
+	where ff=passedevents/sum(select size(f) from eventfile f
+					where name(experiment(f))="bkg2");
+	myprint(0,avgtime,stdev,sqsum,passedevents,filefanout);
+end;
+
+create function MANScaling(integer rptForAvg) -> boolean as
+begin
+	for each integer fileid where fileid=iota(1,41)
+	begin
+		declare real avgtime, real sqsum, real stdev, 
+			integer passedevents, real filefanout;
+		select a,q,s,p into avgtime,sqsum,stdev,passedevents
+		from real a, real q, real s, integer p
+		where <a,q,s,p> = 
+			execute("integer.bkgoptcuts->event",fileid, 
+				rptForAvg);
+		set filefanout = cast(passedevents as real)/
+		(sum(select size(f) from eventfile f where 
+			name(experiment(f))="bkg2" and id(f)<=(fileid-1)));
+		myprint(fileid,avgtime,stdev,sqsum,passedevents,filefanout);
+	end;
+end;
+*/
+create function signalsixcuts(integer idEvent) -> event ev as
+select ev
+from eventfile f
+where name(experiment(f))="signal" and fileid(f)=0 and
+	ev=sixcuts(filename(f),0,idEvent);
+
+create function signalfourcuts(integer idEvent) -> event ev as
+select ev
+from eventfile f
+where name(experiment(f))="signal" and fileid(f)=0 and
+	ev=fourcuts(filename(f),0,idEvent);
+
+create function signalscientsixcuts(integer idEvent) -> event ev as
+select ev
+from eventfile f
+where name(experiment(f))="signal" and fileid(f)=0 and
+	ev=scientsixcuts(filename(f),0,idEvent);
+
+create function signalpapersixcuts(integer idEvent) -> event ev as
+select ev
+from eventfile f
+where name(experiment(f))="signal" and fileid(f)=0 and
+	ev=papersixcuts(filename(f),0,idEvent);
+
+create function signaloptsixcuts(integer idEvent) -> event ev as
+select ev
+from eventfile f
+where name(experiment(f))="signal" and fileid(f)=0 and
+	ev=optsixcuts(filename(f),0,idEvent);
+
+create function signaloptfourcuts(integer idEvent) -> event ev as
+select ev
+from eventfile f
+where name(experiment(f))="signal" and fileid(f)=0 and
+	ev=optfourcuts(filename(f),0,idEvent);
+/*
+create function ExpSignal(integer nrEvents, integer rptForAvg) -> boolean as
+begin
+	declare real avgtime, real sqsum, real stdev, integer passedevents,
+		real filefanout, eventfile f;
+	select sf into f from eventfile sf where name(experiment(sf))="signal";
+	select a,q,s,p into avgtime,sqsum,stdev,passedevents
+	from real a, real q, real s, integer p
+	where <a,q,s,p> = 
+		execute("integer.signalexpcuts->event",(nrEvents-1),rptForAvg);
+	set filefanout = cast(passedevents as real)/size(f);
+	myprint(0,avgtime,stdev,sqsum,nrEvents,passedevents,filefanout);
+end;
+
+create function OptSignal(integer nrEvents, integer rptForAvg) -> boolean as
+begin
+	declare real avgtime, real sqsum, real stdev, integer passedevents,
+		real filefanout, eventfile f;
+	select sf into f from eventfile sf where name(experiment(sf))="signal";
+	optallcuts(filename(f),0,(nrEvents-1));
+	select a,q,s,p into avgtime,sqsum,stdev,passedevents
+	from real a, real q, real s, integer p
+	where <a,q,s,p> = 
+		execute("integer.signaloptallcuts->event",(nrEvents-1),
+			rptForAvg);
+	set filefanout = cast(passedevents as real)/size(f);
+	myprint(0,avgtime,stdev,sqsum,nrEvents,passedevents,filefanout);
+end;
+
+create function AllSignal(integer nrEvents, integer rptForAvg) -> boolean as
+begin
+	declare real avgtime, real sqsum, real stdev, integer passedevents,
+		real filefanout, eventfile f;
+	select sf into f from eventfile sf where name(experiment(sf))="signal";
+	optallcuts(filename(f),0,(nrEvents-1));
+	select a,q,s,p into avgtime,sqsum,stdev,passedevents
+	from real a, real q, real s, integer p
+	where <a,q,s,p> = 
+		execute("integer.signalallcuts->event",(nrEvents-1),rptForAvg);
+	set filefanout = cast(passedevents as real)/size(f);
+	myprint(0,avgtime,stdev,sqsum,nrEvents,passedevents,filefanout);
+end;
+
+create function ExpSingleBkgs(integer rptForAvg) -> boolean as
+begin
+	for each eventfile f, integer fileid where name(experiment(f))="bkg2" 
+		and fileid=id(f)
+	begin
+		declare real avgtime, real sqsum, real stdev, 
+			integer passedevents, real filefanout;
+		select a,q,s,p into avgtime,sqsum,stdev,passedevents
+		from real a, real q, real s, integer p
+		where <a,q,s,p> = 
+			execute("charstring.expcuts->event",filename(f), 
+				rptForAvg);
+		set filefanout = cast(passedevents as real)/size(f);
+		myprint(fileid,avgtime,stdev,sqsum,passedevents,filefanout);
+	end;
+end;
+*/
+create function bkgssixcuts() -> event ev as
+select ev
+from eventfile f
+where name(experiment(f))="bkg2" and ev=sixcuts(filename(f));
+
+create function bkgsfourcuts() -> event ev as
+select ev
+from eventfile f
+where name(experiment(f))="bkg2" and ev=fourcuts(filename(f));
+/*
+create function ExpBkgs(integer repeatForAvg) -> boolean as
+begin
+	declare real avgtime, real sqsum, real stdev, integer passedevents,
+		real filefanout;
+	select a,q,s,p into avgtime,sqsum,stdev,passedevents
+	from real a, real q, real s, integer p
+	where <a,q,s,p> = 
+		execute("bkgsexpcuts->event",repeatForAvg);
+	select ff into filefanout
+	from real ff
+	where ff=passedevents/sum(select size(f) from eventfile f 
+					where name(experiment(f))="bkg2");
+	myprint(-1,avgtime,stdev,sqsum,passedevents,filefanout);
+end;
+*/
+create function bkg2sixcuts(integer fid) -> event ev as
+select ev
+from eventfile f
+where name(experiment(f))="bkg2" and fileid(f)<fid and ev=sixcuts(filename(f));
+
+create function bkg2fourcuts(integer fid) -> event ev as
+select ev
+from eventfile f
+where name(experiment(f))="bkg2" and fileid(f)<fid and ev=fourcuts(filename(f));
+
+create function bkg2optsixcuts(integer fid) -> event ev as
+select ev
+from eventfile f
+where name(experiment(f))="bkg2" and fileid(f)<fid and ev=optsixcuts(filename(f));
+
+create function bkg2optfourcuts(integer fid) -> event ev as
+select ev
+from eventfile f
+where name(experiment(f))="bkg2" and fileid(f)<fid and 
+	ev=optfourcuts(filename(f));
+
+create function bkg2scientsixcuts(integer fid) -> event ev as
+select ev
+from eventfile f
+where name(experiment(f))="bkg2" and fileid(f)<fid and 
+	ev=scientsixcuts(filename(f));
+
+create function bkg2papersixcuts(integer fid) -> event ev as
+select ev
+from eventfile f
+where name(experiment(f))="bkg2" and fileid(f)<fid and 
+	ev=papersixcuts(filename(f));
+/*
+create function ExpScaling(integer rptForAvg) -> boolean as
+begin
+	for each integer fileid where fileid=iota(1,41)
+	begin
+		declare real avgtime, real sqsum, real stdev, 
+			integer passedevents, real filefanout;
+		select a,q,s,p into avgtime,sqsum,stdev,passedevents
+		from real a, real q, real s, integer p
+		where <a,q,s,p> = 
+			execute("integer.bkgexpcuts->event",fileid, 
+				rptForAvg);
+		set filefanout = cast(passedevents as real)/
+		(sum(select size(f) from eventfile f where 
+			name(experiment(f))="bkg2" and id(f)<=(fileid-1)));
+		myprint(fileid,avgtime,stdev,sqsum,passedevents,filefanout);
+	end;
+end;
+*/
+/**************************************************
+ * Thesis experiments on Mei
+ *************************************************/
+/*
+create function ExpBkgPart(integer nrFiles, integer rptAvg) -> boolean as
+begin
+	declare real avgtime, real sqsum, real stdev, 
+		integer passedevents, real filefanout, integer totalsize;
+	select a,q,s,p into avgtime,sqsum,stdev,passedevents
+	from real a, real q, real s, integer p
+	where <a,q,s,p> = 
+		execute("integer.bkgexpcuts->event",nrFiles, 
+			rptAvg);
+	set totalsize = 
+		(sum(select size(f) from eventfile f where 
+			name(experiment(f))="bkg2" and id(f)<=(nrFiles-1)));
+	set filefanout = cast(passedevents as real)/totalsize;
+	myprint(nrFiles,avgtime,stdev,sqsum,totalsize,passedevents,filefanout);
+end;
+
+create function OptBkgPart(integer nrFiles, integer rptAvg) -> boolean as
+begin
+	declare real avgtime, real sqsum, real stdev, 
+		integer passedevents, real filefanout, integer totalsize;
+	reoptimize("integer.bkgoptallcuts->event");
+	bkgoptallcuts(nrFiles);
+	select a,q,s,p into avgtime,sqsum,stdev,passedevents
+	from real a, real q, real s, integer p
+	where <a,q,s,p> = 
+		execute("integer.bkgoptallcuts->event",nrFiles, 
+			rptAvg);
+	set totalsize = 
+		(sum(select size(f) from eventfile f where 
+			name(experiment(f))="bkg2" and id(f)<=(nrFiles-1)));
+	set filefanout = cast(passedevents as real)/totalsize;
+	myprint(nrFiles,avgtime,stdev,sqsum,totalsize,passedevents,filefanout);
+end;
+
+create function AllBkgPart(integer nrFiles, integer rptAvg) -> boolean as
+begin
+	declare real avgtime, real sqsum, real stdev, 
+		integer passedevents, real filefanout, integer totalsize;
+	reoptimize("integer.bkgallcuts->event");
+	bkgallcuts(nrFiles);
+	select a,q,s,p into avgtime,sqsum,stdev,passedevents
+	from real a, real q, real s, integer p
+	where <a,q,s,p> = 
+		execute("integer.bkgallcuts->event",nrFiles, 
+			rptAvg);
+	set totalsize = 
+		(sum(select size(f) from eventfile f where 
+			name(experiment(f))="bkg2" and id(f)<=(nrFiles-1)));
+	set filefanout = cast(passedevents as real)/totalsize;
+	myprint(nrFiles,avgtime,stdev,sqsum,totalsize,passedevents,filefanout);
+end;
+*/

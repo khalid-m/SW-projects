@@ -1,0 +1,74 @@
+/*-*-sql-*-******************************************************************/
+
+/*****************************************************************************
+LOADING TRUE DATA
+This part is used to validate student's solution...
+******************************************************************************/
+create function truth_data(Number cid) ->Bag of <Vector of Number v> as stored;
+create_index("truth_data","v","mbtree","multiple");
+add_dfn("../../data/truth.nt",#'truth_data', :cidpos, :valposl);
+
+/*Validation on truth_data*/
+create function normalized_truth_data(Number cid) 
+->Bag of <Vector of Number v> as stored;
+
+/* For fast search among values of data function normalized_truth_data: */
+create_index("normalized_truth_data","v","mbtree","multiple");
+
+/*Function returning all vector values of the data model.*/
+create function values_of_truth_data()->Bag of Vector of Number
+  as select ww
+     from vector of number ww, number cid
+     where ww in truth_data(cid);
+
+
+
+
+lisp;
+
+;; Cross-validation
+
+;;----------------------------------------------------------------------------
+;;Classification - Minkowski - minagg - maxagg r = 0.372
+;;-----------------------------------------------------------------------------
+(osql " dropfunction(#'classified_data', 1);")
+(osql " dropfunction(#'normalized_known_data', 1);")
+(osql " dropfunction(#'normalized_unknown_data', 1);")
+(osql " dropfunction(#'normalized_truth_data', 1);")
+
+(osql "normalize_iddata(
+                   (select cid, v 
+                    from Number cid, Vector of Number v
+                    where v in known_data(cid)),
+		    aggv(values_of_known_data(), #'minagg'), 
+ 	            aggv(values_of_known_data(), #'maxagg'), 
+		    #'normalized_known_data');")
+
+(osql "normalize_data(unknown_data(),
+		    aggv(values_of_known_data(), #'minagg'), 
+ 	            aggv(values_of_known_data(), #'maxagg'), 
+		    #'normalized_unknown_data');")
+
+(osql "normalize_iddata((select cid, v 
+                    from Number cid, Vector of Number v
+                    where v in truth_data(cid)),
+		    aggv(values_of_known_data(), #'minagg'), 
+ 	            aggv(values_of_known_data(), #'maxagg'), 
+		    #'normalized_truth_data');")
+
+
+(osql "select store_knnclassification(x, k(), #'minkowski', 0.372
+			, (select cid, v 
+                           from Number cid, Vector of Number v
+                            where v in normalized_known_data(cid))
+			, #'classified_data')
+			from vector of Number x
+			where x in normalized_unknown_data();")
+
+(checkequal "Confidence of KNN Classification-Minknowski-(avg, stdev,r = 2) is "
+((osql "roundto(count(select v, c from Number c , Vector of Number v
+	where  v in classified_data(c)
+	and v in normalized_truth_data(c)) / 30.0, 3);")
+'((0.733))))
+
+:osql

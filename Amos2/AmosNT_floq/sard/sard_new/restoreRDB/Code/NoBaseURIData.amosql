@@ -1,0 +1,81 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Ekta Shrestha, 
+ * $RCSfile: NoBaseURIData.amosql,v $
+ * $Revision: 1.4 $ $Date: 2012/06/29 14:50:09 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Functions for restoring
+	relational schema and data from NT archives
+ *
+ ****************************************************************************
+ * $Log: NoBaseURIData.amosql,v $
+ * Revision 1.4  2012/06/29 14:50:09  eksh8896
+ * 29th June.. Everything working for prod1 and person (prob with cleanS())
+ *
+ * Revision 1.3  2012/06/08 13:29:22  torer
+ * *** empty log message ***
+ *
+ * Revision 1.1  2012/03/30 14:02:58  eksh8896
+ * *** empty log message ***
+ *
+ * Revision 1.2  2012/03/27 08:51:40  eksh8896
+ * *** empty log message ***
+ *
+ * Revision 1.1  2012/02/28 14:02:33  eksh8896
+ * Datafile.
+ *
+ ****************************************************************************/
+
+
+/************************************************************************************************************************/
+			/***FUNCTIONS FOR MANIPULATING DATA FILES ***/
+/************************************************************************************************************************/
+	
+ create function ret_tableNamefromrowIDNoURI(Charstring rowID)->Charstring 
+/*Retrieves table name from the given rowID which is retrieved from the given file.*/
+as begin
+	declare Charstring t1,Charstring t2;
+	for each Integer id, Charstring tableURI,Charstring tName,Charstring colURI,Charstring col where map_info(id,tableURI,tName,colURI,col)=true
+	begin	set t1=substring(tableURI,0,char_length(tableURI)-2)+'/';
+		if like(rowID,t1+"*") then 
+			set t2=tname;
+	end;
+	return t2;
+end;	
+
+create function ret_tableURIfromrowIDNoURI(Charstring rowID)->Charstring 
+/*Retrieves table name from the given rowID which is retrieved from the given file.*/
+as begin
+	declare Charstring t1,Charstring t2;
+	for each Integer id, Charstring tableURI,Charstring tName,Charstring colURI,Charstring col where map_info(id,tableURI,tName,colURI,col)=true
+	begin	set t1=substring(tableURI,0,char_length(tableURI)-2)+'/';
+		if like(rowID,t1+"*") then 
+			set t2=tableURI;
+	end;
+	return t2;
+end;	
+
+	
+
+/************************************************************************************************************************/
+			/***RETRIEVING primary key FROM GIVEN FILES ***/
+/************************************************************************************************************************/
+
+create function ret_pkURIfromRowIDNoURI(Charstring rowID)->Charstring
+/*Retrieve name of PK of the table for the given RowID*/
+as begin for each Charstring ch, Charstring t where ch=ret_pkURIs(t) and  ret_tableURIfromRowIDNoURI(rowID)=t
+	 return ch;
+end;
+
+
+ create function ret_pkNamefromRowIDNoURI(Charstring rowID)->Charstring
+/*Retrieve the name of the PK of the table represented by tableURI*/
+as begin
+	for each Charstring ch where ch=ret_pkURIfromRowIDNoURI(rowID)
+	begin 	return mapColumnName(ret_tableURIfromRowIDNoURI(rowID), ch);
+	end;
+end;
+
+/************************************************************************************************************************/

@@ -1,0 +1,197 @@
+/*-*-sql-*-*******************************************************************
+* AMOS2
+*
+* Author: (c) 2010 thanh, UDBL
+* $RCSfile: amosXtree.amosql,v $
+* $Revision: 1.20 $ $Date: 2010/08/14 20:05:09 $
+* $State: Exp $ $Locker:  $
+*
+* Description: <description>
+*
+****************************************************************************
+* $Log: amosXtree.amosql,v $
+* Revision 1.20  2010/08/14 20:05:09  thtr1663
+* add xtree_dropper to deallocate xtree. It should be called when drop_index
+* command is executed.
+*
+* Revision 1.19  2010/06/22 05:48:17  thtr1663
+* rewriter.lsp
+*
+* Revision 1.18  2010/06/19 06:26:53  thtr1663
+* re-arrange scripts + remove hardcode index for picture application
+*
+* Revision 1.17  2010/06/14 05:53:40  thtr1663
+* modify xtree_similarity_search_fn
+*
+* Revision 1.16  2010/06/07 19:15:27  thtr1663
+* seperate code for systemand code for application(photo)
+*
+* Revision 1.15  2010/06/04 14:18:37  thtr1663
+* Fix KNN search on multiple Xtree index
+*
+* Revision 1.14  2010/06/04 10:52:44  thtr1663
+* Remove ^M (ending line)
+*
+* Revision 1.13  2010/06/04 07:40:58  thtr1663
+* Modify Xtree to make it possible to store multiple index. Index hooks are updated accordingly
+*
+* Revision 1.12  2010/06/02 07:26:23  thtr1663
+* Modify Xtree index hook
+*
+* Revision 1.11  2010/06/01 14:24:31  torer
+* *** empty log message ***
+*
+****************************************************************************/
+
+
+/*----------------------------------------------------------------------------
+Foreign functions
+-----------------------------------------------------------------------------*/
+create function xtree_similarity_search_fn(Integer xtId, Vector of Number f, 
+Real distance) ->Bag of Object
+as foreign 'xtree_similarity_search_fn';
+
+/*There is another version of similarity search. Apart from that one, the bellow
+function returns bag of vector<Object obj, Number dist>. In which, "dis" 
+is distance from the given feature (f) to obj.
+
+It is added to make the rewrite EUCLID is easier in the way that post-filter can
+be appied by having the distance */
+create function xtree_similarity_search_objdist_fn(Integer, Function f, Vector of Number, 
+Number)->Bag of <Object, Number>
+as foreign 'xtree_similarity_search_objdist_fn';
+
+create function xtree_knn_search_fn(Integer xtId, Function fun, Vector of Number f, 
+Integer k) ->Bag of Object
+as foreign 'xtree_knn_search_fn';
+
+create function xtree_make(Integer xtId) -> Boolean  
+as foreign 'xtree_make';
+
+create function xtree_put(Integer xtId, Vector of Number f, Object o) 
+-> Boolean
+as foreign 'xtree_put';
+
+create function xtree_delete(Integer xtId, Vector of Number f, Object o) 
+-> Boolean
+as foreign 'xtree_delete';
+
+create function xtree_save(Integer xtId, Charstring filename) 
+-> Boolean
+as foreign 'xtree_save';
+
+create function xtree_load(Charstring filename) -> Integer xtId
+as foreign 'xtree_load';
+
+create function xtree_get(Integer xtId, Object o) ->Bag of Object
+as foreign 'xtree_get';
+
+/*Deallocate memory and erase index file*/
+create function xtree_clear(Integer xtId)
+ -> Boolean 
+as foreign 'xtree_remove';
+
+/*---------------------------------------------------------------------------
+INDEXING
+-----------------------------------------------------------------------------*/
+/* Function contains list of identifiers of Xtree(s)*/
+create function xtreeIds()-> Bag of Integer as stored;
+
+/* Compute the latest Xtree id. It is used to create
+a new Xtree*/
+create function lastest_xtreeIds() -> Integer l
+as 
+begin
+if (notany(xtreeIds())) 
+then set l= 0      
+else 
+set l = maxagg(xtreeIds());
+result  l;
+end;
+
+/*Function creates new Xtree index. It is used by
+index manager*/
+create function createXtreeIndex() -> Integer p
+as 
+begin
+declare Integer id;
+set id = lastest_xtreeIds() + 1;
+if xtree_make(id) then 
+begin
+add xtreeIds() = id;	
+result id;
+end;
+end;
+
+/*Define function to insert feature vector f and corresponding object o 
+in feature index */
+create function addFeatureIndex(Integer xtId, Vector of Number f, Object o) 
+->Boolean
+as xtree_put(xtId , f, o);
+
+/*Define function to remove feature vector f and corresponding object o 
+from feature index */
+create function removeFeatureIndex(Integer xtId, Vector of Number f, Object o) 
+->Boolean
+as xtree_delete(xtId , f, o);
+
+
+create function drop_xtree(Integer xtID)-> Boolean as
+begin
+	declare Charstring indexfile;
+
+	/*Remove from the list of IDs*/
+	remove xtreeIds() = xtID;
+
+	/*deallocate xtree in main memory and 
+	erase index file if there is such that file*/
+	xtree_clear(xtID);
+end;
+/*----------------------------------------------------------------------------
+SAVING - RESTORING HOOK
+-----------------------------------------------------------------------------*/
+create function gen_indexfile(Charstring image, Integer id) -> Charstring 
+as 
+begin
+declare Charstring filename, Charstring indexfile;
+/*suppose image = filename.dmp. Take the filename only*/
+set filename = substring(image, 0, char_length(image) - 5);
+set indexfile = filename + stringify(id) + ".xt";
+result indexfile;
+end;
+
+create function index_rolloutfn(Charstring image) -> Boolean as
+begin	
+for each Integer id where id in xtreeids()  
+begin 
+result xtree_save(id, gen_indexfile(image, id));
+end;
+result FALSE;
+end;
+
+create function index_rollinfn(Charstring image) -> Boolean as
+begin
+declare Charstring indexfile;
+
+for each Integer id where id in xtreeids()  
+begin
+set indexfile = gen_indexfile(image, id);
+if file_exists(indexfile) then result xtree_load(indexfile);
+
+end;
+result FAlSE;
+end;
+
+register_saver(#'index_rolloutfn', #'index_rollinfn');
+
+/*----------------------------------------------------------------------------
+LOADING REWRITER
+-----------------------------------------------------------------------------*/
+load_lisp('rewriter.lsp');
+
+/*New operator knn*/
+create function knn(Function fn, Vector of Number , Integer k)-> Bag of Object 
+as multidirectional
+    ('bbbf' foreign 'xtree_knn_search_fn' rewriter 'knnsearch');
+
+

@@ -1,0 +1,24 @@
+ /*-*-sql-*-*************************************
+ * AMOS2
+ *
+ * Replace this to suit your SP configuration */
+
+set :dumpfile = "scsq.dmp";
+set :sprocstart = "lsproc();";
+
+set :preprsh = "/usr/bin/rsh -n";
+set :prepstartcmd = getenv("AMOS_HOME") + "/bin/scsq.exe ";
+set :sp_shell = "";
+
+/*set :prepstartpostproc = " >> /scratch/z/SPlog 2>&1 &";*/
+set :spstdout = " >> PrepLog 2>&1 &";
+
+set :bghome = "/bglst1/home/zeitler/amos/";
+set :crdatapath = :bghome + "out/crdata4/";
+
+/*set :prephosts={"10.20.1.15","10.20.1.16","10.20.1.17","10.20.1.18"};*/
+
+set :prepcoordhost="mei";
+set :prephosts={"compute-0-8","compute-0-1","compute-0-2","compute-0-3","compute-0-4","compute-0-5","compute-0-6","compute-0-7"};
+
+/*set :bghome = "/bglst1" + getenv("HOME") + "/amos/";*/

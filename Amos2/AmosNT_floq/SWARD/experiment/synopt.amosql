@@ -1,0 +1,490 @@
+ /*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Johan Petrini, UDBL
+ * 
+ * Description: Scalability experiment increasing the synthetic content query, 
+ * SQ2_tbls_cols (as defined here), size over a fixed synthetically generated 
+ * database size and UPV definition size. All queries are defined in RDQL.
+ * 
+ * We measure optimization times for strategies END, END-P, DPS, DVS-P.
+ *
+ * ID: SQ2opt
+ *
+ * Parameters:
+ * We used two different database sizes (nt=1, nc=8 and nt=8, nc=10).
+ *
+ * In the scenario with database size (nt=1, nc=8) the query (SQ2_1tbl_?) 
+ * was scaled the from 0-7 joins (step 1)where clauses, that is, 
+ * the ppt was scaled from 1-8. 
+ * The script synopt1db.cmd was used to generate the database.
+ *
+ * In the scenario with database size (nt=8, nc=10) the query (SQ2_8tbl_?)
+ * was scaled the from 3-31 (step 4) joins, that is, 
+ * the ppt was fixed to 4 but the number of relational joins was scaled from 0-7.
+ * The script synopt10db.cmd was used to generate the database.
+ *
+ * The machine used was a PC with a 2.26 GHz Pentium 4 processor and 
+ * 512 MB running Windows XP.
+ *
+ * As DBMS we use InterBase.
+ * Size of database is 1 row.
+ *
+ * MSSQL Server is stopped. 
+ *****************************************************************************/
+/* Experiment steps
+ */
+  set :f = compileQuery();
+  call_function(:f,{}); 
+
+/* Variables are used to facilitate changes in data.
+ * Change in one place instead of several places.
+ */
+set :tbl = 1;				   /* Number of tbls */
+set :col = 8;				   /* Number of cols in each tbl */
+set :strategy = "END";			   /* Scenario */
+set :pe = true;				   /* Partial evaluation on/off. On is default in SWARD*/
+
+/* Define DS for SQ relational database with 1 table.
+ */
+defineDS("SQDS",
+         "jdbc:interbase://localhost/" + getenv('SWARD_ROOT') + "/bin/SQ.gdb",
+         "interbase.interclient.Driver",
+         "",
+         "",
+         "SYSDBA",
+         "masterkey");
+
+
+/* Define UPV 'sq' associated with data source 'SQDS'. 
+ */
+defineUPV("SQDS","Sq","http://upv/com/sq/");
+
+/* Connect to predefined data source assigned to UPV 'eGov'. 
+ */
+DSConnect("Sq");	
+
+/* Speed up UPV generation.
+ */
+lisp;
+(defglobal get-columnscache)
+(memo 'get-columnscache 'get-columns (list 'ds 'table))
+:osql
+
+/* End of setup of synthetic test database
+ */
+
+/* Populate SWARD system tables 
+ */
+
+/* Automatically generate property and class mappings for cols and tbls 
+ * by calling fn genPMap and genCMap.
+ */
+genPMap(sort(mktblvector(:tbl)),"Sq");
+genCMap(sort(mktblvector(:tbl)),"Sq");
+
+/* End of populating SWARD system tables 
+ */
+
+/* Autogenerate UPV
+ */
+dispatch(:strategy,"Sq");
+
+/* Test queries
+ */
+set :SQ2_1_1 =
+	"SELECT ?c1
+	FROM <http://upv/com/sq/>
+	WHERE (?s1, <http://upv.com/schemas/sq#t1.k>, ?c1)";
+
+set :SQ2_1_2 = 
+	"SELECT ?c1, ?c2
+	FROM <http://upv/com/sq/>
+	WHERE (?s1, <http://upv.com/schemas/sq#t1.k>, ?c1),
+      	(?s1, <http://upv.com/schemas/sq#t1.c2>, ?c2)";
+
+set :SQ2_1_3 =
+	"SELECT ?c1, ?c2, ?c3
+	FROM <http://upv/com/sq/>
+	WHERE (?s1, <http://upv.com/schemas/sq#t1.k>, ?c1),
+      	(?s1, <http://upv.com/schemas/sq#t1.c2>, ?c2),
+	(?s1, <http://upv.com/schemas/sq#t1.c3>, ?c3)";
+
+set :SQ2_1_4 =
+	"SELECT ?c1, ?c2, ?c3, ?c4
+	FROM <http://upv/com/sq/>
+	WHERE (?s1, <http://upv.com/schemas/sq#t1.k>, ?c1),
+      	(?s1, <http://upv.com/schemas/sq#t1.c2>, ?c2),
+	(?s1, <http://upv.com/schemas/sq#t1.c3>, ?c3),
+	(?s1, <http://upv.com/schemas/sq#t1.c4>, ?c4)";
+
+set :SQ2_1_5 =
+	"SELECT ?c1, ?c2, ?c3, ?c4, ?c5
+	FROM <http://upv/com/sq/>
+	WHERE (?s1, <http://upv.com/schemas/sq#t1.k>, ?c1),
+      	(?s1, <http://upv.com/schemas/sq#t1.c2>, ?c2),
+	(?s1, <http://upv.com/schemas/sq#t1.c3>, ?c3),
+	(?s1, <http://upv.com/schemas/sq#t1.c4>, ?c4),
+	(?s1, <http://upv.com/schemas/sq#t1.c5>, ?c5)";
+
+set :SQ2_1_6 =
+	"SELECT ?c1, ?c2, ?c3, ?c4, ?c5, ?c6
+	FROM <http://upv/com/sq/>
+	WHERE (?s1, <http://upv.com/schemas/sq#t1.k>, ?c1),
+      	(?s1, <http://upv.com/schemas/sq#t1.c2>, ?c2),
+	(?s1, <http://upv.com/schemas/sq#t1.c3>, ?c3),
+	(?s1, <http://upv.com/schemas/sq#t1.c4>, ?c4),
+	(?s1, <http://upv.com/schemas/sq#t1.c5>, ?c5),
+	(?s1, <http://upv.com/schemas/sq#t1.c6>, ?c6)";
+
+set :SQ2_1_7 =
+	"SELECT ?c1, ?c2, ?c3, ?c4, ?c5, ?c6, ?c7
+	FROM <http://upv/com/sq/>
+	WHERE (?s1, <http://upv.com/schemas/sq#t1.k>, ?c1),
+      	(?s1, <http://upv.com/schemas/sq#t1.c2>, ?c2),
+	(?s1, <http://upv.com/schemas/sq#t1.c3>, ?c3),
+	(?s1, <http://upv.com/schemas/sq#t1.c4>, ?c4),
+	(?s1, <http://upv.com/schemas/sq#t1.c5>, ?c5),
+	(?s1, <http://upv.com/schemas/sq#t1.c6>, ?c6),
+	(?s1, <http://upv.com/schemas/sq#t1.c7>, ?c7)";
+
+set :SQ2_1_8 =
+	"SELECT ?c1, ?c2, ?c3, ?c4, ?c5, ?c6, ?c7, ?c8
+	FROM <http://upv/com/sq/>
+	WHERE (?s1, <http://upv.com/schemas/sq#t1.k>, ?c1),
+      	(?s1, <http://upv.com/schemas/sq#t1.c2>, ?c2),
+	(?s1, <http://upv.com/schemas/sq#t1.c3>, ?c3),
+	(?s1, <http://upv.com/schemas/sq#t1.c4>, ?c4),
+	(?s1, <http://upv.com/schemas/sq#t1.c5>, ?c5),
+	(?s1, <http://upv.com/schemas/sq#t1.c6>, ?c6),
+	(?s1, <http://upv.com/schemas/sq#t1.c7>, ?c7),
+	(?s1, <http://upv.com/schemas/sq#t1.c8>, ?c8)";
+
+set :SQ2_8_8 =
+	"SELECT ?c1, ?c2, ?c3, ?c4, ?c5, ?c6, ?c7
+	FROM <http://upv/com/sq/>
+	WHERE (?s1, <http://upv.com/schemas/sq#t1.k>, ?c1),
+      	(?s1, <http://upv.com/schemas/sq#t1.c2>, ?c2),
+	(?s1, <http://upv.com/schemas/sq#t1.c3>, ?c3),
+	(?s1, <http://upv.com/schemas/sq#t1.c4>, ?c4),
+	(?s2, <http://upv.com/schemas/sq#t2.c2>, ?c1),
+	(?s2, <http://upv.com/schemas/sq#t2.k>, ?c5),
+	(?s2, <http://upv.com/schemas/sq#t2.c3>, ?c6),
+	(?s2, <http://upv.com/schemas/sq#t2.c4>, ?c7)";	
+
+set :SQ2_8_12 =
+	"SELECT ?c1, ?c2, ?c3, ?c4, ?c5, ?c6, ?c7, ?c8, ?c9, ?c10
+	FROM <http://upv/com/sq/>
+	WHERE (?s1, <http://upv.com/schemas/sq#t1.k>, ?c1),
+      	(?s1, <http://upv.com/schemas/sq#t1.c2>, ?c2),
+	(?s1, <http://upv.com/schemas/sq#t1.c3>, ?c3),
+	(?s1, <http://upv.com/schemas/sq#t1.c4>, ?c4),
+	(?s2, <http://upv.com/schemas/sq#t2.c2>, ?c1),
+	(?s2, <http://upv.com/schemas/sq#t2.k>, ?c5),
+	(?s2, <http://upv.com/schemas/sq#t2.c3>, ?c6),
+	(?s2, <http://upv.com/schemas/sq#t2.c4>, ?c7),
+	(?s3, <http://upv.com/schemas/sq#t3.c2>, ?c5),
+	(?s3, <http://upv.com/schemas/sq#t3.k>, ?c8),
+	(?s3, <http://upv.com/schemas/sq#t3.c3>, ?c9),
+	(?s3, <http://upv.com/schemas/sq#t3.c4>, ?c10)";	
+
+set :SQ2_8_16 =
+	"SELECT ?c1, ?c2, ?c3, ?c4, ?c5, ?c6, ?c7, ?c8, 
+		?c9, ?c10, ?c11, ?c12, ?c13  
+	FROM <http://upv/com/sq/>
+	WHERE (?s1, <http://upv.com/schemas/sq#t1.k>, ?c1),
+      	(?s1, <http://upv.com/schemas/sq#t1.c2>, ?c2),
+	(?s1, <http://upv.com/schemas/sq#t1.c3>, ?c3),
+	(?s1, <http://upv.com/schemas/sq#t1.c4>, ?c4),
+	(?s2, <http://upv.com/schemas/sq#t2.c2>, ?c1),
+	(?s2, <http://upv.com/schemas/sq#t2.k>, ?c5),
+	(?s2, <http://upv.com/schemas/sq#t2.c3>, ?c6),
+	(?s2, <http://upv.com/schemas/sq#t2.c4>, ?c7),	
+	(?s3, <http://upv.com/schemas/sq#t3.c2>, ?c5),
+	(?s3, <http://upv.com/schemas/sq#t3.k>, ?c8),
+	(?s3, <http://upv.com/schemas/sq#t3.c3>, ?c9),
+	(?s3, <http://upv.com/schemas/sq#t3.c4>, ?c10),
+	(?s4, <http://upv.com/schemas/sq#t4.c2>, ?c8),
+	(?s4, <http://upv.com/schemas/sq#t4.k>, ?c11),
+	(?s4, <http://upv.com/schemas/sq#t4.c3>, ?c12),
+	(?s4, <http://upv.com/schemas/sq#t4.c4>, ?c13)";	
+
+set :SQ2_8_20 =
+	"SELECT ?c1, ?c2, ?c3, ?c4, ?c5, ?c6, ?c7, ?c8, 
+		?c9, ?c10, ?c11, ?c12, ?c13, ?c14, ?c15, ?c16  
+	FROM <http://upv/com/sq/>
+	WHERE (?s1, <http://upv.com/schemas/sq#t1.k>, ?c1),
+      	(?s1, <http://upv.com/schemas/sq#t1.c2>, ?c2),
+	(?s1, <http://upv.com/schemas/sq#t1.c3>, ?c3),
+	(?s1, <http://upv.com/schemas/sq#t1.c4>, ?c4),
+	(?s2, <http://upv.com/schemas/sq#t2.c2>, ?c1),
+	(?s2, <http://upv.com/schemas/sq#t2.k>, ?c5),
+	(?s2, <http://upv.com/schemas/sq#t2.c3>, ?c6),
+	(?s2, <http://upv.com/schemas/sq#t2.c4>, ?c7),	
+	(?s3, <http://upv.com/schemas/sq#t3.c2>, ?c5),
+	(?s3, <http://upv.com/schemas/sq#t3.k>, ?c8),
+	(?s3, <http://upv.com/schemas/sq#t3.c3>, ?c9),
+	(?s3, <http://upv.com/schemas/sq#t3.c4>, ?c10),
+	(?s4, <http://upv.com/schemas/sq#t4.c2>, ?c8),
+	(?s4, <http://upv.com/schemas/sq#t4.k>, ?c11),
+	(?s4, <http://upv.com/schemas/sq#t4.c3>, ?c12),
+	(?s4, <http://upv.com/schemas/sq#t4.c4>, ?c13),
+	(?s5, <http://upv.com/schemas/sq#t5.c2>, ?c11),
+	(?s5, <http://upv.com/schemas/sq#t5.k>, ?c14),
+	(?s5, <http://upv.com/schemas/sq#t5.c3>, ?c15),
+	(?s5, <http://upv.com/schemas/sq#t5.c4>, ?c16)";
+
+set :SQ2_8_24 =
+	"SELECT ?c1, ?c2, ?c3, ?c4, ?c5, ?c6, ?c7, ?c8, 
+		?c9, ?c10, ?c11, ?c12, ?c13, ?c14, ?c15, ?c16,
+		?c17, ?c18, ?c19  
+	FROM <http://upv/com/sq/>
+	WHERE (?s1, <http://upv.com/schemas/sq#t1.k>, ?c1),
+      	(?s1, <http://upv.com/schemas/sq#t1.c2>, ?c2),
+	(?s1, <http://upv.com/schemas/sq#t1.c3>, ?c3),
+	(?s1, <http://upv.com/schemas/sq#t1.c4>, ?c4),
+	(?s2, <http://upv.com/schemas/sq#t2.c2>, ?c1),
+	(?s2, <http://upv.com/schemas/sq#t2.k>, ?c5),
+	(?s2, <http://upv.com/schemas/sq#t2.c3>, ?c6),
+	(?s2, <http://upv.com/schemas/sq#t2.c4>, ?c7),	
+	(?s3, <http://upv.com/schemas/sq#t3.c2>, ?c5),
+	(?s3, <http://upv.com/schemas/sq#t3.k>, ?c8),
+	(?s3, <http://upv.com/schemas/sq#t3.c3>, ?c9),
+	(?s3, <http://upv.com/schemas/sq#t3.c4>, ?c10),
+	(?s4, <http://upv.com/schemas/sq#t4.c2>, ?c8),
+	(?s4, <http://upv.com/schemas/sq#t4.k>, ?c11),
+	(?s4, <http://upv.com/schemas/sq#t4.c3>, ?c12),
+	(?s4, <http://upv.com/schemas/sq#t4.c4>, ?c13),
+	(?s5, <http://upv.com/schemas/sq#t5.c2>, ?c11),
+	(?s5, <http://upv.com/schemas/sq#t5.k>, ?c14),
+	(?s5, <http://upv.com/schemas/sq#t5.c3>, ?c15),
+	(?s5, <http://upv.com/schemas/sq#t5.c4>, ?c16),
+	(?s6, <http://upv.com/schemas/sq#t6.c2>, ?c14),
+	(?s6, <http://upv.com/schemas/sq#t6.k>, ?c17),
+	(?s6, <http://upv.com/schemas/sq#t6.c3>, ?c18),
+	(?s6, <http://upv.com/schemas/sq#t6.c4>, ?c19)";	
+
+set :SQ2_8_28 =
+	"SELECT ?c1, ?c2, ?c3, ?c4, ?c5, ?c6, ?c7, ?c8, 
+		?c9, ?c10, ?c11, ?c12, ?c13, ?c14, ?c15, ?c16,
+		?c17, ?c18, ?c19, ?c20, ?c21, ?c22  
+	FROM <http://upv/com/sq/>
+	WHERE (?s1, <http://upv.com/schemas/sq#t1.k>, ?c1),
+      	(?s1, <http://upv.com/schemas/sq#t1.c2>, ?c2),
+	(?s1, <http://upv.com/schemas/sq#t1.c3>, ?c3),
+	(?s1, <http://upv.com/schemas/sq#t1.c4>, ?c4),
+	(?s2, <http://upv.com/schemas/sq#t2.c2>, ?c1),
+	(?s2, <http://upv.com/schemas/sq#t2.k>, ?c5),
+	(?s2, <http://upv.com/schemas/sq#t2.c3>, ?c6),
+	(?s2, <http://upv.com/schemas/sq#t2.c4>, ?c7),	
+	(?s3, <http://upv.com/schemas/sq#t3.c2>, ?c5),
+	(?s3, <http://upv.com/schemas/sq#t3.k>, ?c8),
+	(?s3, <http://upv.com/schemas/sq#t3.c3>, ?c9),
+	(?s3, <http://upv.com/schemas/sq#t3.c4>, ?c10),
+	(?s4, <http://upv.com/schemas/sq#t4.c2>, ?c8),
+	(?s4, <http://upv.com/schemas/sq#t4.k>, ?c11),
+	(?s4, <http://upv.com/schemas/sq#t4.c3>, ?c12),
+	(?s4, <http://upv.com/schemas/sq#t4.c4>, ?c13),
+	(?s5, <http://upv.com/schemas/sq#t5.c2>, ?c11),
+	(?s5, <http://upv.com/schemas/sq#t5.k>, ?c14),
+	(?s5, <http://upv.com/schemas/sq#t5.c3>, ?c15),
+	(?s5, <http://upv.com/schemas/sq#t5.c4>, ?c16),
+	(?s6, <http://upv.com/schemas/sq#t6.c2>, ?c14),
+	(?s6, <http://upv.com/schemas/sq#t6.k>, ?c17),
+	(?s6, <http://upv.com/schemas/sq#t6.c3>, ?c18),
+	(?s6, <http://upv.com/schemas/sq#t6.c4>, ?c19),
+	(?s7, <http://upv.com/schemas/sq#t7.c2>, ?c17),
+	(?s7, <http://upv.com/schemas/sq#t7.k>, ?c20),
+	(?s7, <http://upv.com/schemas/sq#t7.c3>, ?c21),
+	(?s7, <http://upv.com/schemas/sq#t7.c4>, ?c22)";	
+
+set :SQ2_8_32 =
+	"SELECT ?c1, ?c2, ?c3, ?c4, ?c5, ?c6, ?c7, ?c8, 
+		?c9, ?c10, ?c11, ?c12, ?c13, ?c14, ?c15, ?c16,
+		?c17, ?c18, ?c19, ?c20, ?c21, ?c22, ?c23, ?c24, 
+		?c25  
+	FROM <http://upv/com/sq/>
+	WHERE (?s1, <http://upv.com/schemas/sq#t1.k>, ?c1),
+      	(?s1, <http://upv.com/schemas/sq#t1.c2>, ?c2),
+	(?s1, <http://upv.com/schemas/sq#t1.c3>, ?c3),
+	(?s1, <http://upv.com/schemas/sq#t1.c4>, ?c4),
+	(?s2, <http://upv.com/schemas/sq#t2.c2>, ?c1),
+	(?s2, <http://upv.com/schemas/sq#t2.k>, ?c5),
+	(?s2, <http://upv.com/schemas/sq#t2.c3>, ?c6),
+	(?s2, <http://upv.com/schemas/sq#t2.c4>, ?c7),	
+	(?s3, <http://upv.com/schemas/sq#t3.c2>, ?c5),
+	(?s3, <http://upv.com/schemas/sq#t3.k>, ?c8),
+	(?s3, <http://upv.com/schemas/sq#t3.c3>, ?c9),
+	(?s3, <http://upv.com/schemas/sq#t3.c4>, ?c10),
+	(?s4, <http://upv.com/schemas/sq#t4.c2>, ?c8),
+	(?s4, <http://upv.com/schemas/sq#t4.k>, ?c11),
+	(?s4, <http://upv.com/schemas/sq#t4.c3>, ?c12),
+	(?s4, <http://upv.com/schemas/sq#t4.c4>, ?c13),
+	(?s5, <http://upv.com/schemas/sq#t5.c2>, ?c11),
+	(?s5, <http://upv.com/schemas/sq#t5.k>, ?c14),
+	(?s5, <http://upv.com/schemas/sq#t5.c3>, ?c15),
+	(?s5, <http://upv.com/schemas/sq#t5.c4>, ?c16),
+	(?s6, <http://upv.com/schemas/sq#t6.c2>, ?c14),
+	(?s6, <http://upv.com/schemas/sq#t6.k>, ?c17),
+	(?s6, <http://upv.com/schemas/sq#t6.c3>, ?c18),
+	(?s6, <http://upv.com/schemas/sq#t6.c4>, ?c19),
+	(?s7, <http://upv.com/schemas/sq#t7.c2>, ?c17),
+	(?s7, <http://upv.com/schemas/sq#t7.k>, ?c20),
+	(?s7, <http://upv.com/schemas/sq#t7.c3>, ?c21),
+	(?s7, <http://upv.com/schemas/sq#t7.c4>, ?c22),
+	(?s8, <http://upv.com/schemas/sq#t8.c2>, ?c20),
+	(?s8, <http://upv.com/schemas/sq#t8.k>, ?c23),
+	(?s8, <http://upv.com/schemas/sq#t8.c3>, ?c24),
+	(?s8, <http://upv.com/schemas/sq#t8.c4>, ?c25)";
+
+
+/* Parse queries
+ */
+set :dl_1_1 = parse_rdql(:SQ2_1_1);
+set :dl_1_2 = parse_rdql(:SQ2_1_2);
+set :dl_1_3 = parse_rdql(:SQ2_1_3);
+set :dl_1_4 = parse_rdql(:SQ2_1_4);
+set :dl_1_5 = parse_rdql(:SQ2_1_5);
+set :dl_1_6 = parse_rdql(:SQ2_1_6);
+set :dl_1_7 = parse_rdql(:SQ2_1_7);
+set :dl_1_8 = parse_rdql(:SQ2_1_8);
+set :dl_8_8 = parse_rdql(:SQ2_8_8);
+set :dl_8_12 = parse_rdql(:SQ2_8_12);
+set :dl_8_16 = parse_rdql(:SQ2_8_16);
+set :dl_8_20 = parse_rdql(:SQ2_8_20);
+set :dl_8_24 = parse_rdql(:SQ2_8_24);
+set :dl_8_28 = parse_rdql(:SQ2_8_28);
+set :dl_8_32 = parse_rdql(:SQ2_8_32);
+
+/* Experiment post-settings 
+ */
+enable_parteval(:pe);
+
+/* End of experiment post-settings 
+ */
+
+/* Cost based optimization in SQLServer  
+ */
+
+/* Measure compilation (optimization) and execution time in MSSQL Server
+ * using the 'STATISTICS' facility explained in the MSSQL Server on-line manual.
+ */
+SET STATISTICS TIME ON
+
+/* END, END-P, DVS-P  
+ */
+
+/* 0 RDQL join 
+ */
+select K from T1
+
+/* 4 RDQL join 
+ */
+select K,C2,C3,C4,C5 from T1
+
+/* 7 RDQL join 
+ */
+select K,C2,C3,C4,C5,C6,C7,C8 from T1
+
+/* 1 SQL join 
+ */
+select 	T1_.K,
+	T1_.C2,
+	T1_.C3,
+	T1_.C4,
+	T2_.K,
+	T2_.C3,
+	T2_.C4 
+from T1 T1_,T2 T2_
+where T2_.C2 = T1_.K
+
+/* 5 SQL join 
+ */
+select 	T1_.K,
+	T1_.C2,
+	T1_.C3,
+	T1_.C4,
+	T2_.K,
+	T2_.C3,
+	T2_.C4,
+	T3_.K,
+	T3_.C3,
+	T3_.C4,
+	T4_.K,
+	T4_.C3,
+	T4_.C4,
+	T5_.K,
+	T5_.C3,
+	T5_.C4,
+	T6_.K,
+	T6_.C3,
+	T6_.C4 
+from T1 T1_,T2 T2_,T3 T3_,T4 T4_,T5 T5_,T6 T6_
+where T2_.C2 = T1_.K and T3_.C2 = T2_.K and T4_.C2 = T3_.K and T5_.C2 = T4_.K and T6_.C2 = T5_.K and T7_.C2 = T6_.K
+
+/* 6 SQL join 
+ */
+select 	T1_.K,
+	T1_.C2,
+	T1_.C3,
+	T1_.C4,
+	T2_.K,
+	T2_.C3,
+	T2_.C4,
+	T3_.K,
+	T3_.C3,
+	T3_.C4,
+	T4_.K,
+	T4_.C3,
+	T4_.C4,
+	T5_.K,
+	T5_.C3,
+	T5_.C4,
+	T6_.K,
+	T6_.C3,
+	T6_.C4,
+	T7_.K,
+	T7_.C3,
+	T7_.C4 
+from T1 T1_,T2 T2_,T3 T3_,T4 T4_,T5 T5_,T6 T6_,T7 T7_
+where T2_.C2 = T1_.K and T3_.C2 = T2_.K and T4_.C2 = T3_.K and T5_.C2 = T4_.K and T6_.C2 = T5_.K and T7_.C2 = T6_.K and T8_.C2 = T7_.K
+
+
+/* 7 SQL join 
+ */
+select 	T1_.K,
+	T1_.C2,
+	T1_.C3,
+	T1_.C4,
+	T2_.K,
+	T2_.C3,
+	T2_.C4,
+	T3_.K,
+	T3_.C3,
+	T3_.C4,
+	T4_.K,
+	T4_.C3,
+	T4_.C4,
+	T5_.K,
+	T5_.C3,
+	T5_.C4,
+	T6_.K,
+	T6_.C3,
+	T6_.C4,
+	T7_.K,
+	T7_.C3,
+	T7_.C4,
+	T8_.K,
+	T8_.C3,
+	T8_.C4 
+from T1 T1_,T2 T2_,T3 T3_,T4 T4_,T5 T5_,T6 T6_,T7 T7_,T8 T8_ 
+where T2_.C2 = T1_.K and T3_.C2 = T2_.K and T4_.C2 = T3_.K and T5_.C2 = T4_.K and T6_.C2 = T5_.K and T7_.C2 = T6_.K and T8_.C2 = T7_.K
+
+/* DPS: Beräknas som tid för första SQL stmt och sedan 1ms för resterande stmts  
+ */
+select K from T1
+
+.....
+
+select C4 from T8
+

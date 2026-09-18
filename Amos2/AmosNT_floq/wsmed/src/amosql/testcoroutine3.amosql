@@ -1,0 +1,21 @@
+
+/*set fanout */
+setfanout({2});
+create function query3()-> integer as select count(
+                  sql("select p.V1
+                       from   intPlus p, intBag b
+                       where  p.NUM1 in (b.V1) and p.NUM2=10"));
+
+lisp;
+(checkequal "Web Service Calls with FF_APPLYP >>"
+   ((osql "query3();")
+    '((4))))
+
+:osql
+
+
+/* kill_all_peers();
+ killjava();
+quit; */
+
+kill_the_federation();

@@ -1,0 +1,330 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2009 Gyozo Gidofalvi, UDBL
+ * $RCSfile: NoveltyDetectNN.osql,v $
+ * $Revision: 1.3 $ $Date: 2009/10/02 20:25:49 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: OSQL function definitions to facilitate novelty detection
+ * using compression neural networks. The main idea is to try compress the
+ * input through the hidden neurons and reproduce the same input as output.
+ * When the reproduction quality is not as "expected" then raise an alarm. 
+ * To measure the expected reproduction quality the results of a number of 
+ * independent is evaluated in conjunction to derive standard error estimates
+ * in the prediction. An alarm is raised when the input is more than x number
+ * of standard error away from the predicted output, i.e., the attempted 
+ * reconstruction of the input.  
+ *
+ ****************************************************************************
+ * $Log: NoveltyDetectNN.osql,v $
+ * Revision 1.3  2009/10/02 20:25:49  zeitler
+ * avgstdev - vavgstdev
+ *
+ * Revision 1.2  2009/09/16 13:25:07  zeitler
+ * removed declared variables that were not used
+ *
+ * Revision 1.1  2009/08/03 13:26:45  gyogi445
+ * Novelty detection via independently trained "compression" neural networks
+ *
+ * Revision 1.1  2009/06/10 14:18:08  gyogi445
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+
+/* Standard Error Estimates for NN via the bootstrap pairs approach
+
+   The idea is to train or evaluate several trained networks and compare
+   the individual network errors to the mean error to derive and estimate
+   on the standard error of the prediction / approximation. The individual 
+   networks must be trained on the same sample size but the samples should 
+   be randonly sampled WITH replacement from the training set. To acomplish
+   the above task one needs to perofrm several independent computations 
+   in parallel and evalaute the merged results. the independent computations
+   can be done by seperate threads, processes or even processors on a mutli
+   processor system. While the user should be able to have optional control 
+   over the above choice, it should also be seemlessly integrated into the 
+   data stream query language and processing system. For now, since basic 
+   paralelization methods are implemented for processes, processes will be 
+   as a computation unit, i.e. each streamed NN will be a process on its own.      
+
+*/
+
+create function mapstreamsargv(Vector of Stream vs, 
+                               Vector of Vector vargv, 
+                               Function f)
+                               -> Vector of Stream
+/* Function to map each stream in vs, through function f, using 
+   the corresponding additional argument vectors in vargv */   
+  as vselect ostream(p, 0)
+     from Sp p
+     where p in spv(vselect sapply(f, concat({s}, argv)) 
+                    from Stream s, Vector argv, Integer i 
+                    where i in iota(0,dim(vs)-1)
+                      and s = vs[i]
+                      and argv = vargv[i]);
+
+
+create function sann_err(Stream of Vector s, 
+			 Vector of Integer NNstructure, 
+                         Real gain, 
+                         Charstring modeName, 
+                         Charstring NNtaskName, 
+                         Integer numNN)
+                         -> Stream of Vector of Vector of Number
+/* Function to train / evaluate N randomly innitialized NNs in parallel to 
+   obtain an stream of average predictions with corresponding standard error 
+   estimates on the predictions. */
+as streamof(
+   select vvavgstdev(in(sv))
+   from Vector of Stream vs,
+        Vector of Stream vms,
+        Vector of Vector vargv,
+        Stream of Vector of Vector of Number sv 
+where sv = zipstreams(vms)
+  and vms = mapstreamsargv(vs, vargv, #'sann1')
+  and vargv = vrep({{NNstructure, gain, modeName, NNtaskName}}, numNN)
+  and vs = splitstream(s, numNN, #'bcast'));
+
+
+create function sannf_err(Stream of Vector s, 
+			  Vector of Charstring wfiles, 
+                          Real gain, 
+                          Charstring modeName, 
+                          Charstring NNtaskName, 
+                          Integer numNN)
+                          -> Stream of Vector of Vector of Number
+/* Function to train / evaluate N NNs in parallel to 
+   obtain an stream of average predictions with corresponding standard error 
+   estimates on the predictions. Corresponding initial weight matrices are 
+   read from the weight files wfiles. */
+as streamof(
+   select vvavgstdev(in(sv))
+   from Vector of Stream vs,
+        Vector of Stream vms,
+        Vector of Vector vargv,
+        Stream of Vector of Vector of Number sv 
+where sv = zipstreams(vms)
+  and vms = mapstreamsargv(vs, vargv, #'sann1f')
+  and vargv = (vselect {wfiles[i], gain, modeName, NNtaskName} from Integer i)
+  and vs = splitstream(s, numNN, #'bcast'));
+
+
+create function noveltyAlarmfn(Stream of Vector YE_Xs)
+                               -> Stream of Vector of Vector of Number
+/* Function to generate a stream of novelty alarms when the input X in a 
+   particular dimension deviates more than one standard error (E) from 
+   the mean prediction (Y) */   
+  as streamof(
+     select alarmv
+     from Vector of Vector of Number alarmv, 
+          Vector of Vector of Number YEs,
+          Vector of Number Xs
+     where {YEs, Xs} in YE_Xs
+       and alarmv = (vselect {i, y, e, x}
+                     from Integer i, Number y, Number e, Number x
+                     where {y, e} = YEs[i]
+                       and x = Xs[i]
+                       and i in iota(0, dim(Xs)-1)
+                       and abs(y-x)>e));
+   
+
+create function snovelty(Stream of Vector of Number s, 
+                         Vector of Integer NNstruct,
+                         Integer numNN)
+                         -> Stream of Vector of Vector of Number 
+/* Function to perfrom the novelty monitoring of a multidimensional vector
+   using an ensamble of numNN compression NNs. The ensable is used to estimate
+   standard prediction error based on which novelty alarms are raised when the 
+   input is further away from the output (reconstructed input after compression)
+   than expected */  
+  as 
+     select alarms
+     from Stream of Vector of Number s,
+          Vector of Stream vs,
+          Stream of Vector nis,
+          Stream of Vector nps,
+	  Stream of Vector mrs,
+          Stream of Vector of Vector of Number alarms
+     where vs = splitstream(s, 3, #'bcast')
+       and nis = zipstreams({vs[0], vs[1]})
+       and nps = sann_err(nis, NNstruct, 0.5, "LEARN", "APPROX", numNN)
+       and mrs = zipstreams({nps, vs[2]})
+       and alarms = mapstreams({mrs}, #'noveltyAlarmfn')[0];    
+
+/* TODO: The above functions hangs. Need to investigate the cause. */
+
+create function snovelty2(Stream of Vector of Number s, 
+                          Vector of Integer NNstruct,
+                          Integer numNN)
+                          -> Stream of Vector of Vector of Number 
+/* Function to perfrom the novelty monitoring of a multidimensional vector
+   using an ensamble of numNN compression NNs. The ensable is used to estimate
+   standard prediction error based on which novelty alarms are raised when the 
+   input is further away from the output (reconstructed input after compression)
+   than expected */  
+  as select NoveltyAlarmFn(mrs)
+     from Vector of Stream of Integer vs,
+          Vector of Stream of Vector mvs,
+          Stream of Vector mrs
+     where vs = splitstream(s, 2, #'bcast')
+       and mvs = mapstreamsargv({zipstreams(splitstream(vs[0], 2, #'bcast'))}, 
+                                {{NNstruct, 0.5, "LEARN", "APPROX", numNN}}, 
+                                #'sann_err')
+       and mrs = zipstreams({mvs[0], vs[1]}); 
+
+
+create function initNNE(Vector of Integer NNstruct, Integer numNN)
+                        -> Bag of Vector of Vector of Vector of Number
+/* Fn to create a numNN-sized bag of randomly initialized NNs 
+   with NNstruct structure. The collection of NNs is reffered to 
+   as an ensemble of NNs (NNE) */  
+  as for each Integer i where i in iota(1,numNN) result randNNweights(NNstruct); 
+
+create function saveNNE(Bag bNN, Charstring fname)->Boolean
+/* Fn to save a bag of NNs as an ensemble of NNs (NNE)  */
+  as writefile(fname, bNN);
+
+create function loadNNE(Charstring fname)
+                        -> Bag of Vector of Vector of Vector of Number
+/* Fn to save a bag of NNs as an ensemble of NNs (NNE) */
+  as readfile(fname);
+ 
+create function trainNNE(Stream of Vector s, 
+			 Bag of Vector of Vector of Vector of Number NNE, 
+                         Real gain, 
+                         Charstring NNtaskName, 
+                         Integer width,
+                         Integer stride,
+                         Integer samplesize)
+                         -> Bag of Vector of Vector of Vector of Number
+/* Function to train N NNs in parallel on iid samples of the input data stream s.   
+   The resulting NNs can be used to obtain an stream of average predictions 
+   with corresponding standard error estimates on the predictions. */
+as select in(stnw)
+   from Integer numNN,
+        Vector of Stream vs,
+        Vector of Stream vss,
+        Vector of Vector s_vargv,
+        Vector of Stream vms,
+        Vector of Vector m_vargv,
+        Stream of Vector of Vector of Vector of Number stnw 
+where numNN = count(NNE) 
+  and vs = splitstream(swinagg(s, width, stride), numNN, #'bcast')
+  and vss = mapstreamsargv(vs, s_vargv, #'svsample')
+  and s_vargv = vrep({{samplesize}}, numNN)
+  and vms = mapstreamsargv(vss, m_vargv, #'sANN1sw_silenttrain')
+  and m_vargv = (vselect {NNW, gain, NNtaskName} 
+                 from Vector of Vector of Vector of Number NNW
+                 where NNW in NNE)
+  and stnw = mergestreams(vms);
+
+create function evalNNE1(Stream of Vector s, 
+			Bag of Vector of Vector of Vector of Number NNE, 
+                        Charstring NNtaskName)
+                        -> Stream of Vector of Vector of Number 
+/* Function to evaluate an ensemble of NNs in parallel to 
+   obtain a stream of average predictions with corresponding 
+   standard error estimates on the predictions. */
+as streamof(
+   select vvavgstdev(in(sv))
+   from Integer numNN,
+        Vector of Stream vs,
+        Vector of Stream vms,
+        Vector of Vector vargv,
+        Stream of Vector of Vector of Number sv 
+where numNN = count(NNE)
+  and vs = splitstream(s, numNN, #'bcast')
+  and vms = mapstreamsargv(vs, vargv, #'sANN_wwo')
+  and vargv = (vselect {{}, {}, {{}}, NNW, {{}}, 0.0, "EVAL", NNtaskName} 
+               from Vector of Vector of Vector of Number NNW
+               where NNW in NNE)
+  and print(vargv)
+  and sv = zipstreams(vms));
+
+create function iid(Stream s, 
+                    Integer numsamples, 
+                    Integer width,
+                    Integer stride,
+                    Integer samplesize)
+                    -> Stream of Vector of Vector of Number
+/* iid samples of the windows of the input data stream s. */
+as select siid
+   from Vector of Stream vs,
+        Vector of Stream vss,
+        Vector of Vector s_vargv,
+        Vector of Stream vms,
+        Stream of Vector of Vector of Number siid 
+where vs = splitstream(swinagg(s, width, stride), numsamples, #'bcast')
+  and vss = mapstreamsargv(vs, s_vargv, #'svsample')
+  and s_vargv = vrep({{samplesize}}, numsamples)
+  and vms = mapstreams(vss, #'id')
+  and siid = zipstreams(vms);
+
+/*
+
+in(iid(siota(1,1000), 3, 10, 10, 10));
+
+*/
+
+/* Functions that probably have to be in the image 
+
+create function dummyNN(Stream of Vector of Vector of Number si)
+                        -> Stream of Vector of Number
+  as streamof(select in(si)[1]);
+
+create function parallel_dummyNN(Stream of Vector of Vector of Number s, 
+                                 Integer numNN)
+                                 -> Stream of Vector of Number
+  as streamof(
+     select in(msv)[0] 
+     from Vector of Stream vs,
+          Vector of Stream mvs,
+          Stream of Vector msv
+     where vs = splitstream(s, numNN, #'bcast')
+       and mvs = mapstreams(vs, #'dummyNN')
+       and msv = zipstreams(mvs));
+
+*/
+
+/* Intended network of stream processes 
+
+select in(mrs)
+from Vector of Stream vs,
+     Stream of Vector nis,
+     Stream of Vector nps,
+     Stream of Vector mrs
+where vs = splitstream(streamvec(siota(1,10)), 2, #'bcast')
+  and nis = zipstreams(splitstream(vs[0], 2, #'bcast'))
+  and nps = parallel_dummyNN(nis, 2)
+  and mrs = zipstreams({vs[1], nps}); 
+
+select in(mrs)
+from Vector of Stream of Integer vs,
+     Stream of Vector of Integer nis,
+     Stream of Vector mrs
+where vs = splitstream(siota(1,10), 3, #'bcast')
+  and nis = zipstreams({vs[0], vs[1]})
+  and mrs = mapstreams({zipstreams({vs[2], nis})}, #'id')[0]; 
+
+create function smm(Stream of Object s, Function f, Integer fanout)
+                    -> Stream of Vector of Object
+  as select mrs
+     from Vector of Stream of Object vs,
+          Vector of Stream of Object mvs,
+          Stream of Vector of Object mrs
+where vs = splitstream(s, fanout, #'bcast')
+  and mvs = mapstreams(vs, f)
+  and mrs = zipstreams(mvs); 
+
+select in(mrs)
+     from Vector of Stream of Object vs,
+          Vector of Stream of Object mvs,
+          Stream of Vector of Object mrs
+where vs = splitstream(siota(1,10), 2, #'bcast')
+  and mvs = mapstreams(vs, #'id')
+  and mrs = zipstreams(mvs); 
+
+in(smm(siota(1,10), #'id', 2));
+
+ */

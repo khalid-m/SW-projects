@@ -1,0 +1,20 @@
+/* make a new datasource object and connect it to a data source */
+ship("wsmos","set :odbc = odbc('ADS');");
+ship("wsmos","connect(:odbc, 'usdadata');");
+ship("wsmos","import_table(:odbc, 'FOOD_DES');");
+ship("wsmos","set :odbc = odbc('ADS');connect(:odbc, 'usdadata');import_table(:odbc, 'FOOD_DES');");
+ship("wsmos","create function searchFoodByDescription_gp_kw(Charstring gp, Charstring kw)-> <charstring ndb, charstring longdes> as select NDB_No(u),Long_Desc(u) from FOOD_DES@ads u where FdGrp_Cd(u)=gp and Shrt_Desc(u)=kw;");
+ship("wsmos","create function searchFoodByDescription_gp(Charstring gp)-> <charstring ndb, charstring longdes> as select NDB_No(u),Long_Desc(u) from FOOD_DES@ads u where FdGrp_Cd(u)=gp;");
+ship("wsmos","create function searchFoodByDescription_kw(Charstring kw)-> <charstring ndb, charstring longdes> as select NDB_No(u),Long_Desc(u) from FOOD_DES@ads u where like_i(Shrt_Desc(u),"*"+kw+"*");");
+ship("wsmos","create function searchFoodByDescription()-> <charstring ndb, charstring longdes> as select NDB_No(u),Long_Desc(u) from FOOD_DES@ads u;");
+
+
+
+
+create function searchFoodByDescription_gp_kw(Charstring gp, Charstring kw)-> <charstring ndb, charstring longdes> as select NDB_No(u),Long_Desc(u) from FOOD_DES@ads u where FdGrp_Cd(u)=gp and Shrt_Desc(u)=kw;
+
+create function searchFoodByDescription_gp(Charstring gp)-> <charstring ndb, charstring longdes> as select NDB_No(u),Long_Desc(u) from FOOD_DES@ads u where FdGrp_Cd(u)=gp;
+
+create function searchFoodByDescription_kw(Charstring kw)-> <charstring ndb, charstring longdes> as select NDB_No(u),Long_Desc(u) from FOOD_DES@ads u where like_i(Shrt_Desc(u),"*"+kw+"*");
+
+create function searchFoodByDescription()-> <charstring ndb, charstring longdes> as select NDB_No(u),Long_Desc(u) from FOOD_DES@ads u;

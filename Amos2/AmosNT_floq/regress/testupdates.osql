@@ -1,0 +1,126 @@
+
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2002 Martin Hansson, UDBL
+ * $RCSfile: testupdates.osql,v $
+ * $Revision: 1.3 $ $Date: 2007/11/04 20:35:14 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Test for custom update functions.
+ *
+ ****************************************************************************
+ * $Log: testupdates.osql,v $
+ * Revision 1.3  2007/11/04 20:35:14  torer
+ * Wrong width for boolean valued foreign predicates
+ *
+ ****************************************************************************/
+/*
+ * There are two cases, dynamic and
+ * static. See fncall.lsp
+ */
+
+create function upd(integer x) -> integer y 
+as foreign 'upd-+';
+
+create function add_upd(integer x, integer y) -> boolean
+as foreign 'add_upd--';
+
+create function remove_upd(integer x, integer y) -> boolean
+as foreign 'remove_upd--';
+
+create function set_upd(integer x, integer y) -> boolean
+as foreign 'set_upd--';
+
+
+set add_function(functionnamed('INTEGER.UPD->INTEGER')) = 
+    functionnamed('INTEGER.INTEGER.ADD_UPD->BOOLEAN');
+
+set remove_function(functionnamed('INTEGER.UPD->INTEGER')) = 
+    functionnamed('INTEGER.INTEGER.REMOVE_UPD->BOOLEAN');
+
+set set_function(functionnamed('INTEGER.UPD->INTEGER')) =
+    functionnamed('INTEGER.INTEGER.SET_UPD->BOOLEAN');
+
+lisp;
+
+(defvar _verbose_ nil)
+(defvar _upd_ (getfunctionnamed 'INTEGER.UPD->INTEGER))
+(defvar _aupd_ (getfunctionnamed 'INTEGER.INTEGER.ADD_UPD->BOOLEAN))
+
+(defvar _upd-values_ '())
+
+(defun upd-+ (fno x y)
+  (dolist (res (mapfilter (f/l (pair) (= (car pair) x)) _upd-values_))
+    (osql-result x (cdr res))))
+
+(defun add_upd-- (fno x y)
+  (putlast _upd-values_ (cons x y))
+  (if _verbose_ (print _upd-values_))
+  (osql-result x y))
+
+(defun remove_upd-- (fno x y)
+  (setq _upd-values_ (remove (cons x y) _upd-values_))
+  (if _verbose_ (print _upd-values_))
+  (osql-result x y))
+
+(defun set_upd-- (fno x y)
+  (setq _upd-values_ (mapfilter (f/l (pair)(/= (car pair) x)) _upd-values_))
+  (putlast _upd-values_ (cons x y))
+  (if _verbose_ (print _upd-values_))
+  (osql-result x y))
+
+;;; The static case, going throught the usual type resolution
+
+(osql "add upd(1)=2;
+       add upd(2)=3;")
+(checkequal "DIY add function in the static case"
+	    (_upd-values_ '((1 . 2)(2 . 3))))
+
+(osql "remove upd(1)=2;")
+(checkequal "DIY remove function in the static case"
+	    (_upd-values_ '((2 . 3))))
+
+(osql "add upd(1)=2;
+       add upd(2)=3;
+       add upd(2)=4;
+       add upd(2)=5;
+       add upd(2)=6;
+       add upd(2)=7;
+       set upd(2)=12;
+       add upd(2)=13;")
+(checkequal "DIY set function in the static case"
+	    (_upd-values_ '((1 . 2) (2 . 12) (2 . 13))))
+
+;;; The dynamic case, calling setfunction with just a name
+
+(setq _upd-values_ '())
+
+(addfunction 'upd '(1) '(2))
+(addfunction 'upd '(2) '(3))
+(checkequal "DIY add function in the dynamic case"
+	    (_upd-values_ '((1 . 2)(2 . 3))))
+
+(remfunction 'upd '(1) '(2))
+(checkequal "DIY remove function in the dynamic case"
+	    (_upd-values_ '((2 . 3))))
+
+(addfunction 'upd '(1) '( 2))
+(addfunction 'upd '(2) '( 3))
+(addfunction 'upd '(2) '( 4))
+(addfunction 'upd '(2) '( 5))
+(addfunction 'upd '(2) '( 6))
+(addfunction 'upd '(2) '( 7))
+(setfunction 'upd '(2) '(12))
+(addfunction 'upd '(2) '(13))
+(checkequal "DIY set function in the dynamic case"
+	    (_upd-values_ '((1 . 2) (2 . 12) (2 . 13))))
+
+(remfunction 'upd #(1) #(2))
+(addfunction 'upd #(2) #(3))
+
+(checkequal "Weird argument types"
+	    (_upd-values_ '((2 . 12) (2 . 13) (2 . 3))))
+
+:osql
+rollback;

@@ -1,0 +1,85 @@
+/*-*-sql-*-*******************************************************************/
+
+/* This file contains experiments for parallel fsplit on multiarrays,
+   parallel execution of LR, as well as merge and tree shaped zipstreams on
+   multiarrays. */
+
+/*
+rr_fsplit_lr_mrg_opt({getenv('HOME') + "/glob/ezgen/output/64m4/cdpm0"},
+64, 2, 4, "mul2_rr4");
+
+rr_fsplit_lrcnt_opt({getenv('HOME') + "/glob/ezgen/output/64m4/cdpm0"},
+64, 2, rrfo(), "mul2_rr" + stringify(rrfo()));
+
+*/
+
+sp_ts_freq(50.0);
+sp_proctime_freq(50.0);
+sp_report_freq(120.5);
+
+sp_flush_freq(0.01);
+
+sp_ts(0);
+sp_proctime(0);
+sleep(0.1);
+select "NB: BASEHOSTNUM IS NOT SET FOR THIS SMALL PARTITION";
+
+/*
+select "setting basehostnum";
+sp_basehostnum(1);
+*/
+
+select "cpus_per_host:";
+cpus_per_host();
+
+create function mul()->integer as XX;
+create function rrfo()->integer as 8*mul();
+create function postmsz()->integer as 16;
+
+create function firstone()->vector of charstring as
+{getenv('HOME') + "/glob/ezgen/output/64m4/cdpm0"}; 
+
+create function lastone()->vector of charstring as
+{getenv('HOME') + "/glob/ezgen/output/64m4/cdpm76"}; 
+
+create function last30min()->vector of charstring as
+vectorize(select i, getenv('HOME') + "/glob/ezgen/output/64m4/cdpm" +
+stringify(60+i)
+from integer i
+where i in iota(0, 16));
+
+create function alldata()->vector of charstring as
+vectorize(select i, getenv('HOME') + "/glob/ezgen/output/64m4/cdpm" +
+stringify(i)
+from integer i
+where i in iota(0, 76));
+
+create function outputfname()->charstring as
+"mul" + stringify(mul()) + "_rr" + stringify(rrfo()) + "_pm" + postmsz();
+
+/* signature is
+input data files
+inl
+mul
+rrfo
+(outputfname)
+*/
+
+/* rsplit_fsplit_lrbin_bguallall_tcount(YY(), 64, mul(), rrfo()); */
+
+/* rs_fs_lrbinmulti_bguall_tcount(YY(), 64, mul(), rrfo(), postmsz()); */
+
+rs_fs_lrbinmulti_bguasqtzipup_tcount(YY(), 64, mul(), rrfo(), postmsz());
+
+/*
+rsplit_fsplit_lrmulti_mrg_sqzip_unpack_tcount(YY(), 64, mul(), rrfo(),
+  postmsz(), outputfname());
+*/
+
+sleep(0.5);
+
+writefile("dprofile-" + outputfname(), {dprofile()});
+
+sleep(0.5);
+
+q();

@@ -1,0 +1,295 @@
+How neurogenerator works.
+
+source files: neuro/bin/Makefiles
+
+The neurogenerator wrapper uses the relational wrapper to migrate data stored
+in Amos to a relational database, while maintaining totally transparent access
+to these data using an enhanced relational wrapper.
+
+The process consists of four steps:
+
+Step 1:
+
+The original schema is loaded into Amos as is and stored as a separate .dmp 
+file.
+
+Step 2 - schema export :
+
+source files: wrappers/relational/export-type.lsp
+	      wrappers/relational/exportlog.lsp
+              neuro/bin/neuroexport.osql
+
+created files: ng.gdb - The database file
+	       log.osql - The file that imports it back in
+	       sqllog.osql - A log file containing all the sql statements that
+			     were executed during schema creation
+
+The .dmp file from Step 1 is loaded (and some patches applied) and a 
+file neuroexport.osql is loaded and its content executed. This file is 
+hand-turned but it could easily be auto-generated. In fact, it contains
+only two statements:
+
+     * a call to export_types
+     This is the one function that does the real work in the neurogenerator
+     exportation. All other steps taken simply reap the rewards. For now, we
+     will note that the function takes as arguments a datasource object and
+     a vector of charstring to hold the names of the types.
+
+     * a disconnect statement.
+
+The export function creates two log files, one which is a true log of all the 
+activity in the relational database and one which is not really a log file, 
+but it poses as a log to the export function. If Lisp were object-oriented 
+there would be an interface called exportlog that registers in the exporter, 
+and the code in exportlog would be class implementing that interface (almost 
+like an action listener in Java) and this particular export log would be 
+creating a very useful textfile, namely a batch of AmosQL commands for 
+importing the tables back in Amos, this time around as mapped types rather 
+than proprietary types although the functionality remains EXACTLY THE SAME.
+
+There are several twists to the above approach. First of all one wants the 
+migration to be transparent to the point that types and functions have the 
+same names, which has the consequence that the old type must be deleted before
+the table can be imported (two types cannot have the same name, obviously.) So
+what is desired is in essence a file containing a set of commands
+
+  delete type <x>
+  import_table(ds, <at_x>, <x>);
+
+The file should normally not contain stored function definitions as these are 
+supposed to be 'encoded' in the database as columns, tables, and key 
+references. See section 'How Exportation Is Done' for details on this.
+
+A problem arises with non-stored functions, they are all deleted as the types
+that they are defined for perish. These functions are referred to as
+'endangered functions' and the are put on an 'endangered function' list. They
+are recorded with the function exportlog-report-endangeredfn in exportlog.lsp. 
+The endangered functions' definitinitions are included verbatim in the file 
+log.osql. Thanks to Amos's habit of recording the source text of all functions
+this was a piece of cake to implement.
+
+Step 3 - A change of schema:
+
+source files: wrappers/amosexport/amosexport.lsp 
+              wrappers/amosexport/amosexport.osql
+
+This step is a very simple one. All the work was done in step 2. All we do is
+start up with the previous dump, load up log.osql and save again. As a 
+bootstrap the table userobject is imported. This is the table that is
+'supertype' of all other tables in the database, and the only one which gets
+the suffix '_ibds'; in order to distinguish it from the Amos type userobject.
+
+Note also that the datasource this time is not relational. This is because the
+datasource relational lacks the ability to answer questions such as 'which is
+the subtype of this type?'. The type relational is simply not equipped to do
+this. Even though the information is clearly there, you need someone to 
+interpret it. That's where the new wrapper comes into play. The wrapper 
+(and type) AmosExport extends JDBC by adding functions such as most_specific 
+type and rehacks the _decode_ function in order to deal with polymorhpism. 
+This is where we really push the envelope of what Amos is really capable of 
+doing. Of course, in order to REALLY add these features to Amos, there are
+some novel aspects that need implementation. I won't go into detail but I 
+might just drop 'multidirectional derived functions'. The basic assumption has
+always been that if you issue a
+
+SELECT e FROM employee e;
+
+all you will ever get are employee objects, regardless of what their type 
+really is. Since _decode_ creates object and types them based solely on which
+word comes after FROM, we cannot have total object-orientation. What exists 
+for AmosExport is a workaround that does not easily integrate into Amos. 
+Basically the new _decode_ must, before creating an object, ask the datasource
+what type the object REALLY is. This is slow, yes, and the design speeds this 
+up somewhat byadding an extra column (VARCHAR ORIGINAL_TYPE_NAME) in the 
+table USEROBJECT which contains the name of the table which corresponds to 
+the most specific type of the object. It's not a perfect design but hey, it 
+works!
+
+I know the design of JDBC and AmosExport is kind of sketchy - AmosExport 
+extends JDBC when really it should be the other way around. This is due to a
+much older design mistake - that JDBC be under Relational. This is not
+a good design: You can't say that JDBC is_a Relational. Relational is the 
+translator and the import facilities. JDBC is strictly an interface and a 
+driver, just like ODBC or what have you. It's nothing but the classical is/has
+confusion. Relational HAS an interface, not that an interface IS Relational.
+So the way the hierarchy should be done is this:
+
+
+              Datasource        Interface
+               ^    ^                 ^
+              /      \        1       |
+  ObjectEnhanced   Relational<---RelationalInterface
+             ^       ^            ^      ^     ^
+              \     /            /        \     \
+             AmosExport         JDBC      ODBC   ...
+
+
+step 4 - population:
+
+source files: wrappers/amosexport/new_external-to-mapped.lsp
+	      wrappers/relational/new-object.lsp	
+
+
+
+Most of the stuff that goes on in population is none of my business, it's a 
+lot of calculations on overlap volumes, conversion between file formats and 
+stuff but at the very heart of population lies the function new_object, which 
+takes a (former) oid number and a type name and creates an object. In the 
+normal Amos world this simply executes a CREATE statement but we're not in 
+Kansas anymore.
+
+What happens is this:
+
+  * first a new unique integer is produced.
+  
+  * The table corresponding to the type is updated with a new row containing 
+  the number
+
+  * The FOREIGN KEY references are followed and all of those tables updated
+  similarily with the same row. Hopefully the branches merge att USEROBJECT
+  where the column ORIGINAL_TYPE_NAME is updated with the name of the first 
+  table.
+
+I guess the last step could be solved by using cascaded updates but that would
+be one more feature that you would depend upon in the database. This way we 
+have complete control.
+
+Of course nowadays when we have transparent constructors the whole idea of
+new_object is somewhat superfluous. If I had the time I'd create a dedicated
+constructor for mapped AmosExport objects that does the above job and I 
+woldn't have to redefine anything.
+
+step 5 - starting up.
+
+In step 5 everything is done and all you have to do is enable java, load the 
+JDBC driver, connect and it should all be there.
+
+How Exportation Is Done:
+
+- Types to tables   
+
+Every type in Amos can be implemented as a table in a relational database. 
+It is very simple to verify this so that is how it's done. The problem is that
+a table without columns is not allowed in SQL, whereas a type in Amos without
+properties will exist perfectly fine. On the other hand, there IS one thing 
+that all instances of a type share : the OID number. This number also happens
+to be globally unique (for a given Amos, that is). So here we have a great
+canditade key for any amos type. The column OID INTEGER is the primary key for
+every table that corresponds to a type.
+
+- Inheritance
+
+There are several ways to deal with inheritance in a relational database. 
+There is the possibility of BOOLEAN valued columns to indicate possible 
+membership of subtypes, for example a table PERSON might have a column called
+IS_STUDENT, a column called GPA and a trigger to ensure that whenever 
+IS_STUDENT is true, GPA is not NULL. But it seemed less appealing.
+
+What I chose was an approach which more closely resembles the way that 
+object-oriented programming languages implement type membership. In C++, for
+instance, an object of a certain type always contains (a pointer to) an
+instance of the object's supertype. Whenever a propery (function or field) is 
+needed, the object's own context is scanned and of nothing is found the search
+follows the pointer to the supertype's object and so on.
+
+So in essence whenever you create an object of a certain type you actually
+invoke a 'chain reaction' creating objects of all successive supertypes 
+until you reach some almighty supertype at the top of the food chain. This is
+a very simple model and the concept is easy to grasp (At least I think so.)
+So all I had to do was to find a way to translate this into SQL. The following
+'mappings' proved fruitful:
+
+  * types <-> tables
+ 
+  * instances <-> rows
+
+  * pointers <-> foreign keys
+
+  * object identity <-> the primary key column of the object's row
+
+The consequences are obvious: For example a table PERSON will have the columns
+(OID INTEGER PRIMARY KEY, SSN INTEGER, NAME CHAR[n], ...) and a table STUDENT
+will have (OID INTEGER PRIMARY KEY REFERENCES PERSON, GPA FLOAT, ...).
+Thus the student will always reference a PERSON instance and the two rows 
+together (an equijoin over OID) will yield all properties of the student.
+
+In SQL it is also possible to ensure consistency by using cascaded deletion
+and insertion, which I strongly recommend. One does not want a STUDENT who is
+not a PERSON.
+
+- Non-literal types as function results
+
+It is easy in Amos to create functions that return objects of any type, 
+indeed, it is done the exact same way as returning anything else. This is not 
+the case in SQL, where a column can only continue the built-in types that 
+came with the database in question. There is no such thing as a user-created 
+type. In order to create mapping between such entities a relational database 
+frequently employs foreign keys. An EMPLOYEE's social security number can 
+easily be implemented as an INTEGER column. The employee's boss, however 
+needs to be dealt with in a different manner. What is usually done is that 
+you create a table MANAGER with some primary key, say emp_no, and then add 
+column (INTEGER MANAGER REFERENCES MANAGER.EMP_NO), using a foreign key to 
+indicate that this particular integer matches a manager entity.
+
+The above taken into account, we can observe the following:
+
+  * non-literal property types (function result/argument types) 
+  are foreign keys
+
+The approach is greatly simplified by the previous decision to use the same
+column OID as the primary key for all tables. So any function of the kind
+
+  foo(person) -> department
+
+will be implemented in SQL as:
+
+     person				
+      _OID_INTEGER_| FOO INTEGER REFERENCES DEPARTMENT.OID
+       ------------+--------------------------------------
+
+     department
+      _OID_INTEGER_| ...
+       ------------+------
+ 
+And the implementation of foo is 
+
+  foo(person p)->integer department ...(automatically created by import_table)
+
+  foo(person p) -> department d
+  as select d where _decode_(d) = foo(department(p));
+
+- Bags
+
+A function in Amos can return either a bag of someting 
+(a key->nonkey function) or a single result (key->key), or any combination of 
+key/nonkey. This is a very great generalization from the relational model 
+where one-to-one and one-to-many relationships have to be treated with 
+totally different strategies, creating enourmous implementation overhead.
+
+The usual drill is to create a special table with two columns, both of which 
+have foreign keys pointing to the enitities which should be related, or if
+one 'entity' is a literal type, the literal value itself can be inserted.
+
+Remember that such tables do not correspond to a type, and should not be 
+mistaken for types. And they should definitely not be imported with 
+import_table!
+
+- Naming conventions
+
+A lot of work goes into resolving naming conflicts between SQL and Amos.
+Certain names are reserved and this is (probably) not standardized across
+platforms. The hopefully bullet-proof naming convention is
+	   
+  * types exported to tables are prepended with at_ (Amos Type)
+
+  * function exported to tables are prepended with af_ (Amos Function)
+
+  * A list is of reserved SQL words is maintaintained in (export-type.lsp)
+    _sql-reserved-words_. Words on that list are appended with a dangling _
+
+A lot of times you will see functions created like
+
+create function file(X x)->Y y as select file_(x);
+
+This is because file is a reserved word in SQL, so the column had to be named
+file_ and the function file_ was automatically created during import.

@@ -1,0 +1,331 @@
+I. Different kinds of foreign functions
+=======================================
+
+A. Regular functions
+
+A regular function takes non-bag arguments and returns non-bag values:
+
+A1. Signatures
+
+create function myplus(Number x, Number y)->Number z
+  /* Add x to y */
+  as foreign 'myplus--+';
+
+create function vtimes(Vector of Number x)->Number
+  /* Multiply the numbers in x */
+  as foreign 'vtimes-+';
+
+
+A2. Implementations
+
+(defun myplus--+ (fno ;;; The object representing the function itself
+                  x y ;;; The two arguments
+                  z)  ;;; The result
+  (osql-result x y (+ x y))) ;;; The computed result tuple
+
+(defun vtimes-+ (fno x r)
+  (let ((prod 1))
+    (maparray x (f/l (v i)(setq prod (* prod v))))
+    (osql-result x prod)))
+
+A3. Examples
+
+  myplus(1,2);
+==>
+  3
+
+  vtimes({1,2,3,3});
+==>
+  18
+
+A4. Default cost model
+
+_default-foreign-cost_
+_default-foreign-fanout_ 
+
+B. Filter
+
+A filer returns a Boolean.
+
+B1. Signature
+
+create function large(Number x)->Boolan
+  /* Returns true if x > 100 */
+  as foreign 'large-';
+
+B2. Implementation
+
+(defun large- (fno x)   ;;; No variable for result!
+  (if (> x 100)
+      (osql-result x))) ;;; Emit only if true
+
+B3. Examples
+
+  large(121);
+=>
+  true
+
+  large(10);
+=>
+
+B4. Default cost model
+
+_default-foreign-cost_
+_default-selectivity_
+
+C. Aggregate functions
+
+An aggregate function has one or several bag arguments and returns a
+non-bag.
+
+C1. Signatures
+
+create function countnumbers(Bag b)->Integer
+  /* Count the number of numbers in b */
+  as foreign 'countnumbers-+';
+
+create function longerthan(Bag b, Integer l)-> Boolean
+  /* Returns true if b has more than l elements */
+  as foreign 'longerthan--';
+
+C2. Implementations
+
+(defun countnumbers-+ (fno b r)
+  (let ((cnt 0))
+    (mapbag b
+	    (f/l (row) ;;; Bound to each row as list
+		 (if (numberp (car row))
+		     (1++ cnt))))
+    (osql-result b cnt)))
+
+(defun longerthan-- (fno b l)
+  (let ((cnt 0))
+    (catch 'longerthan
+      (mapbag b
+	      (f/l (row)
+		   (1++ cnt)
+		   (cond ((> cnt l)
+			  (osql-result b l)
+			  (throw 'longerthan nil))))) ;;; terminate iteration
+      )))
+
+C3. Examples
+
+  countnumbers(bag(1,2,"a","b"));
+=>
+  2
+
+  countnumbers(iota(1,10));
+=>
+  10
+
+  longerthan(iota(1,10),10);
+=>
+
+  longerthan(iota(1,10),9);
+=>
+  true
+
+C4. Default cost model
+
+_default-aggregate-cost_
+_default-aggregate-fanout_
+
+D. Generators
+
+A generator is a function generating a bag by emitting > 1 tuple.
+
+D1. Signature
+
+create function myiota(Integer n)->Bag of Integer r
+  as foreign 'myiota-+';
+
+D2. Implementation
+
+(defun myiota-+ (fno n r)
+  (dotimes (i n)
+    (osql-result n i)))
+
+D3. Example
+
+  myiota(3);
+==>
+  0
+  1
+
+D4. Default cost model
+
+_default-bagres-cost_
+_default-bagres-fanout_
+
+E. Combiners
+
+A combiner has one or several bag arguments and returns a bag by
+emitting several tuples.
+
+E1. Signatures
+
+create function append(Bag x, Bag y) -> Bag r
+  as foreign 'append--+';
+
+create function semijoin(Bag x, Bag y) -> Bag r
+  as foreign 'semijoin--+';
+
+E2. Implementations
+
+(defun append--+ (fno x y r)
+  (mapbag x
+     (f/l (row)
+       (osql-result x y (car row))))
+  (mapbag y
+     (f/l (row)
+       (osql-result x y (car row)))))
+
+(defun semijoin--+ (fno x y r)
+  (let ((ht (make-hash-table :test (function equal))))
+     (mapbag y (f/l (ry)
+                 (setf (gethash (car ry) ht) t)))
+     (mapbag x (f/l (rx)
+                 (if (gethash (car rx) ht)
+                     (osql-result x y (car rx)))))))
+
+E3. Example
+
+  append(iota(1,3),iota(10,11));
+==>
+  1
+  2
+  3
+  10
+  11
+
+  semijoin(iota(1,10),iota(3,4));
+=>
+  3
+  4
+
+E4. Default cost model
+
+_default-combiner-cost_ 
+_default-combiner-fanout_ 
+
+
+II Result type inference
+========================
+
+The result type(s) of a foreign function can be computed by the type
+checker based on compile time information about the arguments.
+
+For example, assume a function to find the smallest element in an
+array:
+
+create function vsmallest(Vector v) -> Object r
+  as foreign 'vsmallest-+';
+
+Implementation:
+
+(defun vsmallest-+ (fno v r)
+  (let (min)
+    (maparray v (f/l (x i)
+		     (cond ((null min)(setq min x))
+			   ((< (compare x min) 0)(setq min x)))))
+    (if min (osql-result v min)))) 
+
+Examples:
+   
+  vsmallest({1,2,0.9});
+==>
+  1
+
+  vsmallest({1,2,"a"});
+=>
+  1
+
+Assume we use vsmallest in a foreign function:
+
+create sumsmallest(Vector of Number x, Vector of Number y)->Number
+  as vsmallest(x)+vsmallest(y);
+
+The definition of sumsmallest causes type error since the result type
+of vsmallest is Object and + is not defined over type Object.
+
+However, in this case one can easility see that the result types of
+the vsmallest calls is Number. In general the signature of vsmallest
+is
+  vsmallest(Vector of T) -> T
+where T is any type (default Object).
+
+Such type inference can be specified by of associating a RESULTYPE Lisp
+function with the foreign function to compute the type(s) of the
+result from the arguments. The definition of the RESULTTYPE function
+LFN for the resolvent FNO is made by calling the Lisp function:
+
+  (SET-RESULTTYPESFN FNO LFN)
+
+For example:
+  (set-resulttypesfn (theresolvent 'vsmallest) 'vsmallest-resulttypes)
+
+A RESULTTYPES function gets as arguments the resolvent and its list of
+parameters and returns the list of result types. For example:
+
+(defun vsmallest-resulttypes (fno args)
+  (type-parameters ;;; The types of vector elements or NIL is plain Vector
+         (arg-type (car args))) ;;; The type of the first argument 
+  )
+     
+Now it is possible to call:
+
+  vsmallest({1,2,3})+1;
+==>
+  2
+
+This still causes type error:
+  vsmallest({"a",1})+1;
+since the computed result type of vsmallest is Literal, the common
+supertype of Charstring and Integer.
+
+Variable width
+--------------
+
+RESULTTYPES functions allow variable width in foreign functions. For
+example, assume that we want to define a function that extracts the
+smallest tuple from a bag:
+
+create function smallest(Bag b)->Object r
+  as foreign 'smallest-+';
+
+Implementation:
+
+(defun smallest-+ (fno b r)
+  (let (min)
+    (mapbag b (f/l (row)
+		   (cond ((null min)(setq min row))
+			 ((< (compare row min) 0)(setq min row)))))
+    (if min (apply (function osql-result) b min)))) ;;; variable width! 
+
+Example:
+  smallest(iota(-3,8));
+==>
+  -3
+
+Now, suppose that the bag argument contain tuples by being formed by a
+tuple valued function, e.g.:
+ 
+create function t2(Integer i)-> <Integer r1, Integer r2>
+  as select i, i-10;
+
+Now the result type tuple of
+smallest(t2(iota(1,5)));
+should be <Integer, Integer: and not object.
+This can be accomplished by
+
+(set-resulttypesfn (theresolvent 'smallest) 'smallest-resulttypes)
+
+(defun smallest-resulttypes (fno args)
+   (type-parameters (arg-type (car args))))
+
+For example, now one can call:
+  smallest(t2(iota(1,5)));
+==>
+  <1,-9>
+

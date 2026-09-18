@@ -1,0 +1,207 @@
+/*-*-sql-*-*******************************************************************/
+
+/* Testing 2 concurrent UNIONs */
+
+set :q_uu = '
+PREFIX p: <http://example.org/>
+SELECT ?x ?y ?z
+WHERE { p:a p:x ?x .
+        { ?x p:y ?y }
+        UNION
+        { ?x p:z ?z } .
+        { ?x p:y2 ?y }
+        UNION
+        { ?x p:z2 ?z }
+      } 
+';
+
+set :q_uu1 = '
+PREFIX p: <http://example.org/>
+SELECT ?x ?y ?z
+WHERE { p:a p:x ?x .
+        { ?x p:y ?y }
+        UNION
+        { ?x p:z ?z } .
+        { ?x p:y2 ?y }
+        UNION
+        { ?x p:z2 ?z }
+	UNION
+        { FILTER ( ?y = ?z ) }
+      } 
+';
+
+set :q_oo = '
+PREFIX p: <http://example.org/>
+SELECT ?x ?y ?z
+WHERE { p:a p:x ?x .
+        OPTIONAL { ?x p:y ?y } .
+        OPTIONAL { ?x p:y2 ?y .
+                   ?y p:z2 ?z }
+      }
+';
+
+set :q_uo = '
+PREFIX p: <http://example.org/>
+SELECT ?x ?y ?z
+WHERE { p:a p:x ?x .
+        { ?x p:y2 ?y }
+        UNION 
+        { ?x p:z2 ?z } .
+        OPTIONAL { ?x p:y ?y }
+      }
+';
+
+set :q_ou = '
+PREFIX p: <http://example.org/>
+SELECT ?x ?y ?z
+WHERE { p:a p:x ?x .
+        OPTIONAL { ?x p:y ?y } .
+        { ?x p:y2 ?y }
+        UNION 
+        { ?x p:z2 ?z }
+      }
+'; /* both branches can execute and return results */
+
+/* Joseki:
+<http://example.org/x2> 	<http://example.org/x2y> 	
+<http://example.org/x2> 	<http://example.org/x2y> 	"z"
+*/
+
+set :q_ouf1 = '
+PREFIX p: <http://example.org/>
+SELECT ?x ?y ?z
+WHERE { p:a p:ax ?x .
+        OPTIONAL { ?x p:xy ?y } .
+        { ?x p:xz ?z .
+          FILTER(?y != p:y2) }
+        UNION
+        { ?x p:xy2 ?y .
+          ?y p:yz2 ?z }
+      }
+'; /* filtering done on join of UNION with the other results */
+
+/* Joseki:
+<http://example.org/x1> 	<http://example.org/y1> 	"z1" 
+<http://example.org/x3> 	<http://example.org/y3> 	"z3"
+*/
+
+set :q_ouf2 = '
+PREFIX p: <http://example.org/>
+SELECT ?x ?y ?z
+WHERE { p:a p:ax ?x .
+        { ?x p:xz ?z .
+          FILTER(?y != p:y2) }
+        UNION
+        { ?x p:xy2 ?y .
+          ?y p:yz2 ?z } .
+        OPTIONAL { ?x p:xy ?y } .
+      }
+'; /* filtering done on join of UNION with p:ax */
+
+/* Joseki:
+<http://example.org/x3> 	<http://example.org/y3> 	"z3" 
+<http://example.org/x4> 	<http://example.org/y4a> 	"z4"
+*/
+
+set :q_ouf3 = '
+PREFIX p: <http://example.org/>
+SELECT ?x ?y ?z
+WHERE { p:a p:ax ?x .
+        OPTIONAL { ?x p:xy ?y .
+                   FILTER(?z != "z5") } .
+        { ?x p:xz ?z .
+          FILTER(?y != p:y2) }
+        UNION
+        { ?x p:xy2 ?y .
+          ?y p:yz2 ?z }
+      }
+'; /* OPTIONAL never binds */
+
+/* Joseki: 
+<http://example.org/x3> 	<http://example.org/y3> 	"z3" 
+<http://example.org/x4> 	<http://example.org/y4a> 	"z4"
+*/
+
+set :q_oof1 = '
+PREFIX p: <http://example.org/>
+SELECT ?x ?y ?z
+WHERE { p:a p:ax ?x .
+        OPTIONAL { ?x p:xy ?y .
+                   FILTER(?z != "z5") } .
+        OPTIONAL { ?x p:xz ?z }
+      }
+'; /* 1st OPTIONAL never binds */
+
+
+/* Joseki:
+<http://example.org/x1> 		"z1" 
+<http://example.org/x2> 		"z2" 
+<http://example.org/x3> 		
+<http://example.org/x4>
+*/
+
+set :q_oof2 = '
+PREFIX p: <http://example.org/>
+SELECT ?x ?y ?z
+WHERE { p:a p:ax ?x .
+        OPTIONAL { ?x p:xy ?y .
+                   FILTER(?z != "z5") } .
+        ?x p:xz ?z 
+      } 
+'; /* 1st OPTIONAL never binds */
+
+/* Joseki:
+<http://example.org/x1> 		"z1" 
+<http://example.org/x2> 		"z2"
+*/
+
+set :q_ouoo = '
+PREFIX p: <http://example.org/>
+SELECT ?x ?y ?z
+WHERE { p:a p:ax ?x .
+        OPTIONAL { ?x p:xy ?y } .
+        { ?x p:xz ?z .
+          OPTIONAL { ?x p:xy2 ?y } .
+          OPTIONAL { ?x p:xy3 ?y } }
+        UNION
+        { ?x p:xz2 ?z } 
+      }
+'; /* multiple incarnations of 'y' in first union branch */
+
+/* Joseki:
+<http://example.org/x1> 	"y1" 	"z1" 
+<http://example.org/x2> 	"y2" 	"z2" 
+<http://example.org/x3> 	"y3" 	"z3" 
+<http://example.org/x4> 		"z4"
+*/
+
+
+set :Q1 = '
+PREFIX p: <http://example.org/>
+SELECT ?x ?y ?z
+WHERE { p:a p:ax ?x .
+        OPTIONAL { ?x p:xz ?z } .
+        ?x p:xy ?y .
+        ?y p:yz ?z
+      }
+';
+
+set :Q2 = '
+PREFIX p: <http://example.org/>
+SELECT ?x ?y ?z
+WHERE { p:a p:ax ?x .
+        OPTIONAL { ?x p:xz ?z } .
+        ?x p:xy ?y .
+        OPTIONAL { ?y p:yz ?z }
+      }
+';
+
+set :Q3 = '
+PREFIX p: <http://example.org/>
+SELECT ?x ?y ?z
+WHERE { p:a p:ax ?x .
+        ?x p:xy ?y .
+        ?y p:yz ?z .
+        OPTIONAL { ?x p:xz ?z }
+      }
+';

@@ -1,0 +1,72 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: HagglundsCOOLERValidator.osql,v $
+ * $Revision: 1.3 $ $Date: 2013/11/20 21:06:37 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Hagglunds cooler validator
+ *
+ ****************************************************************************
+ * $Log: HagglundsCOOLERValidator.osql,v $
+ * Revision 1.3  2013/11/20 21:06:37  chexu484
+ * *** empty log message ***
+ *
+ * Revision 1.2  2013/10/20 18:42:09  chexu484
+ * moving average included
+ * To be refined:
+ * 1. how to choose appropriate size of the moving window
+ * 2. how to choose appropriate size of the training data
+ *
+ * Revision 1.1  2013/09/27 12:11:57  chexu484
+ * demo of learn_n_validate
+ * scenario: hagglunds cooler
+ *
+ *
+ ****************************************************************************/
+
+create function validateCOOLER(Record r, Number t2) -> (Number ts, Number measuredT)
+  as select hsTS(r), measuredT
+     where measuredT = measuredT2({hsREG410(r), hsREG402(r), hsREG403(r)})
+     and abs(measuredT - t2) > get_th("hsCOOLER");
+
+create function validateHagglundsCooler(Charstring hid, Integer nSample) -> Stream of (Number, Number, Number)
+  as streamof(select ts, m, e
+     	      from Number ts, Number m, Number e
+              where {ts, m, e} in learn_n_validate(hagglundsRecords(hid),
+						   #'buildStats', nSample, #'validateCOOLER'));
+
+create function validateHagglundsCoolerMA(Charstring hid, Number windowSize, Number windowSlide, Integer nSample)
+									-> Stream of (Number, Number, Number)
+  as streamof(select ts, m, e
+     	      from Number ts, Number m, Number e
+              where {ts, m, e} in learn_n_validate(movingAverage(hagglundsRecords(hid), windowSize, windowSlide),
+						   #'buildStats', nSample, #'validateCOOLER'));
+
+/* the following is to validate the oil temperature */
+
+
+/* Conveniance functions */
+
+create function cloogedCoolerWarning0(Charstring hid) -> Bag of (Number, Number)
+  as for each Record r, Number ts, Number oilTemp
+	where r in hagglundsRecords(hid) and ts = r["TS"] and oilTemp = oilTempOut(r)
+	if oilTemp > get_oilTempOutWarningLimit(hid) then return (ts, oilTemp);
+
+create function cloogedCoolerAlarm0(Charstring hid) -> Bag of (Number, Number)
+  as for each Record r, Number ts, Number oilTemp
+	where r in hagglundsRecords(hid) and ts = r["TS"] and oilTemp = oilTempOut(r)
+	if oilTemp > get_oilTempOutAlarmLimit(hid) then return (ts, oilTemp);
+
+create function cloogedCoolerWarning(Charstring hid) -> Stream of (Number, Number)
+  as streamof(cloogedCoolerWarning0(hid));
+
+create function cloogedCoolerAlarm(Charstring hid) -> Stream of (Number, Number)
+  as streamof(cloogedCoolerAlarm0(hid));
+
+create function validateHagglundsCooler(Charstring hid) -> Stream of (Number, Number, Number)
+  as validateHagglundsCooler(hid, 2000);
+
+create function validateHagglundsCoolerMA(Charstring hid) -> Stream of (Number, Number, Number)
+  as validateHagglundsCoolerMA(hid, 15, 0.1, 2000);

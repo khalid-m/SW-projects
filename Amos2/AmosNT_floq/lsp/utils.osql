@@ -1,0 +1,400 @@
+lisp;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Run AMOS from inside AMOS
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(foreign-lispfn run_amos ((charstring options)) ()
+  (foreign-result (run-amos options)))
+
+(foreign-lispfn run_amos () ()
+  (foreign-result (run-amos "")))
+
+(foreign-lispfn run_client ((charstring clientname)) ()
+  (foreign-result (run-amos-client clientname)))
+
+(foreign-lispfn run_ns ((charstring nsname)) ()
+  (foreign-result (run-amos-ns nsname)))
+
+(foreign-lispfn run_ns ((charstring nsname) (charstring logfile)) ()
+  (let ((log (if (equal logfile "stdout") NIL (concat "-r " nsname  "_" logfile))))
+    (foreign-result (run-amos-ns nsname log))))
+
+(foreign-lispfn run_server ((charstring servername)) ()
+  (foreign-result (run-amos-server servername)))
+
+(foreign-lispfn run_server ((charstring servername) (charstring nameserv)) ()
+  (foreign-result (run-amos-server (concat servername "@" nameserv))))
+
+(foreign-lispfn run_server ((charstring servername) (charstring nameserv) (charstring logfile)) ()
+  (let ((log (if (equal logfile "stdout") NIL (concat "-r " servername  "_" logfile))))
+    (if log
+        (foreign-result (run-amos-server (concat servername "@" nameserv) log))
+        (foreign-result (run-amos-server (concat servername "@" nameserv))))))
+
+(foreign-lispfn install_amos ((charstring dumpfile)) ()
+  (let* ((odbc "-l \"(register-init-form '(load-dll 'oamos.dll))(init-odbc-ds)\" ")
+	 (opt1 "-o \"save '")
+         (opt2 "'; quit;\"")
+	 (opt (concat odbc opt1 dumpfile opt2)))
+    (foreign-result (boot-amos opt))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Amos directories
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(foreign-lispfn amos_startup_dir () ((charstring dir))
+  (if _amos_startup_dir_
+    (foreign-result _amos_startup_dir_)))
+
+(foreign-lispfn amos_lisp_dir () ((charstring dir))
+  (if _amos_startup_dir_
+    (foreign-result (concat _amos_startup_dir_ "/../lsp"))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Functions to compile and run tests for different configurations of the
+; system.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun exec-osql-+ (fno stmt obj)
+  "Execute an OSQL satement."
+  (let ((result (amos-execute stmt)))
+    (if (listp result)
+	(osql-result stmt (listtoarray result))
+        (osql-result stmt result))))
+
+(osql "
+create function exec_osql(charstring stmt) -> <charstring, object>
+as foreign 'exec-osql-timed-+';
+")
+
+(defun safe-delete-function (fnname)
+  (let ((fno (getfunctionnamed (mkatom fnname) t)))
+    (if fno
+	(deleteobject fno))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; OSQL oid functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(foreign-lispfn o((integer oidno)) ((object o))
+; Get the object with number oidno
+  (foreign-result (getobjectnumbered oidno)))
+
+(foreign-lispfn xo((integer oidno)) ((integer o) (charstring db))
+; Get the object number and database of object oidno
+  (let* ((obj (getobjectnumbered oidno))
+         (xoidno (proxyobj? obj)))
+    (if xoidno
+      (foreign-result xoidno (mkstring (getobject obj 'exportto)))
+      nil)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Selector functions. Useful for experiments
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; Returns the input object
+(foreign-lispfn repeat_obj ((object inobj)) ((object outobj))
+  (foreign-result inobj))
+
+; Random object selector. returns TRUE or FALSE (nothing) for
+; an object with probability PROB.
+(foreign-lispfn rand_sel_bool ((object obj) (integer prob)) ()
+ (let* ((rnum (rand 1 100)))
+	(if (< rnum prob)
+	    (foreign-result T))))
+
+; Random object selector. returns OBJ or FALSE (nothing) for
+; an object with probability PROB.
+(foreign-lispfn rand_sel_obj ((object inobj) (integer prob)) ((object outobj))
+ (let* ((rnum (rand 1 100)))
+	(if (< rnum prob)
+	    (foreign-result inobj))))
+
+(foreign-lispfn rso_cost ((function f) (vector bpat) (vector args))
+                                  ((number cost) (number fanout))
+  (let ((prob (aref args 1)))
+    (if (numberp prob)
+	(foreign-result (( / prob 100.0) 1))
+        (foreign-result (1 1)))))
+
+(declarecosts 'rand_sel_obj '(- - +) 'rso_cost)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Timing / profiling
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(foreign-lispfn clock () ((real s))
+		(foreign-result (clock)))
+
+:osql
+
+
+/*****************************************************************************
+* Unique name generation helpers
+*****************************************************************************/
+
+/*****************************************************************************
+* A simple, nonwrapping integer number generator
+*****************************************************************************/
+create type int_generator;
+
+create function current(int_generator) -> integer;
+
+/* get the next integer */
+create function getnext(int_generator ng) -> integer as
+begin
+  declare integer oldnum;
+
+  set oldnum = current(ng);
+  set current(ng) = oldnum + 1;
+
+  result oldnum;
+end;
+
+/* construct a generator instance */
+create function int_generator(integer init) -> int_generator as
+begin
+  declare int_generator ng;
+  create int_generator(current) instances ng(init);
+  result ng;
+end;
+
+create function int_generator() -> int_generator as
+begin
+   result int_generator(0);
+end;
+
+
+/*****************************************************************************
+* A wrapping integer number generator
+*****************************************************************************/
+create type wrap_int_generator;
+create function init(wrap_int_generator) -> integer;
+create function current(wrap_int_generator) -> integer;
+create function bound(wrap_int_generator) -> integer;
+
+/* construct a generator instance */
+create function wrap_int_generator(integer init, integer bnd) -> wrap_int_generator as
+begin
+  declare wrap_int_generator ng;
+
+  if (init > bnd) then
+  begin
+    set bnd = init + 1;
+  end;
+
+  create wrap_int_generator(init, current, bound) instances ng(init, init, bnd);
+
+  result ng;
+end;
+
+/* get the next integer */
+create function getnext(wrap_int_generator ng) -> integer as
+begin
+  declare integer oldnum;
+
+  set oldnum = current(ng);
+  if (oldnum < bound(ng)) then
+  begin
+    set current(ng) = oldnum + 1;
+  end
+  else begin
+    set current(ng) = init(ng);
+  end;
+
+  result oldnum;
+end;
+
+/*****************************************************************************
+* A wrapping integer number generator - U unique values, R repeating
+*****************************************************************************/
+create type wrap_int_generator_u;
+create function init(wrap_int_generator_u) -> integer;
+create function current(wrap_int_generator_u) -> integer;
+create function bound(wrap_int_generator_u) -> integer;
+create function unique_bound(wrap_int_generator_u) -> integer;
+create function filler(wrap_int_generator_u) -> integer;
+
+/* construct a generator instance */
+create function wrap_int_generator_u(integer init, integer bnd, integer ubnd, integer fill) 
+-> wrap_int_generator_u as
+begin
+  declare wrap_int_generator_u ng;
+
+  if (init > bnd) then
+  begin
+    set bnd = init + 1;
+    set ubnd = init + 1;
+  end;
+
+  create wrap_int_generator_u(init, current, bound, unique_bound, filler) 
+  instances ng(init, init, bnd, ubnd, fill);
+
+  result ng;
+end;
+
+/* get the next integer */
+create function getnext(wrap_int_generator_u ng) -> integer as
+begin
+  declare integer oldnum;
+
+  set oldnum = current(ng);
+  if (oldnum < bound(ng)) then
+  begin
+    set current(ng) = oldnum + 1;
+  end
+  else begin
+    set current(ng) = init(ng);
+  end;
+
+  if (oldnum <= unique_bound(ng)) then
+  begin
+    result oldnum;
+  end
+  else begin
+    result filler(ng);
+  end;
+end;
+
+/*****************************************************************************
+* A unique name generator
+*****************************************************************************/
+create type name_generator;
+
+create function prefix(name_generator) -> charstring;
+create function suffix(name_generator) -> int_generator;
+
+create function name_generator(charstring prfx, integer start_suff) -> name_generator as
+begin
+  declare name_generator ng,
+          int_generator  intgen;
+
+  set intgen = int_generator(start_suff);
+  create name_generator(prefix, suffix) instances ng(prfx, intgen);
+
+  result ng;
+end;
+
+create function getnext(name_generator ng) -> charstring as
+begin
+  declare charstring suff;
+
+  set suff = itoa(getnext(suffix(ng)));
+  result prefix(ng) + suff;
+end;
+
+/*****************************************************************************
+* A wrapped name generator
+*****************************************************************************/
+create type wrap_name_generator;
+
+create function prefix(wrap_name_generator) -> charstring;
+create function suffix(wrap_name_generator) -> wrap_int_generator;
+
+create function wrap_name_generator(charstring prfx,
+                                    integer start_suff,
+                                    integer end_suff) -> wrap_name_generator as
+begin
+  declare wrap_name_generator ng,
+          wrap_int_generator  intgen;
+
+  set intgen = wrap_int_generator(start_suff, end_suff);
+  create wrap_name_generator(prefix, suffix) instances ng(prfx, intgen);
+
+  result ng;
+end;
+
+create function getnext(wrap_name_generator ng) -> charstring as
+begin
+  declare charstring         suff,
+          wrap_int_generator gen;
+
+  set gen = suffix(ng);
+  set suff = itoa(getnext(gen));
+  result prefix(ng) + suff;
+end;
+
+
+/*****************************************************************************
+* Sequential value selector
+* Supply a vector of some objects, then 
+*****************************************************************************/
+create type value_selector;
+
+create function values(value_selector vs) -> vector;
+/* use a wrapped int generator to iterate over the elemnts in the vector */
+create function index_gen(value_selector vs) -> wrap_int_generator;
+
+create function value_selector(vector v) -> value_selector as
+begin
+  declare value_selector vs,
+          wrap_int_generator wg,
+          integer maxidx;
+  set maxidx = count(v) - 1;
+  set wg = wrap_int_generator(0, maxidx);
+  create value_selector(values, index_gen) instances vs(v, wg);
+  result vs;
+end;
+
+create function getnext(value_selector vs) -> object as
+begin
+  declare vector v, wrap_int_generator wg, integer idx;
+  set wg = index_gen(vs);
+  set idx = getnext(wg);
+  set v = values(vs);
+
+  result v[idx];
+end;
+
+
+
+/*****************************************************************************
+* INCOMPLETE !!!
+* Unique random integer generator
+* Generate a sequence of random numbers in a range, such that each is returned
+* exactly once. This is equivalent to a random permutation of a sequence of
+* numbers.
+*****************************************************************************/
+/*
+create type rand_int_permutor;
+
+create function get_unique_int(rand_int_permutor p) -> integer
+as select i
+   from integer i
+   where i = rand(low(p), high(p)) and i != in(generated(p));
+
+create function get_unique_int(rand_int_permutor p) -> integer
+as select i
+   from integer i
+   where i = rand(low(p), high(p)) and 
+         notany(select i1 from integer i1 where i1 = i and i1 = generated(p));
+
+create function getnext(rand_int_permutor p) -> integer as
+begin
+  declare integer current;
+  set current = get_unique_int(p);
+  add generated(p) = current;
+  result current;
+end;
+
+create function generated(rand_int_permutor p) -> bag of integer;
+create function low(rand_int_permutor p key) -> integer key;
+create function high(rand_int_permutor p key) -> integer key;
+
+create function rand_int_permutor(integer l, integer h) -> rand_int_permutor as
+begin
+  declare rand_int_permutor p;
+  create rand_int_permutor(low, high) instances p(l,h);
+  result p;
+end;
+
+create function rand_bag(integer l, integer h) -> bag of integer as
+begin
+  for each integer 
+  where saleno = iota(1, size)
+  begin
+
+end;
+*/

@@ -1,0 +1,27 @@
+/*****************************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 1995 <author>, EDSLAB
+ * $RCSfile: inferequal.osql,v $
+ * $Revision: 1.3 $ $Date: 2005/03/08 18:52:13 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ ****************************************************************************/
+
+lisp;
+(create-type person)
+(defun person.income-+ (obj p i) (osql-result p 10000))
+(create-function income ((person p key)) ((integer i))
+  as foreign (person.income-+))
+(putobject (getfunctionnamed 'person.income->integer) 'typecontainer t)
+(create-function taxes ((person p)) ((integer t))
+  as (t) where (= t (times (income p) 0.25)))
+(create-function ni ((person p)) ((integer i))
+  as (i) where (= i (minus (income p) (taxes p))))
+(checkequal "Foreign function keys and type containers"
+	    ((length(externalize (selectbody-optpred 
+			   (getselectbody 'person.ni->integer)))) 4))
+:osql
+rollback;
+

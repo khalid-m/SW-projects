@@ -1,0 +1,270 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: multisql.osql,v $
+ * $Revision: 1.7 $ $Date: 2013/09/10 08:00:12 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: LOcal multi-SQL scenario
+ ****************************************************************************
+ *
+ ****************************************************************************/
+
+/* stop here */
+/* not right yet, why multicastreceive3 still receive single peer??? */
+create function lowfun3(jdbc js)->Bag of object as
+select multicastreceive3(peervec, "sql_myv2", "select bt,et,mv from measuresA where (mv-?)>? and m=? and s=?", argvec)
+from vector metavec, vector formarg, vector peervec, vector argvec
+where metavec=sql(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID") and formarg=formargfrombag(select groupby((select metavec[1], {metavec[4], metavec[5], metavec[3], metavec[2]}), #'vectorof')) and 
+peervec=formarg[0] and argvec=formarg[1];
+
+pc("lowfun3");
+
+lowfun3(:a);
+
+trace("multicastreceive");
+
+count(lowfun3(:a));
+
+
+
+/* working  1 */
+create function lowfun4(jdbc js)->Bag of object as
+select multicastreceive3(formarg[0], "sql_myv2", "select bt,et,mv from measuresA where (mv-?)>? and m=? and s=?", formarg[1])
+from vector of Vector formarg
+where formarg = formargfrombag(groupby((select metavec[1], {metavec[4], metavec[5], metavec[3], metavec[2]} from vector metavec where metavec=sql(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID", {})), #'vectorof'));
+
+pc("lowfun4");
+
+count(lowfun4(:a));
+
+
+set :query = "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID";
+
+create function getmetadata(jdbc js, charstring q, vector of number projections)->bag of (object o, vector sr) as
+select metavec[1], project(metavec, projections)
+from vector metavec
+where metavec = sql(js, q);
+
+getmetadata(:a, :query, {4,5,3,2});
+
+pc("getmetadata");
+
+groupby(getmetadata(:a, :query, {4,5,3,2}), #'vectorof');
+
+pc("*select*");
+
+/* error at this one */
+formargfrombag(groupby(getmetadata(:a, :query, {4,5,3,2}), #'vectorof'));
+
+/* test bagof */
+bagof({1,2});
+
+pc("*select*");
+
+
+
+/* working  2 */
+create function lowfun5(jdbc js)->Bag of object as
+select multicastreceive3(peervec, "sql_myv2", "select bt,et,mv from measuresA where (mv-?)>? and m=? and s=?", argvec)
+from bag of vector bmetavec, vector formarg, vector peervec, vector argvec
+where bmetavec = sql(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID")
+and formarg = formargfrombag(select groupby((select metavec[1], {metavec[4], metavec[5], metavec[3], metavec[2]} from vector metavec where metavec in bmetavec), #'vectorof')) and 
+peervec=formarg[0] and argvec=formarg[1];
+
+pc("lowfun5");
+
+count(lowfun5(:a));
+
+
+/* works */
+set :vec2={{"unknown yet","jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB","jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB"},
+{{{10.0,10.0,3,3},{10.0,10.0,8,6},{50.0,10.0,4,4},{20.0,10.0,9,9},{20.0,10.0,5,5},{20.0,10.0,10,10}},{{20.0,10.0,2,2},{20.0,10.0,7,7}},{{50.0,10.0,1,1},{348.0,10.0,6,8}}}};
+
+multicastreceive3(:vec2[0], "sql_myv2", "select bt,et,mv from measuresA where (mv-?)>? and m=? and s=?", :vec2[1]);
+
+
+
+mymapbag(groupby((select metavec[1], {metavec[4], metavec[5], metavec[3], metavec[2]} from vector metavec where metavec=sql(:a, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID")), #'vectorof'));
+
+/* this is what i want */
+select groupby((select metavec[1], {metavec[4], metavec[5], metavec[3], metavec[2]} from vector metavec where metavec=sql(:a, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID")), #'vectorof');
+
+
+
+
+/***************************************************************/
+
+
+
+sql(:a, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID");
+
+create function sqlfoo(jdbc js)->vector as
+sql(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID");
+
+sqlfoo(:a);
+
+pc("sqlfoo");
+
+/* try to simulate the execution plan in federated query */
+/* why not make the low level call to try */
+create function sqlfoo1(jdbc js)->..
+as select
+   from vector resvec, vector peervec
+   where resvec=sql(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID") and peervec=...
+
+:a;
+/* low level call */
+create function multicastreceive2(Vector uris, Charstring fn, Charstring query, 
+					 Vector args)->Bag of Object
+  as begin
+     declare vector peervec, vector argvec;
+     set peervec={};
+     set argvec={};
+     for each Charstring pe, Charstring logdburi
+       where logdburi in vectorbag(uris) and pe in mappinguri_peer(logdburi) 
+       begin
+       set peervec=concat(peervec, {pe}); 
+       set argvec=concat(argvec, {{logdburi, query, args}});
+       end;
+     return multicastreceive(peervec, fn, argvec);
+     end;
+
+
+create function lowfun(jdbc js)->Bag of object as
+select multicastreceive2(vectorof(metavec[1]), "sql_my", "select count(*) from measuresA where mv>359", {})
+from vector metavec
+where metavec=sql(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID");
+
+pc("lowfun");
+
+lowfun(:a);
+
+/* this is not enough since args should be vector of vector */
+create function lowfun2(jdbc js)->Bag of object as
+select multicastreceive2(vectorof(metavec[1]), "sql_my", "select bt,et,mv from measuresA where (mv-?)>? and m=? and s=?", {metavec[4], metavec[5], metavec[3], metavec[2]})
+from vector metavec
+where metavec=sql(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID");
+
+pc("lowfun2");
+
+lowfun2(:a);
+
+multicastreceive2({'u','v'}, "sql_myv2", "select bt,et,mv from measuresA where (mv-?)>? and m=? and s=?", {metavec[4], metavec[5], metavec[3], metavec[2]})
+
+
+
+select peervec, argvec
+from vector peervec, vector argvec, object o
+where o=groupby((select metavec[1], {metavec[4], metavec[5], metavec[3], metavec[2]} from vector metavec where metavec=sql(:a, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID")), #'vectorof') and 
+      peervec=vectorof(o[0]) and 
+      argvec=vectorof(o[1]);
+
+
+/* doesn't work */
+create function formparam(jdbc js)->object
+as groupby((select v[1], {v[2], v[3], v[4]}
+            from vector v
+            where v=sql(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID")), #'vectorof');
+
+/* works */
+set :vec=(select v[1], {v[2], v[3], v[4]} from vector v where v=sql(:a, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID"));
+
+groupby(:vec, #'vectorof');
+
+
+:a;
+
+create function foo(jdbc js)->(vector, vector)
+as select peervec, argvec
+   from vector v, vector peervec, vector argvec
+   where v=sql(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID") and
+         peervec=vectorof(v[1]) and
+         argvec=vectorof(v[2], v[3], v[4]);
+
+create function foo(jdbc js)->(vector, vector)
+as begin
+   declare vector v, vector peervec, vector argvec
+   set v=sql(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID");
+   for each vector row in v
+   declare integer peer
+
+create function foo(jdbc js)->(charstring, integer, integer, number)
+as select v[1], v[2], v[3], v[4]
+   from vector v
+   where v=sql(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID");
+
+foo(:a); 
+
+/* with groupby */
+create function foov2(jdbc js)->object o
+as groupby((select v[1], v[2], v[3], v[4] 
+   from vector v
+   where v=sql(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID")), #'vectorof');
+
+/* example of what i want */
+create function foo()->(charstring, vector ) as stored;
+
+add foo()=("j1", {1,1});
+add foo()=("j1", {2,2});
+add foo()=("j2", {3,3});
+add foo()=("j2", {4,4});
+
+groupby(foo(), #'vectorof');
+
+create function foovector()->vector as stored;
+
+add foovector()={"j1", 1,1};
+add foovector()={"j1", 2,2};
+add foovector()={"j2", 3,3};
+add foovector()={"j2", 4,4};
+
+groupby(foovector(),#'vectorof');
+
+
+create function foo1(jdbc js)->vector
+as select vector(v[1], v[2], v[3], v[4])
+   from vector v
+   where v=sql(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID");
+
+foo1(:a);
+
+vector of vector ...
+
+create function foo2(jdbc js)->vector
+as select argvec
+   from vector v, vector argvec
+   where v=sql(js, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID") and
+         argvec=vector(v[1], v[2], v[3], v[4]);
+
+foo2(:a);
+
+/* i want function foo2 to return result as 
+{{2,2,20}, {7,7,20.0}}
+{{1,1,50.0}, {8,6,348.0}}
+
+
+create function foo5(integer i)->vector as
+select v
+from vector v
+where v=vector(i);
+
+foo5(4);
+
+foo5(iota(1,3));
+
+create function foo6(integer i)->vector 
+as begin 
+   declare vector resvec;
+   set resvec={};
+   for each integer j where j=i
+     begin
+     set resvec=concat(resvec, {j});
+     end;
+   return resvec;
+   end;
+
+foo6(1);
+
+foo6(iota(1,3));

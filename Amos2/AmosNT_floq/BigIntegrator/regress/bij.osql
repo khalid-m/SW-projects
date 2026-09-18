@@ -1,0 +1,324 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: multisql.osql,v $
+ * $Revision: 1.7 $ $Date: 2013/09/10 08:00:12 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: script for generate meta bindings cvs fles, remote bulk 
+ * insert and query
+ ****************************************************************************
+ *
+ ****************************************************************************/
+
+start javaamos -n
+start javaamos -O peer.osql -s u
+start javaamos -O peer.osql -s v
+
+javaamos -c me
+
+
+/* section of generate meta bindings cvs fles, remote bulk insert and query */
+
+/************************** run remote bulk insert and query ******************************/
+set :u= call_function('u','jdbc', {"A","com.microsoft.jdbc.sqlserver.SQLServerDriver"}, 10)[0];
+set :v= call_function('v','jdbc', {"B","com.microsoft.jdbc.sqlserver.SQLServerDriver"}, 10)[0];
+
+/* set up JDBC connection and populate mapping in peers */
+create function initialize(Charstring logDBname, vector remotejdbcobjvec)->boolean as
+begin 
+    call_function('u','connect', {remotejdbcobjvec[0],"jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName="+logDBname, "udbl", "udbl"}, 10);
+    call_function('u','pop_uri_jdbc',{"jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName="+logDBname, remotejdbcobjvec[0]},10);
+    call_function('v','connect', {remotejdbcobjvec[1],"jdbc:microsoft:sqlserver://udblserver3;DatabaseName="+logDBname, "udbl", "udbl"}, 10);
+    call_function('v','pop_uri_jdbc',{"jdbc:microsoft:sqlserver://udblserver3;DatabaseName="+logDBname, remotejdbcobjvec[1]},10);
+end;
+
+
+/* notice the queries in multicastreceive need to be well specified since one needs to write
+   'include' some columns in the index creation */
+/* only multicastreceive procedure to remote bulk insert and query */
+create function remoteproc(Charstring logDBname, vector schemanamevec, vector csvfilenamevec)->bag of object as
+begin
+    declare Charstring bulkinsertserver1, Charstring bulkinsertserver3;
+    /* delete metabinding table rows */	 
+    multicastreceive({"v","u"}, "sql_my",{{"jdbc:microsoft:sqlserver://udblserver3;DatabaseName="+logDBname,"delete from metabindings", {}},
+				      {"jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName="+logDBname,"delete from metabindings", {}}});
+    /* remote bulk insert metabinding into temp table in logdb */
+    set bulkinsertserver1="BULK INSERT "+logDBname+"."+schemanamevec[0]+".metabindings FROM '//130.238.14.85/Users/Public/FLOQ/"+csvfilenamevec[0]+"' WITH (FIELDTERMINATOR =',', ROWTERMINATOR = '0x0a');";
+    set bulkinsertserver3="BULK INSERT "+logDBname+"."+schemanamevec[1]+".metabindings FROM '//130.238.14.85/Users/Public/FLOQ/"+csvfilenamevec[1]+"' WITH (FIELDTERMINATOR =',', ROWTERMINATOR = '0x0a');";
+    multicastreceive({"v","u"}, "sql_my",{{"jdbc:microsoft:sqlserver://udblserver3;DatabaseName="+logDBname,bulkinsertserver3,{}},
+				       {"jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName="+logDBname,bulkinsertserver1, {}}});
+    /* run queries */ 
+    return multicastreceive({"v","u"}, "sql_my", {{"jdbc:microsoft:sqlserver://udblserver3;DatabaseName="+logDBname,
+	                                    "select * from measuresA ma, metabindings mbs where ma.mv>mbs.th+mbs.ev and ma.m=mbs.m and ma.s=mbs.s",{}},
+		        		   {"jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName="+logDBname,
+	                                    "select * from measuresA ma, metabindings mbs where ma.mv>mbs.th+mbs.ev and ma.m=mbs.m and ma.s=mbs.s",{}}});  
+end;
+
+
+/* notice the queries in multicastreceive need to be well specified since one needs to write
+   'include' some columns in the index creation */
+/* only multicastreceive procedure to remote bulk insert and query */
+create function remoteproc2(Charstring logDBname, vector schemanamevec, vector csvfilenamevec, )->bag of object as
+begin
+    declare Charstring bulkinsertserver1, Charstring bulkinsertserver3;
+    /* delete metabinding table rows */	 
+    multicastreceive({"v","u"}, "sql_my",{{"jdbc:microsoft:sqlserver://udblserver3;DatabaseName="+logDBname,"delete from metabindings", {}},
+				      {"jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName="+logDBname,"delete from metabindings", {}}});
+    /* remote bulk insert metabinding into temp table in logdb */
+    set bulkinsertserver1="BULK INSERT "+logDBname+"."+schemanamevec[0]+".metabindings FROM '//130.238.14.85/Users/Public/FLOQ/"+csvfilenamevec[0]+"' WITH (FIELDTERMINATOR =',', ROWTERMINATOR = '0x0a');";
+    set bulkinsertserver3="BULK INSERT "+logDBname+"."+schemanamevec[1]+".metabindings FROM '//130.238.14.85/Users/Public/FLOQ/"+csvfilenamevec[1]+"' WITH (FIELDTERMINATOR =',', ROWTERMINATOR = '0x0a');";
+    multicastreceive({"v","u"}, "sql_my",{{"jdbc:microsoft:sqlserver://udblserver3;DatabaseName="+logDBname,bulkinsertserver3,{}},
+				       {"jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName="+logDBname,bulkinsertserver1, {}}});
+    /* run queries */ 
+    return multicastreceive({"v","u"}, "sql_my", {{"jdbc:microsoft:sqlserver://udblserver3;DatabaseName="+logDBname,
+	                                    "select * from measuresA ma, metabindings mbs where ma.mv>mbs.th+mbs.ev and ma.m=mbs.m and ma.s=mbs.s",{}},
+		        		   {"jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName="+logDBname,
+	                                    "select * from measuresA ma, metabindings mbs where ma.mv>mbs.th+mbs.ev and ma.m=mbs.m and ma.s=mbs.s",{}}});  
+end;
+
+/* access bm1GB */
+initialize("bm1GB", {:u,:v});
+
+/* querying bm1GB and small size meta bindings */
+count(remoteproc("bm1GB", {"dbo", "udb"},{"server1_s_bindings.csv","server3_s_bindings.csv"}));
+
+/* querying bm1GB and middle size meta bindings*/
+count(remoteproc("bm1GB", {"dbo", "udb"},{"server1_m_bindings.csv","server3_m_bindings.csv"}));
+
+/* querying bm1GB and large size meta bindings*/
+count(remoteproc("bm1GB", {"dbo", "udb"},{"server1_l_bindings.csv","server3_l_bindings.csv"}));
+
+/************************************************************/
+
+
+/* access bm5GB */
+initialize("bm5GB", {:u,:v});
+
+/* querying bm5GB and small size meta bindings */
+count(remoteproc("bm5GB", {"dbo", "udb"},{"server1_s_bindings.csv","server3_s_bindings.csv"}));
+
+/* querying bm5GB and middle size meta bindings*/
+count(remoteproc("bm5GB", {"dbo", "udb"},{"server1_m_bindings.csv","server3_m_bindings.csv"}));
+
+/* querying bm5GB and large size meta bindings*/
+count(remoteproc("bm5GB", {"dbo", "udb"},{"server1_l_bindings.csv","server3_l_bindings.csv"}));
+
+/************************************************************/
+
+
+/* access bm10GB */
+initialize("bm10GB", {:u,:v});
+
+/* querying bm10GB and small size meta bindings */
+count(remoteproc("bm10GB", {"dbo", "udb"},{"server1_s_bindings.csv","server3_s_bindings.csv"}));
+
+/* querying bm10GB and middle size meta bindings*/
+count(remoteproc("bm10GB", {"dbo", "udb"},{"server1_m_bindings.csv","server3_m_bindings.csv"}));
+
+/* querying bm10GB and large size meta bindings*/
+count(remoteproc("bm10GB", {"dbo", "udb"},{"server1_l_bindings.csv","server3_l_bindings.csv"}));
+
+/************************************************************/
+
+
+/* access bm15GB */
+initialize("bm15GB", {:u,:v});
+
+/* querying bm15GB and small size meta bindings */
+count(remoteproc("bm15GB", {"dbo", "udb"},{"server1_s_bindings.csv","server3_s_bindings.csv"}));
+
+/* querying bm15GB and middle size meta bindings */
+count(remoteproc("bm15GB", {"dbo", "udb"},{"server1_m_bindings.csv","server3_m_bindings.csv"}));
+
+/* querying bm15GB and large size meta bindings */
+count(remoteproc("bm15GB", {"dbo", "udb"},{"server1_l_bindings.csv","server3_l_bindings.csv"}));
+
+
+/* disconnect peer JDBC */
+create function disconnect(vector remotejdbcobjvec)->boolean as
+begin
+call_function('u','disconnect',{remotejdbcobjvec[0]},10); 
+call_function('v','disconnect',{remotejdbcobjvec[1]},10);
+end;
+
+disconnect({:u,:v});
+
+
+
+
+set :metas = jdbc("metas", "com.mysql.jdbc.Driver");
+
+set :dburl = "jdbc:mysql://localhost:3306/";
+
+connect(:metas, :dburl+ "metadb_s", "regress", "regress");
+
+set :b=groupby((select metavec[1], {metavec[4], metavec[5], metavec[3], metavec[2]} from vector metavec where metavec = sql(:metas, "select LID,URI,SI,S_.MI,EV,TH,MACHINENIL_.M from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID")), #'vectorof');
+
+
+lisp;
+
+/* stop here */
+/* make a lisp function for each grouped item in bag call writecsvfile function */
+(defun writebagtocsv-+ (fno b path)
+	(mapbag b
+	          (f/l (x)
+	(getfunction 'writecsvfile (list path (car (last x))))
+)))			
+
+:osql
+
+create function writebagtocsv(bag b, charstring path)->boolean as foreign 'writebagtocsv-+';
+
+
+
+writebagtocsv
+
+
+
+/* this function is writing the grouped metaDB result into csv file */
+create function writemetabindins(JDBC js, Charstring metadbquery, Vector filename)->Boolean as
+begin
+    declare bag metabag;
+    set metabag=sql(js, metadbquery);
+
+    for each 
+	
+
+
+/***********************generate meta bindings cvs fles*********************/
+/* generate meta small size csv file for server 1 */
+writecsvfile("C:/Users/Public/FLOQ/server1_s_bindings.csv", sql(:metas, "select S_.MI,SI,EV,TH from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID and uri='jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB';"));
+
+/* generate meta small size csv file for server 3 */
+writecsvfile("C:/Users/Public/FLOQ/server3_s_bindings.csv", sql(:metas, "select S_.MI,SI,EV,TH from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID and uri='jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB';"));
+
+
+/* generate meta middle size csv file for server 1 */
+writecsvfile("C:/Users/Public/FLOQ/server1_m_bindings.csv", sql(:metam, "select S_.MI,SI,EV,TH from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID and uri='jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB';"));
+
+/* generate meta middle size csv file for server 3 */
+writecsvfile("C:/Users/Public/FLOQ/server3_m_bindings.csv", sql(:metam, "select S_.MI,SI,EV,TH from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID and uri='jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB';"));
+
+/* generate meta large size csv file for server 1 */
+writecsvfile("C:/Users/Public/FLOQ/server1_l_bindings.csv", sql(:metal, "select S_.MI,SI,EV,TH from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID and uri='jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bm1GB';"));
+
+/* generate meta large size csv file for server 3 */
+writecsvfile("C:/Users/Public/FLOQ/server3_l_bindings.csv", sql(:metal, "select S_.MI,SI,EV,TH from LOCATION L_,SENSORINSTALLATION S_,MACHINE MACHINENIL_,MACHINEINSTALLATION MACHINEI_ where MACHINEI_.MI = S_.MI AND MACHINEI_.M = MACHINENIL_.M AND LOCATEDAT = LID and uri='jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB';"));
+
+
+/***********************remote bulk insert*********************/
+/* split the bindings into two files and with different size files, small, middle, large */
+/* remote bulk insert to server 1 with meta small data, note: you need to include schema name dbo */
+set :bulkinsertserv1_metas= "BULK INSERT bm1GB.dbo.metabindings
+   FROM '//130.238.14.85/Users/Public/FLOQ/server1_s_bindings.csv'
+   WITH 
+      (
+         FIELDTERMINATOR =',',
+	 ROWTERMINATOR = '0x0a'
+      );";
+
+/* delete existing data first */
+sql(first(:js), "delete from metabindings");
+
+/* remote bulk insert into server 1, first(:js) is server 1 */
+sql(first(:js),:bulkinsertserv1_metas);
+
+/* query to check the remote bulk loaded data */
+count(sql(first(:js), "select * from metabindings")); 
+
+
+/* remote bulk insert to server 3 with meta small data, note: you need to include schema name udb */
+set :bulkinsertserv3_metas= "BULK INSERT bm1GB.udb.metabindings
+   FROM '//130.238.14.85/Users/Public/FLOQ/server3_s_bindings.csv'
+   WITH 
+      (
+         FIELDTERMINATOR =',',
+	 ROWTERMINATOR = '0x0a'
+      );";
+
+/* delete existing data first */
+sql(last(:js), "delete from metabindings");
+
+/* remote bulk insert into server 3, last(:js) is server 3 */
+sql(last(:js),:bulkinsertserv3_metas);
+
+/* query to check the remote bulk loaded data */
+count(sql(last(:js), "select * from metabindings")); 
+
+
+/* remote bulk insert to server 1 with meta middle data, note: you need to include schema name dbo */
+set :bulkinsertserv1_metam= "BULK INSERT bm1GB.dbo.metabindings
+   FROM '//130.238.14.85/Users/Public/FLOQ/server1_m_bindings.csv'
+   WITH 
+      (
+         FIELDTERMINATOR =',',
+	 ROWTERMINATOR = '0x0a'
+      );";
+
+/* delete existing data first */
+sql(first(:js), "delete from metabindings");
+
+/* remote bulk insert into server 1, first(:js) is server 1 */
+sql(first(:js),:bulkinsertserv1_metam);
+
+/* query to check the remote bulk loaded data */
+count(sql(first(:js), "select * from metabindings")); 
+
+
+/* remote bulk insert to server 3 with meta middle data, note: you need to include schema name udb */
+set :bulkinsertserv3_metam= "BULK INSERT bm1GB.udb.metabindings
+   FROM '//130.238.14.85/Users/Public/FLOQ/server3_m_bindings.csv'
+   WITH 
+      (
+         FIELDTERMINATOR =',',
+	 ROWTERMINATOR = '0x0a'
+      );";
+
+/* delete existing data first */
+sql(last(:js), "delete from metabindings");
+
+/* remote bulk insert into server 3, last(:js) is server 3 */
+sql(last(:js),:bulkinsertserv3_metam);
+
+/* query to check the remote bulk loaded data */
+count(sql(last(:js), "select * from metabindings")); 
+
+
+/* remote bulk insert to server 1 with meta large data, note: you need to include schema name dbo */
+set :bulkinsertserv1_metal= "BULK INSERT bm1GB.dbo.metabindings
+   FROM '//130.238.14.85/Users/Public/FLOQ/server1_l_bindings.csv'
+   WITH 
+      (
+         FIELDTERMINATOR =',',
+	 ROWTERMINATOR = '0x0a'
+      );";
+
+/* delete existing data first */
+sql(first(:js), "delete from metabindings");
+
+/* remote bulk insert into server 1, first(:js) is server 1 */
+sql(first(:js),:bulkinsertserv1_metal);
+
+/* query to check the remote bulk loaded data */
+count(sql(first(:js), "select * from metabindings")); 
+
+
+/* remote bulk insert to server 3 with meta large data, note: you need to include schema name udb */
+set :bulkinsertserv3_metal= "BULK INSERT bm1GB.udb.metabindings
+   FROM '//130.238.14.85/Users/Public/FLOQ/server3_l_bindings.csv'
+   WITH 
+      (
+         FIELDTERMINATOR =',',
+	 ROWTERMINATOR = '0x0a'
+      );";
+
+/* delete existing data first */
+sql(last(:js), "delete from metabindings");
+
+/* remote bulk insert into server 3, last(:js) is server 3 */
+sql(last(:js),:bulkinsertserv3_metal);
+
+/* query to check the remote bulk loaded data */
+count(sql(last(:js), "select * from metabindings")); 

@@ -1,0 +1,379 @@
+%% LaTeX - Article customise
+
+\documentclass[12pt]{article}
+%%% PAGE DIMENSIONS
+\usepackage{geometry}                % to change the page dimensions. See geometry.pdf to learn the layout options. There are lots.
+\geometry{a4paper}                   % ... or a4paper or a5paper or ...
+%\geometry{margins=2in} % for example, change the margins to 2 inches all round
+%\geometry{landscape} % set up the page for landscape
+%\usepackage[parfill]{parskip}    % Activate to begin paragraphs with an empty line rather than an indent
+% read geometry.pdf for detailed page layout information
+
+%%% PACKAGES
+
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{amssymb}
+\usepackage{epstopdf}
+\usepackage{color}
+\DeclareGraphicsRule{.tif}{png}{.png}{`convert #1 `dirname #1`/`basename #1 .tif`.png}
+
+\usepackage{booktabs} % for much better looking tables
+\usepackage{array} % for better arrays (eg matrices) in maths
+\usepackage{paralist} % very flexible & customisable lists (eg. enumerate/itemize, etc.)
+\usepackage{verbatim} % adds environment for commenting out blocks of text & for better verbatim
+%\usepackage{subfigure} % make it possible to include more than one captioned figure/table in a single float
+% These packages are all incorporated in the memoir class to one degree or another...
+
+\usepackage{url}
+\usepackage{listings}
+\usepackage{longtable}
+\usepackage[english]{babel}
+%\usepackage[utf8]{inputenc}
+
+\lstset{ %
+%language=SQL,                % choose the language of the code
+basicstyle= \small,       % the size of the fonts that are used for the code
+numbers=left,                   % where to put the line-numbers
+numberstyle=\footnotesize,      % the size of the fonts that are used for the line-numbers
+%stepnumber=2,                   % the step between two line-numbers. If it's 1 each line
+                                % will be numbered
+%numbersep=5pt,                  % how far the line-numbers are from the code
+%backgroundcolor=\color{white},  % choose the background color. You must add \usepackage{color}
+%showspaces=false,               % show spaces adding particular underscores
+%showstringspaces=false,         % underline spaces within strings
+%showtabs=false,                 % show tabs within strings adding particular underscores
+frame=lines,                   % adds a frame around the code
+tabsize=2,                      % sets default tabsize to 2 spaces
+captionpos=b,                   % sets the caption-position to bottom
+breaklines=true,                % sets automatic line breaking
+%breakatwhitespace=false,        % sets if automatic breaks should only happen at whitespace
+title=\lstname,                 % show the filename of files included with \lstinputlisting;
+                                % also try caption instead of title
+escapeinside={\%*}{*)},         % if you want to add a comment within your code
+morekeywords={*,function, index}            % if you want to add more keywords to the set
+}
+
+%%% HEADERS & FOOTERS
+\usepackage{fancyhdr} % This should be set AFTER setting up the page geometry
+%\pagestyle{fancy} % options: empty , plain , fancy
+\fancypagestyle{plain}
+
+\textwidth = 13 cm
+\textheight = 21,5 cm
+\oddsidemargin = 1.5 cm
+\evensidemargin = 1.5 cm
+\topmargin = 0.0 cm
+\headheight = 0.0 cm
+\headsep = 2.0 cm
+\parskip = 0.5 cm
+\parindent = 0.5 cm
+%Thành Trương
+\lhead{\scriptsize Uppsala University\\Department of Information Technology\\Th\`anh Truong\\}\chead{}\rhead{}
+\selectlanguage{english}
+\lfoot{}\cfoot{\thepage}\rfoot{}
+
+\renewcommand{\headrulewidth}{0pt} % customise the layout...
+\newcommand{\points}[1]{\marginpar{#1p}}
+\newcommand{\uppg}[1]{\item #1}
+
+\title{DATABASE DESIGN II - 1DL400}
+\author{Assignment 3 \\ \\ Extending database index}
+\date{}                                           % Activate to display a given date or no date
+
+\begin{document}
+\maketitle
+
+
+\section{Extending database index}
+
+\subsection{Objectives}
+
+The goal of this exercise is to give a practical experience in extending database index using an object-relational database management system. Some attempts centering on extending database index have been proposed in database research area, for example: \emph{GiST} project which lately was brought in \emph{POSTGRES}. In this assignment the students will work with the another attempt : \emph{Meta External Index Manager (Mexinma)} aiming at providing a robust mechanism to extend database index. Mexinma is a mini research project which is based on AMOS II object-relational DBMS, a  research prototype system being developed at Uppsala Database Laboratory, Uppsala University. \\\\
+The exercise consists of writing either Java or C code to implement a new index structure, for example : \emph{KDTree} and introducing it to Amos II by a set of AMOSQL functions. The students also investigate how to utilize the index to efficiently in queries.
+
+\subsection{Introduction}
+\subsubsection{Extending database index}
+When a relation \emph{R} has a large number of tuples, a query \emph{Q} such as \\
+\begin{lstlisting}[caption=A general query to select tuples in a given range]
+select * from R where A < 'constant'
+\end{lstlisting}
+requires a full scan on entire data store to select tuples then to check whether or not them match the predicate \texttt{A < 'constant'}. Such full scan is always expensive to perform especially if tuples scatter over the data store. In order to speed up the search, one can employ \emph{B-TREE} index on attribute A. It assures that index key (value of A) at an interior node always greater than any index key in the left subtree and smaller than any index key in the right subtree. Therefore, the search to find tuples, which match \texttt{A $<$ 'constant'}, only takes either the left subtree or right subtree to traverse down instead of scanning all tuples.\\\\
+In above example, we implicitly assume that type of A is one of primitive types such as Double, Integer, Charstring. As time goes by, there seem to be more and more applications dealing with unfamiliar data types : stock history, multimedia, geographic data ( roads, land boundaries, etc) and so on.  These applications need also specialized queries over their domain based types of data. Unfortunately, it is clumsy to express those queries using relational language(or object relational language) with simple types and predicates. More over, executing those specialized quires fails to meet the demand of performance.\\\\
+To tackle that barrier, some research efforts have been made. The idea is constructing extensible database system which can be easily customized in term of adding new data type, adding new operators, adding index routines for that type, and optimizing the query optimizer to utilize the new index.\cite{GIST95}. Special indexes and optimizations can improve performance of those queries significantly compared to system fundamental B-TREE.\\\\
+This assignment introduces to you Mexinma an attempt to enable extending index. This work is still ongoing towards a complete solution : index extensibility.
+\subsubsection{Declaring indexes}
+Basically, Amos II supports two kinds of indexes Hash (Linear Hashing), and ordered MBTRree(B-TREE) which can be declared implicitly through keywords or excitingly by function
+\begin{lstlisting}[caption=Signature of AMOSQL function create\_index]
+create_index(Charstring function, Charstring argname, Charstring indextype, Charstring uniqueness);
+\end{lstlisting}
+ By default, the system add an unique HASH index on the first argument of stored functions.\\
+ Example:
+\begin{lstlisting}[caption=Indexes on a stored function]
+/*Store samples of wine quality*/
+create function winequalitysamples(Charstring sp)->
+	Vector of Number wq as stored;
+
+/*Define a B-TREE index on the second argument */
+create_index("winequalitysamples", "wq", "MBTREE", "multiple");
+
+/*Examine all defined indexes */
+indexes(#'winequalitysamples');
+{#[OID 1362 "P_CHARSTRING.WINEQUALITYSAMPLES->VECTOR-NUMBER"],
+   0,"hash","unique"}
+{#[OID 1362 "P_CHARSTRING.WINEQUALITYSAMPLES->VECTOR-NUMBER"],
+   1,"mbtree","multiple"}
+
+ /*Drop a HASH index*/
+ drop_index('winequalitysamples', 'sp');
+
+/*Cannot drop the last remaining index*/
+drop_index('winequalitysamples', 'wq');
+Trying to remove last index on CHARSTRING.WINEQUALITYSAMPLES->VECTOR-NUMBER
+
+/*There is only one left*/
+indexes(#'winequalitysamples');
+{#[OID 1311 "P_CHARSTRING.WINEQUALITYSAMPLES->VECTOR-NUMBER"],1,"mbtree","multiple"}
+\end{lstlisting}
+Notice that, function \texttt{indexes(\#'winequalitysamples');} shows one HASH unique index added by the system on the first argument (0)  and a B-TREE multiple index on the second argument (1). An index can be lately removed by calling \texttt{drop\_index(Charstring functioname, Charstring argname);}. However, the system needs at least one index defined on the stored function. Therefore, one can not remove the last remaining index.
+\subsubsection{Foreign functions}
+AMOSQL user can define functions whose implementations are in a general programming language such as C, Lisp, and Java. One might want to write C code to handle files, memory, cache and Java code to visualize data. These AMOSQL functions are called \emph{foreign functions} because they are written in a language that Amos II does not understand but be able to invoke. Even though Amos II cannot optimize their implementations but it can optimize the usage of them. Foreign functions allow Amos II to access specialized storage manager, main memory data structure, computational engine,and so on. They are also means of extending database.\\\\
+The following paragraph gives you an example showing declaration and implementation foreign function in Java. To study syntax, capability of foreign function, you should refer to section 6.1 ''\emph{Foreign and multi-directional functions in Amos II User Manual}" \cite{AmosII}. And to read comprehensive documentation of Amos II Java interface, you also need to read section 3.1 and 3.2 ''\emph{Foreign function Implementaion}"in \cite{AmosIIJava}.\\
+
+\begin{lstlisting}[label={lst:impljavakdtree}, language=Java,caption= Implementation of foreign function kdtree\_put, escapeinside={@}{@}]
+/*Import Amos II Java interface packages*/
+import callin.*;
+import callout.*;
+
+public class KDTreeIndex {
+ . . .
+/*
+PUT puts <key, val> into a KDTREE given its Id. The first PUT always constructs the KDTREE
+*/
+	@\label{lst:impljavakdtree_sign}@ public void jkdtree_put(CallContext cxt, Tuple tpl)
+		throws AmosException, KeySizeException, KeyDuplicateException {
+		/*Get the id*/
+		@\label{lst:impljavakdtree_getid}@int id = tpl.getIntElem(0);
+		/* convert from sequence of numbers to array of floats*/
+		double [] key  = toArray(tpl.getSeqElem(1));
+		@\label{lst:impljavakdtree_getoid}@Oid val =  tpl.getOidElem(2);
+			. . .
+		/*Set the result*/
+		@\label{lst:impljavakdtree_setoid}@ tpl.setElem(3, val);
+		 /*Emit*/
+		cxt.emit(tpl);
+	}
+. . .
+} //end class
+\end{lstlisting}
+
+To define a foreign function in Java, one implements the function in Java as Listing \ref{lst:impljavakdtree}, then defines the foreign function in AMOSQL in as Listing \ref{lst:defamosqlkdput}. In other words, the function \texttt{kdtree\_put} defined in AMOSQL has actual implementation as a public function \texttt{jkdtree\_put} located in KDTreeIndex.class.\\
+
+\begin{lstlisting}[caption={Definition of foreign function kdtree\_put in AMOSQL},label={lst:defamosqlkdput}]
+ create function kdtree_put(Integer xtId, Object f, Object o)-> Object as foreign 'JAVA:KDTreeIndex/jkdtree_put';
+\end{lstlisting}
+A foreign function implementation in Java always has two arguments \emph{cxt}, and \emph{tpl} (line \ref{lst:impljavakdtree_sign}). The argument cxt (instance of class CallContext) is a data structure managed by Amos II to pass information about the caller. While the argument tpl (instance of class Tuple), an ordered collections of Amos II database objects, represents both arguments and results. The order of parameters in Tuple is preserved as it is in AMOSQL definition.\\\\
+Knowing data type and position of a parameter allows us to get and set its value provided a set of Amos II Java interfaces. For example, the first input argument xtId  is accessed in Line \ref{lst:impljavakdtree_getid} - Listing \ref{lst:impljavakdtree} using \texttt{tpl.getIntElem(0)} since its position is 0 and its type is Integer. The implementation sets the returned value into position 3 by \texttt{tpl.setElem} and emits the tuple tpl by \texttt{cxt.emit(tpl)}as in Line \ref{lst:impljavakdtree_setoid} - Listing \ref{lst:impljavakdtree}.
+
+Here are some important methods from Amos II Java interfaces. The rest can be referenced in \cite{AmosIIJava}.
+\begin{itemize}
+\item \texttt{int Tuple.getIntElem(int pos)} gets an integer element at position pos.
+\item \texttt{void Tuple.setElem(int pos, int i)} is to store integer i into element pos of a tuple.
+\item \texttt{Oid Tuple.getOidElem(int pos)} gets an Amos II \emph{object handle} representing any kind of data structure which can be stored by Amos II storage manager. It is an unique identifer but not a pointer.
+\item \texttt{void Tuple.setElem(int pos, Oid o)} is store an object handle o into element pos of a tuple.
+\item \texttt{void CallContext.emit(Tuple)} emits the result of a foreign function. Thus, to return a bag of values, we emit each value on the fly until there is nothing left.
+\item \texttt{Tuple Tuple.getSeqElem(int pos)} gets a \emph{sequence} representing objects type of Vector in AMOSQL from position pos of a tuple to an instance of class Tuple.
+\item \texttt{void Tuple.setElem(int pos, Tuple tpl)} is to store a copy of the tuple tpl as a sequence into position pos of a tuple.
+\end{itemize}
+
+\subsubsection{Mexinma}
+Meta External Index Manager (Mexinma), a subcomponent of Amos II, provides a robust mechanism to extend database index. It allows the Amos II index manager connects to an \emph{External Index Manager (Exinma)} which is a stand-alone executable program (in C, Java, Lisp) or a third party Dynamic Link Library (DLL), equivalently to Shared Object on Unix (so). Exinma contains code to handle a special data structure which is used to index data in the database. To connect that Exinma to Amos II kernel, one needs to implement a number of foreign functions followed a naming convention. These foreign functions resides in a program called as \emph{Exinma Driver}.\\
+ Example:\\
+ In the skeleton of assignment 3, kd.jar is a Java package which publishes API to interact with KDTree data structure. KDTreeIndex.java is a driver program in which a number of foreign function resides.
+
+\begin{figure}[H]
+  \centering
+  % Requires \usepackage{graphicx}
+  %\includegraphics{Mexinma.png}
+  \caption{Mexinma architecture}\label{Mexinma-architecture}
+\end{figure}
+
+Mexinma does not keep any pointer to Exinma. Instead it holds an unique identifer per Exinma (\emph{xtId}). Thus, Exinman Driver is responsible for generating xtId value when Mexinma requests to make a new instance of Exinma. Consequently, Exinma Driver maintains a list of xtId.
+
+\begin{figure}[H]
+  % Requires \usepackage{graphicx}
+  %\includegraphics[scale=0.75]{Mexinma_connects_Exinmas.png}
+  \caption{Mexinma connects Exinma(s) to Amos II}\label{Mexinma-connects-exinma}
+\end{figure}
+
+A database extender can connect an Exinma using foreign functions in two steps. In the first step, one has to register a new index type (type of Exinma) using the built-in function\\
+\begin{lstlisting}[caption={Definition of register\_exindextype},label={lst:registerindextype}]
+register_exindextype(Charstring indextype, Charstring langpath, Boolean manualsaver)-> Boolean;
+\end{lstlisting}
+Input:\\
+--- indextype : Type of new $<$index type$>$\\
+--- langpath  : How index's routines are defined ?
+\begin{itemize}
+\item As a number of foreign functions (either C or Java), ex: FOREIGN
+\item (Not used in assignment) As a Dynamic Link Library (on Windows) or Shared Object (on Unix), ex: C:E:/lib/linh.dll
+\item (Not used in assignment) As a Java class, ex : JAVA:E:/JHashtable.class
+\end{itemize}
+--- manualsaver : Index information is saved and reloaded by the Exinma if the \emph{manualsaver} is TRUE. Otherwise, Amos II automatically rebuilds index information when needed. \\\\
+Output: Success (TRUE) or failure (FALSE).
+
+The next step is to redefine a set of foreign functions starting with a prefix $<$index type$>$.
+\begin{itemize}
+\item \textbf{create function $<$index type$>$\_make()-$>$Integer as foreign...}\\
+    is to make a new index structure.
+\item \textbf{create function $<$index type$>$\_put(Integer xtId, Object key, Object val)-$>$ Object as foreign ...}\\
+    is to put a value val associated with key into an index structure whose identifier is xtId. Value is stored as an object handle (class Oid) referencing to Amos II object.
+
+\item \textbf{\textbf{create function $<$index type$>$\_get(Integer xtId, Object key)-$>$ Object val as foreign...}}\\
+    is to get a value val associated with key from an index structure whose identifier is xtId.
+
+\item \textbf{create function $<$index type$>$\_delete(Integer xtId, Object key)-$>$ Object as foreign...}\\
+    is to delete a value val associated with key from an index structure whose identifier is xtId.
+
+\item \textbf{create function $<$index type$>$\_clear(Integer xtId)-$>$ Object as foreign...}\\
+    is to remove an index structure whose identifier is xtId.
+
+\item \textbf{create function $<$index type$>$\_load(Charstring filename)-$>$ Boolean as foreign...}\\
+    is to load all index data of type $<$index type$>$ from files. When Exinma wants to handle its own data, the parameter \emph{manualsaver} of function register\_exindextype is set to TRUE. Otherwise, it is set to FALSE meaning that Mexinma automatically rebuilds the index data.
+
+\item \textbf{create function $<$index type$>$\_save(Charstring filename)-$>$ Boolean as foreign...}\\
+    is to save all index data of type $<$index type$>$ to files. When Exinma wants to handle its own data, the parameter \emph{manualsaver} of function register\_exindextype is set to TRUE. Otherwise, it is set to FALSE meaning that Mexinma automatically save the index data.
+
+\item \textbf{create function $<$index type$>$\_mapper(Integer id)-$>$ Bag of Object as foreign...}\\
+    is to iterate and to emit pairs of keys and values.It is worthy to note that not all of index structure can iterate over all data items such as XTREE, and KDTREE.
+\end{itemize}
+
+Mexinma is transactional meaning that it is possible to \texttt{commit} and \texttt{rollback}. In addition, one can save and reload the system by invoking \texttt{save 'databasename.dmp'} and \texttt{javaamos databasename.dmp} respectively.
+
+\subsubsection{K-dimensional Tree}
+A K-dimensional search tree (KDTREE) is a main memory data structure which extends binary tree to multidimensional data. As similar to binary tree, an interior node in KDTREE is associated with an attribute a and value v. The value v splits data points in two sets: ones whose values are equal or greater than v and those with values less than v. A part from that, an interior node has different attribute at each level rotating among all attributes. It is, therefore, suitable for multidimensional data.\\\\
+In this assignment, KDTREE implementation is delivered as a Java package: kd.jar which has API documentation available online at \cite{LEV11}. You need to get through that API to understand which functions should be invoked to work with KDTREE.
+
+\subsection{Preparation}
+
+Download skeleton code for assignment 3 from Assignments page \url{http://www.it.uu.se/edu/course/homepage/dbastekn2/vt11/dbt2-vt2011-assignments.html}. and unzip it into your home directory. There is a readme.txt file containing instructions on how to set up your environment variables and run the skeleton code.\\\\
+For background reading you are referred to:
+
+\begin{itemize}
+\item Elmasri and Navathe \cite{EN10}: Chapters 20, 21 and 22.
+\item Padron-McCarthy and Risch \cite{PMR05}: Chapter 16.
+\item All material from the lectures on object-oriented and object-relational databases systems and query languages. See also the assignment web page of this course for additional information.
+\item Amos II User Manual \cite{AmosII}: Section 7.1, 6.1.
+\item Amos II Java Interfaces \cite{AmosIIJava}: Section 3.1, and 3.2.
+\end{itemize}
+There is also an supervised introduction to the assignment in your schedule.
+
+%\newpage
+%\pagestyle{empty}
+\headsep = 0.0 cm
+
+
+\section{Assignment} \label{assignment}
+
+The exercise consists of 5 parts:
+\begin{enumerate}
+\item Exercise 1\\
+Task: Register with Amos II a new index type KDTREE\\
+Instruction: see Listing \ref{lst:registerindextype}
+\item  Exercise 2\\
+Task: Redefine Index's routines for KDTree - Implement Mexinma driver\\
+Instruction: see Listing \ref{lst:impljavakdtree_sign}\\
+Example:\\
+To redefine a putter which enters (index key, value), one should invoke \begin{verbatim}create function kdtree_put(Integer xtId, Object f, Object o)
+-> Object as foreign 'JAVA:KDTreeIndex/kdtree_put';
+\end{verbatim}
+It states that the implementation of this kdtree\_put is a public method \texttt{kdtree\_put }located in JAVA class named KDTreeIndex.class
+
+Since KDTRree does not support explicitly an approach to scan through all index keys (FULL INDEX SCAN). Therefore, you do not need to implement kdtree\_mapper and do not drop a primary index HASH created by default.
+\item  Exercise 3\\
+Task: Put KDTREE index on second parameter of \texttt{winequalitysamples}) 
+\item  Exercise 4\\
+Task: Investigate execution plans and test KDTREE index by answering the following questions:
+\begin{itemize}
+\item What kind of index is used in the execution plan of \texttt{allsamples}?
+\item Why?
+\item What kind of index is used in the execution plan of \texttt{get\_sample\_example}?
+\item Why?
+\end{itemize}
+Instruction: Method \texttt{pc('function name')} shows the execution plan of a given a function name.
+\item  Exercise 5\\
+Task: K-nearest neighbors search (k-NN) is a method for finding K closest points in a data set given an input point. A fundamental index structure BTREE is not efficient in answering this kind of search when the input point has a high number of attributes (multidimensional data). \\
+In this exercise, you need to complete the implementation of \texttt{kdtree\_knn(Vector of Number v, Number k, Function f)} which takes v as input point, k as number of nearest neighbors, and a stored function f storing the data set to search in.\\
+Executing \texttt{kdtree\_knn(:v,3,\#'winequalitysamples');} raises an error stating that\\
+``Foregin function kdtree\_knn\_search\_fn is not yet implemented!!''
+
+In order to utilize KDTree with KNN search, you need to complete implementation of \texttt{kdtree\_nearest} in \texttt{KDTreeIndex.java} then redefine this foreign function
+\begin{lstlisting}[caption={Foreign function kdtree\_knn\_search\_fn},label={lst:defamosqlknn}]
+   create function kdtree_knn_search_fn(Integer xtId, Vector of Number x, Number k)-> Object as foreign 'JAVA:KDTreeIndex/kdtree_nearest';
+\end{lstlisting}
+Now , you are be able to run \texttt{kdtree\_knn(:v,3,\#'winequalitysamples');} again.
+\end{enumerate}
+%\subsection{Exercises} \label{exercises}
+\section{Examination}
+\subsection{Hand-in documents} \label{handin}
+Each exercise requires filling some AMOSQL in file \texttt{kdtree.osql} and Java code in  \texttt{KDTreeIndex.java}.\\
+Adding descriptive comments is advised in case your solution does not pass a validation script. Each group send only one compressed folder (tar, zip) containing:
+\begin{itemize}
+\item \texttt{kdtree.osql}
+\item \texttt{kdtree.lsp}
+\item \texttt{KDTreeIndex.java}
+\item \texttt{group.txt} stating your group number, names and emails
+\end{itemize}
+\subsection{Validation} \label{validation}
+-- We test your solution with a validation script.\\
+-- Then we check your answers for exercise 4.\\
+-- Finally, we continue to investigate AMOSQL code, and Java code.\\\\
+Failure on a step means a K is given . You then have to re-submit your solution until it passes that step. G is given when everything is correct.\\
+Enjoy !! 
+%\section*{Acknowledgements}
+%Contributions to the material for this assignment has been supplied by several of the former and current colleagues at the department, in alphabetical order, including Thomas Padron-McCarthy and .....
+
+\begin{thebibliography}{ORS123}
+%% <1.9> is the widest label (number or letter combination) to be used
+%% in the reference list; if necessary, please change this label
+%\addcontentsline{toc}{section}{References}
+%\input{cdbt-vr04-ref}
+
+%{\footnotesize
+%{\small
+
+\bibitem[EN10]{EN10} Elmasri, R. and Navathe, S. B.: Fundamentals of Databases, 6th Edition, Addison-Wesley, 2010 (available e.g. at Akademibokhandeln).
+
+\bibitem[PMR05]{PMR05} Padron-McCarthy, T. and Risch, T.: Databasteknik, Studentlitteratur, 2005 (available e.g. at Akademibokhandeln).
+
+\bibitem[LEV11]{LEV11} Simon D. Levy, .: KD-Tree Implementation in Java and C\#,\url{http://home.wlu.edu/~levys/software/kd/}, 2011.
+
+\bibitem[GIST95]{GIST95} Joseph M. Hellerstein, Jeffrey F. Naughton, Avi Pfeffer, .: Generalized Search Trees for Database Systems, Proceedings of the 21st VLDB Conference Zurich, Switzerland, 1995.
+\bibitem[AmosII]{AmosII} Amos II Release 13 Version 1, \url{http://user.it.uu.se/~udbl/amos/doc/amos_users_guide.html}, January 30,  2011.
+\bibitem[AmosIIJava]{AmosIIJava} Amos II Java Interfaces, in subdirectories of Amos II release version downloaded at \url{http://user.it.uu.se/~torer/download/lic.php}, January 30,  2011.
+
+%\bibitem[M10]{M10} Mimer documentation, Version 10 and more (include User's Manual, Reference Manual and Programmer's Manual), \url{http://developer.mimer.com/documentation/index.htm}.
+
+\end{thebibliography}
+
+
+%\newpage
+%\section*{Appendix A: KDTreeIndex.java \label{appa}}
+%
+%\lstinputlisting{../KDTreeIndex.java}
+%\begin{figure}[htbp]
+%\begin{center}
+%  \hspace*{-1cm}
+%  \includegraphics[trim=0.55cm 1.8cm 0.5cm 2.55cm, clip=true, height=9.5cm, angle=90, scale=1.25]{er-jonsonbrothers-db2.pdf}
+%  \vspace*{-5cm}
+%%    \caption{Entity-relationship diagram of the existing company database:}
+%%\label{fig1}
+%\end{center}
+%\end{figure}
+
+
+\begin{center}
+--------------------------------------------------------------------------------------\\
+\end{center}
+
+
+\end{document}  

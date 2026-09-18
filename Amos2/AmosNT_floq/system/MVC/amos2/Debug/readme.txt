@@ -1,0 +1,1 @@
+CVS requires at least one file in each directory

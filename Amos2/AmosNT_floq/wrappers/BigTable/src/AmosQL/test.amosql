@@ -1,0 +1,15 @@
+create function #STATE_DS2()->vector
+ as gql('ds1', 'select * from STATE',{});
+
+create function #STATE_DS3()-><charstring fn, charstring sn>
+ as select fn,sn where {fn,sn} in gql('ds1', 'select * from STATE',{});
+
+create function #STATE_DS10()-><charstring FULLNAME, charstring SHORTNAME>
+ as select FULLNAME,SHORTNAME where {FULLNAME,SHORTNAME} in gql('ds1', 'select * from STATE',{});
+
+create function #STATE_DS11()->(charstring FULLNAME, charstring SHORTNAME)
+ as select FULLNAME,SHORTNAME where {FULLNAME,SHORTNAME} in gql('ds1', 'select * from STATE',{});
+
+
+create function #STATE_DS12()->bag of (charstring FULLNAME, charstring SHORTNAME)
+ as select FULLNAME,SHORTNAME where {FULLNAME,SHORTNAME} in gql('ds1', 'select * from STATE',{});

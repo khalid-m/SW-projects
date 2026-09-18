@@ -1,0 +1,67 @@
+create function SARDunload(Charstring URL, /* JDBC URL */
+                           Charstring driver, /* JDBC driver */
+                           Charstring user, /* RDB user name */
+                           Charstring passw, /* RDB password */
+                           Charstring dbname) -> Charstring
+as 
+begin
+        declare Jdbc ds;
+        
+
+        /* Define a UPV data source to access the relational database.
+         * A UPV data source simply stores all the information needed 
+         * to access a particular relational database.
+         */
+        defineDS("myUPVds",
+                 URL,
+                 driver,
+                 "",
+                 "",
+                 user,
+                 passw);
+
+
+       /* Define a UPV and associate it with the UPV data source defined above.
+        * Every UPV must be associated with a UPV data source.
+        * Each UPV data source can be associated with several UPVs.
+        */
+       defineUPV("myUPVds","myUPV","");
+
+       DSConnect("myUPV");
+
+	/*Populate some fns*/
+	set db_name()=dbname;
+	set db_ontology()="http://user.it.uu.se/~udbl/sard/";
+
+	set ds = jdbcofds("myUPVds");
+        table_map("myUPV"); /* Populate class mapping table */
+	column_map("myUPV"); /* Populate property mapping table */
+	ViewRDB("myUPV"); /* Export the UPV */
+	allclassXML(ds,dbname, "myUPV"); /* Write RDF file containing schema */
+	allXMLclass(dbname);	/* Write RDF file conatining data */
+	disconnect(ds);
+      result true;
+end;
+
+create function SARDload(Charstring URL, /* JDBC URL */
+                         Charstring driver, /* JDBC driver */
+                         Charstring user, /* RDB user name */
+                         Charstring passw, /* RDB password */
+                         Charstring dbname)-> charstring
+as begin
+	declare charstring fname1, charstring fname2, jdbc ds;
+	set fname1 = dbname + "_data.rdf"; /*retrieve data RDF file*/
+	set fname2 = dbname + "_schema.rdf"; /*retrieve schema RDF file*/
+	set db_name()=dbname;
+	set db_ontology()="http://user.it.uu.se/~udbl/sard/";
+	set ds = jdbc("cds", "interbase.interclient.Driver");
+	connect(ds,URL,user,passw); /*make connection to the empty database*/
+	for each charstring t_name where t_name = get_tables(fname2,db_ontology()) 
+	 begin
+		generate_create_table_query(ds,fname1,fname2,t_name,db_ontology());
+		updatetable(ds,fname1,fname2,t_name,db_ontology());
+	 end;
+ 	print("tables are updated");
+	disconnect(ds);
+end;
+

@@ -1,0 +1,134 @@
+create function findresult_insig1()
+                ->vector e as select value(ve)from sigvec2 ve where name(ve)="sig2";
+
+create function findsignature(vector ip)-> vector ot  as
+					 begin
+					  for each object ve, sigvec sv where ve in ip and name(sv)='sig'
+					   begin
+					    if value(sv)={} then
+					     set value(sv)={typename(ve)}
+					    else
+					     set value(sv)=concat(value(sv),{typename(ve)});
+					   end;
+					  set ot=findresult_insig();
+					  return ot;
+					  set  value(sv)={} from sigvec sv where name(sv)='sig';
+					end;
+					   		
+						
+create function insig_iterate(vector  r)-> vector rs
+		as 
+		begin
+			
+			
+		 for each  Element e,sigvec2 sv1 where e=in(r)and name(sv1)="sig2"
+		   begin
+			
+			
+		    if subelements(e)then 
+		     begin
+			 set value(sv1)=insig_iterate(subelements(e));	
+			/*print(value(sv1));
+		      if value(sv1)={} then
+			 set value(sv1)=insig_iterate(subelements(e))
+		      else
+			begin
+			  set value(sv1)=concat(value(sv1),insig_iterate(subelements(e)));
+			  
+			end;*/
+		     end
+		    else
+		     begin
+			/*print(" 2 loop "+name(e));
+			print(findresult_insig1());
+			print(value(sv1));*/
+		      if value(sv1)={} then
+			begin
+			 if (maxoccurs(e)='-1')then
+			   set value(sv1)={'VECTOR-'+wsmedtype(e)}
+		         else
+			    set value(sv1)={wsmedtype(e)};
+		       end
+		      else
+			begin
+			 if (maxoccurs(e)='-1')then
+			   set value(sv1)=concat(value(sv1),{'VECTOR-'+wsmedtype(e)})
+		         else
+			   set value(sv1)=concat(value(sv1),{wsmedtype(e)});
+			end
+			 
+		     end;
+		   end;
+		 
+		  set rs=findresult_insig1();	
+		  
+	 	 return rs;
+		  	/*print("12345");
+			print(rs);*/
+		  
+		  set value(ve1)={} from sigvec2 ve1 where name(ve1)="sig2";	
+		end;
+
+
+
+create function input_elementtype(charstring wsuri,charstring wsname, Operation op)-> vector rs 
+		as 
+		begin
+	
+		  for each  Element e,sigvec sv where e=in(input(op))and name(sv)="sig"
+		   begin
+			/*print("1 loop "+name(e));
+			print("10");
+			print(value(sv));*/
+		    if subelements(e)then 
+		     begin
+			if value(sv)={} then
+			 set value(sv)=insig_iterate(subelements(e))
+		       else
+		         set value(sv)=concat(value(sv),insig_iterate(subelements(e)));
+		     end
+		    else
+		     begin
+		      if value(sv)={} then
+			begin
+			 if (maxoccurs(e)='-1')then
+			   set value(sv)={'VECTOR-'+wsmedtype(e)}
+		         else
+			    set value(sv)={wsmedtype(e)};
+		       end
+		      else
+			begin
+			 if (maxoccurs(e)='-1')then
+			   set value(sv)=concat(value(sv),{'VECTOR-'+wsmedtype(e)})
+		         else
+			   set value(sv)=concat(value(sv),{wsmedtype(e)});
+			end
+			 
+		     end;
+			/*print("12");
+			print(value(sv));*/
+		   end;
+		  set rs=findresult_insig();	
+		  return rs;
+		  set value(ve)={} from sigvec ve where name(ve)="sig";
+	       end;
+
+                                                
+									
+
+
+
+/**** add  Authentication values *********/
+
+/* lookhere  need to fix*/
+create function findoperation(charstring wsdluri, charstring wsname, charstring opname,vector sv)->Operation  as 
+                                                                        select op
+									from Operation op, Service ws 
+									where name(op)=opname and name(ws)=wsname  and wsdluri(ws)=wsdluri and op in port(ws)                                                                          and find_type( authentication(op),{})=findsignature(sv);
+
+create function putsoaphvalue(charstring wsdluri, charstring wsname, charstring opname,vector sv)->SHValue s as 
+							begin
+							   create SHValue instances s;
+							   set oper(s)=findoperation(wsdluri,wsname,opname,sv); 
+							   set value(s)=sv;
+							end;

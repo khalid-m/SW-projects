@@ -1,0 +1,426 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Silvia Stefanova UDBL
+ * $RCSfile:Recreate_inMSSQL.amosql,v 
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Functions to recreate an RDB in the MS SQL server
+ ******************************************************************************/
+/*
+CREATE TABLE [archive].[MyTriple](
+	[s] [varchar](200) NOT NULL,
+	[p] [varchar](200) NOT NULL,
+	[o] [varchar](2200) NOT NULL
+) ON [PRIMARY]
+*/
+
+
+
+create function get_info_mssql(Charstring tableURI,Charstring baseURI)->Charstring
+as begin 
+	declare charstring temp;
+	set temp="";
+	for each Charstring tname,Charstring dsize,Charstring colURI, Charstring colname, Charstring dtype,Integer numb 
+	 where <tname,colURI,colname,dtype,dsize,numb> = orderColumns(tableURI,baseURI)
+		if (dsize="" or dtype="int" )then 
+			set temp = temp + colname + " " + dtype +","
+		else set temp = temp + colname + " " + dtype +"("+ dsize+")"+",";	 
+		return substring(temp,0,char_length(temp)-2);
+   end;
+
+create function makeTable_mssql(Charstring schema,Charstring tableURI,Charstring baseURI)->Charstring
+as begin
+	declare charstring t1;
+	set t1="";
+	for each Charstring ch where ret_pkname(tableURI, baseURI)=ch
+		set t1=t1+","+ch;
+	 return "CREATE TABLE " + schema+"." + tabName(tableURI) + 
+		"(" + get_info_mssql(tableURI,baseURI) +",PRIMARY KEY(" +substring(t1,1,char_length(t1))+"));"
+   end;
+
+
+create function makeAllTable_mssql(JDBC jd,Charstring schema,Charstring baseURI)->Boolean 
+as for each Charstring ch where ret_tableURIs()=ch
+		sql(jd,makeTable_mssql(schema,ch,baseURI));
+
+
+create function maptabURI_tab(Charstring tabURI, Charstring baseURI)->Charstring 
+as select clearURI(tabURI,baseURI);
+
+
+create function get_tabURI(Charstring tab,Charstring baseURI)->Charstring
+as
+  return "<"+baseURI+"#"+tab+">";
+
+
+create function ProcColOrder_mssql(Charstring schema,Charstring tname,Vector pkname,Vector pksize,Vector colname,Vector pktype,Vector coltype,Charstring baseURI)->Charstring
+as begin
+	declare Integer z,Charstring t5,Charstring t1,Charstring t2,Charstring tm,Charstring tn,Charstring k1,Charstring k2,Charstring k3,Charstring k4,Charstring k5;
+	set z=1;set k1="";set k2="";set k3="";set k4="";set k5="";set t1="";set t2="";set tm="";set tn="";set t5="";
+	for each integer j where j in iota(1,dim(pkname))
+	 for each integer k where k in iota(1,dim(colname))
+	    if(pkname[j-1]=colname[k-1]) then set z=0;
+	for each integer i where i in iota(1,dim(pkname))
+	begin	if (pksize[i-1]!="") then set t1=t1+", @"+pkname[i-1]+" "+pktype[i-1]+"("+pksize[i-1]+")"
+		else set t1=t1+", @"+pkname[i-1]+" "+pktype[i-1];
+		set t2=t2+","+pkname[i-1];set tm=tm+",@"+pkname[i-1];
+		set tn=tn+" and "+ pkname[i-1]+"=@"+ pkname[i-1];set t5=t5+pkname[i-1];
+	end;
+	set t1=substring(t1,1,char_length(t1));	set t2=substring(t2,1,char_length(t2));	
+	set tm=substring(tm,1,char_length(tm));	set tn=substring(tn,4,char_length(tn));		
+	for each integer i where i in iota(1,dim(colname))
+	begin	set k1=k1+", @"+colname[i-1]+" "+coltype[i-1]; 
+		set k2=k2+","+colname[i-1];set k3=k3+",@"+colname[i-1];
+		set k4="UPDATE "+tname+" SET "+colname[i-1]+"=@"+colname[i-1]+ " WHERE "+tn+"; "+k4;set k5=k5+colname[i-1]
+	end;
+	set k1=substring(k1,1,char_length(k1));	set k2=substring(k2,1,char_length(k2));
+	set k3=substring(k3,1,char_length(k3));	set k4=substring(k4,0,char_length(k4));	
+	 if (z=1) then
+		if( isCT(get_tabURI(tname,baseURI))) then  /*link table*/
+			return "CREATE PROCEDURE "+schema+"." + tname+ "_lt"  
+			+t1+ " AS INSERT INTO "+tname+ "("+t2+") VALUES ("+tm+");"
+		 else /*non-link table*/
+			return "CREATE PROCEDURE "+ schema+"." + tname+ "_"+k5+"  "+t1+","+k1+"
+			AS BEGIN
+			IF EXISTS (SELECT 1 FROM "+tname+" WHERE "+tn+") 
+				"+k4+"
+			ELSE 
+				INSERT INTO "+tname+ "("+t2+","+k2+") VALUES ("+tm+","+k3+")
+	                END;" 
+	  else
+		if (isnotCT(get_tabURI(tname,baseURI))) then  /*for attributes that are primary key attributes in non-link tables*/   	   
+			  return "CREATE PROCEDURE "+schema+"." + tname+"_"+k5+"		
+			  "+t1+" AS
+			   BEGIN
+			IF NOT EXISTS (SELECT 1 FROM "+tname+" WHERE "+tn+") 
+			INSERT INTO "+tname+ "("+t2+") VALUES ("+tm+");
+	        	END;" ;  	       	  
+end;
+
+
+/*To store mappings between attribute URIs and stored procedures*/
+create function colURI_proc(Charstring colURI, Charstring proc)-> Boolean as stored;
+
+create function clean_colURI_proc()-> Boolean
+as
+/* Clean the mapping table*/
+	for each Charstring proc, Charstring colURI where
+			colURI_proc(colURI,proc)=true
+		set colURI_proc(colURI,proc)=false;
+
+
+create function find_proc(Charstring colURI)->Charstring
+as
+	select proc from Charstring proc
+		where colURI_proc(colURI,proc)=true;
+
+
+declare_key(theresolvent("coluri_proc"),{'proc'});
+
+create function PColOrder_mssql(JDBC jd,Charstring schema,Charstring baseURI)->Boolean
+as begin
+	declare Charstring dtype,Charstring dsize,Charstring fkM,Charstring x1,Charstring cname,
+		Vector cnt,Vector fkMap,Vector pkname,Vector pksize,Vector colname,Vector coltype,Vector pktype,Integer z;
+	set z=0;set cnt={};		
+	/*Setting the respective primary keys and its info of the corresponding table into a vector.*/	
+	for each Charstring tableURI where ret_tableURIs()=tableURI 
+	begin	
+		for each Charstring ch where ret_pkURIs(tableURI)=ch
+		begin	set pkname=concat(pkname,{str_exp(clearURI(ch,baseURI),"/")});
+			set pktype=concat(pktype,{ret_colDatatype(ch)});
+			if ( like(ret_colDatatype(ch),"*int*") or notany(ret_colSize(ch)) or ret_colSize(ch)="" ) then
+				set pksize=concat(pksize,{""})
+			else
+				set pksize=concat(pksize,{ret_colSize(ch)})
+		   end;		
+		for each Charstring colURI, Charstring col,integer ord where 
+			ret_columnURIs2(tableURI,baseURI)=<colURI,col,ord> and isnotCT(tableURI)		
+		begin
+			if (ret_fkMap(colURI)) then
+			  begin
+				set colname=concat(colname,{col});
+				set cname=col;
+			  end
+			else
+			  begin
+				set colname=concat(colname,{str_exp(col,'/')});
+				set cname=str_exp(col,'/');
+			  end;
+			set dtype=ret_ColDatatype(colURI);				
+			if ( like(dtype,"*int*") or notany(ret_colSize(colURI)) or ret_colSize(colURI)="" ) then 
+			    set x1=dtype
+			else set x1=dtype+"("+ret_colSize(colURI)+")" ;
+			set coltype=concat(coltype,{x1}); 
+			if (sql(jd,ProcColOrder_mssql(schema,clearURI(tableURI,baseURI),pkname,pksize,colname,pktype,coltype,baseURI)) ) then		
+			    set colURI_proc(colURI,schema+"."+clearURI(tableURI,baseURI)+"_"+cname)=true;
+			set colname={};	set coltype={};			
+		end;	
+		if (isCT(tableURI)) then
+                  begin
+		   if ( sql(jd,ProcColOrder_mssql(schema,clearURI(tableURI,baseURI),pkname,pksize,colname,pktype,coltype,baseURI)) ) then
+		   	set colURI_proc(tableURI,schema+"."+clearURI(tableURI,baseURI)+"_lt")=true;	
+		   set colname={};	set coltype={};			
+		  end;
+		set pkname={};set pktype={};set pksize={};
+	end;
+end;
+
+
+create function Insert_mssql_new(JDBC jd,Charstring schema,Charstring filename2, charstring baseURI)
+->Boolean
+/*Insert attribute values by stored procedures per attribute*/
+as begin
+        declare Charstring c1,Charstring c2;		
+	/*Retrieves all connecting tables from the NT file and stores in a vector.*/
+	for each charstring s, charstring p,charstring v, Charstring i where readtuples1(filename2)=<s,p,v,i>
+	begin   
+	    if( isCT(p) ) then /* for Link-tables*/
+	        begin	
+		   set c1=ret_pkVal2(baseURI,s) ; set c2=ret_pkVal2(baseURI,v) ;
+	   	   sql(jd,"exec "+ find_proc(p)+ " " +c1+","+c2+";");		   
+	         end
+	    else
+	 	if (notany(isPK(p)) and p != "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>") then
+                  begin
+		   if (ret_FK_fromURI(v,baseURI)) then /* if v is a foreign key value*/
+			begin
+			  set c1=ret_pkVal2(baseURI,s);
+			  set c2=ret_FK_fromURI(v,baseURI);			  
+			end
+		    else
+		    	begin
+			  set c1=ret_pkVal2(baseURI,s);
+			  /*set c2=v;*/
+			  set c2="'"+v+"'";
+			end;
+		    sql(jd,"exec "+ find_proc(p)+ " " +c1+","+c2+";");
+		end;
+		
+         end;
+end;
+		
+			
+
+
+
+create function Insert_mssql(JDBC jd,Charstring schema,Charstring filename2, charstring baseURI)
+->Boolean
+/*Generates CALL PROCEDURE_NAME  statements to insert data into the database. 
+  These CAll Procedure_name statements calls the stored procedures in the database for the data insertion.*/
+as begin
+        declare Number time1,Number time2, Number total,Vector cnt,Charstring z,Charstring tname,Charstring t,Charstring t1,Charstring t2,Charstring t3,
+		Charstring t4,Charstring t5,Charstring pkV,Charstring c1,Charstring c2,Charstring cont3,Charstring cont1,Charstring cont2,
+		Integer nlcount, Integer lcount;
+	set t="";set cont3="";set lcount=0;set nlcount=0;	
+	set total=0;
+	/*Retrieves all connecting tables from the NT file and stores in a vector.*/
+	for each charstring ch where ret_tableURIs_CT()=ch set cnt=concat(cnt,{ch});	
+	for each charstring s, charstring p,charstring v, Charstring i where readtuples1(filename2)=<s,p,v,i>
+	begin   if(p in cnt) then /* for Link-tables*/
+		begin	
+			set lcount=lcount+1;
+			if (p!=t) then /*read new predicate (table attribute)*/			
+			begin 	
+				set cont1=ret_pknamefromRowId(baseURI,s);
+				set cont2=ret_pknamefromRowId(baseURI,v);
+				set cont3="";set t=p;
+				for each charstring pk where ret_pkURIs(p)=pk 
+					set cont3=str_exp(clearURI(pk,baseURI),"/"); 
+			end;
+             		set c1=ret_pkVal(baseURI,s);set c2=ret_pkVal(baseURI,v);			
+			set time1=real(now());		
+			if (lcount = 1000) then
+  			  begin
+			  	sql(jd,"exec "+schema+".comTransact;");
+				set lcount=0; 				
+			  end;
+			sql(jd,"exec "+schema+"."+clearURI(p,baseURI)+"_"+cont3+" "+c1+","+c2+";");
+			set time1=real(now())-time1; 
+			set total=time1+total;	
+		end
+		else  /* for non-Link tables*/
+		begin 
+	   	   set nlcount=nlcount+1;
+		   if (s!=t) then 
+			begin 
+			   set pkV=get_pkVal_Col(baseURI,s);set tname=ret_tableNamefromRowID(baseURI,s);
+			   set t=s; 
+			end;
+			if(v!="" and p!="<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>") then
+			begin 	set z=clearURI(p,baseURI);
+				if(like(z,"*/*")) then 
+				begin 	set t3=str_exp(clearURI(p,baseURI),'/');set t4="'"+v+"'";
+					set time1=real(now());
+					if (nlcount = 1000) then
+					  begin
+					  	sql(jd,"exec "+schema+".comTransact;");
+						set nlcount=0; 	
+					  end;
+					sql(jd,"exec "+schema+"."+tname+"_"+t3+" "+pkV+","+t4+";");
+					set time1=real(now())-time1;set total=time1+total; 
+				end
+				else 
+				begin  set t1=str_exp1(clearURI(v,baseURI),"/");
+					set t2=ret_pknamefromRowId(baseURI,v);
+					for each Charstring ch1,Charstring ch2,Vector vec1,Vector vec2 where get_fkVal_NameCol(baseURI,p,v)=<ch1,ch2,vec1,vec2> 
+					begin 
+						set t3=ch1;set t4=ch2;
+						set time1=real(now());
+						for each integer j where j in iota(1,dim(vec1))
+							sql(jd,"exec "+schema+"."+tname+"_"+vec1[j-1]+" "+pkV+","+vec2[j-1]+";");
+						set time1=real(now())-time1;
+						set total=time1+total;	
+					end;
+				end;
+			end;
+		end;
+	end;
+	print(total);
+end;
+
+create function makeConstraint_mssql(Charstring schema,Charstring tableURI,Charstring baseURI)->Charstring
+as for each Charstring ch1,Charstring ch2,Charstring ch3,Charstring ch4,
+	Charstring ch5 where ret_fkRef1(tableURI,baseURI)=<ch1,ch2,ch3,ch4,ch5>
+   if(ch1!="") then 
+        return "ALTER TABLE " +schema+"."+ ch2+ " ADD CONSTRAINT FK_"+ch2+"_"+ch3+" FOREIGN KEY("+ch1+") 
+		 REFERENCES "+ch5+"("+ch4+") ON DELETE NO ACTION;";
+
+create function makeConstraint2_mssql(Charstring schema,Charstring tableURI,Charstring baseURI)->Charstring
+as for each Charstring ch1,Charstring ch2,Charstring ch3,Charstring ch4,
+	Charstring ch5 where ret_fkRef1(tableURI,baseURI)=<ch1,ch2,ch3,ch4,ch5>
+   if(ch1!="") then 
+        return "ALTER TABLE " +schema+"."+ ch2+ " ADD CONSTRAINT FK_"+ch2+"_"+ch3+" FOREIGN KEY("+ch1+") 
+		 REFERENCES "+ch5+"("+ch4+") ON UPDATE NO ACTION;";
+
+create function makeConstraint3_mssql(Charstring schema,Charstring tableURI,Charstring baseURI)->Charstring
+as for each Charstring ch1,Charstring ch2,Charstring ch3,Charstring ch4,Charstring fkURI
+	where (ch1,ch2,ch3,ch4) in fkAtts(tableURI,fkURI,baseURI)
+           return "ALTER TABLE " +schema+"."+ ch1+ " ADD CONSTRAINT FK_"+ch1+"_"+ch3+" FOREIGN KEY("+ch2+") 
+		 REFERENCES "+ch3+"("+ch4+") ON UPDATE NO ACTION;";
+
+
+create function makeAllConstraint_mssql(JDBC jd,Charstring schema,Charstring baseURI)->Boolean 
+as for each Charstring ch where ret_tableURIs()=ch 
+		sql(jd, makeConstraint_mssql(schema,ch,baseURI));
+
+create function makeAllConstraint2_mssql(JDBC jd,Charstring schema,Charstring baseURI)->Boolean 
+as for each Charstring ch where ret_tableURIs()=ch 
+		sql(jd, makeConstraint3_mssql(schema,ch,baseURI));
+
+create function Drop_Procedures_mssql(JDBC jd)->Boolean
+/*Drops all procedures in the DB example_db*/
+as  begin
+	declare Charstring qq;
+	set qq="SELECT * FROM sys.procedures where name <> 'dropProc' and name <> 'dropTables'
+		and name <> 'comTransact' ;";
+	if (sql(jd,qq)) then
+	  begin
+		sql(jd,'exec example_db.dropProc;');
+		print('Procedures were dropped');
+	 end
+    else print('No procedures to drop');	
+  end;
+
+
+
+create function Drop_Tables_mssql(JDBC jd)->Boolean
+/*Drops all user tables in the DB example_db*/
+as  begin
+     if(sql(jd,'select * from sys.Tables;')) then
+	 begin
+	  sql(jd,'exec example_db.dropTables;')	;
+	  print('Tables were dropped');
+	end
+      else print('No tables to drop');
+  end;
+
+
+create function dropDatabase_mssql(JDBC a)->Boolean
+as begin
+	/* Drop all the created tables. */
+		Drop_Tables_mssql(a);
+	/* Drop all procedures*/
+		Drop_Procedures_mssql(a);
+end;
+
+
+
+create function InsertAttVal_mssql(JDBC a,Charstring schema,Charstring filename,Charstring baseURI)->Boolean
+as begin
+	declare Number t;
+/*Drops the table and procedures if already exists in the database.*/
+	dropDatabase_mssql(a);
+/*Create all the tables.*/
+	set t=real(now());
+	makeAllTable_mssql(a,schema,baseURI);
+	PColOrder_mssql(a,schema,baseURI);
+	set t=real(now())-t;
+	print ('time to create DB schema='+t);
+/*Insert data in relational database.*/
+	set t=real(now());
+	Insert_mssql(a,schema,filename,baseURI);
+	set t=real(now())-t;
+	print ('time to populate ='+t);
+	set t=real(now());
+/*Create all the Constraints.*/
+	makeAllConstraint_mssql(a,schema,baseURI);
+	set t=real(now())-t;
+	print ('time for adding constraint='+t);
+end;
+
+
+create function TripleBulkLoad_mssql(JDBC jd,Charstring schema,Charstring baseURI)
+->Boolean
+as
+begin
+	declare Charstring tname;
+	for each Charstring tableURI where ret_tableURIs()=tableURI
+	begin
+		set tname=clearURI(tableURI,baseURI);
+		sql(jd,"bulk insert "+schema+"."+tname+ " from "+"'C:/Users/silvia/Documents/csv/"+ tname+".csv'"+" WITH (FIELDTERMINATOR =  '|',BATCHSIZE=10000, MAXERRORS=10);");
+	end;	
+end;
+
+ 
+create function BulkLoader_mssql(JDBC jd,Charstring schema,Charstring baseURI)->Boolean
+as begin
+	declare Number t;
+	set t=real(now());
+	 TripleBulkLoad_mssql(jd,schema,baseURI);
+	print("Time to bulk load: " + (real(now())-t));
+	/*Create the FK Constraints.*/
+	set t=real(now());
+/*Create all the Constraints.*/
+	makeAllConstraint_mssql(jd,schema,baseURI);
+	set t=real(now())-t;
+	print ('time for adding constraint='+t);
+end;
+
+
+create function TripleBulkLoad2_mssql(JDBC jd,Charstring schema)->Boolean
+as
+begin
+	declare Charstring tname;
+	for each Charstring tableURI where ret_tableURIs()=tableURI
+	begin
+		set tname=tabName(tableURI);
+		if (file_exists(tname+".csv")) then
+			sql(jd,"bulk insert "+schema+"."+tname+ " from "+"'C:/Users/silvia/Documents/csv/"+ tname+".csv'"+
+				" WITH (FIELDTERMINATOR =  '|', BATCHSIZE=10000, MAXERRORS=10)  ;");
+	end;	
+end;
+
+
+create function Drop_Procedures_mssql(JDBC jd)->Boolean
+/*Drops all procedures in the DB example_db*/
+as  begin
+	declare Charstring qq;
+	set qq="SELECT * FROM sys.procedures where name <> 'dropProc' and name <> 'dropTables';";
+	if (sql(jd,qq)) then
+	  begin
+		sql(jd,'exec example_db.dropProc;');
+		print('Procedures were dropped');
+	 end
+    else print('No procedures to drop');	
+  end;

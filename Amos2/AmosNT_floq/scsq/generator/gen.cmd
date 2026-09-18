@@ -1,0 +1,1 @@
+scsq.exe generator.dmp  %*

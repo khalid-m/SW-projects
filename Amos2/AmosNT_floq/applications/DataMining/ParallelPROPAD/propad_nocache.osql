@@ -1,0 +1,50 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2013, Andrej Andrejev, UDBL
+ * $RCSfile: propad_nocache.osql,v $
+ * $Revision: 1.1 $ $Date: 2013/07/04 10:54:23 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Example implementation of parallel k-Means clustering: demo script
+ *
+ ****************************************************************************
+ * $Log: propad_nocache.osql,v $
+ * Revision 1.1  2013/07/04 10:54:23  andan342
+ * Added simple purely declarative parallel version of PROPAD frequent itemset mining algorithm
+ * (without caching intermediate projections)
+ *
+ * Revision 1.1  2013/06/21 21:01:55  andan342
+ * Added example implementation of Parallel k-Means clustering
+ *
+ *
+ ****************************************************************************/
+
+start amos2 -n
+
+start amos2 -s p1
+start amos2 -s p2
+start amos2 -s p3
+start amos2 -s p4
+
+amos2
+
+register("coordinator");
+
+< 'propad_coordinator_nocache.osql';
+
+broadcast("< 'propad_node_nocache.osql';");
+
+/* Load and partition transactions randomly into nodes */
+load_distribute(4, cast(read_ntuples('../AmosMiner/data/transactions1000.nt') as Vector of Integer));
+
+/* Number of transactions loaded in total */
+count(castreceive('transactions',{}));
+
+/* Number of transactions on the first node */
+count(call_function('p1','transactions',{},1000));
+
+count(propad(50));
+
+count(propad(100));
+

@@ -1,0 +1,5 @@
+create function select_test() -> vector
+as
+
+return (select {answer} from vector answer where answer = sql(my_jdbc(),"select toll from historical_toll where vid < 10"));
+

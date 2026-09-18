@@ -1,0 +1,121 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Ekta Shrestha, 
+ * $RCSfile: restoreRDB_data.amosql,v $
+ * $Revision: 1.2 $ $Date: 2012/05/16 11:50:11 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Functions for restoring
+	relational schema and data from NT archives
+ *
+ ****************************************************************************
+ * $Log: restoreRDB_data.amosql,v $
+ * Revision 1.2  2012/05/16 11:50:11  eksh8896
+ * new
+ *
+ * Revision 1.1  2012/05/10 14:10:02  eksh8896
+ * Final files for Demo
+ *
+ * Revision 1.1  2012/04/04 16:41:27  eksh8896
+ * *** empty log message ***
+ *
+ * Revision 1.1  2012/03/30 14:02:58  eksh8896
+ * *** empty log message ***
+ *
+ * Revision 1.2  2012/03/27 08:51:40  eksh8896
+ * *** empty log message ***
+ *
+ * Revision 1.1  2012/02/28 14:02:33  eksh8896
+ * Datafile.
+ *
+ *
+ *  
+ * 
+ *
+ ****************************************************************************/
+
+
+/************************************************************************************************************************/
+			/***FUNCTIONS FOR MANIPULATING DATA FILES ***/
+/************************************************************************************************************************/
+
+
+/************************************************************************************************************************/
+			/***RETRIEVING TABLES FROM GIVEN FILES ***/
+/************************************************************************************************************************/
+
+
+create function ret_tableName(Charstring tableURI,Charstring baseURI)
+->Charstring
+as result clearURI(tableURI,baseURI);
+
+
+create function ret_tableNamefromrowID(Charstring baseURI,Charstring rowID)
+->Charstring 
+/*Retrieves table name from the given rowID which is retrieved from the given file.*/
+as
+   result str_exp1(clearURI(rowID,baseURI),'/');
+
+
+create function ret_tableURIfromrowID(Charstring baseURI,Charstring rowID)
+->Charstring 
+/*Retrieves table URI from the given rowID which is retrieved from the given file.*/
+as
+	result "<"+baseURI+'#'+ret_tableNamefromrowID(baseURI,rowID)+">";
+
+
+
+
+/************************************************************************************************************************/
+			/***RETRIEVING primary key FROM GIVEN FILES ***/
+/************************************************************************************************************************/
+
+create function ret_pkURIfromRowID(Charstring baseURI,Charstring rowID)
+->Charstring
+/*Retrieve name of PK of the table for the given RowID*/
+as 
+begin
+for each Charstring ch, Charstring t where ch=ret_pkURIs(t) and  ret_tableURIfromRowID(baseURI,rowID)=t
+	 result ch;
+end;
+
+create function ret_pkNamefromRowID(Charstring baseURI,Charstring rowID)
+->Charstring
+/*Retrieve the name of the PK of the table represented by tableURI*/
+as
+begin
+for each charstring ch where ch=ret_pkURIfromRowID(baseURI,rowID)
+	result str_exp(clearURI(ch,baseURI),'/') ;
+end;
+
+create function ret_pkNamefromRowID1(Charstring baseURI,Charstring rowID)
+->Charstring
+/*Retrieve the name of the PK of the table represented by tableURI*/
+as
+begin
+for each charstring ch where ch=ret_pkURIfromRowID(baseURI,rowID)
+	result clearURI(ch,baseURI) ;
+end;
+
+
+/************************************************************************************************************************/
+			/*** RETRIEVING Value of RowID FROM GIVEN FILE***/
+/************************************************************************************************************************/
+
+create function ret_pkVal(Charstring baseURI,Charstring rowID)
+->Charstring 
+/*Retrieve PK value with of the table for the given RowID*/
+as
+begin 
+declare Charstring t1, Charstring t2;
+set t1=substring(str_exp(clearURI(rowID,baseURI),'/'),1,char_length(str_exp(clearURI(rowID,baseURI),'/')));
+
+for each Charstring ch where str_exp1(t1,"_")=ch
+	result ch;
+end;
+
+
+/************************************************************************************************************************/
+/************************************************************************************************************************/
+/************************************************************************************************************************/

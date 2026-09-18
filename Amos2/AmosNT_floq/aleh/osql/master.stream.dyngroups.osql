@@ -1,0 +1,4 @@
+< "stream.wrap.osql";
+load_lisp("../lsp/cost_model.populated.lsp");
+load_lisp("../lsp/dyngroups.stream.lsp");
+save "../aleh_stream.dyngroups.dmp";

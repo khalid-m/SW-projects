@@ -1,0 +1,82 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2004 Maryam Ladjvardi, Tore Risch, UDBL
+ * $RCSfile: test.amosql,v $
+ * $Revision: 1.5 $ $Date: 2005/03/13 19:53:00 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Test queries through ABKW
+ *
+ ****************************************************************************/
+
+bk_connect("DB1");
+set :h=bk_handle("DB1","Person");
+lisp;
+(checkequal "basic ABKW access"
+ ((osql "bk_access(:h);")
+   '((#(1026) #("sara" 1.72)) (#(1456) #("lena" 1.42)) (#(1674) #("per" 1.52))
+    (#(1974) #("malin" 1.72)) (#(1979) #("maria" 1.59)) (#(2048) #("adam" 1.8))
+    (#(2307) #("david" 1.9)) (#(2387) #("elsa" 1.69)) (#(2389) #("frank" 1.64))
+    (#(2397) #("ylva" 1.59)) (#(2487) #("ulf" 1.79)) (#(2674) #("lisa" 1.43)) 
+    (#(2887) #("john" 1.7)) (#(4325) #("eva" 1.78)) (#(4387) #("tanja" 1.54)) 
+    (#(6762) #("olle" 1.85)) (#(6887) #("joe" 1.87)) (#(6907) #("dan" 1.69)) 
+    (#(6962) #("jan" 1.75)) (#(8234)#("dana" 1.4)) (#(8762) #("sam" 1.85))))
+ ((osql "bk_get_interval(:h,{},{4000});")
+   '((#(1026) #("sara" 1.72)) (#(1456) #("lena" 1.42)) (#(1674) #("per" 1.52))
+    (#(1974) #("malin" 1.72)) (#(1979) #("maria" 1.59)) (#(2048) #("adam" 1.8))
+    (#(2307) #("david" 1.9)) (#(2387) #("elsa" 1.69)) (#(2389) #("frank" 1.64))
+    (#(2397) #("ylva" 1.59)) (#(2487) #("ulf" 1.79)) (#(2674) #("lisa" 1.43)) 
+    (#(2887) #("john" 1.7))))
+ ((osql "bk_get_interval(:h,{2000},{4000});")
+   '((#(2048) #("adam" 1.8))
+    (#(2307) #("david" 1.9)) (#(2387) #("elsa" 1.69)) (#(2389) #("frank" 1.64))
+    (#(2397) #("ylva" 1.59)) (#(2487) #("ulf" 1.79)) (#(2674) #("lisa" 1.43)) 
+    (#(2887) #("john" 1.7))))
+ ((osql "bk_get_interval(:h,{2048},{2307});")
+   '((#(2048) #("adam" 1.8)) (#(2307) #("david" 1.9))))
+ ((osql "bk_get_interval(:h,{8234},{});")
+   '((#(8234) #("dana" 1.4)) (#(8762) #("sam" 1.85))))
+ ((osql "bk_get_interval(:h,{},{});")
+   '((#(1026) #("sara" 1.72)) (#(1456) #("lena" 1.42)) (#(1674) #("per" 1.52))
+    (#(1974) #("malin" 1.72)) (#(1979) #("maria" 1.59)) (#(2048) #("adam" 1.8))
+    (#(2307) #("david" 1.9)) (#(2387) #("elsa" 1.69)) (#(2389) #("frank" 1.64))
+    (#(2397) #("ylva" 1.59)) (#(2487) #("ulf" 1.79)) (#(2674) #("lisa" 1.43)) 
+    (#(2887) #("john" 1.7)) (#(4325) #("eva" 1.78)) (#(4387) #("tanja" 1.54)) 
+    (#(6762) #("olle" 1.85)) (#(6887) #("joe" 1.87)) (#(6907) #("dan" 1.69)) 
+    (#(6962) #("jan" 1.75)) (#(8234)#("dana" 1.4)) (#(8762) #("sam" 1.85))))
+)
+(checkequal "ABKW wrapper"
+ ((osql "count(select p from Person_DB1 p);") '((21)))
+ ((osql "select ssn(p) from Person_DB1 p;")
+  '((1026) (1456) (1674) (1974) (1979) (2048) (2307) (2387) (2389) (2397) 
+    (2487) (2674) (2887) (4325) (4387) (6762) (6887) (6907) (6962) (8234) 
+    (8762)))
+ ((osql "select ssn(p),name(p) from Person_DB1 p;")
+  '((1026 "sara") (1456 "lena") (1674 "per") (1974 "malin") (1979 "maria") 
+    (2048 "adam") (2307 "david") (2387 "elsa") (2389 "frank") (2397 "ylva") 
+    (2487 "ulf") (2674 "lisa") (2887 "john") (4325 "eva") (4387 "tanja") 
+    (6762 "olle") (6887 "joe") (6907 "dan") (6962 "jan") (8234 "dana") 
+    (8762 "sam"))´)
+ ((osql "select ssn(p),name(p) 
+  from Person_DB1 p
+  where ssn(p)=1026;  /* Get */") '((1026 "sara")))
+ ((osql "select ssn(p),name(p) from Person_DB1 p where ssn(p)>1640;/* Scan */")
+  '((1674 "per") (1974 "malin") (1979 "maria") (2048 "adam") (2307 "david") 
+    (2387 "elsa") (2389 "frank") (2397 "ylva") (2487 "ulf") (2674 "lisa") 
+    (2887 "john") (4325 "eva") (4387 "tanja") (6762 "olle") (6887 "joe") 
+    (6907 "dan") (6962 "jan") (8234 "dana") (8762 "sam")))
+ ((osql "select ssn(p),name(p) 
+  from Person_DB1 p
+  where length(p)>1.60;")
+  '((1026 "sara") (1974 "malin") (2048 "adam") (2307 "david") (2387 "elsa") 
+    (2389 "frank") (2487 "ulf") (2887 "john") (4325 "eva") (6762 "olle") 
+    (6887 "joe") (6907 "dan") (6962 "jan") (8762 "sam")))
+ ((osql "select ssn(q),name(q),name(p) 
+  from Person_DB1 p, Person_DB1 q
+  where ssn(p)=6962 and ssn(q)>ssn(p);")
+  '((6962 "jan" "jan") (8234 "dana" "jan") (8762 "sam" "jan")))
+)
+:osql
+bk_disconnect();
+

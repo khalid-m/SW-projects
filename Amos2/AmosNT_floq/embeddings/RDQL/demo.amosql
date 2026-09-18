@@ -1,0 +1,82 @@
+SourceNameSpace("tests/");
+
+/*
+Use this namespace to run agains original HP-Labs test suite:
+SourceNameSpace("http://swordfish.rdfweb.org/rdfquery/tests/old/tests/rdql-tests-2003-04-10/inputs/");
+*/
+
+rdql('
+SELECT ?x
+FROM <vc-db-1.rdf>
+WHERE (?x, <http://www.w3.org/2001/vcard-rdf/3.0#FN>, "John Smith")');
+
+rdql('
+SELECT ?x, ?fname
+FROM <vc-db-1.rdf>
+WHERE (?x, <http://www.w3.org/2001/vcard-rdf/3.0#FN>, ?fname)');
+
+rdql('
+SELECT ?givenName
+FROM <vc-db-1.rdf>
+WHERE (?y, <http://www.w3.org/2001/vcard-rdf/3.0#Family>, "Smith") ,
+      (?y, <http://www.w3.org/2001/vcard-rdf/3.0#Given>, ?givenName)');
+
+rdql('
+SELECT ?resource, ?givenName
+FROM <vc-db-1.rdf>
+WHERE (?resource, <http://www.w3.org/2001/vcard-rdf/3.0#N>, ?z) ,
+      (?z, <http://www.w3.org/2001/vcard-rdf/3.0#Given>, ?givenName)');
+
+rdql('
+SELECT ?resource
+FROM <vc-db-2.rdf>
+WHERE (?resource, <info:age>, ?age)
+AND ?age >= 24
+USING info FOR <http://somewhere/peopleInfo#>
+');
+
+rdql('
+SELECT ?resource, ?familyName
+FROM <vc-db-2.rdf>
+WHERE (?resource, <info:age>, ?age) ,
+      (?resource, <vCard:N>, ?y) , (?y, <vCard:Family>, ?familyName)
+AND ?age >= 24
+USING  info  FOR <http://somewhere/peopleInfo#> ,
+       vCard FOR <http://www.w3.org/2001/vcard-rdf/3.0#>
+');
+
+rdql('
+SELECT ?prop
+FROM <vc-db-2.rdf>
+WHERE (<http://somewhere/JohnSmith/> , ?prop, "John Smith")
+USING vCard FOR <http://www.w3.org/2001/vcard-rdf/3.0#>
+');
+
+rdql('
+SELECT ?b
+FROM <vc-db-2.rdf>
+WHERE (<http://somewhere/JohnSmith/> , <vCard:N>, ?b)
+USING vCard FOR <http://www.w3.org/2001/vcard-rdf/3.0#>
+');
+
+rdql('
+SELECT ?property
+FROM <vc-db-3.rdf>
+WHERE (?person, <vCard:FN>, "John Smith") ,
+      (?person, ?property, ?obj)
+USING 
+   vCard FOR <http://www.w3.org/2001/vcard-rdf/3.0#> ,
+   rdf   FOR <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+');
+
+rdql('
+SELECT ?telephoneNumber
+FROM <vc-db-3.rdf>
+WHERE (?person, <vCard:FN>, "John Smith") ,
+      (?person, <vCard:TEL>, ?tel) ,
+      (?tel, <rdf:type>, <vCard:work>) ,
+      (?tel, <rdf:value>, ?telephoneNumber)
+USING
+  vCard FOR <http://www.w3.org/2001/vcard-rdf/3.0#> ,
+  rdf   FOR <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+');

@@ -1,0 +1,230 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Cheng Xu, Tore Risch, UDBL
+ * $RCSfile: HagglundsSHDModel.osql,v $
+ * $Revision: 1.1 $ $Date: 2012/12/18 17:35:00 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Model w.r.t. Specefic Heat Dissipation in Hagglunds
+ *
+ ****************************************************************************
+ * $Log: HagglundsSHDModel.osql,v $
+ * Revision 1.1  2012/12/18 17:35:00  chexu484
+ * hagglunds validation
+ *
+ * Revision 1.1  2012/10/24 17:15:28  chexu484
+ * hagglunds model and validate now works
+ * record is used instead of vector
+ *
+ * Revision 1.1  2006/02/12 20:01:08  torer
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+
+create function torque_measured(Record rec) -> (Number ts, Number torq)
+  as select ts, (reg403 - reg407) * 100
+  from Number reg403, Number reg407
+  where ts = rec["ts"]
+  and reg403 = rec["REG403"]
+  and reg407 = rec["REG407"];
+
+create function power_measured(Record rec) -> (Number ts, Number power)
+  as select ts, torque *  reg109 / 9549
+  from Number ts, Number reg109, Number torque
+  where (ts, torque) in torque_measured(rec)
+  and reg109 = rec["REG109"];
+
+create function temperature_tank(Record rec) -> (Number ts, Number temp)
+  as select rec["ts"], rec["REG410"];
+
+create function pressure_AsidePump1(Record rec) -> (Number ts, Number pressure)
+  as select rec["ts"], rec["REG403"];
+
+
+/*** Predefined input parameters for Specefic Heat Dissipation ***/
+
+create function CoolingFlowTotal() -> Number as stored;
+create function CoolingFlowTotal_1() -> Number as stored;
+
+set CoolingFlowTotal() = 25;
+set CoolingFlowTotal_1() = 20;
+
+/* Correktionsfactors for HDCA 100-4 cooler */
+
+create function A() -> Number as stored;
+create function B() -> Number as stored;
+create function C() -> Number as stored;
+create function D() -> Number as stored;
+create function E() -> Number as stored;
+create function F() -> Number as stored;
+create function G() -> Number as stored;
+create function H() -> Number as stored;
+
+set A() = 1.76E-07;   
+set B() = -7.04015E-05;
+set C() = 0.009182137;
+set D() = 0.11471627;
+set E() = 6.0538;
+set F() = -1.7835;
+set G() = 0.050979;
+set H() = -5.7723;
+
+
+create function AirF() -> Number as stored;
+create function ALT() -> Number as stored;
+create function OVC() -> Number as stored;
+create function ALT1() -> Number as stored;
+
+set AirF() = 1.5;      /* A constant for each cooler */
+set ALT() = 62;        /* Altitude above sealevel 62 m for HDAB */
+set OVC() = 0.996;     /* 46 cst = Correktionsfactor for different types of oil */
+set ALT1() = 500;
+
+
+/*** Measured Specific Heat Dissipation ***/
+
+create function CoolingDemand(number TempOilIn,number TempOilOut) -> Number
+  /* Calculation of HDTR(Coolingdemand) */
+  as (TempOilIn - TempOilOut)*(CoolingFlowTotal_1() * 60 * 0.9 * 0.5 * 1.163 * 0.001);
+
+
+create function SpecificHeatDissipation(Number TempOilIn, number TempOilOut,
+					number CoolMediumTemp) -> Number
+  /* Calculation of Speceific heat dissipation */
+  as CoolingDemand(TempOilIn,TempOilOut) / (TempOilIn - CoolMediumTemp);
+
+/* for dir1 */
+create function measuredSHD(Record rec) -> Number
+  as select SpecificHeatDissipation(reg402, reg403, reg410)
+     from Number reg402, Number reg403, Number reg410
+     where reg402 = rec["REG402"]
+       and reg403 = rec["REG403"]
+       and reg410 = rec["REG410"];
+
+
+/*** Expected Specific Heat Dissipation ***/
+
+create function HDV() -> Number
+  as A() * (CoolingFlowTotal() ^ 3) + 
+     B() * (CoolingFlowTotal() ^ 2) +
+     C() * CoolingFlowTotal() + D();
+
+create function AirDV() -> Number
+  as (-1.0416667E-18 * (ALT()^5)) +
+     (1.2291667E-14 * (ALT()^4)) +
+     (-4.9375000E-11 * (ALT()^3)) +
+     (8.5208333E-08 * (ALT()^2)) +
+     (-2.0708333E-04 * ALT()) + 1.3;
+
+
+create function AirD500() -> Number
+  as (-1.0416667E-18 * (ALT1()^5)) +
+     (1.2291667E-14 * (ALT1()^4)) +
+     (-4.9375000E-11 * (ALT1()^3)) +
+     (8.5208333E-08 * (ALT1()^2)) +
+     (-2.0708333E-04 * ALT1()) + 1.3;
+
+
+create function ATOV(Number TempOilIn, Number TempOilOut, Number CoolMediumTemp) -> Number
+  as CoolMediumTemp + (7.5 / (1.2 * AirF()) * (AirD500() / AirDV()));
+
+
+create function SHD(Number TempOilIn, Number TempOilOut, Number CoolMediumTemp) -> Number
+  /* Theoretical SHD */
+  as HDV() * OVC() * (1.02-0.0015 * ATOV(TempOilIn,TempOilOut, CoolMediumTemp)) *
+     (1-0.00006875 * (ALT()-500));
+
+create function expectedSHD(Record rec) -> Number
+  as select SHD(reg402, reg403, reg410)
+     from Number reg402, Number reg403, Number reg410
+     where reg402 = rec["REG402"]
+       and reg403 = rec["REG403"]
+       and reg410 = rec["REG410"];
+
+
+
+/*
+bsection(validate_hagglunds_SHD("dir4"), 0, 100);
+*/
+
+/*
+
+create function torque_measured(Logdirectory dir, Vector of Number tpl)
+                                                       -> (Number ts, Number torq)
+  as select timestamp(tpl), (value(dir, tpl, "REG403") - value(dir, tpl, "REG407"))*100;
+
+create function power_measured(Logdirectory dir, Vector of Number tpl)
+                                                       -> (Number ts, Number power)
+  as select ts, torque * value(dir, tpl, "REG109") / 9549
+  from Number ts, Number torque
+  where (ts, torque) in torque_measured(dir, tpl);
+
+create function temperature_tank(Logdirectory dir, Vector of Number tpl)
+						      -> (Number ts, Number temp)
+  as select timestamp(tpl), value(dir, tpl, "REG410");
+
+create function pressure_AsidePump1(Logdirectory dir, Vector of Number tpl)
+						      -> (Number ts, Number pressure)
+  as select timestamp(tpl), value(dir, tpl, "REG403");
+
+retard(1, (select torque_measured(dir, tpl)
+from Logdirectory dir, Vector of Number tpl
+where dir = dirnamed("d3")
+and tpl in hagglunds_tuples(dir)));
+
+retard(1, (select power_measured(dir, tpl)
+from Logdirectory dir, Vector of Number tpl
+where dir = dirnamed("d3")
+and tpl in hagglunds_tuples(dir)));
+
+retard(1, (select temperature_tank(dir, tpl)
+from Logdirectory dir, Vector of Number tpl
+where dir = dirnamed("d1")
+and tpl in hagglunds_tuples(dir)));
+
+retard(1, (select distinct pressure_AsidePump1(dir, tpl)
+from Logdirectory dir, Vector of Number tpl
+where dir = dirnamed("d1")
+and tpl in hagglunds_tuples(dir)));
+
+
+create function SHD_measured(Vector tpl) -> Number
+  as select shd
+  from Number shd
+  where shd = SpecificHeatDissipation(
+                 value(dirnamed("d4"), tpl, "REG402"),
+		 value(dirnamed("d4"), tpl, "REG403"),
+		 value(dirnamed("d4"), tpl, "REG410"))
+ and shd > -1;
+
+create function SHD_expected(Vector tpl) -> Number
+ as select shd
+ from Number shd
+ where shd = SHD(value(dirnamed("d4"), tpl, "REG402"), 
+		 value(dirnamed("d4"), tpl, "REG403"),
+		 value(dirnamed("d4"), tpl, "REG410"));
+
+create function validate_SHD(Vector of Number tpl, Number ref, Number threshold)
+                                                         -> (Number ts, Number measured,
+							     Number expected, Number diff)
+  as select timestamp(tpl), measured, expected, abs(measured - expected)
+  where measured = SHD_measured(tpl)
+  and expected = SHD_expected(tpl)
+  and value(dirnamed("d4"), tpl, "DIN01") = 1;
+
+in(model_n_validate(hagglunds_tuples(dirnamed("d4")),
+                    #'SHD_expected',
+		    #'validate_SHD', 0.06));
+
+retard(1, (select SHD_expected(tpl)
+from Logdirectory dir, Vector of Number tpl
+where dir = dirnamed("d4")
+and tpl in hagglunds_tuples(dir)));
+
+retard(1, (select SHD_measured(tpl)
+from Logdirectory dir, Vector of Number tpl
+where dir = dirnamed("d4")
+and tpl in hagglunds_tuples(dir)));
+
+*/

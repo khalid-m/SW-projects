@@ -1,0 +1,107 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 torer, UDBL
+ * $RCSfile: regress.osql,v $
+ * $Revision: 1.3 $ $Date: 2013/08/01 13:05:49 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Xtree index testing. 
+ * It was originally in wrappers/xtree/amosql
+ *
+ ****************************************************************************
+ * $Log: regress.osql,v $
+ * Revision 1.3  2013/08/01 13:05:49  thatr500
+ * refined regression test
+ *
+ * Revision 1.2  2012/01/04 14:54:42  thatr500
+ * fixed regression test
+ *
+ * Revision 1.1  2011/05/06 02:04:21  thatr500
+ * *** empty log message ***
+ *
+ *
+ ****************************************************************************/
+parteval('PLUS');
+parteval('TIMES');
+/*----------------------Test saving and loading----------------*/
+create function ptest1(Charstring pic)->Vector of Number fv
+  as stored;
+
+create_index("ptest1","fv","XTREE","multiple");
+
+add ptest1("Pic001")={1.0 , 2.0 ,3.0, 4.0};
+
+add ptest1("Pic0011")={1.0 , 2.0, 3.0 ,4.0};
+
+add ptest1("Pic002")={1.0,2.0,3.0,5.0};
+add ptest1("Pic003")={1.0,2.0,2.0,6.0};
+add ptest1("Pic004")={1.0,2.0,3.0,4.0};
+add ptest1("Pic005")={5.0,6.0,7.0,8.0};
+add ptest1("Pic006")={1.0,2.0,3.0,4.0};
+add ptest1("Pic007")={5.0,6.0,7.0,8.0};
+
+/*----------------------Test saving and loading----------------*/
+create function ptest2(Charstring pic)->Vector of Number fv
+  as stored;
+
+create_index("ptest2","fv","XTREE","multiple");
+
+add ptest2("Pic001")={1,2,3,4};
+add ptest2("Pic002")={1.0,2.0,3.0,5.0};
+add ptest2("Pic003")={1.0,2.0,2.0,6.0};
+add ptest2("Pic004")={1.0,2.0,3.0,4.0};
+add ptest2("Pic005")={5.0,6.0,7.0,8.0};
+add ptest2("Pic006")={1.0,2.0,3.0,4.0};
+add ptest2("Pic007")={5.0,6.0,7.0,8.0};
+
+/*----------------------Test saving and loading----------------*/
+create function ptest3(Charstring pic)->Vector of Number fv
+  as stored;
+
+create_index("ptest3","fv","XTREE","multiple");
+
+add ptest3("Pic001")={1,2,3,4};
+add ptest3("Pic002")={1.0,2.0,3.0,5.0};
+add ptest3("Pic003")={1.0,2.0,2.0,6.0};
+add ptest3("Pic004")={1.0,2.0,3.0,4.0};
+add ptest3("Pic005")={5.0,6.0,7.0,8.0};
+add ptest3("Pic006")={1.0,2.0,3.0,4.0};
+add ptest3("Pic007")={5.0,6.0,7.0,8.0};
+
+
+/*--------------------Test rewriting queries-------------------- */
+create function pictureFeatures(Charstring pic)->Vector of Number features
+  as stored;
+
+create_index("pictureFeatures","features","XTREE","multiple");
+
+add pictureFeatures("Pic001")={1.0,2.0,3.0,4.0};
+add pictureFeatures("Pic002")={1.0,2.0,3.0,5.0};
+add pictureFeatures("Pic003")={1.0,2.0,2.0,6.0};
+add pictureFeatures("Pic004")={1.0,2.0,3.0,4.0};
+add pictureFeatures("Pic005")={5.0,6.0,7.0,8.0};
+add pictureFeatures("Pic006")={1.0,2.0,3.0,4.0};
+add pictureFeatures("Pic007")={5.0,6.0,7.0,8.0};
+
+
+remove pictureFeatures("Pic004")={1.0,2.0,3.0,4.0};
+remove pictureFeatures("Pic006")={1.0,2.0,3.0,4.0};
+
+remove pictureFeatures("Pic005")={5.0,6.0,7.0,8.0};
+remove pictureFeatures("Pic007")={5.0,6.0,7.0,8.0};
+
+
+/*
+print('WITH XTREE INDEX');
+load_amosql('similarity_test.osql');
+load_amosql('knn_test.osql');
+
+print('WITHOUT XTREE INDEX');
+drop_index('pictureFeatures', 'features');
+
+load_amosql('similarity_test.osql');
+load_amosql('knn_test.osql');
+
+rollback;
+*/

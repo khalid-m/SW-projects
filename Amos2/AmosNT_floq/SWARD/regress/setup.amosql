@@ -1,0 +1,64 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Johan Petrini, UDBL
+ * 
+ * Description: Setup of regression test of SWARD system exporting and querying the 
+ * eGovernment example relational database with strategy END-P.
+ *****************************************************************************/
+/* Settings 
+ */
+lisp;
+(setq _save-intermediates_ t)
+:osql
+
+/* Define DS for EGOVERNMENT relational database.
+ * Only done once for each relational database by admin.
+ */
+defineDS("EGOVDS",
+         "jdbc:interbase://localhost/" + getenv('SWARD_ROOT') + 
+           "/bin/EGOVERNMENT.GDB",
+         "interbase.interclient.Driver",
+         "",
+         "",
+         "SYSDBA",
+         "masterkey");
+
+/* Define UPV 'eGov' associated with data source 'EGOVDS'. 
+ */
+defineUPV("EGOVDS","eGov","http://udbl.it.uu.se/upv/eGov/");
+
+/* Populate SWARD system tables 
+ */
+
+/* Set property and class mappings
+ */
+assignPropID("FORM","FID","eGov",
+      "http://udbl.it.uu.se/schemas/eGovern#FormID");
+assignPropID("FORM","URL","eGov",
+      "http://udbl.it.uu.se/schemas/eGovern#URL");
+assignPropID("FORM","CREATOR","eGov",
+      "http://www.egov_project.org/GovMLSchema#Creator");
+assignPropID("FORM","NOFP","eGov",
+      "http://udbl.it.uu.se/schemas/eGovern#NumberOfProps");
+assignPropID("FORM","LIFEEVENT","eGov",
+      "http://udbl.it.uu.se/schemas/eGovern#LifeEventID");
+
+assignPropID("LIFEEVENT","LID","eGov",
+      "http://purl.org/dc/elements/1.1/Identifier");
+assignPropID("LIFEEVENT","LANG","eGov",
+      "http://www.egov_project.org/GovMLSchema#Language");
+assignPropID("LIFEEVENT","DESCR","eGov",
+      "http://www.egov_project.org/GovMLSchema#Subject");
+assignPropID("LIFEEVENT","LAW","eGov",
+               "http://udbl.it.uu.se/schemas/eGovern#Law");
+
+assignClassID("FORM","eGov","http://udbl.it.uu.se/schemas/eGovern#Form"); 
+assignClassID("LIFEEVENT","eGov",
+                "http://udbl.it.uu.se/schemas/eGovern#LifeEvent");
+
+/* Connect to predefined data source assigned to UPV 'eGov'. 
+ */
+DSConnect("eGov");	
+
+

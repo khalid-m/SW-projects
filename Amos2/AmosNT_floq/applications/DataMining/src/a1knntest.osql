@@ -1,0 +1,20 @@
+/*-*-sql-*-*******************************************************************/
+
+< "a1.osql";
+< "a1knn_ref.osql";
+< "a1knn_val.osql";
+
+lisp;
+
+(checkequal "testclasses correctness"
+	    ((osql "knnvalidate();")
+	     '(("k" 1) ("testclasses(v) correctness  " 22))))
+
+:osql
+rollback;
+
+< "knnmat.osql";
+rollback;
+
+< "knnnorm.osql";
+rollback;

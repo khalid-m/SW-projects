@@ -1,0 +1,69 @@
+AMOS
+
+select id(e) from event e where threeleptoncut(e)
+6
+0.06 s
+
+475
+3.325 s
+
+
+select id(e) from event e where zvetocut(e)
+94
+0.771 s
+
+23825
+9.164 s
+
+select id(e) from event e where topcut(e)
+60
+1.983 s
+
+14280
+553.836 s
+
+
+select id(e) from event e where jetVetoCut(e);
+15
+8.382 s
+
+2637
+12408.2 s
+
+select id(e) from event e where leptoncuts(e);
+14
+0.111 s
+
+5121
+4.817 s
+
+select id(e) from event e where misseecuts(e);
+52
+0.961 s
+
+13693
+12.228 s
+
+id(allcuts());
+1
+1.302 s
+
+19015
+24455
+12.498 s
+
+id(optAllcuts());
+1
+1.342 s
+
+19015
+24455
+11.207 s
+
+id(expcuts());
+1
+1.362 s
+
+19015
+24455
+682.662 s

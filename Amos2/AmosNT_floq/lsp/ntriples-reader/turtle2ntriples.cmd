@@ -1,0 +1,1 @@
+amos2 %AMOS_HOME%/bin/amos2.dmp %AMOS_HOME%/lsp/ntriples-reader/turtle2ntriples.lsp -l "(turtle2ntriples \"%1\" \"%2\")" -l "(quit)"

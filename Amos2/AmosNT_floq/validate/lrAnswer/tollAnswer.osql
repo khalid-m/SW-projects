@@ -1,0 +1,121 @@
+/*-*-sql-*-*******************************************************************/
+
+create function vehicle_info(Integer vi) ->
+          <Integer xway, Integer pos, Integer seg, Integer dir, Real bal,
+           Integer time, Integer vav, Real nextexp>
+  as stored;	
+
+create function set_vehicle_info(Integer vi, Integer xway, Integer pos, 
+                                 Integer seg, Integer dir, Real bal,
+                                 Integer time, Integer vav, Real nextexp)
+                                -> Boolean
+  as set vehicle_info(vi) = <xway, pos, seg, dir, bal, time, vav, nextexp>;
+
+create function add_vehicle_info(Integer vi, Integer xway, Integer pos, 
+                                 Integer seg, Integer dir, Real bal,
+                                 Integer time, Integer vav, Real nextexp)
+                                 -> boolean
+  as add vehicle_info(vi)=<xway, pos, seg, dir, bal, time, vav, nextexp>;
+
+/*************************** Vehicle info ends *********************************/
+
+create function giveme_seg(Integer vid)->Integer
+  as select s 
+     from Integer x, Integer p, Integer s,Integer d, Real b, Integer t, 
+          Integer va, Real n 
+     where vehicle_info(vid) = <x, p, s, d, b, t, va, n> ;
+
+create function giveme_xway(Integer vid)->Integer
+  as select x 
+     from Integer x, Integer p, Integer s, Integer d, Real b, Integer t, 
+          Integer va, Real n 
+     where vehicle_info(vid)=<x, p, s, d, b, t, va, n>;
+
+create function check_new_seg_report(Integer vid,Integer seg,Integer xway)
+                                    -> Boolean
+  /* check if it is the same seg in this report as in the latest report */
+  as select where giveme_seg(vid) = seg 
+              and giveme_xway(vid) = xway;
+
+              
+create function add_previous_toll(Integer vid, Integer sec, Integer xway, Integer pos, 
+                                  Integer seg, Integer dir, Integer lane, Integer spd)
+                                 -> Boolean
+  as begin declare Real upbalance;
+	set upbalance = sum(select n + b 
+                                from Integer xw, Integer p, Integer s, Integer d,
+                                     Real b, Integer t, Integer va, Real n 
+                                where vehicle_info(vid) = <xw, p, s, d, b, t, va, n>);
+	set_vehicle_info(vid, xway, pos, seg, dir, upbalance, sec, spd, 0.0);
+	if (lane = 4) then
+		add_account_balance_cache(vid, sec, upbalance);
+     end;
+
+create function giveme_balance(Integer vid)->Integer
+  as select b 
+     from  Integer xway, Integer p, Integer s, Integer d, Real b, Integer t, 
+           Integer va, Real n 
+     where vehicle_info(vid) = <xway, p, s, d, b, t, va, n>;
+
+create function giveme_lasttime(Integer vid)->Real
+  as select t
+     from Integer xway, Integer p, Integer s, Integer d, Real b, Integer t, 
+          Integer va, Real n 
+     where vehicle_info(vid) = <xway, p, s, d, b, t, va, n>;
+
+create function update_vehicle_info(Integer vid, Integer sec, Integer xway, Integer pos, 
+                                    Integer seg, Integer dir, Integer lane, Integer spd)
+                                   -> Boolean
+  /* Vehicle is on the exit lane, update info and remove nextexp */
+  as select add_previous_toll(vid, sec, xway, pos, seg, dir, lane, spd);
+                                
+create function update_vehicle_toll(Integer vid, Integer sec, Integer xway, Integer pos, 
+                                    Integer seg, Integer dir, Integer spd, Real toll) -> Boolean 
+  as begin
+	set_vehicle_info(vid, xway, pos, seg, dir,
+                             cast(giveme_balance(vid) as Real), sec, spd, toll);
+	add_account_balance_cache(vid, sec, toll);
+     end;
+
+create function calc_toll(Integer sec, Integer vid, Integer xway, Integer pos,
+                          Integer seg, Integer dir, Integer spd) -> Vector
+  as begin declare Real toll, Integer nr_of_cars, Real Avgv;
+       	if is_accident_area(xway,seg,dir)
+       	then begin
+		/*print({1, sec, vid, get_accident_seg(xway)});*/
+		/*result {1, sec, vid, get_accident_seg(xway)};*/
+		/* waccident({sec, vid, get_accident_seg(xway)}); */
+		swaccident({sec, vid, get_accident_seg(xway)});
+		set toll = 0.0;
+		set Avgv = avgv(seg, xway, dir, cast(current_minute()-1 as Integer));
+             end
+       	else begin
+		set nr_of_cars = count_visited(seg, xway, dir, cast(current_minute()-1 as Integer));
+		set Avgv = avgv(seg, xway, dir, cast(current_minute()-1 as Integer));
+		if (nr_of_cars <= 50) or (Avgv >= 40)
+		then set toll = 0.0
+		else begin
+			set toll = 2 * (nr_of_cars - 50) * (nr_of_cars - 50);
+		     end;
+             end;
+       	update_vehicle_toll(vid, sec, xway, pos, seg, dir, spd, toll);
+	/*print({0, vid, sec, Avgv, toll});*/
+	/*result {0, vid, sec, Avgv, toll};*/
+	/* wtoll({vid, sec, Avgv, toll}); */
+	swtoll({vid, sec, Avgv, toll});
+      end;
+
+create function toll_calc(Integer sec, Integer vid, Integer xway, Integer pos,
+                          Integer seg, Integer dir, Integer spd, Integer lane)
+                         -> Vector
+     /* Update toll calculations */
+     as if (lane = 4) /*if car is on exit ramp no toll is charged*/
+        then update_vehicle_info(vid, sec, xway, pos, seg, dir, lane, spd)
+        else if check_new_seg_report(vid, seg, xway)
+             then begin end
+             else begin
+	          add_previous_toll(vid, sec, xway, pos, seg, dir, lane, spd);
+                              /* Add toll from previous segment*/
+	          result calc_toll(sec, vid, xway, pos, seg, dir, spd); 
+                           /*calculate toll for the new segment*/
+	          end;

@@ -1,0 +1,770 @@
+/*************/
+/* UTILITIES */
+/*************/
+
+create function pi()-> Real as 3.14159265358979323;
+
+create function e()-> Real as 2.7182818284590452;
+
+create function factorial(Integer x)->Integer
+  as max(1, power(10, sum(log10(iota(1,x)))));
+
+create function computeNormalDensity(Real mean, Real stdDev, Number x) -> Real
+  as power(e(),((-1/2)*power((x-mean)/stdDev,2))) / (sqrt(2*pi())*stdDev);
+
+create function computePoissonDensity(Real mean, Number x)-> Real
+  as power(mean,x) * power(e(), -1 * mean) / factorial(x);
+
+create function stdDeviation(Vector v)-> Real
+  as max(cast (vstdev(v) as Real), 0.0);
+
+/******************************************/  
+/* SIMPLE ATTRIBUTE MODELS AND GENERATORS */
+/******************************************/
+ 
+/* NORMAL DISTRIBUTION -> CONTINUOUS VALUES */
+
+/* Model */
+
+create type NormalDistribution under AttributeDistribution;
+
+create function parameters(NormalDistribution)-> Vector
+  as stored;
+/* Format : {mean, meanDistance, sampleSize} 
+Mean distance : sum of squared difference between mean and values */ 
+
+create function getProbability(NormalDistribution distribution, 
+                               Number value)-> Real probability
+  as maxagg(select proba from Real proba where 
+        proba in 
+            (select computeNormalDensity(mean, sqrt(meanDistance/(sampleSize-1)), value)
+             from Real mean, Real meanDistance, Integer sampleSize
+             where {mean, meanDistance, sampleSize} = parameters(distribution)
+               and meanDistance!=0)
+        or proba in 
+            (select 1.0
+             from Real mean, Real meanDistance, Integer sampleSize
+             where {mean, meanDistance, sampleSize} = parameters(distribution)
+               and meanDistance=0 and mean=value)
+        or proba=0); /* avoids numerical issues when stdDev=0 */
+
+/* Generator */
+
+create type NormalGenerator under DistributionGenerator;
+
+create function generateDistribution(NormalGenerator generator)
+                ->NormalDistribution
+  as begin
+     declare NormalDistribution distribution;
+     create NormalDistribution instances distribution;
+     set parameters(distribution) = {0.0,0.0,0};
+     result distribution;
+     end;
+
+/* Update functions */
+
+create function updateDistribution(NormalDistribution distribution, Vector items)
+                -> Boolean
+  as begin
+     declare Vector initialParameters,
+             Real oldMean, Real oldSize, real oldMeanDistance, 
+             Real incMean, Real incSize, Real incMeanDistance,
+             Real newMean, Real newSize, Real newMeanDistance;
+     set initialParameters = parameters(distribution);
+     set oldMean=initialParameters[0];
+     set oldMeanDistance=initialParameters[1];
+     set oldSize=initialParameters[2];
+     set incMean = vavg(items);
+     set incSize = dim(items);
+     set incMeanDistance = power(stdDeviation(items),2) * (incSize - 1);
+     set newSize = oldSize + incSize;
+     set newMean = (oldMean*oldSize + incMean*incSize) / newSize;
+     set newMeanDistance = 
+          incMeanDistance + oldMeanDistance + 
+          ((incSize * oldSize)/newSize) * power(incMean - oldMean,2);
+     set parameters(distribution) = {newMean, newMeanDistance, newSize};
+     end;
+
+create function updateDistributionAtom(NormalDistribution distribution, Object item)
+                -> Boolean
+  as begin
+    declare Vector of Real initialParameters, Real oldMean, Number itemVal,
+          Real newMean, Real newSize, Real newMeanDistance;
+    set itemVal=cast (item as Number);
+    set initialParameters = parameters(distribution);
+    set newSize = initialParameters[2] + 1;
+    set oldMean = initialParameters[0];
+    set newMean = 
+          oldMean + (itemVal - oldMean) / newSize;
+    set newMeanDistance =  
+          initialParameters[1] + (itemVal - oldMean)
+                                  * (itemVal - newMean);
+    set parameters(distribution) = {newMean, newMeanDistance, newSize};
+    end;
+   
+/* Output function */ 
+   
+create function outputDetail(NormalDistribution distribution)-> Charstring
+  as '...Attribute : ' + attribute(distribution) + 
+     ' - Type : Normal ' +skipline()+ '...Parameters :' + skipline() +
+     concatagg(
+        select '..... Mean : ' + stringify(roundto(mean,3)) + 
+               ' - Square deviation : '+stringify(roundto(stdDev,3)) + 
+               skipline()
+        from Real mean, Real stdDev, Real count, real meanDistance
+        where {mean, meanDistance, count} = parameters(distribution)
+              and stdDev = sqrt(meanDistance/(count-1)));
+
+              
+/* POISSON DISTRIBUTION -> NUMERICAL DISCRETE VALUES */
+
+/* Model */
+
+create type PoissonDistribution under AttributeDistribution;
+
+create function parameter(PoissonDistribution)-> Real mean as stored;
+
+create function sampleSize(PoissonDistribution)-> Integer as stored;
+
+create function getProbability(PoissonDistribution distribution, Integer value)
+                -> Real probability
+  as computePoissonDensity(parameter(distribution), value);
+
+/* Generator */
+
+create type PoissonGenerator under DistributionGenerator;
+
+create function generateDistribution(PoissonGenerator generator)
+                ->PoissonDistribution
+  as begin
+     declare PoissonDistribution distribution;
+     create PoissonDistribution instances distribution;
+     set sampleSize(distribution)=0;
+     set parameter(distribution)=0.0;
+     result distribution;
+     end;    
+
+/* Update functions */
+
+create function updateDistribution(PoissonDistribution distribution, Vector items)
+                -> Boolean
+  as begin
+     declare Real incMean, Integer incSize, Integer initialSize;
+     set initialSize = sampleSize(distribution);
+     set incSize = dim(items);
+     set incMean = vavg(items);
+     set sampleSize(distribution) = initialSize + incSize;
+     set parameter(distribution)=
+          (parameter(distribution)*initialSize + incSize*incMean)
+          / (initialSize+incSize);
+     end;
+
+create function updateDistributionAtom(PoissonDistribution distribution, Object item)
+                -> Boolean
+  as begin
+     declare Integer newSize, Real oldMean, Number itemVal;
+     set itemVal=cast (item as Number);
+     set oldMean=parameter(distribution);
+     set newSize = sampleSize(distribution) + 1;
+     set parameter(distribution) = 
+          oldMean + (itemVal - oldMean) / newSize;
+     set sampleSize(distribution)=newSize;
+     end;
+
+/* Output function */  
+      
+create function outputDetail(PoissonDistribution distribution)-> Charstring
+  as '...Attribute : ' + attribute(distribution) + 
+     ' - Type : Poisson ' +skipline()+ '...Parameter :' + skipline() +
+     '..... Mean : ' + roundto(parameter(distribution),3) +skipline();     
+
+     
+/* HISTOGRAM -> DISCRETE VALUES */
+
+/* Model */
+
+create type HistogramDistribution under AttributeDistribution;
+
+create function valueOccurences(HistogramDistribution)
+                -> Bag of <Object value, Integer countOccurences>
+  as stored;
+
+create_index("valueOccurences", "value", "hash", "multiple");
+
+create function countClassItems(HistogramDistribution)-> Integer
+  as stored;
+
+create function countOccurences(HistogramDistribution distribution, 
+                                Object value)-> Integer
+  as maxagg(
+        select countOccurences
+        from Integer countOccurences
+        where <value, countOccurences> in valueOccurences(distribution)
+            or countOccurences=0);
+            
+create function countTotalOccurences (HistogramDistribution distribution)
+                                      -> Integer
+         as (cast (max(countClassItems(distribution),1) as Integer));
+
+create function getProbability(HistogramDistribution distribution, 
+                               Object value)-> Real probability
+  as countOccurences(distribution, value)
+        /countTotalOccurences (distribution);
+
+/* Update function */
+
+create function countOccurences(Vector items)
+                -> Bag of <Object value, Integer count>
+  as groupby(
+        (select items[i] from Integer i)
+    ,#'count');
+
+create function insertItems(HistogramDistribution distribution, Vector items)
+                -> Bag of <Object, Integer>     
+  as select value, count 
+           from Object value, Integer count 
+           where <value, count> in groupby(
+               (select value, count 
+               from Object value, Integer count 
+               where <value, count> in valueOccurences(distribution)
+                  or <value, count> in countOccurences(items)),
+               #'sum');
+  
+create function updateDistribution(HistogramDistribution distribution, Vector items)
+                -> Boolean
+  as begin
+     set valueOccurences(distribution)= 
+          materialize(materialize(insertItems(distribution, items)));
+     set countClassItems(distribution)= 
+          countClassItems(distribution) + dim(items);
+     end;
+     
+create function insertItemAtom(HistogramDistribution distribution, Object item)
+                -> Bag of <Object, Integer> 
+  as select value, count 
+     from Object value, Integer count, Integer originalCount 
+     where (<value, originalCount> in valueOccurences(distribution)
+               and ((value!=item and count=originalCount)
+                 or (value=item and count=originalCount+1))
+            ) 
+        or (value=item and count=1 
+               and notany(select 1
+                          from Integer originalCount  
+                          where <item, originalCount> in valueOccurences(distribution))
+            );     
+     
+create function updateDistributionAtom(HistogramDistribution distribution, Object item)
+                -> Boolean
+  as begin
+     set valueOccurences(distribution)=
+          materialize(insertItemAtom(distribution, item));
+     set countClassItems(distribution)= 
+          countClassItems(distribution) + 1;
+     end;
+     
+/* Generator */
+
+create type HistogramGenerator under DistributionGenerator;
+
+create function generateDistribution(HistogramGenerator generator)
+                ->HistogramDistribution
+  as begin
+     declare HistogramDistribution distribution;
+     create HistogramDistribution instances distribution; 
+     set countClassItems(distribution)=0;
+     result distribution;
+     end; 
+
+/* Output function */ 
+        
+create function outputDetail(HistogramDistribution distribution)
+                -> Charstring
+  as '...Attribute : ' + attribute(distribution) + 
+     ' - Type : Histogram' +skipline() + 
+     '.....Frequency of occurence in class :' + skipline() +
+     concatagg(
+        select '.....' + stringify(value)+' - ' +
+               stringify(roundto(getProbability (distribution, value),3)) + 
+               skipline()
+        from Object value, Integer count
+        where <value, count> in valueOccurences(distribution)
+              );  
+
+/* ZIPF DISTRIBUTION */
+
+/* Model */
+
+create type ZipfDistribution under HistogramDistribution;
+
+create function parameters(ZipfDistribution)-> Vector of Real as stored;
+/* Expected : two constant factors */
+
+create function valueRanks(ZipfDistribution)-> Vector of Vector as stored;
+/* Sorted vectors of {expression, countOccurences} */
+
+create function getMaxRank(ZipfDistribution distribution)-> Integer
+  as maxagg(
+          select dim(valueRanks(zipf))
+          from ZipfDistribution zipf
+          where attribute(zipf)=attribute(distribution)
+            and inBayesModel(inClassModel(zipf))=inBayesModel(inClassModel(distribution))
+     );
+
+create function getRank(Charstring expr, Vector of Vector list, Integer max)
+	-> Integer 
+  as minagg(
+          select i+1
+          from Integer i
+          where like(lower((cast (list[i][0] as Charstring))),expr) or i=max 
+     );
+
+create function getProbability(ZipfDistribution distribution, Charstring value)
+                -> Real
+  as parameters(distribution)[0]/
+     power(
+          getRank(value, valueRanks(distribution),getMaxRank(distribution)),
+          parameters(distribution)[1]
+     );
+     
+/* Update functions */
+
+create function getExprCountVectors(Vector of Vector init, Vector items)
+     -> <Charstring, Integer>
+  as groupby((select expr, count
+              from Charstring expr, integer count
+              where {expr,count} in init
+                 or (expr in items and count=1)),
+               #'sum');
+  
+create function updateDistribution(ZipfDistribution distribution, Vector items)
+                -> Boolean
+  as set valueRanks(distribution)=sortbagby(
+          getExprCountVectors(valueRanks(distribution), items),
+          2,'dec');
+     
+create function updateDistributionAtom(ZipfDistribution distribution, Object item)
+                -> Boolean
+  as set valueRanks(distribution)=sortbagby(
+          getExprCountVectors(valueRanks(distribution), {item}),
+          2,'dec');
+     
+/* Generator */
+
+create type ZipfGenerator under DistributionGenerator;
+
+create function parameters(ZipfGenerator)-> Vector of Real as stored;
+/* Expected : two constant factors */
+
+create function generateDistribution(ZipfGenerator generator)
+                ->ZipfDistribution
+  as begin
+     declare ZipfDistribution distribution;
+     create ZipfDistribution instances distribution; 
+     set valueRanks(distribution)={};
+     set parameters(distribution)=parameters(generator);
+     result distribution;
+     end; 
+
+/* Output function */ 
+        
+create function outputDetail(ZipfDistribution distribution)
+                -> Charstring
+  as '...Attribute : ' + attribute(distribution) + 
+     ' - Type : Zipf' +skipline() + 
+     '.....Rank of tokens :' + skipline() +
+     concatagg(
+        select '.....' + stringify(value)+' - ' +
+               stringify(roundto(getProbability (distribution, value),3)) + 
+               skipline()
+        from Integer i, Charstring value
+        where i in iota(0, /*dim(valueRanks(distribution))-1*/ 50)
+          and value=valueRanks(distribution)[i][0]
+              );  
+          
+              
+/*********************************************/              
+/* DISTRIBUTIONS REQUIRING SHARED PARAMETERS */              
+/*********************************************/
+              
+/* ATTRIBUTE BINNING */
+
+/* General class declarations */
+
+create type BinHistogramDistribution under HistogramDistribution;    
+create type BinHistogramGenerator under HistogramGenerator, RequiresStaticParameters;
+
+/* Binning functions */
+
+create type BinSet under StaticModelParameters;
+
+create function parameters(BinSet)-> Vector as stored;
+
+create function getBin(Number value, BinSet group)-> Vector bin
+  as select {infBound, supBound}
+     from Number infBound, Number supBound, Number min, Number classWidth
+     where {min, classWidth} =  parameters(group)
+       and ((infBound = value - mod(value-min, classWidth)
+            and supBound = infBound + classWidth and value>=min)
+        or (supBound = value - mod(value-min, classWidth)
+            and infBound = supBound - classWidth and value<min));
+
+/* Attribute Model */ 
+
+create function bins(BinHistogramDistribution)-> BinSet as stored;
+
+create function countOccurences(BinHistogramDistribution distribution, 
+                Number value)-> Integer
+  as maxagg(
+          select countOccurences
+          from Vector bin, Integer countOccurences
+          where (bin=getBin(value, bins(distribution)) 
+               and <bin, countOccurences> in valueOccurences(distribution))
+            or countOccurences=0);
+
+/* Update function */
+
+create function getAllAttributeBins(Vector items, 
+                BinHistogramDistribution distribution)
+                -> Vector of Vector
+  as vectorof(
+        select getBin(cast(items[i] as Number),bins(distribution))
+        from Integer i
+    );
+
+create function updateDistribution(BinHistogramDistribution distribution, Vector items)
+                -> Boolean
+  as updateDistribution(cast (distribution as HistogramDistribution), 
+                        getAllAttributeBins(items, distribution));
+
+create function updateDistributionAtom(BinHistogramDistribution distribution, Object item)
+                -> Boolean
+  as updateDistributionAtom(cast (distribution as HistogramDistribution), 
+                            getBin(cast(item as Number),bins(distribution)));
+
+/* Bin-based attribute generator */ 
+
+create function binningParameters(BinHistogramGenerator)-> Vector as stored;
+/* Expected : {Real center, Real binWidth} */
+
+create function generateStaticParameters(BinHistogramGenerator generator)-> BinSet 
+  as begin
+     declare BinSet binSet;
+     create BinSet instances binSet;
+     set parameters(binSet)=binningParameters(generator);
+     set getDistributionGenerator(binSet) = generator;
+     result binSet;
+     end;
+
+create function generateDistribution(BinHistogramGenerator generator)-> BinHistogramDistribution
+  as begin
+     declare BinHistogramDistribution distribution;
+     create BinHistogramDistribution instances distribution;
+     set bins(distribution)=parameters(generator);
+     set countClassItems(distribution)=0;
+     result distribution;
+     end;     
+
+/* SMOOTHENED HISTOGRAM */ 
+
+/* General class declarations */
+
+create type SmoothHistogramGenerator 
+       under HistogramGenerator, RequiresStaticParameters;
+
+create type SmoothHistogramDistribution under HistogramDistribution;
+
+create type SmoothingData under UpdatableStaticParameters;
+
+create function smoothingData(SmoothHistogramDistribution)
+                -> SmoothingData as stored;  
+
+/* Static parameters : number of distinct values in all classes and strength*/
+
+create function countDistinctItems(SmoothingData)-> Integer as stored;
+create function smoothingStrength(SmoothingData)-> Real as stored;
+
+create function similarEncouteredItems(SmoothingData data, Object item)-> Integer
+  as select 1
+     from Integer count, SmoothHistogramDistribution distribution, NB_Model model
+     where attribute(distribution)=attribute(data)
+       and data in updatableStaticParameters(model)
+       and inBayesModel(inClassModel(distribution))=model
+       and smoothingData(distribution)=data
+       and <item, count> in valueOccurences(distribution);
+
+create function update(SmoothingData staticData, Vector data)-> Boolean
+  as begin
+     declare integer updateFactor;
+     set updateFactor=count(select item 
+                            from Object item 
+                            where item in (select distinct uniqueItem 
+                                           from Object uniqueItem 
+                                           where uniqueItem in data) 
+                              and notany(similarEncouteredItems(staticData, item)));
+     set countDistinctItems(staticData)=
+          countDistinctItems(staticData)+updateFactor;
+     end;
+     
+create function updateAtom(SmoothingData staticData, Object item)-> Boolean
+  as begin
+     declare Integer increment;
+     set increment=ifsome(similarEncouteredItems(staticData, item), 0, 1); 
+     set countDistinctItems(staticData)=countDistinctItems(staticData)+ increment;
+     end;
+
+/* Smooth histogram model */
+
+create function smoothingStrengh(SmoothHistogramDistribution distribution)
+                -> Real 
+  as smoothingStrength(smoothingData(distribution));
+  
+create function countDistinctItems(SmoothHistogramDistribution distribution)
+                -> Integer 
+  as countDistinctItems(smoothingData(distribution));
+  
+create function getProbability(SmoothHistogramDistribution distribution, 
+                               Object value)-> Real probability
+  as (countOccurences(distribution, value) +  smoothingStrengh(distribution))
+      / (countTotalOccurences(distribution) + 
+          smoothingStrengh(distribution)  * countDistinctItems(distribution));
+          
+/* Update functions for model : inherited */
+    
+/* Smooth histogram generator */
+
+create function smoothingStrengh(SmoothHistogramGenerator)-> Real as stored;
+
+create function generateStaticParameters(SmoothHistogramGenerator generator)
+                -> SmoothingData 
+  as begin
+     declare SmoothingData smoothingData;
+     create SmoothingData instances smoothingData;
+     set countDistinctItems(smoothingData)=0;
+     set smoothingStrength(smoothingData)=smoothingStrengh(generator);
+     set getDistributionGenerator(smoothingData)=generator;
+     result smoothingData;
+     end;
+
+create function generateDistribution(SmoothHistogramGenerator generator)
+                -> SmoothHistogramDistribution
+  as begin
+     declare SmoothHistogramDistribution distribution;
+     create SmoothHistogramDistribution instances distribution;
+     set smoothingData(distribution)=parameters(generator);
+     set countClassItems(distribution)=0;
+     result distribution;
+     end;        
+
+     
+/***************/     
+/* META-MODELS */
+/***************/
+
+/* TEXT CLASSIFIER */
+
+create type TextDistribution under AttributeDistribution;
+
+create function wordsDistribution(TextDistribution)-> AttributeDistribution as stored;
+
+create function textWrapper(AttributeDistribution wrapped)-> TextDistribution textDistribution
+  as select textDistribution
+     where wordsDistribution(textDistribution)=wrapped;
+
+create type TextClassifParameters under UpdatableStaticParameters;
+
+create function tokenizationParameters(TextDistribution)-> TextClassifParameters as stored;
+
+create function escapedExpressions(TextClassifParameters)-> Vector of Charstring as stored;
+
+create function wordSeparators(TextClassifParameters)-> Vector of Charstring as stored;
+
+create function specialExpressions(TextClassifParameters)-> Vector of Charstring as stored;
+
+create function wrappedDistributionParameters(TextClassifParameters)-> StaticModelParameters as stored;
+
+/* Utils - text tokenization functions*/   
+  
+create function extractSeparators(Charstring text,
+                 Vector of Charstring wordSeparators)
+                 -> Vector of Vector of Integer
+  as sort(
+          select position, length
+          from Integer position, Integer length
+          where (position in iota(1, char_length(text)-2)
+                 and length in (
+                    select distinct char_length(wordSeparators[i])
+                    from Integer i)
+                 and substring(text, position, position+length-1) in wordSeparators
+               ) 
+             or (position=0 and length=0)
+             or (position=char_length(text)-1 and length=0)
+     );
+
+create function notEscaped(Charstring token,
+                Vector escapedExpressions)
+                -> Boolean
+  as notany (
+          select 1
+          from Charstring expr
+          where expr in escapedExpressions
+            and like(token, expr)
+     );
+       
+create function extractWords(Charstring text,
+                 Vector of Charstring wordSeparators)
+                 -> Bag of Charstring
+  as select word
+     from Charstring word,
+          Integer startPos, Integer endPos, 
+          Vector of Vector of Integer separatorsPos, Integer i
+     where separatorsPos=extractSeparators(text, wordSeparators)
+       and startPos=separatorsPos[i][0]+separatorsPos[i][1]
+       and endPos=separatorsPos[i+1][0]-separatorsPos[i+1][1]
+       and endPos-startPos>0
+       and word=lower(substring(text, startPos, endPos));
+            
+create function extractSpecialExpressions(Charstring text, 
+                Vector specialExpressions)
+                -> Bag of Charstring
+  as select expression
+     from Charstring expression
+     where expression in specialExpressions
+       and like(text, expression);
+
+create function tokenizeText(Charstring text,
+                TextClassifParameters params)
+                -> Vector
+  as vectorof(
+          select token
+          from Charstring token
+          where (token in extractWords(text, wordSeparators(params))
+              or token in extractSpecialExpressions(text, specialExpressions(params)))
+             and notEscaped(token, escapedExpressions(params))
+          );
+        
+create function tokenizeTextSet(Vector of Charstring texts,
+                TextClassifParameters params)
+                -> Vector
+  as vectorof(
+          select lower(token)
+          from Charstring token, Integer i
+          where token in tokenizeText(texts[i],params)
+     );
+     
+/* Model */
+
+create function wordProbability(TextDistribution distribution, Object item)-> Real 
+  as getProbability(wordsDistribution(distribution), item);
+
+create function jointWordsProbability(TextDistribution distribution, 
+                Vector tokens)-> Real
+  as power(10,sum(
+          select log10(wordProbability(distribution, item))
+          from Charstring item
+          where item in tokens
+     ));
+
+create function getProbability(TextDistribution distribution, Charstring text)-> Real 
+  as jointWordsProbability(
+          distribution,
+          tokenizeText(lower(text),tokenizationParameters(distribution))
+     );
+     
+/* Updates static parameters of wrapped distribution */
+
+create function update(TextClassifParameters parameters, Vector texts)-> Boolean
+  as begin
+     for each UpdatableStaticParameters wrappedParameters
+         where wrappedParameters=cast (wrappedDistributionParameters(parameters) as UpdatableStaticParameters)
+          update(wrappedParameters,
+                tokenizeTextSet(cast (texts as Vector of Charstring),
+                                parameters)
+                );
+     end;
+     
+create function updateAtom(TextClassifParameters parameters, Object text)-> Boolean
+  as begin
+     for each UpdatableStaticParameters wrappedParameters
+         where wrappedParameters=cast (wrappedDistributionParameters(parameters) as UpdatableStaticParameters)
+          update(wrappedParameters,
+                tokenizeText(lower((cast (text as Charstring))),
+                                parameters)
+                );
+     end;
+
+/* Update functions for wrapped distribution*/
+
+create function updateDistribution(TextDistribution distribution, Vector items)
+                      -> Boolean
+  as begin
+     updateDistribution(wordsDistribution(distribution), 
+                        tokenizeTextSet(cast (items as Vector of Charstring),
+                                        tokenizationParameters(distribution))
+                        );
+     end;
+
+create function updateDistributionAtom(TextDistribution distribution, Object text)
+                      -> Boolean    
+  as begin
+     updateDistribution(wordsDistribution(distribution), 
+                        tokenizeText(lower((cast (text as Charstring))),
+                                     tokenizationParameters(distribution))
+                        );
+     end;
+
+/* Generator */
+
+create type TextDistribGenerator under DistributionGenerator, RequiresStaticParameters;
+
+create function parsingOptions(TextDistribGenerator)-> Vector of Vector as stored;
+/* Expected :
+{Separators, Escaped expressions, Special expressions}   */
+
+create function wordsDistribGenerator(TextDistribGenerator)-> DistributionGenerator as stored;
+
+create function generateStaticParameters(TextDistribGenerator generator)
+                -> TextClassifParameters
+  as begin
+     declare TextClassifParameters parameters, StaticModelParameters wrappedParameters;
+     create TextClassifParameters instances parameters;
+     set wordSeparators(parameters)=parsingOptions(generator)[0];
+     set escapedExpressions(parameters)=parsingOptions(generator)[1];
+     set specialExpressions(parameters)=parsingOptions(generator)[2];
+     set getDistributionGenerator(parameters)=generator;
+     for each RequiresStaticParameters wrappedGenerator
+         where wrappedGenerator=cast (wordsDistribGenerator(generator) 
+                                   as RequiresStaticParameters)
+          set wrappedDistributionParameters(parameters)=generateStaticParameters(wrappedGenerator);
+     result parameters;
+     end;
+
+create function generateDistribution(TextDistribGenerator generator)
+                -> TextDistribution
+  as begin
+     declare TextDistribution distribution, AttributeDistribution wrappedDistribution;
+     create TextDistribution instances distribution;
+     set tokenizationParameters(distribution)=parameters(generator);
+     
+     set wrappedDistribution=generateDistribution(wordsDistribGenerator(generator));
+     set attribute(wrappedDistribution)="(wrapped by "+stringify(generator)+")";
+     set wordsDistribution(distribution)=wrappedDistribution;
+     
+     result distribution;
+     end;        
+
+/* Output function */
+
+create function outputDetail(TextDistribution distribution)
+                -> Charstring
+  as begin
+     result '...Attribute : ' + attribute(distribution) + 
+     ' - Type : Text distribution' +skipline()+
+     '.'+outputDetail(wordsDistribution(distribution));
+     end;     
+     
+     
+     
+/***********************/
+/* OTHER DISTRIBUTIONS */
+/***********************/     
+     

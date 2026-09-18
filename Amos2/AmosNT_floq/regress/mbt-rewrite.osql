@@ -1,0 +1,100 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Thanh Truong, UDBL
+ * $RCSfile: mbt-rewrite.osql,v $
+ * $Revision: 1.1 $ $Date: 2012/08/20 12:56:21 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Test cases for MBT rewriter
+ *
+ ****************************************************************************
+ * $Log: mbt-rewrite.osql,v $
+ * Revision 1.1  2012/08/20 12:56:21  thatr500
+ * Added test cases for MBT rewriter.
+ * Bug fixed :
+ *   Wrong low bound ,and high bound are chosen if there are many indexed
+ *   inequalities.
+ *
+ *
+ ****************************************************************************/
+
+create function p(Number x)->Boolean as stored;
+
+create_index("p","x","mbtree","multiple");
+
+for each Number i where i in iota(-20, 20)
+   set p(i)=true;
+
+
+/* Low bound is 5*/
+create function test1()->Number 
+as select x from Number x where x > 5 and x > 0 and p(x) and x!=0;
+
+create function test2()->Number 
+as select x from Number x where x > 0 and x > 5 and p(x) and x!=0;
+
+create function test3()->Number 
+as select x from Number x where x > 5 and p(x) and x!=0;
+
+
+lisp;
+
+;; Result of test1, test2, test3
+(setq res  '((6) (7) (8) (9) (10) (11) (12) (13) (14) (15) (16) (17) (18) (19) (20)))
+
+(checkequal "MBT rewrites low bound"
+  ((osql "test1();")
+   res)
+  ((osql "test2();")
+   res)
+  ((osql "test3();")
+   res))
+
+:osql
+
+
+/* High bound is 10*/
+create function test4()->Number 
+as select x from Number x where x < 10 and x < 20 and p(x) and x!=0;
+
+create function test5()->Number 
+as select x from Number x where x < 20 and x < 10 and p(x) and x!=0;
+
+
+create function test6()->Number 
+as select x from Number x where x < 10 and p(x) and x!=0;
+
+lisp;
+
+;; Result of test1, test2, test3
+(setq res  '((-20) (-19) (-18) (-17) (-16) (-15) (-14) (-13) (-12) (-11) (-10) (-9) (-8) (-7) (-6) (-5) (-4) (-3) (-2) (-1) (1) (2) (3) (4) (5) (6) (7) (8) (9)))
+
+(checkequal "MBT rewrites high bound"
+  ((osql "test4();")
+   res)
+  ((osql "test5();")
+   res)
+  ((osql "test6();")
+   res))
+
+:osql
+
+
+/* Low bound and High bound*/
+create function test7()->Number 
+as select x from Number x 
+   where x < 10 and
+         x > 5 and 
+         x < 20 and
+         x > 0 and
+         p(x) and x!=0;
+
+lisp;
+(checkequal "MBT rewrites low + high bound"
+  ((osql "test7();")
+   '((6) (7) (8) (9))))
+
+:osql
+
+rollback;

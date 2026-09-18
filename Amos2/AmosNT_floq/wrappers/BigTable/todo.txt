@@ -1,0 +1,137 @@
+The bigWrapper wrapper of BigtTable databases
+============================================
+
+Assume two bigtable relations in http://foo:
+city | cityname      | population | state |
+-----+---------------+------------+-------+
+     | Atlanta       | 538000     | GA    |
+     | New York      | 8364000    | NY    |
+     | San Fransisco | 809000     | CA    |
+-----+---------------+------------+-------+
+
+state | shortname | fullname   |
+------+-----------+------------+
+      | CA        | California |
+      | NY        | New York   |
+      | GA        | Georgia    |
+------+-----------+------------+
+
+
+The following foreign functions should be defined:
+
+create function accessBigTable(Charstring sn, Charstring URL)->Boolean
+   as foreign "JAVA:   ";
+
+create function gql(Charstring dsn, Charstring query, Vector params)
+                    -> Bag of Vector r
+  as foreign "JAVA:...";
+
+Use (parts of) Moriz code. 
+Put all Java necessary Java code in this folder.
+
+------------
+The following stored functions are populated by accessBigTable:
+
+create function bigTableURL(Charstring dsn) -> Charstring url
+  as stored;
+
+create function bigTables(Charstring dsn) -> Bag of Charstring name
+  as stored;
+
+create function bigTableAttributes(Charstring dsn, Charstring table) ->
+   Bag of <Charstring aname, Charstring type, Integer iskey, Integer indexed>
+  as stored; 
+/* Initially 'indexed' can be always set to 1 */
+
+------------
+Make a database image bt.dmp with the above functions by a script nmkdmp.cmd
+
+When later running
+  bigWrapper.cmd
+the following should work:
+
+accessBigtable("ds1","http://foo");
+bigTables("ds1");
+=>
+   "city"
+   "state"
+
+bigTableAttributes("ds1","city")
+
+=>
+   <"cityname","string",1,1>
+   <"population","number",0,1>;
+   <"state","string",1,1>
+
+bigTableAttributes("ds1","state"):
+=>
+   <"shortname","string",1,1>
+   <"fullname","string",0,1>
+
+gql("ds1","select * from city",{});
+=>
+  {"Atlanta", 538000, "GA"}
+  {"New York", 8364000, "NY"}
+  {"San Fransisco", 809000, "CA"} 
+
+gql("ds1","select * from CITY where POPULATION > %s",{8000000});
+=>
+  {"New York", 8364000, "NY"}
+
+/*********** more than one data source (same twice) ******************/
+
+accessBigtable("ds2","http://foo");
+
+select v2[1] from Vector v1, Vector v2 where
+  v1 = gql("ds1","select * from city where population > %s",{800000})
+  v2 = gql("ds2","select * from state where shortname = %s",{v1[2]});
+
+/* should return "New York" and "California" */
+
+
+/*************  Database updates ****************/
+
+insertBigTable("ds1","city",{"San Jose"}, {1100000, "CA"});
+
+gql("ds1","select * from CITY where POPULATION > %s",{1000000});
+
+getBigTable("ds1","city",{"San Jose"}); -> {1100000, "CA"}
+
+deleteBigTable("ds1","city",{"San Jose"});
+
+gql("ds1","select * from CITY where POPULATION > %s",{1000000});
+
+
+*** Rewrites of core cluster functions:
+
+select cityname(c) from City@ds1 where population(c)>8000000;
+=>
+  "New York"
+
+select cityname(c) from City_ds1;
+=>
+  "Atlanta"
+  "New York"
+  "San Fransisco"
+   
+
+select cityname(c) from City_ds1 where population(c)>800000 and
+                                       state(c)="CA";
+=>
+  "San Fransisco"
+
+select cityname(c), fullname(s)
+from City_ds1 c, State_ds1 s
+where population(c)>800000 and
+      state(c) = shortname(s);
+=>
+  <"New York", "New York">
+  <"San Fransisco", "California">
+
+-------------
+The following command procedured should be defined:
+
+  compile.cmd       comple Java code
+  mkdmp.cmd         create database image
+  bigWrapper.cmd    run bigWrapper 
+  test.cmd          test the above queries.

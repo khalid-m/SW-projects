@@ -1,0 +1,8 @@
+load_lisp(getenv("AMOS_HOME") + "/gsdm/lsp/gsdm.lsp");
+load_amosql(getenv("AMOS_HOME") + "/gsdm/osql/streams.osql");
+load_amosql(getenv("AMOS_HOME") + "/gsdm/osql/operations.osql");
+logging off;
+
+nameserverhost(getenv("NAMESERVER_HOST")); 
+save_database("gsdm.dmp");
+quit;   

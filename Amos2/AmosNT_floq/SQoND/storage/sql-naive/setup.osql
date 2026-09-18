@@ -1,0 +1,27 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Andrej Andrejev, UDBL
+ * $RCSfile: setup.osql,v $
+ * $Revision: 1.1 $ $Date: 2012/02/14 15:09:50 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Naive SQL backend implementation - setup script
+ *
+ ****************************************************************************
+ * $Log: setup.osql,v $
+ * Revision 1.1  2012/02/14 15:09:50  andan342
+ * Added naive SQL-based implementation of RDF store
+ *
+ * Revision 1.1  2006/02/12 20:01:08  torer
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+
+set :rdfstore = jdbc("rdfstore","com.mysql.jdbc.Driver");
+
+connect(:rdfstore, "jdbc:mysql://localhost:3306/rdfstore", "root", "");
+
+read_sql(:rdfstore,"setup.sql");
+
+disconnect(:rdfstore);

@@ -1,0 +1,49 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 Erik Zeitler, UDBL
+ * $RCSfile: zip512.osql,v $
+ * $Revision: 1.1 $ $Date: 2010/07/15 17:46:06 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Distributed splitstream experiments 
+ *
+ ****************************************************************************
+ * $Log: zip512.osql,v $
+ * Revision 1.1  2010/07/15 17:46:06  zeitler
+ * Stream join tree experiments
+ *
+ * Revision 1.2  2010/07/06 00:13:58  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.1  2010/07/05 22:39:04  zeitler
+ * *** empty log message ***
+ ****************************************************************************/
+
+/* run experiments. Add results to results table. write results to file */
+
+add ub_zip_res(w) = ub_zip(w,8) from integer w
+where w in {512};
+write_ntuples(
+(select concat({w}, ub_zip_res(w)) from integer w),
+"ub_zip_" + timestamp());
+
+add ub_zipma_res(w, masize) = ub_zipma(w,8,masize) from integer w, integer masize
+where w in {512} and masize in {1,2,4,8,16};
+write_ntuples(
+(select concat({w, m}, ub_zipma_res(w, m)) from integer w, integer m),
+"ub_zipma_" + timestamp());
+
+add ub_zipmap_res(w) = ub_zipmap(w,8) from integer w
+where w in {512};
+write_ntuples(
+(select concat({w}, ub_zipmap_res(w)) from integer w),
+"ub_zipmap_" + timestamp());
+
+add ub_zipmapma_res(w,masize) = ub_zipmapma(w,8,masize) from integer w, integer masize
+where w in {512} and masize in {1,2,4,8,16};
+write_ntuples(
+(select concat({w,m}, ub_zipmapma_res(w,m)) from integer w, integer m),
+"ub_zipmapma_" + timestamp());
+
+q();

@@ -1,0 +1,21 @@
+/*
+* This script optimizes all cuts' queries from cuts.osql with randomize method with static cost model 
+* for aggregates. First, it loads schema and data and
+* then it loads cuts with randomize method with level 30,100.
+*/
+
+cd(getenv('AMOS_HOME')+'\\aleh\\osql');
+<'schema.osql';
+<'parameters.osql';
+load_lisp('../lsp/cost_model.populated.lsp');
+load_root_file('../../wrappers/ROOTWrap/t.root');
+optmethod('randomopt');
+optlevel(30,100);
+<'cuts.osql';
+create function expcuts(event ev, parameters g) -> event as
+select ev
+where ev=topcut(ev,g) and ev=jetvetocut(ev,g) and 
+		ev=misseecuts(ev,g) and ev=zvetocut(ev,g) and 
+		ev=threeleptoncut(ev,g) and ev=leptoncuts(ev,g);
+
+select id(e) from event e, parameters g where e=expcuts(e,g);

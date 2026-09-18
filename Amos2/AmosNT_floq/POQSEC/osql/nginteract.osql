@@ -1,0 +1,131 @@
+/*****************************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2005 Ruslan Fomkin, UDBL
+ * $RCSfile: nginteract.osql,v $
+ * $Revision: 1.4 $ $Date: 2005/08/09 12:56:28 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  
+ *
+ ****************************************************************************/
+<'gridMetaDB.osql';
+<'submissionDB.osql';
+<'general.osql';
+load_lisp("../lsp/nginteract.lsp");
+
+create function getjobid(charstring file) -> charstring as foreign 'get-jobid';
+
+create function getjobdir(charstring file) -> charstring as 
+	foreign 'get-jobdir';
+
+create function getstatus(charstring file) -> <charstring,charstring> as 
+	foreign 'get-status';
+
+create function getEtime(charstring file) -> charstring as
+	foreign 'get-etime';
+
+create function getLtime(charstring file) -> charstring as
+	foreign 'get-ltime';
+
+create function updatejob(charstring jobid, charstring status) -> boolean as
+begin
+	declare job uj;
+	select j into uj from job j where name(j)=jobid;
+	set status(uj)=status;
+	set lasttime(uj)=now();
+end;
+
+create function updatestatus(charstring file) -> job as
+begin
+	for each job j, charstring c where <upper(name(j)),c> =getstatus(file)
+	begin
+		set status(j) = c;
+		set lasttime(j) = now();
+		result j;
+	end;
+end;
+
+create function ngsubmit_c(job j) -> 
+	object as 
+begin
+	set name(j)=lower(getjobid("submit.dat"));
+	if name(j)
+	then begin 
+		set submittime(j)=now();
+		set status(j)="SUBMITTED";
+		result j;
+	end
+	else set status(j)="NOT";
+end;
+
+create function ngsubmit(bag of job jobs) -> job as 
+begin
+	for each job j where j=in(jobs)
+	begin
+		tosystem("ngsub -f "+xrslfile(j)+" > submit.dat");
+/*		tosystem("ngsub -f "+xrslfile(j)+" -c "+name(cluster(j))+" > submit.dat");*/
+		set name(j)=lower(getjobid("submit.dat"));
+		if name(j)
+		then begin 
+			set submittime(j)=now();
+			set status(j)="SUBMITTED";
+			result j;
+		end
+		else set status(j)="NOT";
+	end;
+end;
+
+create function ngget(bag of job jobs) -> job as
+begin
+	for each job j where j=in(jobs) and status(j)="FINISHED"
+	begin
+		tosystem("ngget "+name(j)+" > result.dat");
+		set resultdir(j)=lower(getjobdir("result.dat"));
+		if resultdir(j)
+		then begin
+			set resulttime(j) = now();
+			set status(j) = "DOWNLOADED";
+			tosystem("rm "+queryfile(j));
+			remove queryfile(j) = queryfile(j);
+			tosystem("rm "+xrslfile(j));
+			remove xrslfile(j) = xrslfile(j);
+			result j;
+		end;
+	end;
+end;
+
+create function ngget_c(job j) -> job as
+begin
+	set resultdir(j)=lower(getjobdir("result.dat"));
+	if resultdir(j)
+	then begin
+		set resulttime(j) = now();
+		set status(j) = "DOWNLOADED";
+		tosystem("rm "+queryfile(j));
+		remove queryfile(j) = queryfile(j);
+		tosystem("rm "+xrslfile(j));
+		remove xrslfile(j) = xrslfile(j);
+		result j;
+	end;
+end;
+
+create function ngstatus() -> job as
+begin
+	tosystem("ngstat -a > status.dat");
+	result updatestatus("status.dat");
+end;
+
+
+create function ngstatus(bag of job jobs) -> job as
+begin
+	declare charstring statstr;
+	set statstr = "ngstat";
+	for each job j where j=in(jobs)
+	begin
+		set statstr = statstr+" "+lower(name(j))
+	end;
+	tosystem(statstr+" > status.dat");
+	result updatestatus("status.dat");
+end;

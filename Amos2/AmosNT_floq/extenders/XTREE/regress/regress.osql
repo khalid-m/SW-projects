@@ -1,0 +1,86 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 torer, UDBL
+ * $RCSfile: regress.osql,v $
+ * $Revision: 1.1 $ $Date: 2013/01/25 16:30:32 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Xtree index testing. 
+ ****************************************************************************
+ * $Log: regress.osql,v $
+ * Revision 1.1  2013/01/25 16:30:32  thatr500
+ * regression test on Unix & Windows
+ *
+ ****************************************************************************/
+
+create function ptest1(Charstring pic)->Vector of Number fv
+  as stored;
+
+create_index("ptest1","fv","XTREE","multiple");
+
+add ptest1("Pic001")={1.0 , 2.0 ,3.0, 4.0};
+
+add ptest1("Pic0011")={1.0 , 2.0, 3.0 ,4.0};
+
+add ptest1("Pic002")={1.0,2.0,3.0,5.0};
+add ptest1("Pic003")={1.0,2.0,2.0,6.0};
+add ptest1("Pic004")={1.0,2.0,3.0,4.0};
+add ptest1("Pic005")={5.0,6.0,7.0,8.0};
+add ptest1("Pic006")={1.0,2.0,3.0,4.0};
+add ptest1("Pic007")={5.0,6.0,7.0,8.0};
+
+create function ptest2(Charstring pic)->Vector of Number fv
+  as stored;
+
+create_index("ptest2","fv","XTREE","multiple");
+
+add ptest2("Pic001")={1,2,3,4};
+add ptest2("Pic002")={1.0,2.0,3.0,5.0};
+add ptest2("Pic003")={1.0,2.0,2.0,6.0};
+add ptest2("Pic004")={1.0,2.0,3.0,4.0};
+add ptest2("Pic005")={5.0,6.0,7.0,8.0};
+add ptest2("Pic006")={1.0,2.0,3.0,4.0};
+add ptest2("Pic007")={5.0,6.0,7.0,8.0};
+
+create function ptest3(Charstring pic)->Vector of Number fv
+  as stored;
+
+create_index("ptest3","fv","XTREE","multiple");
+
+add ptest3("Pic001")={1,2,3,4};
+add ptest3("Pic002")={1.0,2.0,3.0,5.0};
+add ptest3("Pic003")={1.0,2.0,2.0,6.0};
+add ptest3("Pic004")={1.0,2.0,3.0,4.0};
+add ptest3("Pic005")={5.0,6.0,7.0,8.0};
+add ptest3("Pic006")={1.0,2.0,3.0,4.0};
+add ptest3("Pic007")={5.0,6.0,7.0,8.0};
+
+
+create function pictureFeatures(Charstring pic)->Vector of Number features
+  as stored;
+
+create_index("pictureFeatures","features","XTREE","multiple");
+
+add pictureFeatures("Pic001")={1.0,2.0,3.0,4.0};
+add pictureFeatures("Pic002")={1.0,2.0,3.0,5.0};
+add pictureFeatures("Pic003")={1.0,2.0,2.0,6.0};
+add pictureFeatures("Pic004")={1.0,2.0,3.0,4.0};
+add pictureFeatures("Pic005")={5.0,6.0,7.0,8.0};
+add pictureFeatures("Pic006")={1.0,2.0,3.0,4.0};
+add pictureFeatures("Pic007")={5.0,6.0,7.0,8.0};
+
+
+remove pictureFeatures("Pic004")={1.0,2.0,3.0,4.0};
+remove pictureFeatures("Pic006")={1.0,2.0,3.0,4.0};
+
+remove pictureFeatures("Pic005")={5.0,6.0,7.0,8.0};
+remove pictureFeatures("Pic007")={5.0,6.0,7.0,8.0};
+
+
+lisp;
+(setq *enable-aqit* nil)
+:osql
+
+load_amosql('similarity_test.osql');
+load_amosql('knn_test.osql');

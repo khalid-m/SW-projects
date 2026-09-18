@@ -1,0 +1,77 @@
+1. genomför en körning. 
+	om allt gått som det ska skall du ha följande filer
+	o-t2
+	o-t3
+	o-acc-alert
+	o-tollalert
+	
+	du skall även ha filerna
+	cardatapoints.out
+	historical-tolls.out
+	
+2. kopiera filerna till hagrid. med tex winSCP. Lägg dem i katalogen data under ditt konto.
+    validationcopy.cmd <userid>
+
+3. Logga in på din hagridnod, t.ex.
+     ssh torer@hagrid096.hagrid.it.uu.se
+   Se till att ha kommandoprocedurerna 'convertdata' och 'newnode.sh' i mappen 'lr'
+   Kör dos2unix på dem vid behov!
+
+4. Kör kommandoproceduren i folder ~/lr:
+
+     convertdata
+
+5. Skapa Posgres userid = ditt användarnamn
+     Hur??
+
+6. Kör filen newnode.sh som ska innehålla följande:
+
+
+7. Gå in i validatorn och editera filen validate.config
+#comment
+cardatainput=/scratch/$USER/lr/cardatapoints.out
+
+#comment
+completehistory=/scratch/$USER/lr/historical-tolls.out
+
+#comment
+dailyexpenditure=/scratch/$USER/lr/data/o-t3
+
+#comment
+accountbalance=/scratch/$USER/lr/o-t2
+
+#comment
+outputtollalerts=/scratch/$USER/lr/o-tollalert
+
+#comment
+outputaccidentalerts=/scratch/$USER/lr/o-acc-alert
+
+#comment
+keeplog=yes
+
+#comment
+logfile=execution.log
+
+#comment
+databasename=validateone
+
+#comment
+databaseusername=$USER
+
+#comment
+databasepassword=""
+
+# ändra till passande namn på database mm
+
+7. Kör valideraren med kommandot ./validate validate.config
+
+8. När körningen är klar kan du gå in och kontrollera resultatet.
+	>psql validateone
+9. För att få se de olika tabellerna
+	>\d
+10. select * from accalertnotinoriginal;  /Accident alerts that the validator generated but yours did not
+	select * from accalertnotinvalidator; / Accident alerts that the your system generated but the validator did not
+	SELECT * FROM tollAlertNotInOriginal; /Toll alerts that the validator generated but yours did not
+	SELECT * FROM tollAlertNotInValidator; /Toll alerts that the your system generated but the validator did not
+	
+	

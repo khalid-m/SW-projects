@@ -1,0 +1,1 @@
+java -cp ".;%AMOS_HOME%\wsmed\lib\saaj-api.jar;%AMOS_HOME%\bin\javaamos.jar" JavaAMOS ssdm.dmp chelonia-store.osql -q AmosQL

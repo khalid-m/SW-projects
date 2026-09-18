@@ -1,0 +1,47 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Tore Risch, UDBL
+ * $RCSfile: multicast.osql,v $
+ * $Revision: 1.1 $ $Date: 2007/08/27 19:28:22 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Test multicasting functions
+ *
+ ****************************************************************************
+ ****************************************************************************/
+
+create function measure(Number sid) -> Number m
+  as stored;
+
+create function measures() -> Bag of (Number sid, Number m)
+  as select sid, m where measure(sid) = m;
+
+for each Number i where i in iota(1,10)
+  set measure(i)=frand(100);
+
+create function measure2(Number sid, Number sid2, Number sid3)->Number m as stored;
+
+for each Number i where i in iota(1,10)
+  set measure2(i, i, i)=frand(100);
+
+create function measures2()->Bag of (Number sid, Number sid2, Number sid3, Number m)
+  as select sid, sid2, sid3, m where measure2(sid, sid2, sid3)=m;
+
+
+create function myiota(vector of vector params)->bag of integer
+as select iota(par1, par2)
+   from integer par1, integer par2
+   where {par1, par2} in params;
+
+/* if you take sid as bag of integer with multicastreceive, then it doesn't work */
+create function measurev2_notwork(Bag of Integer sid)->Number m
+  as select measure(si)
+     from integer si
+     where si in sid;
+
+/* a vector of integer with multicastreceive, then it works */
+create function measurev2(vector of Integer sid)->Number m
+  as select measure(si)
+     from integer si
+     where si in sid;

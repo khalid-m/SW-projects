@@ -1,0 +1,251 @@
+/*-*-sql-*-*******************************************************************
+* AMOS2 * * Author: (c) 2004 Johan Petrini UDBL * $RCSfile:
+rdf.amosql,v $ * $Revision: 1.12 $ $Date: 2012/05/15 19:27:15 $ *
+$State: Exp $ $Locker:  $ * * Description: Code to define PSELO basic
+RDF model on top of Amos II
+****************************************************************************
+* $Log: rdf.amosql,v $
+* Revision 1.12  2012/05/15 19:27:15  torer
+* result -> return
+* * Revision 1.11 2012/01/10 08:21:04 torer * New
+tuple syntax * * Revision 1.10 2010/02/26 15:22:50 torer * Disallowing
+same declaration in arguments and FROM clause in derived function * *
+Revision 1.9 2010/02/17 20:28:25 torer * Functions to index misspelled
+* * Revision 1.8 2010/01/20 20:15:53 torer * Extent of type
+RDF_RESOURCE cannot be queried * * Revision 1.7 2009/11/17 17:31:24
+torer * '=' changed to 'in' * * Revision 1.6 2006/09/08 17:47:58 torer
+* sort functions cleaned up, generalized, and documented * * Revision
+1.5 2006/04/14 18:59:47 torer * Added log *
+****************************************************************************/
+
+ /*******************************************************
+ * Foreign functions for parsing and extracting 	*
+ * nickname of serialized rdf data.			*				 
+ *******************************************************/
+create function parseRDF(Charstring source)->
+    bag of (Charstring,Charstring,Charstring,Integer) as
+  foreign "JAVA:AmosStmt/Load";
+
+create function extract_nickname(charstring URI)-> charstring nm 
+    as foreign "JAVA:AmosStmt/extractName";
+
+create function extract_prefix(charstring URI)-> charstring nm 
+    as foreign "JAVA:AmosStmt/extractPrefix";
+
+ /*******************************************************
+ * Basic RDF representation. 				*
+ *******************************************************/
+create type RDF_resource
+ properties 
+   	(intid charstring key);
+
+create function the_transient(vector id key)->rdf_resource 
+  as multidirectional ("bf" foreign "encode-transient" cost {10,1})
+		      ("fb" foreign "decode-transient" cost {1,1});
+
+create function the_persistent(vector id key)->rdf_resource key
+  as multidirectional ("bf" foreign "encode-persistent" cost {10,1})
+                      ("fb" foreign "decode-persistent" cost {1,1});
+
+ /***********************************************************************
+ * Fundamental function id() for extraction and creation of encodes 	*
+ * property of resources.						*
+ * Defined as inverse of the_transient() to enable key transformations.	*
+ * (crucial to enable push down of filter like-pred to SQL.		*
+ ***********************************************************************/
+create function encodes(rdf_resource r)->vector id key
+  as select id where the_transient(id)=r;
+
+create function nickname(rdf_resource r)->charstring nick 
+  as select nick from charstring pre where {pre, nick}=encodes(r);
+
+create function id(rdf_resource r)->charstring uri key
+  as select concat(pre,nick) from charstring pre, charstring nick where {pre,nick}= encodes(r);
+
+ /***********************************************************************
+ * Turn derived fn id() into updateble.	 				*
+ ***********************************************************************/
+create function set_encodes(RDF_resource r, vector id)-> boolean as foreign 'set-encodes';
+set_setfunction(functionnamed('RDF_RESOURCE.ENCODES->VECTOR'), functionnamed('RDF_RESOURCE.VECTOR.SET_ENCODES->BOOLEAN'));
+
+ /***********************************************************************	
+ * Functions for creating persistent resources. 			*
+ ***********************************************************************/
+create function new_persistent(vector id)-> rdf_resource
+as
+	begin
+    		declare rdf_resource r, charstring a, charstring uri;
+		set uri = concat(cast(id[0] as CHARSTRING),cast(id[1] as CHARSTRING));
+		select alias(uri) into a;
+        	if(a!=nil) then set uri=a;
+       			
+		select rr into r from rdf_resource rr where intid(rr)=uri;
+		if r!=nil then 
+		begin
+			return r;
+		end
+       		else
+		begin              								
+             		create RDF_resource(intid) instances r(uri);
+              		set encodes(r)=id;
+			return r;
+            	end;
+				
+       		
+     	end;
+
+ /***********************	
+ * Utility functions.	*
+ ***********************/
+create function sort_prep(Charstring c)->Charstring as foreign 'sort-prep';
+
+
+/*
+create function resource_longnamed(charstring nm)->rdf_resource r
+as 
+	select r 
+     	where id(r)=nm;
+*/
+
+
+create function get_nickname(rdf_resource r)->charstring 
+as
+	begin
+        	declare charstring res;
+         	select nickname(r) into res;
+         	if res=nil then error("RDF resource has no nick name", r);
+         	return res;
+   	end;
+
+ /***********************************************************************	
+ * Management of RDF statements. Integer representing flag to signal if *
+ * stmt in stmt repository is old=0 or new=1. 				*
+ ***********************************************************************/
+create function stmt_store(rdf_resource s, rdf_resource p, rdf_resource o, integer flag)->boolean as stored;
+
+/*
+create function filter_store(rdf_resource p)->boolean 
+as select from rdf_resource s1, rdf_resource o1, integer i1 where stmt_store(s1,p,o1,i1);
+*/
+/*
+from rdf_resource s1,rdf_resource p1, rdf_resource o1, integer i1 where stmt_store(s1,p1,o1,i1); 
+
+and s1=s and p1=p and o1=o and i1=i;
+*/
+
+/*
+create function wrapper_store(rdf_resource s, rdf_resource p, rdf_resource o, integer flag)->boolean 
+as multidirectional
+		("ffff" foreign "scan_store" cost {25,300})
+		("fbff" foreign "filter_store" cost {1,0.00001});
+*/
+
+create function exist_pred(rdf_resource p)->boolean 
+as multidirectional
+		("f" foreign "scan_pred" cost {25,300})
+		("b" foreign "filter_pred" cost {1,0.0000000001});
+
+create function filter_pred(rdf_resource p)->boolean as select some(select p from rdf_resource s, rdf_resource o, integer i where stmt_store(s,p,o,i));
+
+create_index("rdf_resource.rdf_resource.rdf_resource.integer.stmt_store->boolean", "s", "hash", "multiple");
+create_index("rdf_resource.rdf_resource.rdf_resource.integer.stmt_store->boolean", "p", "hash", "multiple");
+create_index("rdf_resource.rdf_resource.rdf_resource.integer.stmt_store->boolean", "o", "mbtree", "multiple");
+create_index("rdf_resource.rdf_resource.rdf_resource.integer.stmt_store->boolean", "flag", "hash", "multiple");
+
+ /***********************************************************************	
+ * Models mappings between uri's from different terminologies having	*
+ * the same meaning. 							*
+ ***********************************************************************/
+/*
+create function sm(charstring uri1, rdf_resource uri2)->boolean as stored;
+*/
+create function sm(rdf_resource uri1, rdf_resource uri2)->boolean as stored;
+
+/*
+create function get_persistent(charstring uri)->rdf_resource persistent 
+as
+	select r where intid(r)=uri;
+*/
+
+create function uri(charstring uri)->rdf_resource r 
+as
+	select r where intid(r)=uri;
+ /***********************************************************************	
+ * Pred_store is a repository for predicates for efficient lookup  	*
+ * during compile time evaluation of pred() predicate. 			*
+ ***********************************************************************/
+
+create function new_RDF_statement(charstring s, charstring p, charstring o)
+                                 ->boolean
+as
+	begin
+		declare rdf_resource so, rdf_resource po, rdf_resource oo;
+       	
+		set so = the_persistent({extract_prefix(s),extract_nickname(s)});
+       		set po = the_persistent({extract_prefix(p),extract_nickname(p)});
+       		set oo = the_persistent({extract_prefix(o),extract_nickname(o)});				
+
+		set stmt_store(so, po, oo, 1)=true;
+	end;
+
+create function loadRDF(charstring url)->boolean b
+as
+	begin
+     		for each Charstring subj, Charstring Pred, Charstring Obj, 
+                         Integer lit
+         	where (subj,pred,obj,lit) in parseRDF(url)
+	 	new_RDF_statement(subj, pred, obj);   
+	end;
+
+
+create function is_sequence(RDF_resource s)->boolean
+as
+	select true from rdf_resource p, rdf_resource o, integer i 
+        where stmt_store(s,p,o,i) and nickname(p)="type" and nickname(o)="Seq";
+
+ /***************************************************************	
+ * Resources of type SEQ are assumed to only have properties on	*
+ * the form rdf:_? 						*
+ ***************************************************************/
+create function coll_statements_of(RDF_resource r)
+                              ->Bag of (RDF_resource, charstring, RDF_resource)
+  as	select s, sort_prep(nickname(p)), o
+	from integer i, RDF_resource s, RDF_resource p, RDF_resource o
+	where s=r and 
+              stmt_store(s, p, o, i) and 
+	      nickname(p)!="type";
+
+create function pick_coll_statements(RDF_resource r)->Vector
+  as select sortbagby(coll_statements_of(r),2,'inc');
+
+create function extract_coll_objects(vector vv)->vector v
+  as foreign 'extract-coll-objects';
+
+
+create function pick_sequence(RDF_resource r) -> Vector x
+  as select extract_coll_objects(pick_coll_statements(r)); 
+
+ /***************************************************************		
+ * Fn getprop() handles both atomic and container values.	*
+ * Both new and old local stmts are considered. 		*
+ ***************************************************************/
+create function getprop(RDF_resource s, charstring i)->rdf_resource v
+  as	for each integer j, RDF_resource p, RDF_resource o 
+            where stmt_store(s, p, o, j) and 
+                  nickname(p)=i
+	begin
+		if is_sequence(o)
+		then return pick_sequence(o)
+		else return o;
+	end;	
+
+create function rdfprops(rdf_resource r) -> Vector
+as	select {nickname(p), o}
+	from rdf_resource s, rdf_resource p, rdf_resource o, integer i
+	where stmt_store(s, p, o, i) and 
+              s=r;
+
+create function materialized_resources() -> Bag of rdf_resource
+  as foreign 'materialized-resources+';
+
+

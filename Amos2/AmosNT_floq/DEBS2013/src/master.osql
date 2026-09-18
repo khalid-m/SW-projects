@@ -1,0 +1,457 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: master.osql,v $
+ * $Revision: 1.63 $ $Date: 2014/01/13 18:41:08 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: script to load src code
+ *
+ ****************************************************************************
+ * $Log: master.osql,v $
+ * Revision 1.63  2014/01/13 18:41:08  chexu484
+ * svali.exe -> svali
+ *
+ * Revision 1.62  2013/10/29 10:11:34  sobso953
+ * Retreating to older q1.osql
+ *
+ * Revision 1.61  2013/10/27 15:18:12  sobso953
+ * 1- A virtual stream for the break events, Breakbag(), added.
+ * 2- A vector-based version of interupt stream, interruptBagVector(), added.
+ *
+ * Revision 1.60  2013/05/31 12:02:37  torer
+ * added new scsq function
+ * propagate_delays(Boolean flg)->Flag
+ * to compute delays and write into all SCSQ result CSV files
+ *
+ * Revision 1.59  2013/05/23 14:04:53  thatr500
+ * - removed addSeed / sampleRate
+ * - modified index.html
+ *
+ * Revision 1.58  2013/05/22 15:24:12  torer
+ * *** empty log message ***
+ *
+ * Revision 1.57  2013/05/21 11:07:26  torer
+ * New procedure
+ *
+ * Revision 1.56  2013/05/20 21:33:18  chexu484
+ * code clean up
+ *
+ * Revision 1.55  2013/05/17 14:27:52  torer
+ * Added CSV report time stamps
+ *
+ * Revision 1.54  2013/05/16 20:02:08  torer
+ * Propagation of enter systen times for events added
+ *
+ * Revision 1.53  2013/04/23 09:02:27  thatr500
+ * - added check_file function
+ * - turn off debugging
+ *
+ * Revision 1.52  2013/04/21 22:38:36  thatr500
+ * removed SAMPLING !!!!
+ *
+ * Revision 1.51  2013/04/21 12:36:41  torer
+ * Epic prompter
+ *
+ * Revision 1.50  2013/04/21 12:33:50  torer
+ * Image size set to 100MB
+ *
+ * Revision 1.49  2013/04/21 11:06:58  thatr500
+ * *** empty log message ***
+ *
+ * Revision 1.48  2013/04/20 21:53:31  chexu484
+ * q1 takes care of breaks
+ *
+ * Revision 1.47  2013/04/18 12:42:06  torer
+ * Using B-trees instead of hash tables
+ *
+ * Revision 1.46  2013/04/18 10:18:21  chexu484
+ * complete q3
+ *
+ * Revision 1.45  2013/04/18 10:07:40  torer
+ * Testing full game with sampling. Time: 52.5
+ *
+ * Revision 1.44  2013/04/18 09:32:43  torer
+ * Simplified splitter, no sampling
+ *
+ * Revision 1.43  2013/04/17 17:10:37  chexu484
+ * full game with sample rate
+ *
+ * Revision 1.42  2013/04/17 12:53:53  torer
+ * *** empty log message ***
+ *
+ * Revision 1.41  2013/04/16 05:46:28  torer
+ * Using assignfunction
+ *
+ * Revision 1.40  2013/04/15 20:02:48  thatr500
+ * reverted to 1.38
+ *
+ * Revision 1.38  2013/04/13 08:55:57  torer
+ * New version of eventstreamna() using debs_event_file_tuples()
+ *
+ * Revision 1.37  2013/04/13 08:42:46  torer
+ * New stream wrapper function
+ * debs_event_file_tuples(Charstring filename, Number half) -> Bag of Numarray
+ *
+ * Revision 1.36  2013/04/12 11:33:03  torer
+ * Naive C version of eventconv() now passes regression. Factor 2.3 faster.
+ *
+ * Revision 1.35  2013/04/12 10:58:22  torer
+ * Revert to old eventconv(). Regression now passes
+ *
+ * Revision 1.34  2013/04/12 10:21:28  torer
+ * eventconv() in C a factor 2 fastr
+ *
+ * Revision 1.33  2013/04/12 10:13:31  torer
+ * Revert to OSQL
+ *
+ * Revision 1.32  2013/04/12 09:47:13  torer
+ * eventconv() in C
+ *
+ * Revision 1.31  2013/04/12 08:31:14  torer
+ * Added wrapper stub
+ *
+ * Revision 1.30  2013/04/11 17:53:23  chexu484
+ * break event taken care
+ *
+ * Revision 1.29  2013/04/11 14:49:31  thatr500
+ * inserted two special events (break start, break end)
+ *
+ * Revision 1.28  2013/04/11 12:20:30  torer
+ * fullgame(file) added
+ *
+ * Revision 1.27  2013/04/10 17:41:01  thatr500
+ * fixed debsplit !!!!
+ *
+ * Revision 1.26  2013/04/10 13:47:59  thatr500
+ * Applied sampling rate for Q2Q4 in front (at filtter)
+ *
+ * Revision 1.25  2013/04/10 09:58:52  chexu484
+ * *** empty log message ***
+ *
+ * Revision 1.24  2013/04/10 09:17:05  sobso953
+ * passing interrupts throught the sampling filter
+ *
+ * Revision 1.23  2013/04/09 18:56:38  thatr500
+ * No windows overlapping with the game break
+ *
+ * Revision 1.22  2013/04/09 18:43:13  sobso953
+ * -Sampling added
+ * -Q1 writes to file
+ *
+ * Revision 1.21  2013/04/09 12:17:27  chexu484
+ * q1 don't get interrupt events, (TBD)
+ *
+ * Revision 1.20  2013/04/09 11:50:16  sobso953
+ * -
+ *
+ * Revision 1.19  2013/04/09 11:00:18  larme597
+ * *** empty log message ***
+ *
+ * Revision 1.18  2013/04/09 10:08:11  torer
+ * Testing with csv
+ *
+ * Revision 1.17  2013/04/09 08:23:37  larme597
+ * Load queries in correct order.
+ *
+ * Revision 1.16  2013/04/08 10:20:18  chexu484
+ * running all fours queries at the same time by a function call
+ *
+ * Revision 1.15  2013/04/05 13:33:25  chexu484
+ * overall architecture, starts with Q2 and Q3
+ *
+ * Revision 1.14  2013/04/04 15:13:07  thatr500
+ * added comments
+ *
+ * Revision 1.13  2013/04/03 15:14:01  thatr500
+ * Added Q1b excluding "at least one second requires you to delay the output until a reliable measurement has been made "
+ *
+ * Revision 1.12  2013/04/02 16:04:55  larme597
+ * New function euclidSq; euclid without sqrt.
+ *
+ * Revision 1.11  2013/04/02 12:00:15  larme597
+ * Print delay 0. Turning off logging.
+ *
+ * Revision 1.10  2013/03/29 16:49:53  thatr500
+ * Added player running statistic
+ *
+ * Revision 1.9  2013/03/26 17:36:09  chexu484
+ * Q3 completed!
+ * Note: if we are going to print the result stream on stout, we should keep
+ * the sp logging off otherwise the result stream is streamed to log file again
+ *
+ * Revision 1.8  2013/03/26 14:25:15  chexu484
+ * Bug fix
+ *
+ * Revision 1.7  2013/03/25 15:10:18  torer
+ * New CSV reader
+ *
+ * Revision 1.6  2013/03/24 21:51:33  chexu484
+ * Q2 broadcast done, check main.osql
+ *
+ * Revision 1.5  2013/03/22 13:41:25  thatr500
+ * load 'misc.lsp'
+ *
+ * Revision 1.4  2013/03/12 19:15:26  chexu484
+ * 1. game start time changed
+ *    from 10748401988186756 to 10753295594424116 (schema.osql)
+ * 2. start2ndhalf() -> Number added
+ * 3. 1sthalf and 2ndhalf interrupt stream merged with event stream
+ *
+ * Check main.osql
+ *
+ * Revision 1.3  2013/03/08 15:01:05  chexu484
+ * inputStream(Charstring position, Charstring interrupt)
+ *                                      -> Stream of Vector of Number
+ * TO DO:
+ * add second half of the game into data/interrupt.csv
+ *
+ * Revision 1.2  2013/03/08 13:50:49  thatr500
+ * - file organization changed
+ * - schema changed (startgameinpico added)
+ *
+ * Revision 1.1  2013/01/25 16:33:07  chexu484
+ * debs Grand Challenge starts here
+ *
+ ****************************************************************************/
+
+imagesize 100000000;
+
+load_extension("debswrappers");
+
+load_lisp("../../lsp/dictionary.lsp");
+
+< 'schema.osql';
+< 'schema_data.osql';
+
+lisp; (setq _print-delay_ 0) (setq _prompter_ "Epic")
+(setq _proctime-dir_ "logs/proctime")
+(setq _delay-filename_ "logs/proctime/delay")
+(setq _socket-systime_ nil) ;; propagate system time
+(setq _report-csv-times_ nil) ;; system time stamps first on CSV output lines
+:osql /*'*/
+
+logging off;
+/*
+Read event stream from file
+All values are converted to metric scales
+*/
+
+create function eventconv0(Vector v, Number half)
+   -> (Number ts, Number sid, Number x, Number y,
+       Number z, Number av, Number vx, Number vy,
+       Number vz, Number a, Number ax, Number ay, Number az)
+  as foreign "eventconv--+";
+
+create function debs_event_file_tuples(Charstring filename, Number half)
+                                     -> Bag of Numarray
+  as foreign 'debs_event_file_tuples--+';
+
+create function eventconv(Vector v) -> 
+          (Number ts, Number sid, Number x, Number y,
+	  Number z, Number av, Number vx, Number vy,
+	  Number vz, Number a, Number ax, Number ay, Number az)
+  as eventconv0(v, start1sthalf()); 
+
+create function invertevent(Numarray v) -> Vector of Number
+  as select {v[1], v[0] * 10^12 + start1sthalf(), v[2] * 10^3, v[3] * 10^3,
+	     v[4] * 10^3, v[5] * 10^6, v[9] * 10^6, v[6] * 10^4, v[7] * 10^4,
+	     v[8] * 10^4, v[10] * 10^4, v[11] * 10^4, v[12] * 10^4};
+
+create function eventstreamna(Charstring filename)-> Stream of Numarray
+  as streamof(debs_event_file_tuples(filename, start1sthalf()));
+
+create function breakstart() -> Numarray
+  as darray({end1sthalf(), -1, -2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
+
+create function breakend() -> Numarray
+  as darray({secondhalf(), -1, -3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
+
+create function breakstartv() -> Vector of Number
+  as {end1sthalf(), -1, -2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+create function breakendv() -> Vector of Number
+  as {secondhalf(), -1, -3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+parteval("breakstart");
+parteval("breakend");
+parteval("breakstartv");
+parteval("breakendv");
+parteval("plus");
+parteval("power");
+parteval("times");
+create function filtered_stream_b(stream of numarray s) -> bag of numarray
+/*Apply general filter on inputstream*/
+  as begin
+     declare boolean game;
+     set game = true;
+
+     for each numarray n where n in s
+       if (0.0 <= ts(n) and ts(n) <= end1sthalf()) or
+          (secondhalf() <= ts(n) and ts(n) <= end2ndhalf()) then 
+       begin        
+         if isInterrupt(n) then
+	 begin
+	   if ts(n) = secondhalf() then 
+	   begin 
+	       /*Inject two speical interruption breaks*/
+               return breakstart(); 
+               return breakend(); 	
+           end;
+
+ 	   /*Interrupt the game !*/	
+           if isInterruptEnd(n) then set game = true
+           else if isInterruptBegin(n) then set game = false;
+	   /*Interuption events go through*/
+           return n;
+	   
+         end else if game then
+	 begin
+           if isBall(n) then 
+	   begin /*Only ball events when the ball is in*/  
+		if ballIn(n) then  return n; 
+	   end else return n; /*All player events go through*/
+         end;       
+       end;
+  end;
+
+create function filtered_stream(stream of numarray s) -> stream of numarray
+  as streamof(filtered_stream_b(s));
+
+/*
+GC 2013 Change schema 2013-02-28
+sid, ts, x,  y, z, |v|, |a|, vx, vy, vz, ax, ay, az 
+0    2   4   6  8   10  12   14  16  18  20  22  24 */
+
+lisp;
+
+;; convert time format "00:01:04.5" to seconds
+;; represented as Number: 64.5
+(foreign-lispfn ts ((Charstring s)) ((Number))
+  (let ((time (mapcar (function read)
+		         (string-explode s ":"))))
+  (foreign-result
+	(+ (* 3600 (first time))
+	   (* 60 (second time))
+	   (* 1 (third time))))))
+
+:osql
+
+/* game interruption stream first half */
+create function fsthalfinterrupt(Charstring filename) -> Bag of Vector of Number
+  as select {ts(cast(v[2] as Charstring)), -1, ifsome(v[1] = "Game Interruption Begin", 1, 0),
+		     0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+     from Vector v
+     where v in csv_file_tuples(filename);
+
+/* game interruption stream second half */
+create function sndhalfinterrupt(Charstring filename) -> Bag of Vector of Number
+  as select {ts(cast(v[2] as Charstring)) + pico2sec(start2ndhalf() - start1sthalf()),
+             -1, ifsome(v[1] = "Game Interruption Begin", 1, 0), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+     from Vector v
+     where v in csv_file_tuples(filename);
+
+create function interruptBag() -> Bag of Numarray
+  as begin
+       for each Vector of Number v where v in fsthalfinterrupt("data/1stHalf.csv")
+          return darray(v);
+       for each Vector of Number v where v in sndhalfinterrupt("data/2ndHalf.csv")
+          return darray(v);
+     end;
+
+create function interruptBagVector() -> Bag of Vector
+as begin
+	for each Vector of Number v where v in fsthalfinterrupt("data/1sthalf.csv")
+		return v;
+	for each Vector of Number v where v in sndhalfinterrupt("data/2ndhalf.csv")
+		return v;
+end;
+
+/*
+contains break events:
+the start and stop of the break in the middle of the game
+*/
+create function BreakBag() ->Bag of Vector as begin return breakstartv(); return breakendv(); end;
+
+create function interruptStreamna() -> Stream of Numarray
+  as streamof(interruptBag());
+
+/* input stream: position report merged with interrupt stream */
+create function inputStreamna(Charstring position) -> Stream of Numarray
+  as select filtered_stream(streamof(smjna({sp1, sp2}, 0)))
+     from Sp sp1, Sp sp2
+     where sp1 = newSp(eventStreamna(position))
+     and sp2 = newSp(interruptStreamna());
+
+create function broadcastv(Vector of Number v, Integer fanout) -> (Integer, Vector of Number)
+  as select i, v
+  from Integer i
+  where i in iota(0, fanout - 1);
+
+create function broadcastna(Numarray v, Integer fanout) -> (Integer, Numarray)
+  as select i, v
+  from Integer i
+  where i in iota(0, fanout - 1);
+
+create function euclidSq(number x1, number y1, number z1,
+                         number x2, number y2, number z2) -> number
+  as (x1 - x2) ^ 2 + (y1 - y2) ^ 2 + (z1 - z2) ^ 2;
+
+create function euclidSq(vector of number v1, vector of number v2) -> number
+  as (v1[0] - v2[0]) ^ 2 + (v1[1] - v2[1]) ^ 2 + (v1[2] - v2[2]) ^ 2;
+
+< 'q1.osql';
+< 'q4.osql';
+< 'q2.osql';
+< 'q3new.osql';
+parteval('minNumber');
+parteval('maxNumber');
+parteval('hitacc');
+parteval('tsgap');
+
+normalization(false);
+
+create function debsSplit(Numarray v, Integer fanout) -> (Integer, Numarray)
+  /* split predicate without sampling */
+  as select i, v from Integer i
+     where (i = 0 and isPlayer(v)) or
+	   (i = 1) or
+           (i = 2 and isPlayer(v));
+
+create function debsnew(Stream of Numarray s) -> Object
+  as in(mergestreams(svali:mapstreams(splitstream(s, 3, #'debsSplit'),
+                                      {#'q1', #'q2q4', #'q3new'},
+				      {{}, {}, {}})));
+
+set prepstartcmd("") = "svali";
+set dumpfile() = "debs.dmp";
+set sp_start("") = "";
+
+create function check_file(Charstring name)->Charstring
+  as if file_exists(name) then return name
+     else error("File not found: "+name);
+
+< 'experiment.osql';
+
+lisp;
+
+(defun na-csv-file-tuples-+ (fno file res)
+  (with-input-file s file 
+		   (while (not (eof-p s))
+		     (osql-result file (na-csv-read s)))))
+
+(setq _system-watermark_ _oidno_)
+(setq _scsq-watermark_ _oidno_)
+
+:osql
+
+create function na_csv_file_tuples (Charstring file) -> Bag of Numarray
+  as foreign 'na-csv-file-tuples-+';
+
+create function fullgamenew(Charstring file)->Boolean
+  as debsnew(inputstreamna(file));
+
+debugging(false);
+
+save "../../bin/debs.dmp";

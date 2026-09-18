@@ -1,0 +1,216 @@
+ /*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Silvia Stefanova, UDBL
+ * 
+ * Description: SWATM regression test for the eGovBus database. 
+ *
+ * 
+ ******************************************************************************/
+
+
+importTopicMap("http://user.it.uu.se/~udbl/software/swatm/egovdemo.xtm");
+
+set :query1= "SELECT DISTINCT ?bnt1
+      	     FROM <http://user.it.uu.se/~udbl/software/swatm/egovdemo.xtm>
+      	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt1. }";
+
+SELECT DISTINCT ?bns
+FROM <http://user.it.uu.se/~udbl/software/swatm/egovdemo.xtm>
+WHERE{ ?t1 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt1.
+	?bnt1 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> 'Language'.
+   	?t1 <http://udbl2.it.uu.se/swatm#OCCURRENCETOPIC> ?ot1.
+	?ot1 <http://udbl2.it.uu.se/swatm#INSTANCEOFOCCURRENCE> ?iot1.
+	?iot1 <http://udbl2.it.uu.se/swatm#IDTOPIC> ?idt2.
+	?iot1 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt2.
+	?bnt2 <http://udbl2.it.uu.se/swatm#SCOPEBASENAME> ?t3.
+	?t3 <http://udbl2.it.uu.se/swatm#IDTOPIC> 'systemId2'.		
+	?bnt2 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> ?bns. }
+
+set :p = parsesparql(:query1);
+set :o = compilequery(:p);
+
+SELECT DISTINCT ?bnt1 FROM <http://user.it.uu.se/~udbl/software/swatm/egovdemo.xtm> WHERE{ ?t1 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt1. }
+
+
+Example Query 2:
+Give me the description names in english of all resources providing information relevant to the 'Language' topic
+
+set :query2= "SELECT DISTINCT ?bns
+      	     FROM <http://user.it.uu.se/~udbl/software/swatm/egovdemo.xtm>
+      	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt1.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> 'Language'.
+		    ?t1 <http://udbl2.it.uu.se/swatm#OCCURRENCETOPIC> ?ot1.
+		    ?ot1 <http://udbl2.it.uu.se/swatm#INSTANCEOFOCCURRENCE> ?iot1.
+		    ?iot1 <http://udbl2.it.uu.se/swatm#IDTOPIC> ?idt2.
+		    ?iot1 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt2.
+		    ?bnt2 <http://udbl2.it.uu.se/swatm#SCOPEBASENAME> ?t3.
+		    ?t3 <http://udbl2.it.uu.se/swatm#IDTOPIC> 'systemId2'.		
+		    ?bnt2 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> ?bns. }";
+
+set :query21= "SELECT DISTINCT ?idt2 ?bns ?dat
+      	     FROM <http://user.it.uu.se/~udbl/software/swatm/egovdemo.xtm>
+      	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt1.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> 'Language'.
+		    ?t1 <http://udbl2.it.uu.se/swatm#OCCURRENCETOPIC> ?ot1.
+		    ?ot1 <http://udbl2.it.uu.se/swatm#INSTANCEOFOCCURRENCE> ?iot1.
+		    ?iot1 <http://udbl2.it.uu.se/swatm#IDTOPIC> ?idt2.
+		    ?iot1 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt2.
+		    ?bnt2 <http://udbl2.it.uu.se/swatm#SCOPEBASENAME> ?t3.
+		    ?t3 <http://udbl2.it.uu.se/swatm#IDTOPIC> 'systemId2'.		
+		    ?bnt2 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> ?bns.
+                    ?t3 <http://udbl2.it.uu.se/swatm#OCCURRENCETOPIC> ?ot3.
+		    ?ot3 <http://udbl2.it.uu.se/swatm#DATA> ?dat}";
+
+ sparql(:query2);
+
+set :query22= "SELECT DISTINCT ?idt2 ?bns
+      	     FROM <http://user.it.uu.se/~udbl/software/swatm/egovdemo.xtm>
+      	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bnt1.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm:BASENAMESTRING> 'Language'.
+		    ?t1 <http://udbl2.it.uu.se/swatm:OCCURRENCETOPIC> ?ot1.
+		    ?ot1 <http://udbl2.it.uu.se/swatm:INSTANCEOFOCCURRENCE> ?iot1.
+		    ?iot1 <http://udbl2.it.uu.se/swatm:IDTOPIC> ?idt2.
+		    ?iot1 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bnt2.
+		    ?bnt2 <http://udbl2.it.uu.se/swatm:SCOPEBASENAME> ?t3.
+		    ?t3 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bnt3.
+		    ?bn3 <http://udbl2.it.uu.se/swatm:BASENAMESTRING> 'en'.		
+		    ?bnt2 <http://udbl2.it.uu.se/swatm:BASENAMESTRING> ?bns. }";
+
+
+Example Query 3:
+Give me the names of the working languages togehter with their Web resources 
+
+set :query3= "SELECT ?data ?sub 
+      	     FROM <http://user.it.uu.se/~udbl/software/swatm/egovdemo.xtm>
+      	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm#OCCURRENCETOPIC> ?ot1.
+		    ?ot1 <http://udbl2.it.uu.se/swatm#DATA> ?data.
+		    ?t1 <http://udbl2.it.uu.se/swatm#SUBJECTADDRESS> ?sub.
+      	            FILTER REGEX (?data, '*language').}";
+
+sparql(:query3);
+
+
+Example Query 4:
+What is the creation date of the previous pass of the citizen? 
+
+set :query4= "SELECT DISTINCT ?bns ?rdat
+      	     FROM <http://user.it.uu.se/~udbl/software/swatm/egovdemo.xtm>
+      	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt1.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> 'Had previous passport'.
+		    ?t1 <http://udbl2.it.uu.se/swatm#OCCURRENCETOPIC> ?ot1.
+		    ?ot1 <http://udbl2.it.uu.se/swatm#DATA> ?rdat. 	
+		    ?ot1 <http://udbl2.it.uu.se/swatm#INSTANCEOFOCCURRENCE> ?iot1.
+		    ?iot1 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt2.
+		    ?bnt2 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> ?bns. 
+		    FILTER REGEX (?bns, '*date').}";
+
+sparql(:query4);
+
+Example Query 5:
+Other information
+set :query5= "SELECT DISTINCT ?bns ?id1
+      	     FROM <http://user.it.uu.se/~udbl/software/swatm/egovdemo.xtm>
+      	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm:INSTANCEOFTOPIC> ?t2.
+		    ?t2 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'systemId26493'.
+		    ?t1 <http://udbl2.it.uu.se/swatm:IDTOPIC> ?id1.
+		    ?t1 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bnt1.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm:BASENAMESTRING> ?bns.}";
+
+sparql(:query5);
+
+Example Query 6:
+Which is the default address data for a citizen, in english, and what are the URIs where it can be found?
+
+set :sparql6= "SELECT ?bs1 ?sa1 
+      	     FROM <http://user.it.uu.se/~udbl/software/swatm/egovdemo.xtm>
+      	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt1.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm#BASENAMESTRING> ?bs1.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm#SCOPEBASENAME> ?s1.
+		    ?s1 <http://udbl2.it.uu.se/swatm#IDTOPIC> 'systemId2'.
+		    ?t1 <http://udbl2.it.uu.se/swatm#SUBJECTADDRESS> ?sa1.
+	            ?t1 <http://udbl2.it.uu.se/swatm#INSTANCEOFTOPIC> ?t2.
+		    ?t2 <http://udbl2.it.uu.se/swatm#BASENAMETOPIC> ?bnt2.
+		    ?bnt2 <http://udbl2.it.uu.se/swatm#BASENAMESTRING>  'Default address data'.}";
+
+sparql(:sparql6);
+
+
+set :rdql6= "SELECT ?bs1,?sa1 
+      	     FROM <http://user.it.uu.se/~udbl/software/swatm/egovdemo.xtm>
+      	     WHERE (?t1, <http://udbl2.it.uu.se/swatm:BASENAMETOPIC>, ?bnt1)
+		    (?bnt1, <http://udbl2.it.uu.se/swatm:BASENAMESTRING>, ?bs1)
+		    (?bnt1, <http://udbl2.it.uu.se/swatm:SCOPEBASENAME>, ?s1)
+		    (?s1, <http://udbl2.it.uu.se/swatm:IDTOPIC>, 'systemId2')
+		    (?t1, <http://udbl2.it.uu.se/swatm:SUBJECTADDRESS>, ?sa1)
+	            (?t1, <http://udbl2.it.uu.se/swatm:INSTANCEOFTOPIC>, ?t2)
+		    (?t2, <http://udbl2.it.uu.se/swatm:BASENAMETOPIC>, ?bnt2)
+		    (?bnt2, <http://udbl2.it.uu.se/swatm:BASENAMESTRING>,  'Default address data')";
+
+rdql(:rdql6);
+
+Example Query 7:
+Give me the names and the resources (in english) of all topics related to 'Electronic form'
+set :sparql7= "SELECT DISTINCT ?bns ?sa
+      	     FROM <http://user.it.uu.se/~udbl/software/swatm/egovdemo.xtm>
+      	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bnt1.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm:BASENAMESTRING> 'Electronic form'.
+		    ?t1 <http://udbl2.it.uu.se/swatm:OCCURRENCETOPIC> ?t2.
+		    ?t2 <http://udbl2.it.uu.se/swatm:INSTANCEOFOCCURRENCE> ?t3.
+		    ?t3 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bnt3.
+		    ?bnt3 <http://udbl2.it.uu.se/swatm:BASENAMESTRING> ?bns.
+		    ?t3 <http://udbl2.it.uu.se/swatm:SUBJECTADDRESS> ?sa.
+		    ?bnt3 <http://udbl2.it.uu.se/swatm:SCOPEBASENAME> ?t4.
+		    ?t4 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'systemId2'.}";
+
+sparql(:sparql7);
+
+
+set :rdql7= "SELECT ?bns, ?sa
+      	     FROM <http://user.it.uu.se/~udbl/software/swatm/egovdemo.xtm>
+      	     WHERE  (?t1, <http://udbl2.it.uu.se/swatm:BASENAMETOPIC>, ?bnt1)
+		    (?bnt1, <http://udbl2.it.uu.se/swatm:BASENAMESTRING>, 'Electronic form')
+		    (?t1, <http://udbl2.it.uu.se/swatm:OCCURRENCETOPIC>, ?t2)
+		    (?t2, <http://udbl2.it.uu.se/swatm:INSTANCEOFOCCURRENCE>, ?t3)
+		    (?t3, <http://udbl2.it.uu.se/swatm:BASENAMETOPIC>, ?bnt3)
+		    (?bnt3, <http://udbl2.it.uu.se/swatm:BASENAMESTRING>, ?bns)
+		    (?t3, <http://udbl2.it.uu.se/swatm:SUBJECTADDRESS>, ?sa)
+		    (?bnt3, <http://udbl2.it.uu.se/swatm:SCOPEBASENAME>, ?t4)
+		    (?t4, <http://udbl2.it.uu.se/swatm:IDTOPIC>, 'systemId2)";
+
+rdql(:rdql7);
+
+Example Query 8:
+Give me all Life events together with their descriptions
+
+set :sparql8= "SELECT ?bs2 ?dat
+      	     FROM <http://user.it.uu.se/~udbl/software/swatm/egovdemo.xtm>
+      	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bnt1.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm:BASENAMESTRING> 'Life events'.
+		    ?i1 <http://udbl2.it.uu.se/swatm:INSTANCEOFTOPIC> ?t1.
+	            ?i1 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bnt2.
+		    ?bnt2 <http://udbl2.it.uu.se/swatm:BASENAMESTRING> ?bs2.
+		    ?bnt2 <http://udbl2.it.uu.se/swatm:SCOPEBASENAME> ?t2.
+		    ?t2 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'systemId2'.
+		    ?i1 <http://udbl2.it.uu.se/swatm:OCCURRENCETOPIC> ?o1.
+		    ?o1 <http://udbl2.it.uu.se/swatm:SCOPEOCCURRENCE> ?t3.
+		    ?t3 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'systemId2'.
+		    ?o1 <http://udbl2.it.uu.se/swatm:DATA> ?dat.}";
+
+sparql(:sparql8);
+
+set :rdql8= "SELECT ?bs2, ?dat
+      	     FROM <http://user.it.uu.se/~udbl/software/swatm/egovdemo.xtm>
+      	     WHERE  (?t1, <http://udbl2.it.uu.se/swatm:BASENAMETOPIC>, ?bnt1)
+		    (?bnt1, <http://udbl2.it.uu.se/swatm:BASENAMESTRING>, 'Life events')
+		    (?i1, <http://udbl2.it.uu.se/swatm:INSTANCEOFTOPIC>, ?t1)
+	            (?i1, <http://udbl2.it.uu.se/swatm:BASENAMETOPIC>, ?bnt2)
+		    (?bnt2, <http://udbl2.it.uu.se/swatm:BASENAMESTRING>, ?bs2)
+		    (?bnt2, <http://udbl2.it.uu.se/swatm:SCOPEBASENAME>, ?t2)
+		    (?t2, <http://udbl2.it.uu.se/swatm:IDTOPIC>, 'systemId2')
+		    (?i1, <http://udbl2.it.uu.se/swatm:OCCURRENCETOPIC>, ?o1)
+		    (?o1, <http://udbl2.it.uu.se/swatm:SCOPEOCCURRENCE>, ?t3)
+		    (?t3, <http://udbl2.it.uu.se/swatm:IDTOPIC>, 'systemId2')
+		    (?o1, <http://udbl2.it.uu.se/swatm:DATA>, ?dat)";
+
+rdql(:rdql8);

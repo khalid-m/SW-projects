@@ -1,0 +1,191 @@
+# ---------------------------------------------------------------------------
+!if !$d(BCB)
+BCB = $(MAKEDIR)\..
+!endif
+
+# ---------------------------------------------------------------------------
+# IDE SECTION
+# ---------------------------------------------------------------------------
+# The following section of the project makefile is managed by the BCB IDE.
+# It is recommended to use the IDE to change any of the values in this
+# section.
+# ---------------------------------------------------------------------------
+
+VERSION = BCB.04.04
+# ---------------------------------------------------------------------------
+PROJECT = libodbc_bc.lib
+OBJFILES = libodbc_bc.obj ..\libodbc\src\threads.obj ..\libodbc\src\connection.obj \
+  ..\libodbc\src\databasemetadata.obj ..\libodbc\src\datahandler.obj \
+  ..\libodbc\src\datastream.obj ..\libodbc\src\datetime.obj \
+  ..\libodbc\src\driverinfo.obj ..\libodbc\src\drivermanager.obj \
+  ..\libodbc\src\errorhandler.obj ..\libodbc\src\preparedstatement.obj \
+  ..\libodbc\src\resultset.obj ..\libodbc\src\resultsetmetadata.obj \
+  ..\libodbc\src\statement.obj ..\libodbc\src\callablestatement.obj
+DEFFILE =
+LIBFILES =
+RESDEPEN = $(RESFILES)
+RESFILES =
+LIBRARIES =
+PACKAGES =
+# ---------------------------------------------------------------------------
+PATHCPP = .;..\libodbc\src
+PATHASM = .;
+PATHPAS = .;
+PATHRC = .;
+USERDEFINES = NDEBUG;WIN32;_WINDOWS;IN_ODBCXX;_RWSTD_NO_EX_SPEC
+SYSDEFINES =NO_STRICT
+# ---------------------------------------------------------------------------
+CFLAG1 = -I..\..\C;..\libodbc;..\src;..\libodbc\src;$(BCB)\include;$(BCB)\include\vcl \
+  -O2 -w-par -w-inl -Ve -a8 -5 -k- -vi -c -b- -Vx -tWM \
+  -D$(SYSDEFINES);$(USERDEFINES)
+PFLAGS = -U..\libodbc\src;$(DEBUGLIBPATH) \
+  -I..\..\C;..\libodbc;..\src;..\libodbc\src;$(BCB)\include;$(BCB)\include\vcl \
+  -DNDEBUG;WIN32;_WINDOWS;IN_ODBCXX;_RWSTD_NO_EX_SPEC -$Y- -$L- -$D- -v -JPHN -M
+AFLAGS = /i..\..\C /i..\libodbc /i..\src /i..\libodbc\src /i$(BCB)\include \
+  /i$(BCB)\include\vcl /dNDEBUG /dWIN32 /d_WINDOWS /dIN_ODBCXX \
+  /d_RWSTD_NO_EX_SPEC /mx /w2 /zn
+RFLAGS = -i..\..\C;..\libodbc;..\src;..\libodbc\src;$(BCB)\include;$(BCB)\include\vcl
+LFLAGS = /P32
+# ---------------------------------------------------------------------------
+ALLOBJ = $(OBJFILES)
+# ---------------------------------------------------------------------------
+!ifdef IDEOPTIONS
+
+[Version Info]
+IncludeVerInfo=0
+AutoIncBuild=0
+MajorVer=1
+MinorVer=0
+Release=0
+Build=0
+Debug=0
+PreRelease=0
+Special=0
+Private=0
+DLL=0
+Locale=1033
+CodePage=1252
+
+[Version Info Keys]
+CompanyName=
+FileDescription=
+FileVersion=1.0.0.0
+InternalName=
+LegalCopyright=
+LegalTrademarks=
+OriginalFilename=
+ProductName=
+ProductVersion=1.0.0.0
+Comments=
+
+[HistoryLists\hlIncludePath]
+Count=1
+Item0=..\..\C;..\libodbc;..\src;..\libodbc\src;$(BCB)\include;$(BCB)\include\vcl
+
+[HistoryLists\hlDebugSourcePath]
+Count=1
+Item0=$(BCB)\source\vcl
+
+[HistoryLists\hlConditionals]
+Count=1
+Item0=NDEBUG;WIN32;_WINDOWS;IN_ODBCXX;_RWSTD_NO_EX_SPEC
+
+[HistoryLists\hlIntOutputDir]
+Count=1
+Item0=Intermediate
+
+[HistoryLists\hlFinalOutputDir]
+Count=8
+Item0=.
+Item1=..\..\libItem1=..\..\libItem1=..\..\libItem1=..\..\libItem1=..\..\libItem1=..\..\libItem1=..\..\lib
+Item2=
+Item3=
+Item4=
+Item5=
+Item6=
+Item7=
+
+[Debugging]
+DebugSourceDirs=$(BCB)\source\vcl
+
+[Parameters]
+RunParams=
+HostApplication=
+RemoteHost=
+RemotePath=
+RemoteDebug=0
+
+[Compiler]
+InMemoryExe=0
+ShowInfoMsgs=0
+
+!endif
+
+# ---------------------------------------------------------------------------
+# MAKE SECTION
+# ---------------------------------------------------------------------------
+# This section of the project makefile is not used by the BCB IDE.  It is for
+# the benefit of building from the command-line using the MAKE utility.
+# ---------------------------------------------------------------------------
+
+.autodepend
+# ---------------------------------------------------------------------------
+!if !$d(BCC32)
+BCC32 = bcc32
+!endif
+
+!if !$d(CPP32)
+CPP32 = cpp32
+!endif
+
+!if !$d(DCC32)
+DCC32 = dcc32
+!endif
+
+!if !$d(TASM32)
+TASM32 = tasm32
+!endif
+
+!if !$d(LINKER)
+LINKER = TLib
+!endif
+# ---------------------------------------------------------------------------
+!if $d(PATHCPP)
+.PATH.CPP = $(PATHCPP)
+.PATH.C   = $(PATHCPP)
+!endif
+
+!if $d(PATHPAS)
+.PATH.PAS = $(PATHPAS)
+!endif
+
+!if $d(PATHASM)
+.PATH.ASM = $(PATHASM)
+!endif
+# ---------------------------------------------------------------------------
+$(PROJECT): $(OBJFILES) $(LIBFILES)
+    $(BCB)\BIN\$(LINKER) /u $@ @&&!
+    $(LFLAGS) $?
+!
+# ---------------------------------------------------------------------------
+.pas.hpp:
+    $(BCB)\BIN\$(DCC32) $(PFLAGS) {$< }
+
+.pas.obj:
+    $(BCB)\BIN\$(DCC32) $(PFLAGS) {$< }
+
+.cpp.obj:
+    $(BCB)\BIN\$(BCC32) $(CFLAG1) -n$(@D) {$< }
+
+.c.obj:
+    $(BCB)\BIN\$(BCC32) $(CFLAG1) -n$(@D) {$< }
+
+.c.i:
+    $(BCB)\BIN\$(CPP32) $(CFLAG1) -n. {$< }
+
+.cpp.i:
+    $(BCB)\BIN\$(CPP32) $(CFLAG1) -n. {$< }
+
+.asm.obj:
+    $(BCB)\BIN\$(TASM32) $(AFLAGS) $<, $@
+# ---------------------------------------------------------------------------

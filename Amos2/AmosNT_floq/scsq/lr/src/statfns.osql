@@ -1,0 +1,397 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Tore Risch, UDBL
+ * $RCSfile: statfns.osql,v $
+ * $Revision: 1.34 $ $Date: 2012/05/15 20:41:14 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: SCSQL functions to compute statistics over SCSQ output logs 
+ *
+ ****************************************************************************
+ * $Log: statfns.osql,v $
+ * Revision 1.34  2012/05/15 20:41:14  torer
+ * result -> return
+ *
+ * Revision 1.33  2012/03/13 11:16:04  zeitler
+ * cleanup
+ *
+ * Revision 1.32  2012/03/13 10:49:08  zeitler
+ * Type warnings eliminated by casting
+ * Assignment replaced by in
+ *
+ * Revision 1.31  2011/01/27 20:48:31  torer
+ * 'leave' is reserved word in PSM
+ *
+ * Revision 1.30  2009/11/25 14:01:12  zeitler
+ * equality on bag valued functions removed
+ *
+ * Revision 1.29  2009/10/02 20:25:50  zeitler
+ * avgstdev - vavgstdev
+ *
+ * Revision 1.28  2009/05/07 14:58:29  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.27  2009/04/08 16:12:59  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.26  2009/03/24 18:38:02  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.25  2009/03/06 15:51:00  gyogi445
+ * bag.integer.integer.section->bag ==> stream.integer.integer.section->stream
+ *
+ * Revision 1.24  2009/03/05 16:21:19  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.23  2009/02/19 13:15:18  zeitler
+ * Account balance fuse in a separate process
+ *
+ * Revision 1.22  2009/02/12 17:54:37  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.21  2009/02/09 15:12:50  zeitler
+ * scsq with new readfile
+ *
+ * Revision 1.20  2008/11/23 14:43:13  torer
+ * Type errors
+ *
+ * Revision 1.19  2008/11/21 10:21:15  zeitler
+ * Fixing type bug in statfns.
+ *
+ * Revision 1.18  2008/11/09 21:21:27  torer
+ * Corrections for strict checking of result types of functions
+ *
+ * Revision 1.17  2008/10/01 16:21:20  zeitler
+ * port signature changed
+ * SP() is replaced with newSP()
+ *
+ * Revision 1.16  2008/07/11 13:20:34  zeitler
+ * Account balance fixes
+ *
+ * Revision 1.15  2008/07/10 18:24:28  zeitler
+ * Removing obsolete things
+ *
+ * Revision 1.14  2008/07/10 10:56:46  zeitler
+ * Taking out obsolete things
+ *
+ * Revision 1.13  2008/07/09 18:34:18  zeitler
+ * - get_nsport.sh: Automatically acquire a free nameserver TCP port
+ * - test scripts changed accordingly
+ *
+ * - NB: Some SCSQ tests currently fail due to changes in groupagg and Linear Road
+ *
+ * Revision 1.12  2008/05/07 18:04:11  zeitler
+ * minor
+ *
+ * Revision 1.11  2008/05/07 18:02:36  zeitler
+ * LR with PS
+ *
+ * Revision 1.10  2008/04/25 15:41:29  zeitler
+ * - lread-several spools into any point in time
+ * - fullr (in runfull.osql): run a full lr
+ *
+ * Revision 1.9  2008/04/25 15:33:23  zeitler
+ * writefiles:
+ * - automatic on line splitting when writing files greater than 2GB.
+ * - output file name = filename + chunk number
+ *
+ * Revision 1.8  2008/04/24 09:37:03  zeitler
+ * bug fix
+ *
+ * Revision 1.7  2008/04/23 21:07:49  zeitler
+ * Statistics breakdown comp + comm.
+ *
+ * Revision 1.6  2008/04/22 21:56:10  zeitler
+ * Improved partial dumping
+ *
+ * Revision 1.5  2008/04/17 11:12:20  zeitler
+ * Improved emit time reporting
+ *
+ * Revision 1.4  2007/12/28 16:31:11  torer
+ * New file for scsq-lr system definition
+ *
+ ****************************************************************************/
+
+create function eventtype(vector v)->integer as
+select v[0];
+
+create function vidno(vector v)->integer
+as select v[2];
+
+create function xway(vector v)->integer as
+select v[4];
+
+create function direction(vector v)->integer as
+select v[6]; 
+
+create function eventtype(iarray v)->integer as
+select v[0];
+
+create function vidno(iarray v)->integer
+as select v[2];
+
+create function xway(iarray v)->integer as
+select v[4];
+
+create function direction(iarray v)->integer as
+select v[6];
+
+create function eventtype(darray v)->real as
+select v[0];
+
+create function vidno(darray v)->integer
+as select integer(v[2]);
+
+create function xway(darray v)->integer as
+select integer(v[4]);
+
+create function direction(darray v)->integer as
+select integer(v[6]);
+
+create function maxv(Vector v)->Number
+  /* Get max element in vector */
+  as select maxagg(in(v));
+
+create function groupMax(Number stride, Bag s)-> (Number stamp, Number max)
+  /* Stream group max values from pairs (x, value) in s striding over x */
+  as select stamp, maxv(g)
+     from Vector g
+     where (stamp, g) = groupAgg(stride, s);
+
+create function groupStat(Number stride, Bag s)-> 
+                         (Number stamp, Number max, Number avg, Number stddev)
+  /* Stream group statistics from pairs (x, value) in s striding over x */
+  as select stamp, maxv(g), avg, stddev
+     from Vector g
+     where (stamp, g) = groupAgg(stride, s) and
+           (avg, stddev) = vavgstdev(g);
+
+create function numvec(Object o)->Vector of Number n
+  /* Cast object to Vector of Number */
+  as select n where n=o;
+
+create function maxResponses(Number stride, Number arr, Number leav, 
+                             Stream stream)-> 
+                            (Number stamp, Number max)
+  /* Stream (arrival, maxresponse) where arr and leave are event positions */
+  as select groupMax(stride,(select e[arr], e[leav]-e[arr]
+                             from Vector of Number e
+                             where e = numvec(in(stream))));
+
+create function statResponses(Number stride, Number arr, Number leav, 
+                             Bag stream)-> 
+                            (Number stamp, Number max, Number avg, Number std)
+  /* Stream (arrival, max, mean, stddev) of difference e[leav]-e[arr] */
+  as select groupStat(stride,(select e[arr], e[leav]-e[arr]
+                             from Vector of Number e
+                             where e = numvec(in(stream))));
+
+create function maxTollResponses(Number stride)-> (Number stamp, Number max)
+  /* Stream max tollalert response times with given stride */
+  as select maxResponses(stride, 2, 3, readnumstream("o-tollalert"));
+
+create function maxTollResponsesBetween(Number bt, Number et, Number stride)
+                                       -> (Number stamp, Number max)
+  /* Stream max tollalert response times between bt and et with stride */
+  as select maxResponses(stride, 2, 3, streamof(select e from Vector e
+                                        where e in readnumstream("o-tollalert")
+                                          and e[2]>= bt
+                                          and e[2]<= et));
+
+create function compare(integer a, integer b)->integer 
+as foreign 'compare-impl';
+
+lisp;
+
+(defun compare-impl (fno a b res)
+  "Enables osql calls to lisp fn compare"
+  (osql-result a b (compare a b)))
+
+:osql
+
+create function lrstat(charstring filename, integer stride)->
+(charstring, integer, real, real, real, real) as
+select filename, s, max, min, avg,stdev
+from integer s, vector v, real max, real min, real avg, real stdev
+where min = minagg(in(v))
+and max = maxagg(in(v))
+and (avg,stdev) = vavgstdev(v)
+and (s,v) in
+groupagg(stride, in(select v[2-compare(cast(v[0] as integer),0)],
+v[3-compare(cast(v[0] as integer),0)]
+from vector v
+where v in readfile(filename)));
+
+create function lrs(stream s, integer stride)
+-> (integer, integer, real, real, real, real, real, real) as
+select dim(v), sec, max_tot, avg_tot, stdev_tot, max_comp, avg_comp, stdev_comp
+from integer sec, vector v, real max_tot, vector totstatv, real max_comp, 
+vector compstatv,
+real avg_tot, real stdev_tot, real avg_comp, real stdev_comp
+where max_tot = maxagg(cast(in(v) as vector)[0])
+and totstatv = vectorof(cast(in(v) as vector)[0])
+and (avg_tot, stdev_tot) = vavgstdev(totstatv)
+and (avg_comp, stdev_comp) = vavgstdev(compstatv)
+and max_comp = maxagg(cast(in(v) as vector)[1])
+and compstatv = vectorof(cast(in(v) as vector)[1])
+and (sec, v) = groupagg(stride, in( 
+select w[2-compare(cast(w[0] as integer),0)], 
+w[3-compare(cast(w[0] as integer),0)]
+from vector w where w in s));
+
+create function getstarttime(charstring filename)->real as
+select w[dim(w)-1]
+from vector w
+where w = in(section(streamof(readfile(filename)), 1, 1)); 
+
+create function simtime(vector w)->integer as
+select w[2-compare(eventtype(w),0)]; 
+
+create function realtime(vector w)->real as
+select w[dim(w)-1];
+
+create function rtvid(stream of vector s, integer stride, real tstart)
+-> (integer, vector) as
+select groupagg(stride, in(
+select simtime(w), {realtime(w) - simtime(w) - tstart, w[1]}
+from vector w
+where w=in(s)));
+
+/* Statistics for instrumented LR (time stamps for incoming + outgoing tpls) */
+
+create function instrumenttime(vector w)->real as
+select w[dim(w)-2];
+
+create function irt(stream of vector s, integer stride)
+-> (integer, Vector of Real) as
+select groupagg(stride, in(
+select simtime(w), realtime(w) - instrumenttime(w)
+from vector w
+where w=in(s)));
+
+create function i_time_in_system(stream of vector s, integer stride)
+-> (integer, integer, real, real) as
+select dim(v), sec, av, st
+from vector v, integer sec, real av, real st
+where (av, st) = vavgstdev(v)
+and (sec, v) = irt(s, stride);
+
+/* End statistics for instrumented LR */
+
+/* Full fräs-statistik */
+
+create function stvid(stream of vector s, integer stride, real tstart)
+-> (integer, vector) as
+select groupagg(stride, in(
+select simtime(w), {realtime(w) - tstart, w[1]}
+from vector w
+where w=in(s)));
+
+create function tdiffs(vector v) -> (real,real) as
+select vavgstdev(vectorof(
+select pairs[1][0] - pairs[0][0]
+from vector of vector of real pairs
+where pairs in winagg(in(v), 2, 1)));
+
+create function secstart(vector of vector v)->real as
+select v[0][0];   
+
+create function secend(vector of vector v)->real as
+select v[dim(v)-1][0];   
+
+create function ptime(stream of vector s, real tstart)
+-> (integer, real) as
+select sec, w
+from vector of vector v, integer sec, real w
+where w = secend(v) - secstart(v)
+and (sec, v) = stvid(s, 1, tstart); 
+
+create function ptimeagg(stream of vector s, real tstart, integer stride)
+-> (integer, real) as
+select sec, av
+from integer sec, real av, real st, vector stat
+where (av, st) = vavgstdev(stat)
+and (sec, stat) = groupagg(stride, ptime(s, tstart)); 
+
+create function time_in_system(stream of vector s, integer stride, real tstart)
+-> (integer, integer, vector) as
+select dim(v), sec, w
+from vector v, vector w, Integer sec
+where w = tdiffs(v)
+and (sec, v) = stvid(s, stride, tstart);
+create function lrsvid(stream of vector s, integer stride, real tstart)
+-> (integer, integer, vector) as
+select dim(v), sec, ma
+from integer sec, vector v, vector ma
+where ma = vmax(v)
+and (sec, v) = rtvid(s, stride, tstart);
+
+/* end full fräs */
+
+create function crt(stream of vector s, real tstart)
+-> (integer, real) as
+select simtime(w), realtime(w) - simtime(w) - tstart
+from vector w
+where w=in(s);
+
+/*
+writefile("5dst",in(select {sec, rt}
+from integer sec, real rt, vector w
+where rt = maxagg(in(w))
+and (sec, w) = groupagg(60, in(select v[0],v[1] from vector v where v = readfile("/home/zeitler/crt5s")))));
+
+*/
+
+create function responsetime(stream s, integer stride, real tstart)
+-> (integer, vector) as
+select groupagg(stride, in(
+select simtime(w), realtime(w) - simtime(w) - tstart
+from vector w
+where w in s));
+create function count_inputs(stream of vector s, integer stride)
+-> (integer, integer) as
+select sec, num from 
+integer sec, integer num, vector w
+where num = dim(w)
+and (sec, w) = groupagg(stride, in(
+select v[1], 0
+from vector v
+where v=in(s))); 
+
+create function lrs(stream s, integer stride, real tstart)
+-> (integer, integer, real, real, real) as
+select dim(v), sec, max_tot, avg_tot, std_tot
+from integer sec, vector v, real max_tot, vector totstatv, real avg_tot, 
+real std_tot 
+where max_tot = maxagg(in(v))
+and totstatv = v
+and (avg_tot, std_tot) = vavgstdev(totstatv)
+and (sec, v) = responsetime(s, stride, tstart);
+
+create function lrstat(vector of charstring filenames, integer stride)
+-> (integer, integer, real, real, real) as begin
+declare real tstart;
+set tstart = getstarttime(filenames[0]);
+return lrs(streamof(readfiles(filenames)), stride, tstart);
+end;
+
+create function makelrstat(vector of charstring infile, charstring outfile, 
+integer stride)->boolean as
+select writefile(outfile, {lrstat(infile, stride)});
+
+create function allfiles(charstring dir, charstring mask)->vector of charstring
+as select sort(dir + "/" + dir(dir, mask));
+
+create function distribstat(charstring lroutputdir, charstring lroutputmask, 
+charstring outfile, integer stride)->vector as
+select merge(statproc)
+from vector of sp statproc
+where statproc = spv(vectorof(
+select streamof(makelrstat(allfiles(lroutputdir + "/" + stringify(i), 
+                                    lroutputmask),
+                           outfile + stringify(i), stride))
+from integer i where i in iota(2, 5)));
+
+create function vec2csv(charstring infile, charstring outfile)->charstring as
+select exec("sed s'/#(//g;s/)//g;s/ /;/g' " + infile + " > " + outfile);

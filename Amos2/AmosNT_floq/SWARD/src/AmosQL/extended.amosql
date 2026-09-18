@@ -1,0 +1,103 @@
+ /*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2006 Johan Petrini, Tore Risch UDBL
+ * $RCSfile: extended.amosql,v $
+ * $Revision: 1.2 $ $Date: 2012/05/16 17:31:32 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Code augmenting UPVs with class membership views and
+ * class relationship views.
+ *
+ ******************************************************************************
+/* Overriding definition of content view
+ */
+create function defineCV(Charstring upv)->Boolean
+  as
+   begin
+    eval("create function c" + upv + "()-> 
+          (Charstring s,Charstring p,Charstring val) 
+         as 
+          select s,p,val 
+          where (s,p,val) in p" + upv + "() or
+                (s,p,val) in cm" + upv + "() or
+                (s,p,val) in cr" + upv + "();");
+   end;
+
+/* Automatic generation of augmented UPVs with END, END-P. 
+ */
+create function ViewRDB(Charstring upv)->Boolean 
+as
+ begin
+  declare Boolean pflg;
+	
+  /* Check if UPV already exists 
+   */
+  if(notany(functionnamed(upv))) then
+  begin
+
+   /* Never use partial evaluation during UPV creation
+    * when it is not further investigated 
+    */
+   if (pStat() = true) then
+    begin 
+     set pflg = true;
+     enable_parteval(false);  
+    end;
+
+   /* Definition of schema view 
+    */
+   SchemaViewMaterialize(upv);
+
+   /* Definition of extended schema view 
+    */
+   CRSchemaViewMaterialize(upv);
+
+   /* Definition of property views 
+    */
+   defineP(upv);
+
+   /* Definition of class membership views 
+    */
+   defineCM(upv);
+
+   /* Definition of class relationship views 
+    */
+   defineCR(upv);
+
+   /* Definition of content view 
+    */
+   defineCV(upv); 
+
+   /* Definition of the UPV 
+    */
+   defineUPV(upv);
+
+   /* Definition of the SQL UPV 
+    */
+   defineSUPV(upv);
+
+   /* Never use partial evaluation during UPV creation
+    * when it is not further investigated. 
+    */  
+   if (pflg = true) then
+    begin 
+     enable_parteval(true);  
+    end;
+	
+   /* Set name of schema and content view for UPV 
+    */
+   set swofupv(upv)="s"+upv+"->Charstring.Charstring.Charstring";
+   set cwofupv(upv)="c"+upv+"->Charstring.Charstring.Charstring";
+
+   /*Overload UPV fn dynamically with dummy to patch SPARQL parser*/
+   eval("create function " + upv + "(Charstring lit)->
+    (Charstring s, Charstring p) 
+   as
+    select s, p where (s,p,lit) in " + upv + "();");
+
+ end;
+ return true;
+end;
+
+

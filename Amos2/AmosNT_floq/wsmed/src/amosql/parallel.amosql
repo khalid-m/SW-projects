@@ -1,0 +1,100 @@
+
+/* importing metadata from WSDL */
+importwsdl("wsdl/TerraService2.wsdl");
+importwsdl("wsdl/PlaceLookup.wsdl");
+
+
+/* importing values for soapheaders */
+putsoaphvalue( 'wsdl/PlaceLookup.wsdl', 'GeoPlaces', 'GetPlaceDetails', {'CHARSTRING','CHARSTRING'},{'5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'});
+
+putsoaphvalue( 'wsdl/PlaceLookup.wsdl', 'GeoPlaces', 'GetAllStates', {},{'5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'});
+putsoaphvalue( 'wsdl/PlaceLookup.wsdl', 'GeoPlaces', 'SaveUserPlaces', {'INTEGER', 'CHARSTRING' , 'CHARSTRING' , 'CHARSTRING' , 'CHARSTRING', 'CHARSTRING' , 'CHARSTRING', 'CHARSTRING' , 'REAL' , 'REAL', 'REAL' , 'REAL' , 'REAL'},{'5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'});
+putsoaphvalue( 'wsdl/PlaceLookup.wsdl', 'GeoPlaces', 'GetAllUserPlaces', {},{'5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'});
+
+putsoaphvalue( 'wsdl/PlaceLookup.wsdl', 'GeoPlaces', 'GetPlacesInside', {'CHARSTRING','CHARSTRING'},{'5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'});
+
+putsoaphvalue( 'wsdl/PlaceLookup.wsdl', 'GeoPlaces', 'GetPlacesWithin', {'CHARSTRING','CHARSTRING','REAL','CHARSTRING'},{'5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'});
+
+
+/* helping functions */
+
+create function storebag()-> object  as stored;
+
+create function partition(integer num1, integer num2, bag s)->object as select (vectorof(s))[i] from  integer i where  i in iota(num1-1,num2-1);
+
+
+
+create function make_partition(integer no_peers, bag bg, vector arg)->vector v as
+						begin
+						 declare integer dividend, integer reminder; 
+						
+						 set dividend=div((count(bg)-mod(count(bg),no_peers)),no_peers);
+						 set reminder=mod(count(bg),no_peers);
+						 set v={};
+						 
+						 for each integer i where i=iota(1,no_peers) 
+						  begin
+						    if (i<= reminder) then
+							   set v= concat(v,{concat(arg,{vectorof((partition((i-1)*dividend+i,(i-1)*dividend+dividend+i,bg)))})})
+						    else
+						          set v= concat(v,{concat(arg,{vectorof((partition((i-1)*dividend+1,(i-1)*dividend+dividend,bg)))})});
+						  end;
+						
+						 result v;
+
+						end;
+
+
+create function states()-><charstring state> as 
+				      select state
+				      from  charstring statename, Charstring types,  real latDegrees, real lonDegrees, real latRadians, real lonRadians 
+				      where GetAllStates()=< statename ,types ,state, latDegrees , lonDegrees , latRadians , lonRadians>;
+
+create function placeinfo(charstring city, vector of object  bg)-> integer as 
+					 select count(GetPlaceList(city+", "+state, 100,'true'))
+					 from charstring state
+					 where state in bg and print(state);
+
+
+/*lisp;
+
+(defun insert(lt pos item)
+   ( append (firstn (- pos 1) lt)item (nthcdr (- pos 1) lt)))
+
+(defun insert_ele(lt posl valposl vall)
+
+ (let ((re (arraytolist lt)))
+  (do ((I 0 (+ 1 I)))
+      ((= I (Length posl)))
+	(setq re (insert re (nth I (arraytolist posl)) (list (nth (nth I (arraytolist valposl)) vall)))))
+
+ (setq lt re)
+ ))
+        
+
+(defun pack_arg(fno bgval arg posl valposl r)
+ ( let ((re (make-array '0 :adjustable t)))
+ 
+ (mapbag bgval 
+	    (f/l (row)
+		(push-vector re (listtoarray (insert_ele arg posl valposl row)))
+	         ))
+ (osql-result bgval arg posl valposl re )
+))
+
+
+:osql
+
+create function pack_arg(Bag bg, vector arg, vector pos_arg_ws1, vector pos_arg_ws2)-> vector of vector  as foreign "pack_arg";*/
+
+
+
+					
+
+
+save "wsmed.dmp";
+
+
+
+
+

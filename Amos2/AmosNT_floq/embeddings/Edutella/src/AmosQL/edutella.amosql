@@ -1,0 +1,18 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2005 Johan Petrini, UDBL
+ * $RCSfile: edutella.amosql,v $
+ * $Revision: 1.3 $ $Date: 2005/05/18 13:34:18 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Master script to load PSELO on top of RDFAmos. Defines PSELO.dmp.
+ ****************************************************************************/
+loadRDFSchema("file:/" + getenv("AMOS_HOME") + "/embeddings/Edutella/regress/qelschema.xml");
+
+lisp;
+(load-amosql "src/amosql/qel.amosql")				;Load QELSchema
+(load "src/lsp/qel.lsp")
+:osql
+
+commit;

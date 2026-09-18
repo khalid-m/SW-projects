@@ -1,0 +1,22 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Erik Zeitler, UDBL
+ * $RCSfile: mytoll.osql,v $
+ * $Revision: 1.1 $ $Date: 2008/08/14 12:32:03 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Master file for creating mytoll.dmp.
+ *
+ ****************************************************************************
+ * $Log: mytoll.osql,v $
+ * Revision 1.1  2008/08/14 12:32:03  zeitler
+ * *** empty log message ***
+ *
+ *
+ ****************************************************************************/
+
+loadsystem("src", "lrconfig.osql");
+loadsystem("src", "myhistory.osql");
+save "../../bin/mytoll.dmp";
+quit;

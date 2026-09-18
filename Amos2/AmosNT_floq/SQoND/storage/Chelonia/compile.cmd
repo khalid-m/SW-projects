@@ -1,0 +1,1 @@
+javac -Xlint -classpath .;%AMOS_HOME%\wsmed\lib\saaj-api.jar;%AMOS_HOME%\bin\javaamos.jar CheloniaConnector.java

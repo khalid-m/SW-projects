@@ -1,0 +1,855 @@
+/***************************************************************
+ *
+ *  AMOS2
+ *  
+ *  Author: (c) 2010 Robert Kajic, UDBL
+ *  $RCSfile: lr.osql,v $
+ *  $Revision: 1.14 $ $Date: 2010/10/18 14:52:42 $
+ *  $State: Exp $ $Locker:  $
+ * 
+ *  Description: Translations of the linear road benchmark 
+ *  specification as specified in CQL by the Stanford STREAM 
+ *  project. The CQL specification can be found at: 
+ *  http://infolab.stanford.edu/stream/cql-benchmark.html
+ *  ============================================================
+ *  $Log: lr.osql,v $
+ *  Revision 1.14  2010/10/18 14:52:42  roka4241
+ *  *** empty log message ***
+ *
+ *  Revision 1.13  2010/10/13 02:25:15  roka4241
+ *  Changed the n-theta join to call its joining funtion with n arguments instead of a vector with n elements.
+ *
+ *  Revision 1.12  2010/10/12 13:08:20  roka4241
+ *  Removed s_project and s_filter, using AmosQL functions instead.
+ *
+ *  Revision 1.11  2010/10/08 02:33:27  roka4241
+ *  res_idx and join_res_idx now take the name of the query function for which to resolve an output field, instead of the query metadata function associated with the query.
+ *
+ *  Revision 1.10  2010/09/07 23:31:42  roka4241
+ *  Removed old regression tests. Fixed conflicts in lr.osql.
+ *
+ *  Revision 1.9  2010/09/07 23:25:34  roka4241
+ *  Started using s_project.
+ *
+ *  Revision 1.8  2010/08/22 03:47:24  roka4241
+ *  Started using amos_join_fn.
+ *
+ *  Revision 1.7  2010/08/10 02:57:11  roka4241
+ *  Fixed all syntax errors. Added some forgotten functions. Fixed some bugs, mostly typo related. All queries now compile successfully but have not yet been run.
+ *
+ *
+ *  Revision 1.5  2010/08/07 15:25:36  roka4241
+ *  Translated the remaining lr queries from the cql specification. Fixed some bugs.
+ *
+ *  Revision 1.4  2010/08/07 04:10:45  roka4241
+ *  Added this CVS header.
+ *
+ * 
+ **************************************************************/
+
+/*
+parteval("res_idx");
+parteval("join_res_idx");
+*/
+
+/* Static amos function that returns all segments. Currently, the function 
+returns a static bag of segments but it should eventually compute the bag 
+of segments based on the size of the LR benchmark being run. */
+create function __meta__AllSeg() -> 
+  <Integer exp_way, Integer dir, Integer seg>;
+create function AllSeg() -> Bag of Vector as select 
+  bag(
+    {0, 0, 0}, 
+    {0, 0, 1}, 
+    {0, 1, 0},
+    {0, 1, 1},
+    {1, 0, 0}, 
+    {1, 0, 1}, 
+    {1, 1, 0},
+    {1, 1, 1});
+
+/* The SegToll and AccAffectedSeg streams are used before they are
+defined and we must define stub functions to satisfy the compiler. */
+
+create function __meta__SegToll() -> 
+  <Integer time, Integer exp_way, Integer dir, Integer seg, Integer toll>;      
+create function SegToll() -> Stream of Window; 
+
+create function __meta__AccAffectedSeg() -> 
+  <Integer time, Integer exp_way, Integer dir, Integer seg>;
+create function AccAffectedSeg() -> Stream of Window;
+
+/*********
+ *********
+ ********* INPUT
+ *********
+ *********/
+
+/* CarLocStr: Stream of car location reports. This forms primary input to the system.
+
+CarLocStr(car_id,         unique car identifier       
+          speed,          speed of the car            
+          exp_way,        expressway: 0..10           
+          lane,           lane: 0,1,2,3                
+          dir,            direction: 0(east), 1(west) 
+          x-pos);         coordinate in express way */
+
+create function __meta__CarLocStr() -> 
+  <Integer time, Integer car_id, Integer speed, 
+   Integer exp_way, Integer lane, Integer dir, Integer x_pos>;
+         
+create function CarLocStr() -> Stream of Vector as select streamof(
+  select vector(v[1], v[2], v[3], v[4], v[5], v[6], v[8]) 
+  from Vector v 
+  where v in streamfile("data/lr32")
+  and v[0] = 0);
+ 
+
+/* AccBalQueryStr: Stream of account-balance adhoc queries. Each query
+requests the current account balance of a car.
+
+AccBalQueryStr(car_id,   
+               query_id); id used to associate responses with queries */
+
+create function __meta__AccBalQueryStr() -> 
+  <Integer time, Integer car_id, Integer query_id>;
+       
+create function AccBalQueryStr() -> Stream of Vector as select streamof(
+  select vector(v[1], v[9], v[10])  
+  from Vector v 
+  where v in(streamfile("data/lr32"))
+  and v[0] = 1);
+
+/* ExpQueryStr: Stream of adhoc queries requesting the expenditure of
+a car for the current day.
+
+ExpQueryStr(car_id,
+            query_id); */ 
+create function __meta__ExpQueryStr() -> 
+       <Integer time, Integer car_id, Integer query_id>; 
+       
+create function ExpQueryStr() -> Stream of Vector as select streamof(
+  select vector(v[1], v[11], v[12]) 
+  from Vector v 
+  where v in(streamfile("data/lr32")) 
+  and v[0] = 2);
+
+/* TravelTimeQueryStr: Stream of expected-travel-time adhoc queries.
+
+TravelTimeQueryStr(query_id,
+                   exp_way,
+                   init_seg,       initial segment 
+                   fin_seg,        final segment   
+                   time_of_day,   
+                   day_of_week); */
+create function __meta__CreditStr() -> 
+  <Integer time, Integer car_id, Integer query_id>;
+       
+create function CreditStr() -> Stream of Vector as select streamof(
+  select vector(v[1], v[13], v[14])  
+  from Vector v 
+  where v in(streamfile("data/lr32"))
+  and v[0] = 3);
+
+
+/*********
+ *********
+ ********* TOLL NOTIFICATION 
+ *********
+ *********/
+ 
+/* CarSegStr (stream): This is just the input CarLocStr stream, but
+with the location of the car replaced by the segment corresponding to
+the location. For simplicity, we assume that each segment is
+equi-length, and therefore the segment number for a location is just
+the location (integer-)divided by the length of each segment.
+
+SELECT car_id, speed, exp_way, lane, dir, (x-pos/52800) as seg
+FROM CarLocStr; */
+
+create function __meta__CarSegStr() -> 
+  <Integer time, Integer car_id, Integer speed, 
+   Integer exp_way, Integer lane, Integer dir, 
+   Integer seg>;
+
+create function CarSegStr() -> Stream of Vector as select streamof(       
+   select
+     {v[res_idx("CarLocStr", "time")],
+      v[res_idx("CarLocStr", "car_id")],
+      v[res_idx("CarLocStr", "speed")],
+      v[res_idx("CarLocStr", "exp_way")],
+      v[res_idx("CarLocStr", "lane")],
+      v[res_idx("CarLocStr", "dir")],
+      floor(cast(v[res_idx("CarLocStr", "x_pos")] as Number) / 52800)}
+   from Vector v
+   where v in CarLocStr());           
+       
+/* CurActiveCars (relation): The relation containing the set of cars
+"currently" on the freeway: cars that have reported their location in
+the last 30 seconds.
+
+SELECT DISTINCT car_id
+FROM CarSegStr [RANGE 30 SECONDS]; */
+
+create function __meta__CurActiveCars() -> 
+  <Integer time, Integer car_id>;
+       
+create function CurActiveCars() -> Stream of Window as select
+  w_distinct(
+    {res_idx("CurActiveCars", "car_id")}, 
+    w_project(
+      {res_idx("CarSegStr", "time"), 
+       res_idx("CarSegStr", "car_id")},      
+      w_time(CarSegStr(), 30, 1, res_idx("CarSegStr", "time"))));
+
+/* CurCarSeg (relation): The relation containing the current segment
+for each car on the freeway. This relation is obtained by computing
+the latest segment for all the cars (the partition window below), and
+picking only those cars that are currently active (by joining with
+CurActiveCars relation above). Note that a segment is identified by
+the expressway, the direction of travel, and the segment number within
+the expressway.
+
+SELECT car_id, exp_way, dir, seg
+FROM CarSegStr [PARTITION BY car_id ROWS 1], CurActiveCars
+WHERE CarSegStr.car_id = CurActiveCars.car_id; */
+
+create function __meta__CurCarSeg() -> 
+  <Integer time, Integer car_id, Integer exp_way, Integer seg>;
+       
+create function __join__CurCarSeg(Vector seg, Vector car) -> Boolean as 
+  seg[res_idx("CarSegStr", "car_id")] = car[res_idx("CurActiveCars", "car_id")];
+      
+create function CurCarSeg() -> Stream of Window as select 
+  w_project(
+    {join_res_idx({"CarSegStr", "CurActiveCars"}, "time"), 
+     join_res_idx({"CarSegStr", "CurActiveCars"}, "car_id"), 
+     join_res_idx({"CarSegStr", "CurActiveCars"}, "exp_way"), 
+     join_res_idx({"CarSegStr", "CurActiveCars"}, "dir"), 
+     join_res_idx({"CarSegStr", "CurActiveCars"}, "seg")}, 
+    w_join(
+      {w_partition(CarSegStr(), {res_idx("CarSegStr", "car_id")}, 1, 1,
+                   res_idx("CarSegStr", "time")), 
+       CurActiveCars()}, 
+      #'__join__CurCarSeg'));                 
+
+/* CarSegEntryStr (stream): Stream of tuples each corresponding to
+entry of a car into a new segment. A car enters a new segment when a
+new entry appears in the CurCarSeg relation.
+
+ISTREAM (CurCarSeg);
+
+Some subtle issues arise when a car exits a segment, and re-enters the
+same segment; unless we make some additional assumptions not specified
+in the original benchmark specification, we cannot distinguish between
+the case of a car continuing in a segment, and that of the car exiting
+and subsequently re-entering the same segment. Presently, we assume
+that a car that has exited remains outside the freeway network for
+atleast 30 seconds, which enables the system to distinguish between
+the two cases above. */
+
+create function __meta__CarSegEntryStr() -> 
+  <Integer time, Integer car_id, Integer exp_way, Integer seg>;
+       
+create function CarSegEntryStr() -> Stream of Vector as select 
+  istream(CurCarSeg());
+   
+/* TollStr (stream): Stream of tolls. This is one of the output
+streams of the benchmark. Each car, on entering a segment, pays a toll
+determined by the current state of traffic in the segment. The
+formulation of TollStr below uses a relation, SegToll, that contains
+the current toll for each segment. The SegToll relation is specified
+later.
+
+SELECT RSTREAM(E.car_id, T.toll)
+FROM CarSegEntryStr [NOW] AS E, SegToll as T
+WHERE E.exp_way = T.exp_way AND E.dir = T.dir AND E.seg = T.seg;
+
+The toll notification stream does not incorporate the
+frequent-traveler discount as required by the original benchmark
+specification. Doing so involves "recursion" (since the tolls depend
+on the previous tolls), and CQL currently does not handle
+recursion. */
+
+create function __meta__TollStr() -> 
+  <Integer time, Integer car_id, Integer toll>;
+       
+create function __join__TollStr(Vector entry, Vector toll) -> Boolean as 
+  entry[res_idx("CarSegEntryStr", "exp_way")] = toll[res_idx("SegToll", "exp_way")] and 
+  entry[res_idx("CarSegEntryStr", "dir")] = toll[res_idx("SegToll", "dir")] and 
+  entry[res_idx("CarSegEntryStr", "seg")] = toll[res_idx("SegToll", "seg")];
+
+create function TollStr() -> Stream of Vector as select 
+  rstream(w_project(
+    {join_res_idx({"CarSegEntryStr", "SegToll"}, "CarSegEntryStr", "time"), 
+     join_res_idx({"CarSegEntryStr", "SegToll"}, "CarSegEntryStr", "car_id"), 
+     join_res_idx({"CarSegEntryStr", "SegToll"}, "SegToll", "toll")}, 
+    w_join(
+      {w_now(CarSegEntryStr(), res_idx("CarSegEntryStr", "time")),
+       SegToll()}, 
+      #'__join__TollStr')));
+
+            
+            
+/*********
+ *********
+ ********* TOLL COMPUTATION FOR SEGMENTS
+ *********
+ *********/
+ 
+/* SegAvgSpeed (relation) : The average speed of the cars in a segment
+over the last 5 minutes.
+
+SELECT exp_way, dir, seg, AVG(speed) as speed,
+FROM CarSegStr [RANGE 5 MINUTES]
+GROUP BY exp_way, dir, seg; */
+
+create function __meta__SegAvgSpeed() -> 
+  <Integer exp_way, Integer dir, Integer seg, Integer speed>; 
+
+create function __meta__GroupbySegAvgSpeed() -> 
+  <Integer exp_way, Integer dir, Integer seg, Integer speed>; 
+
+create function SegAvgSpeed() -> Stream of Window as select 
+  w_project(
+    {res_idx("GroupbySegAvgSpeed", "exp_way"), 
+     res_idx("GroupbySegAvgSpeed", "dir"), 
+     res_idx("GroupbySegAvgSpeed", "seg"), 
+     res_idx("GroupbySegAvgSpeed", "speed")}, 
+    w_group_by(
+      {res_idx("CarSegStr", "exp_way"), 
+       res_idx("CarSegStr", "dir"), 
+       res_idx("CarSegStr", "seg")}, 
+      {res_idx("CarSegStr", "speed")}, 
+      {#'avg'}, 
+      w_time(CarSegStr(), 300, 1, res_idx("CarSegStr", "time"))));
+       
+
+/* SegVol (relation): Relation containing the number of cars currently
+in a segment. The relation CurCarSeg is used to determine the cars in
+each segment.
+
+SELECT exp_way, dir, seg, COUNT(*) as volume
+FROM CurCarSeg
+GROUP BY exp_way, dir, seg; */
+
+create function __meta__SegVol() -> 
+  <Integer exp_way, Integer dir, Integer seg, Integer volume>; 
+       
+create function __meta__GroupbySegVol() -> 
+  <Integer exp_way, Integer dir, Integer seg, Integer volume>; 
+       
+create function SegVol() -> Stream of Window as select 
+  w_project(
+    {res_idx("GroupbySegVol", "exp_way"), 
+     res_idx("GroupbySegVol", "dir"), 
+     res_idx("GroupbySegVol", "seg"), 
+     res_idx("GroupbySegVol", "volume")}, 
+    w_group_by(
+      {res_idx("CurCarSeg", "exp_way"), 
+       res_idx("CurCarSeg", "dir"), 
+       res_idx("CurCarSeg", "seg")}, 
+      {res_idx("CurCarSeg", "speed")}, 
+      {#'count'}, 
+      CurCarSeg()));       
+
+
+/* SegToll (relation): Relation containing the toll for each
+segment. There are no entries in the relation for segments having no
+toll. A segment is tolled only if the average speed of the segment is
+less than 40, and if it is not affected by an accident (represented
+here by the relation AccAffectedSeg which is specified later). If a
+segment is tolled, its toll is basetoll * (#cars - 150) * (#cars -
+150).
+
+SELECT S.exp_way, S.dir, S.seg, basetoll*(V.volume-150)*(V.volume-150)
+FROM SegAvgSpeed as S, SegVol as V
+WHERE S.exp_way = V.exp_way and S.dir = V.dir and S.seg = V.seg
+      and S.speed < 40
+      and (S.exp_way, S.dir, S.seg) NOT IN (AccAffectedSeg);
+
+Pity the lone car of a segment traveling at less than 40! */
+
+create function __meta__SegToll() -> 
+  <Integer time, Integer exp_way, Integer dir, Integer seg, Integer toll>;
+       
+create function __join__SegToll(Vector speed, Vector vol, Vector acc) -> Boolean as 
+  speed[res_idx("SegAvgSpeed", "exp_way")] = vol[res_idx("SegVol", "exp_way")] and 
+  speed[res_idx("SegAvgSpeed", "dir")] = vol[res_idx("SegVol", "dir")] and 
+  speed[res_idx("SegAvgSpeed", "seg")] = vol[res_idx("SegVol", "seg")] and 
+  speed[res_idx("SegAvgSpeed", "exp_way")] < 40 and True != 
+  (speed[res_idx("SegAvgSpeed", "exp_way")] = acc[res_idx("AccAffectedSeg", "exp_way")] and 
+   speed[res_idx("SegAvgSpeed", "dir")] = acc[res_idx("AccAffectedSeg", "dir")] and 
+   speed[res_idx("SegAvgSpeed", "seg")] = acc[res_idx("AccAffectedSeg", "seg")]);
+               
+create function __toll__SegToll(Vector of Vector row) -> Number as 
+  666 * (cast(vol[res_idx("SegVol", "volume")] as Number)-150) * (cast(vol[res_idx("SegVol", "volume")] as Number)-150);
+              
+create function SegToll() -> Stream of Window as select 
+  w_project(
+    {join_res_idx({"SegAvgSpeed", "SegVol"}, "SegAvgSpeed", "exp_way"), 
+     join_res_idx({"SegAvgSpeed", "SegVol"}, "SegAvgSpeed", "dir"), 
+     join_res_idx({"SegAvgSpeed", "SegVol"}, "SegAvgSpeed", "seg"), 
+     #'__toll__SegToll'}, 
+    w_join(
+      {SegAvgSpeed(), 
+       SegVol(),
+       AccAffectedSeg()}, 
+      #'__join__SegToll'));
+
+
+/*********
+ *********
+ ********* ACCIDENT DETECTION AND NOTIFICATION
+ *********
+ *********/
+
+ /* AccCars (relation): Relation containing cars currently involved in
+ an accident, and the position of the accident. Note that AVG(x-pos)
+ below is just a hack to get the common location of 4 identical
+ location reports of a car involved in an accident.
+
+SELECT car_id, AVG(x-pos) AS acc_loc
+FROM CarLocStr [PARTITION BY car_id ROWS 4]
+GROUP BY car_id
+HAVING COUNT DISTINCT (x-pos) == 1; */
+
+create function __meta__AccCars() -> 
+  <Integer car_id, Integer acc_loc>; 
+
+create function __meta__GroupbyAccCars() -> 
+  <Integer car_id, Integer acc_loc, Integer pos_count>; 
+       
+create function __filter__AccCars(Vector row) -> Boolean as 
+  row[res_idx("GroupbyAccCars", "pos_count")] = 1;
+
+create function AccCars() -> Stream of Window as select 
+  w_project(
+    {res_idx("GroupbyAccCars", "car_id"), 
+     res_idx("GroupbyAccCars", "acc_loc")}, 
+    w_filter(
+      w_group_by(
+        {res_idx("CarLocStr", "car_id")},  
+        {res_idx("CarLocStr", "x_pos"),
+         res_idx("CarLocStr", "x_pos")}, 
+        {#'avg', 
+         #'count_distinct'}, 
+        w_partition(CarLocStr(), {res_idx("CarLocStr", "car_id")}, 4, 1,
+                    res_idx("CarLocStr", "time"))), 
+      #'__filter__AccCars'));
+
+            
+/* AccSeg (relation):  Relation containing the set of segments involved in an accident. This relation is obtained by joining  CurCarSeg  relation with  AccCars  relation.
+
+SELECT DISTINCT exp_way, dir, seg, acc_loc
+FROM CurCarSeg, AccCars
+WHERE CurCarSeg.car_id = AccCars.car_id; */
+
+create function __meta__AccSeg() -> 
+  <Integer time, Integer exp_way, Integer dir, Integer seg, Integer acc_loc>;
+                  
+create function __join__AccSeg(Vector car, Vector acc_car) -> Boolean as 
+  car[res_idx("CurCarSeg", "car_id")] = acc_car[res_idx("AccCars", "car_id")];       
+       
+create function AccSeg() -> Stream of Window as select 
+  w_distinct(
+    {res_idx("AccSeg", "exp_way"), 
+     res_idx("AccSeg", "dir"), 
+     res_idx("AccSeg", "seg"), 
+     res_idx("AccSeg", "acc_loc")}, 
+    w_project(
+      {join_res_idx({"CurCarSeg", "AccCars"}, "time"),
+       join_res_idx({"CurCarSeg", "AccCars"}, "exp_way"),
+       join_res_idx({"CurCarSeg", "AccCars"}, "dir"),
+       join_res_idx({"CurCarSeg", "AccCars"}, "seg"),
+       join_res_idx({"CurCarSeg", "AccCars"}, "acc_loc")},
+      w_join(
+        {CurCarSeg(), 
+         AccCars()}, 
+        #'__join__AccSeg')));
+
+           
+/* AccNotifyStr (stream): Output stream notifying an accident to cars
+currently in the upstream 5 segments from the accident segment. The
+ISTREAM operator streams a new accident being inserted into AccSeg
+relation; a new accident tuple is joined with CurCarSeg relation to
+determine cars in the upstream 5 segments.
+
+SELECT RSTREAM (car_id, acc_loc)
+FROM (ISTREAM (AccSeg)) [NOW] AS A, CurCarSeg as S
+WHERE (A.exp_way = S.exp_way and A.dir = EAST and S.dir = EAST and 
+      S.seg < A.seg and S.seg > A.seg - 5) OR
+      (A.exp_way = S.exp_way and A.dir = WEST and S.dir = WEST and 
+      S.seg > A.seg and S.seg < A.seg + 5); */           
+      
+create function __meta__AccNotifyStr() -> 
+  <Integer time, Integer car_id, Integer acc_loc>;
+
+create function __join__AccNotifyStr(Vector acc, Vector car) -> Boolean as 
+  (acc[res_idx("AccSeg", "exp_way")] = car[res_idx("CurCarSeg", "exp_way")] and 
+   acc[res_idx("AccSeg", "dir")] = "EAST" and  
+   car[res_idx("CurCarSeg", "dir")] = "EAST" and  
+   car[res_idx("CurCarSeg", "seg")] < acc[res_idx("AccSeg", "seg")] and 
+   car[res_idx("CurCarSeg", "seg")] > cast(acc[res_idx("AccSeg", "seg")] as Number) - 5) or 
+  (acc[res_idx("AccSeg", "exp_way")] = car[res_idx("CurCarSeg", "exp_way")] and 
+   acc[res_idx("AccSeg", "dir")] = "WEST" and  
+   car[res_idx("CurCarSeg", "dir")] = "WEST" and  
+   car[res_idx("CurCarSeg", "seg")] > acc[res_idx("AccSeg", "seg")] and 
+   car[res_idx("CurCarSeg", "seg")] < cast(acc[res_idx("AccSeg", "seg")] as Number) + 5);
+    
+      
+create function AccNotifyStr() -> Stream of Vector as select 
+  rstream(w_project(
+    {join_res_idx({"AccSeg", "CurCarSeg"}, "time"), 
+     join_res_idx({"AccSeg", "CurCarSeg"}, "car_id"), 
+     join_res_idx({"AccSeg", "CurCarSeg"}, "acc_loc")}, 
+    w_join(
+      {w_now(istream(AccSeg()), res_idx("AccSeg", "time")),        
+       CurCarSeg()}, 
+      #'__join__AccNotifyStr'))); 
+      
+      
+/* AccAffectedSeg (relation): Relation of segments not tolled due to
+accidents (see SegToll relation). The 10 upstream segments of an
+accident segment are not tolled until 20 minutes after an accident is
+cleared. For simplicity, the CQL specification of this relation
+assumes a fixed relation AllSeg containing the set of all all segments
+in all the freeways. The relation AccAffectedSeg is specified below as
+a union of two relations---the relation containing 10 upstream
+segments of segments currently having an uncleared accident, and the
+relation containing 10 upstream segments of segments that had an
+accident cleared within the last 20 minutes.
+
+SELECT A.exp_way, A.dir, A.seg
+FROM AllSeg AS A, AccSeg AS S
+WHERE (A.exp_way = S.exp_way AND A.dir = EAST AND S.dir = EAST AND
+       A.seg < S.seg AND A.seg > S.seg - 10) OR
+      (A.exp_way = S.exp_way AND A.dir = WEST AND S.dir = WEST AND
+       A.seg > S.seg AND A.seg < S.seg + 10)
+
+UNION
+
+SELECT A.exp_way, A.dir, A.seg
+FROM AllSeg AS A, DSTREAM ( AccSeg )[RANGE 20 MINUTES] AS S
+WHERE (A.exp_way = S.exp_way AND A.dir = EAST AND S.dir = EAST AND
+       A.seg < S.seg AND A.seg > S.seg - 10) OR
+      (A.exp_way = S.exp_way AND A.dir = WEST AND S.dir = WEST AND
+       A.seg > S.seg AND A.seg < S.seg + 10); */
+       
+create function __meta__AccAffectedSeg() -> 
+  <Integer time, Integer exp_way, Integer dir, Integer seg>;
+
+create function __join_amosfn__AccAffectedSeg(Vector accseg_row) -> Bag of Vector as 
+  select allseg_row
+  from Vector allseg_row
+  where allseg_row in streamof(AllSeg()) and 
+    ((allseg_row[res_idx("AllSeg", "exp_way")] = accseg_row[res_idx("AccSeg", "exp_way")] and 
+      allseg_row[res_idx("AllSeg", "dir")] = "EAST" and  
+      accseg_row[res_idx("AccSeg", "dir")] = "EAST" and  
+      accseg_row[res_idx("AllSeg", "seg")] < allseg_row[res_idx("AccSeg", "seg")] and 
+      accseg_row[res_idx("AllSeg", "seg")] > cast(allseg_row[res_idx("AccSeg", "seg")] as Number) - 10) or 
+     (allseg_row[res_idx("AllSeg", "exp_way")] = accseg_row[res_idx("AccSeg", "exp_way")] and 
+      allseg_row[res_idx("AllSeg", "dir")] = "WEST" and  
+      accseg_row[res_idx("AccSeg", "dir")] = "WEST" and  
+      accseg_row[res_idx("AllSeg", "seg")] > allseg_row[res_idx("AccSeg", "seg")] and 
+      accseg_row[res_idx("AllSeg", "seg")] < cast(allseg_row[res_idx("AccSeg", "seg")] as Number) + 10));
+
+create function AccAffectedSeg() -> Stream of Window as select 
+  w_union({
+    w_project(
+      {join_res_idx({"AccSeg", "AllSeg"}, "AccSeg", "time"), 
+       join_res_idx({"AccSeg", "AllSeg"}, "AllSeg", "exp_way"), 
+       join_res_idx({"AccSeg", "AllSeg"}, "AllSeg", "dir"), 
+       join_res_idx({"AccSeg", "AllSeg"}, "AllSeg", "seg")},  
+      w_join_amosfn(
+        AccSeg(),
+        #'__join_amosfn__AccAffectedSeg')), 
+    w_project(
+      {join_res_idx({"AccSeg", "AllSeg"}, "AccSeg", "time"), 
+       join_res_idx({"AccSeg", "AllSeg"}, "AllSeg", "exp_way"), 
+       join_res_idx({"AccSeg", "AllSeg"}, "AllSeg", "dir"), 
+       join_res_idx({"AccSeg", "AllSeg"}, "AllSeg", "seg")},   
+      w_join_amosfn(
+       w_time(dstream(AccSeg()), 1200, 1, res_idx("AccSeg", "time")), 
+       #'__join_amosfn__AccAffectedSeg'))});
+        
+
+/*********
+ *********
+ ********* NEGATIVE TOLL GENERATION
+ *********
+ *********/        
+        
+/* CarExitStr (stream): Stream of events of cars exiting from the
+freeways. A car has exited if it is no longer "active" (i.e., it has
+not reported its location in the last 30 seconds). The exiting of cars
+is determined by applying the DSTREAM operator on the CurActiveCars
+relation. The relation CurActiveCars does not store the latest segment
+of the car; this is determined by using the last location report of
+the car in CarSegStr.
+
+SELECT RSTREAM (S.car_id, S.exp_way, S.dir, S.seg)
+FROM (DSTREAM (CurActiveCars)) [NOW] AS A,
+     CarSegStr [PARTITION BY car_id ROWS 1] AS S
+WHERE A.car_id = S.car_id; */
+
+create function __meta__CarExitStr() -> 
+  <Integer time, Integer car_id, Integer exp_way, Integer dir, Integer seg>;
+  
+create function __join__CarExitStr(Vector car, Vector loc) -> Boolean as 
+  car[res_idx("CurActiveCars", "car_id")] = loc[res_idx("CarSegStr", "car_id")];  
+  
+create function CarExitStr() -> Stream of Vector as select 
+  rstream(
+    w_project(
+      {join_res_idx({"CurActiveCars", "CarSegStr"}, "CurActiveCars", "time"),
+       join_res_idx({"CurActiveCars", "CarSegStr"}, "CarSegStr", "car_id"),
+       join_res_idx({"CurActiveCars", "CarSegStr"}, "CarSegStr", "exp_way"),
+       join_res_idx({"CurActiveCars", "CarSegStr"}, "CarSegStr", "dir"),
+       join_res_idx({"CurActiveCars", "CarSegStr"}, "CarSegStr", "seg")}, 
+      w_join(
+        {w_now(dstream(CurActiveCars()), res_idx("CurActiveCars", "time")), 
+         w_partition(CarSegStr(), {res_idx("CarSegStr", "car_id")}, 1, 1, 
+                     res_idx("CarSegStr", "time"))}, 
+        #'__join__CarExitStr')));
+
+
+/* NegTollStr (stream): Stream of negative tolls to cars exiting on a
+segment. The amount of the negative toll for an exiting car is equal
+to the latest charged toll (TollStr) for the car.
+
+SELECT RSTREAM (E.car_id, T.toll)
+FROM CarExitStr [NOW] AS E, TollStr [PARTITION BY car_id ROWS 1] AS T
+WHERE E.car_id = T.car_id; */
+
+create function __meta__NegTollStr() -> 
+  <Integer time, Integer car_id, Integer exp_way, Integer dir, Integer seg>;
+  
+create function __join__NegTollStr(Vector car, Vector toll) -> Boolean as 
+  car[res_idx("CarExitStr", "car_id")] = toll[res_idx("TollStr", "car_id")];  
+    
+create function NegTollStr() -> Stream of Vector as select 
+  rstream(
+    w_project(
+      {join_res_idx({"CarExitStr", "TollStr"}, "CarExitStr", "time"),
+       join_res_idx({"CarExitStr", "TollStr"}, "CarExitStr", "car_id"),
+       join_res_idx({"CarExitStr", "TollStr"}, "TollStr", "toll")}, 
+      w_join(
+        {w_now(CarExitStr(), res_idx("CarExitStr", "time")), 
+         w_partition(TollStr(), {res_idx("TollStr", "car_id")}, 1, 1, 
+                     res_idx("TollStr", "time"))}, 
+        #'__join__NegTollStr')));
+        
+/* NegAccTollStr (stream): Stream of negative tolls given to cars
+exiting less than five segments upstream from an accident segment
+(relation AccSeg).
+
+SELECT RSTREAM (car_id, X)
+FROM CarExitStr [NOW] as E, AccSeg as A
+WHERE (E.exp_way = A.exp_way AND E.dir = EAST AND A.dir = EAST and 
+       E.seg < A.seg AND E.seg > A.seg - 5) OR
+      (E.exp_way = A.exp_way AND E.dir = WEST AND A.dir = WEST and 
+       E.seg > A.seg AND E.seg < A.seg + 5); */
+
+create function __meta__NegAccTollStr() -> 
+  <Integer time, Integer car_id, Integer neg_toll>;
+  
+create function __join__NegAccTollStr(Vector car, Vector acc) -> Boolean as 
+  (car[res_idx("CarExitStr", "exp_way")] = acc[res_idx("AccSeg", "exp_way")] and 
+   car[res_idx("CarExitStr", "dir")] = "EAST" and  
+   acc[res_idx("AccSeg", "dir")] = "EAST" and  
+   acc[res_idx("AccSeg", "seg")] < car[res_idx("CarExitStr", "seg")] and 
+   acc[res_idx("AccSeg", "seg")] > cast(car[res_idx("CarExitStr", "seg")] as Number) - 5) or 
+  (car[res_idx("CarExitStr", "exp_way")] = acc[res_idx("AccSeg", "exp_way")] and 
+   car[res_idx("CarExitStr", "dir")] = "WEST" and  
+   acc[res_idx("AccSeg", "dir")] = "WEST" and  
+   acc[res_idx("AccSeg", "seg")] > car[res_idx("CarExitStr", "seg")] and 
+   acc[res_idx("AccSeg", "seg")] < cast(car[res_idx("CarExitStr", "seg")] as Number) + 5);
+   
+create function __neg_toll__NegAccTollStr(Vector row) -> Number as 
+  42;
+  
+create function NegAccTollStr() -> Stream of Vector as select 
+  rstream(
+    w_project(
+      {join_res_idx({"CarExitStr", "AccSeg"}, "CarExitStr", "time"), 
+       join_res_idx({"CarExitStr", "AccSeg"}, "car_id"), 
+       #'__neg_toll__NegAccTollStr'}, 
+      w_join(
+        {w_now(CarExitStr(), res_idx("CarExitStr", "time")), 
+         AccSeg()}, 
+        #'__join__NegAccTollStr')));
+        
+/*********
+ *********
+ ********* ACCOUNTING
+ *********
+ *********/        
+ 
+/* AccTransStr (stream): The union of all the transaction of a car
+account - the "historical" credit stream (CreditStr), the toll stream
+(TollStr), the negative toll stream (NegTollStr), and the negative
+toll stream due to accidents (NegAccTollStr).
+
+SELECT *
+FROM CreditStr
+
+UNION ALL
+
+SELECT car_id, toll AS credit
+FROM NegTollStr
+
+UNION ALL
+
+SELECT car_id, toll AS credit
+FROM NegAccTollStr
+
+UNION ALL
+
+SELECT car_id, -1 * toll AS credit
+FROM TollStr; */
+  
+create function __filtered__NegTollStr() -> Stream of Vector as select streamof(
+  select
+    {v[res_idx("NegTollStr", "time")],
+     v[res_idx("NegTollStr", "car_id")],
+     v[res_idx("NegTollStr", "toll")]}
+  from Vector v
+  where v in NegTollStr());           
+
+create function __filtered__NegAccTollStr() -> Stream of Vector as select streamof(
+  select
+    {v[res_idx("NegAccTollStr", "time")],
+     v[res_idx("NegAccTollStr", "car_id")],
+     v[res_idx("NegAccTollStr", "toll")]}
+  from Vector v
+  where v in NegAccTollStr());           
+
+create function __filtered__TollStr() -> Stream of Vector as select streamof(
+  select
+    {v[res_idx("TollStr", "time")],
+     v[res_idx("TollStr", "car_id")],
+     -1 * cast(v[res_idx("TollStr", "toll")] as Number)}
+  from Vector v
+  where v in TollStr());           
+
+create function __meta__AccTransStr() -> 
+  <Integer time, Integer car_id, Integer credit>;
+
+create function AccTransStr() -> Stream of Vector as select 
+  s_union_all({
+    CreditStr(), 
+    __filtered__NegTollStr(), 
+    __filtered__NegAccTollStr(), 
+    __filtered__TollStr()}); 
+     
+/* AccBal (relation): Relation corresponding to the current account
+balance of each car.
+
+SELECT car_id, SUM(credit) AS balance
+FROM AccTransStr
+GROUP BY car_id; */
+
+create function __meta__AccBal() -> 
+  <Integer car_id, Integer balance>; 
+       
+create function __meta__GroupbyAccBal() -> 
+  <Integer car_id, Integer balance>; 
+       
+create function AccBal() -> Stream of Window as select 
+  w_project(
+    {res_idx("GroupbyAccBal", "car_id"), 
+     res_idx("GroupbyAccBal", "balance")}, 
+    w_group_by(
+      {res_idx("AccTransStr", "car_id")}, 
+      {res_idx("AccTransStr", "credit")}, 
+      {#'sum'}, 
+      w_now(AccTransStr(), res_idx("AccTransStr", "time"))));  
+      
+      
+
+/*********
+ *********
+ ********* ADHOC QUERY ANSWERING
+ *********
+ *********/
+      
+/* AccBalOutStr (stream):  Output stream of account balance queries.
+
+SELECT RSTREAM(query_id, B.car_id, B.balance)
+FROM AccBalQueryStr [NOW] AS Q, AccBal AS B
+WHERE Q.car_id = B.car_id; */
+
+create function __meta__AccBalOutStr() -> 
+  <Integer time, Integer query_id, Integer car_id, Integer balance>;
+  
+create function __join__AccBalOutStr(Vector query, Vector bal) -> Boolean as 
+  query[res_idx("AccBalQueryStr", "car_id")] = bal[res_idx("AccBal", "car_id")];  
+  
+create function AccBalOutStr() -> Stream of Vector as select 
+  rstream(
+    w_project(
+      {join_res_idx({"AccBalQueryStr", "AccBal"}, "AccBalQueryStr", "time"), 
+       join_res_idx({"AccBalQueryStr", "AccBal"}, "query_id"), 
+       join_res_idx({"AccBalQueryStr", "AccBal"}, "car_id"), 
+       join_res_idx({"AccBalQueryStr", "AccBal"}, "balance")}, 
+      w_join(
+        {w_now(AccBalQueryStr(), res_idx("AccBalQueryStr", "time")), 
+         AccBal()}, 
+        #'__join__AccBalOutStr')));
+
+/* ExpOutStr (stream):  Output stream of current-day-expenditure adhoc queries.
+
+SELECT RSTREAM(query_id, E.car_id, -1 * SUM(credit))
+FROM ExpQueryStr [NOW] as Q, AccTransStr[Today Window] as T
+WHERE Q.car_id = T.car_id; 
+
+Note that this query is incomplete, i.e., the alias E is used but never defined. 
+Furthermore, the aggregate function sum is applied on AccTranStr.credit but the 
+group by operator is never used. We will rewrite the query: 
+
+ExpToday (relation): Relation of todays expenditure for each car. 
+
+SELECT car_id, SUM(credit) as expenditure 
+FROM AccTransStr [RANGE 24 HOURS SLIDE 24 HOURS] 
+GROUP BY car_id;
+
+ExpOutStr (stream): Output stream of current-day-expenditure adhoc queries. 
+
+SELECT RSTREAM(time, query_id, car_id, expenditure) 
+FROM ExpQueryStr [NOW] as Q, ExpToday as T 
+WHERE Q.car_id = T.car_id; */
+
+create function __meta__ExpToday() -> 
+  <Integer car_id, Integer expenditure>;
+  
+create function __meta__GroupbyExpToday() -> 
+  <Integer car_id, Integer expenditure>;
+  
+create function ExpToday() -> Stream of Window as select 
+  w_project(
+    {res_idx("GroupbyExpToday", "car_id"), 
+     res_idx("GroupbyExpToday", "expenditure")}, 
+    w_group_by(
+      {res_idx("AccTransStr", "car_id")}, 
+      {res_idx("AccTransStr", "credit")}, 
+      {#'sum'},
+      w_time(AccTransStr(), 24*60*60, 24*60*60, res_idx("AccTransStr", "time"))));
+        
+create function __meta__ExpOutStr() -> 
+  <Integer time, Integer query_id, Integer car_id, Integer expenditure>;
+  
+create function __join__ExpOutStr(Vector query, Vector trans) -> Boolean as 
+  query[res_idx("ExpQueryStr", "car_id")] = trans[res_idx("AccTransStr", "car_id")];  
+  
+create function ExpOutStr() -> Stream of Vector as select 
+  rstream(
+    w_project(
+      {join_res_idx({"ExpQueryStr", "ExpToday"}, "time"), 
+       join_res_idx({"ExpQueryStr", "ExpToday"}, "query_id"), 
+       join_res_idx({"ExpQueryStr", "ExpToday"}, "car_id"), 
+       join_res_idx({"ExpQueryStr", "ExpToday"}, "expenditure")}, 
+      w_join(
+        {w_now(ExpQueryStr(), res_idx("ExpQueryStr", "time")), 
+         ExpToday()}, 
+        #'__join__ExpOutStr')));

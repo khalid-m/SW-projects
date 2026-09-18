@@ -1,0 +1,27 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> 2013 <author>Minpeng Zhu, UDBL
+ * $RCSfile: rdfpatch.osql,v $
+ * $Revision: 1.2 $ $Date: 2013/09/11 08:18:07 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: patch file for absorb rdf numerical predicates (rdf:minus,
+ *              rdf:times, etc), and map them to sql operator  
+ *
+ ****************************************************************************/
+
+
+create_wrapper_absorbability('relational', 'LITERAL.LITERAL.RDF:PLUS->LITERAL');
+
+sqloperator('LITERAL.LITERAL.RDF:PLUS->LITERAL', '+', true, true, false);
+
+
+create_wrapper_absorbability('relational', 'LITERAL.LITERAL.RDF:TIMES->LITERAL');
+
+sqloperator('LITERAL.LITERAL.RDF:TIMES->LITERAL', '*', true, true, false);
+
+
+create_wrapper_absorbability('relational', 'LITERAL.RDF:ABS->LITERAL');
+
+sqloperator('LITERAL.RDF:ABS->LITERAL', 'abs', false, true, false);

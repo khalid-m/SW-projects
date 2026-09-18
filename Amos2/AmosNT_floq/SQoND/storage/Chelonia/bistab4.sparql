@@ -1,0 +1,67 @@
+# The following directive makes a dataset stored in the Chelonia
+# database named '/exp/bistab' named 'Bistab-Experiment' the implicit
+# FROM clause used in the SciSPARQL queries in this
+# session. 
+# <http://udbl.uu.se/bistab#>
+CheloniaExperiment(<http://udbl.uu.se/bistab#>,
+                    "/exp/bistab_10_S7",
+                    "Bistab-Experiment"); 
+
+#Q0:
+SELECT ?var ?value WHERE { :Task1 ?var ?value };
+
+# --------
+# Query Q1: Compute the sum of all species ?A over all voxels in the
+# experiment identified by <http://udbl.uu.se/bistab#> as a function
+# of time for the trajectory identified by attribute
+# <http://udbl.uu.se/bistab#U> of task
+# <http://udbl.uu.se/bistab#Task1>:
+SELECT (?tspan[?j] AS ?t) 
+       (array_sum(?U[?A-1::?Mspecies,?j]) AS ?sum_A)
+WHERE { :Task1 :U ?U ; 
+               :A ?A ;
+               :Mspecies ?Mspecies ; # Number of species for the task 
+               :tspan ?tspan }; # The array containing the time points
+
+
+# Here only each 8th row of the matrix will be retrieved iteratively
+# column by column. The system needs main memory for only 1 array
+# chunk at the time.
+
+# Notice that this query can be submitted from anywhere on the net,
+# since global URIs are used
+
+# -------- 
+# Query Q2: Select the sum of all species ?A for time 10s for all
+# trajectories ?U with parameters k_a and k_d in given ranges:
+
+SELECT (array_sum(?U[?A-1::?Mspecies,?j]) AS ?res)
+WHERE {?task :U ?U ;
+             :A ?A ;
+             :Mspecies ?Mspecies ;
+             :tspan ?tspan ;
+             :k_a ?k_a ;
+             :k_d ?k_d .
+       FILTER (?tspan[?j] = 10 && 
+               1.0E7 <= ?k_d && ?k_d <= 1.0E8 &&
+               5 <= ?k_a && ?k_a <= 10 ) };	
+
+# -------- 
+# For query Q3 we need a helping function max_AB_sum(?task) that
+# computes the maximal value of the sum of attributes
+# <http://udbl.uu.se/bistab#A> or <http://udbl.uu.se/bistab#B> for all
+# timepoints of the trajectory <http://udbl.uu.se/bistab#U> of a given
+# task ?task:
+
+DEFINE FUNCTION max_AB_sum(?task) AS
+ SELECT (MAX(max2(array_sum(?U[?A-1::?Mspecies,?j]),
+                  array_sum(?U[?B-1::?Mspecies,?j]))) AS ?res)
+WHERE { ?task :U ?U ;
+              :A ?A ;
+              :B ?B ;
+   	      :Mspecies ?mspecies };
+
+# Query Q2: Find the task that has the maximal max_AB_sum:
+
+SELECT (ARGMAX(max_AB_sum) AS ?maxtask);
+

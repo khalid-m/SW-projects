@@ -1,0 +1,10 @@
+<"files.osql";
+< "stream.structs.basic.osql";
+load_lisp("../lsp/cost_model.populated.lsp");
+load_lisp("../lsp/cost_model.structs.lsp");
+load_lisp("../lsp/profiling.structs.lsp");
+load_lisp("../lsp/stopprofiling.lsp");
+load_lisp("../lsp/ineqrewrite.lsp");
+<'formulas.stream.osql';
+<'cost_model.udfs.stream.osql';
+<"allcuts.stream.osql";

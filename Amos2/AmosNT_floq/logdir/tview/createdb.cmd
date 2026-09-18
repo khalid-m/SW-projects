@@ -1,0 +1,1 @@
+javaamos -O createdb.osql

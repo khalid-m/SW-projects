@@ -1,0 +1,56 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Tore Risch, UDBL
+ * $RCSfile: mysqlperformance.osql,v $
+ * $Revision: 1.1 $ $Date: 2008/08/08 05:28:53 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Script to set up performance test for MySQL
+ *              Run:
+ *                  java javaamos -O mysqlstress.osql
+ *              then run measurements at the end
+ *
+ ****************************************************************************
+ * $Log: mysqlperformance.osql,v $
+ * Revision 1.1  2008/08/08 05:28:53  torer
+ * Added script to measure MySQL performance
+ *
+ ****************************************************************************/
+
+set :a = jdbc("ibds", "com.mysql.jdbc.Driver");
+set :dburl = "jdbc:mysql://localhost:3306/";
+
+connect(:a, :dburl + "regress", "regress", "regress");
+
+read_sql(:a, "mysqldrop.sql");
+read_sql(:a, "regress.sql");
+
+create function testsql (jdbc a, charstring q, integer rpt)->integer
+ as foreign "JAVA:jdbc_interface.JDBCInterface/testExecuteQuery";
+
+create function stresser(jdbc a, Integer n)->integer
+ as select count(testsql(a, "select * from PERSON2", n));
+
+create function stresser2(jdbc a, Integer n)->integer
+ as select count(select sql(a, "select * from PERSON2")
+                 from integer i 
+                 where iota(1,n)=i);
+
+create function stresser3(jdbc a, Integer n)->integer
+ as select count(select sql(a, "select * from PERSON2 where salary>?",{0})
+                 from integer i 
+                 where iota(1,n)=i);
+logging off;
+
+
+/* 
+Measurements for:
+
+stresser3(:a, 10000);
+
+Vista:
+        No own statement cache: 5.49
+        Own statement cache: 5.5
+
+*/

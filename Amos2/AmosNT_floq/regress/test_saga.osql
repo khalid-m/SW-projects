@@ -1,0 +1,104 @@
+declare saga :s;
+
+set :s = create_saga('s1');
+
+create function foo() -> integer;
+
+commit;
+
+saga 's1'
+	set foo() = 17;
+compensation
+	if foo() = 17 then set foo() = 0;
+
+saga :s
+	set foo() = foo() + 1;
+compensation
+	set foo() = foo() - 1;
+
+lisp;
+(checkequal "sagas test1"
+	((osql "select foo();") '((18)))
+	((osql "begin abort_saga(saganamed('s1')); result foo(); end;") '((0))))
+:osql
+
+set :s = create_saga('s2');
+
+saga :s
+	set foo() = 17;
+compensation
+	if foo() = 17 then set foo() = 0;
+
+saga :s
+	set foo() = foo() + 1;
+compensation
+	begin
+	  set foo() = foo() - 1;
+	  stop_compensation();
+	end;
+lisp;
+(checkequal "sagas test2"
+	((osql "select foo();") '((18)))
+	((osql "begin abort_saga(saganamed('s2')); result foo(); end;") '((17))))
+:osql
+
+set :s = create_saga('s3');
+
+saga :s
+	begin
+	  declare saga s;
+
+	  set s = create_sub_saga();
+          set foo() = 17;
+	  saga s
+	    set foo() = foo() + 1;
+          compensation
+	    set foo() = foo() - 1;
+	  if foo() = 18 then set foo() = foo() + 2;
+	end;	  
+compensation
+	set foo() = foo() - 19;
+
+
+lisp;
+(checkequal "sagas test3"
+	((osql "select foo();") '((20)))
+	((osql "begin abort_saga(saganamed('s3')); result foo(); end;") '((0))))
+:osql
+
+set :s = create_saga('s4');
+
+create function fie(saga s, integer step) -> boolean as
+begin
+	saga s
+		begin
+	  	declare saga ss;
+
+	  	set ss = create_sub_saga();
+          	set foo() = 17;
+	  	saga ss
+	      	  set foo() = foo() + step;
+          	compensation
+	    	  set foo() = foo() - step;
+
+	  	if foo() = 18 then set foo() = foo() + 2;
+		end;	  
+	compensation
+		set foo() = foo() - 19;
+end; 
+
+fie(:s , 1); /* execute in the saga */
+
+lisp;
+(checkequal "sagas test4"
+	((osql "select foo();") '((20)))
+	((osql "begin abort_saga(saganamed('s4')); result foo(); end;") '((0))
+	; check that all sagas are really removed
+	((osql "select s for each saga s;") nil)))
+:osql
+
+/* not enough to to a rollback since each saga has committed */
+delete function fie;
+delete function foo;
+/* commit delete operations */
+commit; 

@@ -1,0 +1,86 @@
+/*-*-sql-*-******************************************************************/
+
+/*************************************************************************
+BASIC DBSCAN FUNCTIONS
+**************************************************************************/
+
+create function neighbors(Vector of Number p, 
+                          Bag of Vector of Number datapoints, 
+                          Number eps) 
+                        -> Bag of Vector of Number q
+  as
+  /* Calculates EPS-neighborhood of point P among the data points DATPOINTS */
+  select q 
+   where q in datapoints
+     and q != p
+     and euclid(p,q) <= eps;
+
+
+create function dc(Vector of Number p, Function ddrfn) 
+                 -> Bag of Vector of Number q as
+  /* Returns data points density-connected with point p 
+     p     : given point
+     ddrfn : Type D function storing DDR table */
+  select q
+   where q in tclose(ddrfn,p);
+
+
+create function dbscan(Bag of Vector of Number corepoints,
+                       Function ddrfn, 
+                       Function clustersfn)
+                     -> Boolean
+  as
+  /* Runs DBSACN algorithm with given DDR table, 
+     stores clustering results  in clustersfb
+     corepoints : the core points of the dataset
+     ddrfn      : Type D function storing DDR table
+     clustersfn : Type C function to store the clustering result */
+  begin
+    declare Integer cn;
+    set cn = 1;
+    for each Vector of Number p
+      where p in corepoints
+      and notany(select p0 
+                 from Vector of Number p0, Integer c0
+                 where p0 = p 
+                   and {c0,p0} in extent(clustersfn))
+     begin
+      for each Vector of Number q
+          where q in dc(p,ddrfn)
+            addfunction(clustersfn,{cn},{q});
+      set cn = cn + 1; 
+     end;
+  end;
+
+/*************************************************************************
+DISTANCE STATISTICS FUNCTIONS
+**************************************************************************/
+
+create function kth_smallest(Bag of Object b, Integer k) -> Object
+  as
+  /* Returns the kth smallest object out of the bag of objects b */
+	{topk(leastk(b,k),1)}[0];
+
+/*****************************************************************************
+VISUALISATION FUNCTIONS
+******************************************************************************/
+
+create function disp_sorted_numbers(Bag of Number bn) -> Integer
+  /* Create 2D plot to display distribution of given values */
+  as scatter2((select {i, v[i]}
+                 from Vector v, Integer i
+                where v = sort(bn, 'dec')));
+
+
+create function disp_subset3d(Bag of Vector of Number bset, 
+                              Bag of Vector of Number bsubset, 
+	                      Vector of Number projs) -> Integer
+  as
+  /* Display a 3D projection to dimensions in PROJS of the data points
+     - from the subset - BSUBSET -in black color
+     - from the basic set - BSET - in yellow color */
+	scatter3p((select concat(project(dp,projs),{c})
+	             from Vector of Number dp, Number c
+		    where dp in bset
+		      and ((dp in bsubset and c = 0) or
+			   (notany(dp in bsubset) and c = 1))));

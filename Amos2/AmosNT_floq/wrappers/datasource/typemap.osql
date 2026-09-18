@@ -1,0 +1,26 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2002 Martin Hansson, UDBL
+ * $RCSfile: typemap.osql,v $
+ * $Revision: 1.1 $ $Date: 2003/09/29 14:25:59 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description:  Provides the mapping between a datasource's internal data 
+ *   types and their intended Amos counterparts. Wrapped datasources don't
+ *   normally have OIDs for their data types, hence the type name is used. 
+ *   There are two mappings, one is in the direction source-to-amos and its
+ *   main purpose is associating SQL tables with Amos mapped types, and 
+ *   similar tasks. The other mapping is used more rarely, for example when
+ *   exporting an Amos schema to another source, such as data migration,
+ *   see AmosNT/wrappers/relational/export-type.lsp for examples of this.
+ *
+ ****************************************************************************/
+
+/* Returns the amos type that has been associated with a wrapped datasource's
+   native type named native_type_name */
+create function amos_type(datasource ds, charstring native_type_name) -> type;
+
+/* Returns the typename of a wrapped datasource that has been associated
+   with the amos t. */
+create function wrapped_type(datasource ds, type t) -> charstring typename;

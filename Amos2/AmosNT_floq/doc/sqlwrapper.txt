@@ -1,0 +1,634 @@
+Let's make an SQL wrapper!
+
+This document explains how the Relational- and JDBC Wrappers were constructed.
+Everything that is above the interface level (type conversion, translation etc)
+has been lifted to the Relational Wrapper so that the interface can be swapped
+for any other interface, for example ODBC. This has actually been done and 
+proves to work. 
+
+The Relational wrapper specifies the functionality that an interface must 
+implement. The following type hierarchy is used.
+
+	datasource
+	    |
+	relational
+          /    \
+	JDBC  ODBC
+
+There is no OSQL function that the relational type needs that it does not 
+specify.
+
+1. Relational wrapper
+
+1.1 Preliminaries
+
+files: AmosNT/wrappers/relational/relational.osql
+       AmosNT/wrappers/relational/relational.lsp
+
+The Relational Wrapper is implemented by the Amos type relational and its type 
+is declared in relational.lsp (in lisp because it is a system type and as such
+cannot be declared in AmosQl.) All functionality is inside the file 
+relational.osql.
+
+The relational type has all the interface functions declared for it as
+'abstract functions' (see 3.1.)
+In doing so it makes sure that Amos will use dynamic type resolution to 
+look for implementations of these functions in any subtype to relational. The 
+net effect is that the interface for any wrapper in relational is explicitly 
+specified and must be followed. This is exactly what the JDBC and ODBC 
+wrappers do. The JDBC wrapper and implementation of these functions will be 
+explained in another section, for now we will assume that the functions are
+implemented and work for some subtype of relational.
+
+
+1.1.1 Metadata
+
+files: AmosNT/wrappers/relational/metadata.lsp, 
+       AmosNT/wrappers/relational/relational.osql
+
+It is essential to get the correct metadata as the import_table function 
+relies on this in order to properly create mapped types. The following is
+needed:
+
+*	tables(relational r) -> 
+	  <charstring table, charstring catalog, 
+	   charstring schema, charstring owner>
+	abstract
+	  
+	This function is needed because the wrapper uses this function to 
+	assure that a table is present. It is called by the (non-abstract)
+	function has_table.
+
+*	columns(relational r, charstring table_name_pattern) ->
+	  <charstring column_name, charstring amos_type>
+	abstract
+
+	This function alone motivated the concept of virtual functions for 
+	settling coding style issues. Only two wrappers were implemented 
+	but those two alone succeeded to disagree on the order of arguments.
+	It is essential to specify interface functions as strictly as possible.
+
+*	primary_keys(relational r, charstring table_name_pattern) ->
+	  <charstring column_name, charstring constraint_name>
+	abstract
+
+	Scan of the primary keys.
+
+These functions will be called heavily from Lisp, but in order to keep the 
+interface uniform, they will not take shortcuts and call their implementations
+directly. This proved necessary as soon as the work on the first wrapper, JDBC
+was being written. There they are implemented in Java, and Lisp cannot call 
+Java period. 
+
+The file metadata.lsp contains Lisp functions that wrap all of these functions
+inside Lisp functions so that nobody will have to use mapfunction. It is also a
+nice way to bring the OO feature of late binding all the way down to Lisp.
+
+1.1.2 Execution
+
+files: AmosNT/wrappers/relational/relational.osql
+
+The following function must be implemented as it is used by the translator to
+respond to queries. The function sql with two arguments (non-parametrized) is 
+not needed and therefore is not declared in relational.osql
+
+*      sql(relational r, charstring query, vector arguments) -> vector results
+
+1.2 Capabilities
+
+files: AmosNT/wrappers/relational/capabilities.osql
+
+A relational source without capabilities is not very useful. Very few 
+capabilities are declared, but more can easily be added. The capabilities 
+created in capabilities.osql are the static capability of relational 
+databases, i.e. it is assumed that any relational source will support these
+capabilities and it would generate duplicate code if we had to declare them
+for every object of type relational.
+
+So there are two options: Declare capabilities for a type or for an instance.
+Examples of capabilities that go with the type are comparisons, arithmetic, 
+joins etc. Capabilities that go with the instance are capabilities to 
+translate table accesses for given tables. A table is defined through its
+extent function (see 1.4.1.) Mapped types are not part of the mathematical model.
+The extent function, then, is defined (automatically, this is done in the 
+function create-mapped-type in mapped.lsp written by Joern Gebhardt and Tore 
+Risch, of which I have very little knowledge) from a core-cluster function, 
+which has to be created prior to importing a table. The bottom line is: The 
+capability to access a table is expressed by a capability to translate the 
+core-cluster function. 
+
+Dynamic capabilities are created by calling either of the functions
+
+create_capability(datasource ds, function f, 
+		  charstring adornment, charstring absorbent) -> capability
+
+create_capability(datasource ds, charstring function_name, 
+		  charstring adornment, charstring absorbent) -> capability
+
+These are the parameters:
+
+      * ds 
+        the datasource instance
+      
+      *	f/function_name -
+        It seem that in Amos, whenever you supply a function object, there 
+	should also be the option to supply the function name as well. So here 
+	it is. Don't forget that function names must always be written in 
+	CAPITALS.
+	
+      * adornment - 
+        Some people call this binding pattern, bpat. It's the same thing. It 
+	is a charstring of the letter 'b' and 'f' in lowercase.
+
+      * absorbent -
+        Absorbents will be exlained later (see 1.5.) This is the name of a lisp 
+	function that will 'drag' this function call to the source and maybe
+	translate it.
+	
+Static capabilities are created by calling either:
+
+create_capability(type dstype, charstring function_name, 
+		  charstring adornment, charstring absorbent) -> capability
+
+create_capability(type dstype, function f, 
+		  charstring adornment, charstring absorbent) -> capability
+
+All parameters are as above except
+
+    * dstype -
+      This is the type object of the datasource. Most likely this will be 
+      the type object for relational, unless you can think of some SQL command 
+      that JDBC handles but no other database driver.
+      All instances of this type will have this capability.
+
+Capabilities will be given the names of the function appended with an '@' and
+the name of the datasource (type or instance), for example the capabilities
+defined in relational/capabilities will be named 
+
+	OBJECT.OBJECT.<->BOOLEAN@RELATIONAL
+	OBJECT.OBJECT.>->BOOLEAN@RELATIONAL
+	etc
+
+Capabilities can be looked up by their names using the function
+
+	capabilitynamed(charstring name) -> capability
+
+Of course, capabilities are just like any other object, so they can be queried
+arbitrarily. They have the following properties:
+
+    * datasource(capability) -> datasource;
+      If hooked to an instance, this is the instance, otherwise NIL.
+
+    * default_datasource(capability) -> type; 
+      If hooked to a type, this is the type, otherwise NIL.
+
+    * resolvent (capability) -> function;
+
+    * adornment (capability) -> charstring;
+
+    * absorbent (capability) -> charstring;
+
+    * tbr_cost  (capability) -> <integer cost, integer fanout>;
+
+1.3 Type Issues
+
+files: AmosNT/wrappers/relational/type_map.lsp
+
+When a table is being imported into a mapped type, The wrapper will produce 
+property functions of the mapped type that correspond to the columns of that
+table. The function will take as argument the mapped type and return the type
+that best matches the column's sql type; at some point there has to be a type
+conversion. There is a special Lisp module dedicated to this task in 
+type_map.lsp.
+
+The following functions are available:
+
+    * (puttype :amos amos-tp :sql sql-tp)
+      Inserts a mapping between an Amos type (type object or symbolic name) and an
+      sql type. Sql types don't have oids so the name is a symbol.
+      
+    * (sql-to-amos-type tp &optional noerror)
+      Looks up an Amos type associated with the sql type as a symbol. The type oid
+      is returned.
+
+    * (amos-to-sql-type tp)
+      Looks up an sql type associated with the Amos type as a symbol or oid. The 
+      type name is returned as a symbol.
+
+The most common sql types and their Amos II counterparts are inserted from 
+installation.
+
+
+1.4 Importing a Table
+
+files: AmosNT/wrappers/relational/import-table.lsp
+
+We are now ready to start importing tables into Amos II. 
+
+1.4.1 Creating the Core-Cluster function
+
+The facilities for creating mapped types dictate that you create a core-cluster
+function. The implementation is totally arbitrary; it can be implemented in C, 
+Lisp or Java. It is not recommended to implement the core-cluster function i n
+AmosQL, because the optimizer tries to open up all AmosQL functions. Since the 
+translator is dependent on the core-cluster function, it is necessary that it 
+is a black box to the optimizer so as not to get optimized away.
+
+Note that the core-cluster function does not have to executable at all.
+If your translator always succeeds at least once for any query, it will
+never be called. A good idea is to make it only throw an error.
+The naming convention is as follows: 
+
+    <name of mapped type>_cc,
+
+The core cluster function takes no arguments and returns a bag of tuples,
+which are the contents of each of the row of a table.
+
+Core-Cluster functions for the relational wrapper are created using the Lisp
+function
+
+      create-core-cluster-fn (ds table columns keys)
+
+This function is a little more complicated than it has to because these 
+core-cluster functions were meant to be executable, for performance testing
+purposes. The important thing is that the function has certian things put
+on its property list. These are:
+
+   * tablename        - name of the table as a Lisp symbol
+   * datasource       - OID of the datasource object
+   * defaultabsorbent - the absorbent that translates this core-cluster 
+		        function (see 1.5.)
+
+If unlimited join is to be expressed, we also have to create a capability for
+absorbing the core-cluster function:
+
+  create_capability(datasource_object, cc_function_object, f-bunch, absorbentname);
+
+It should be clear what most of the parameters should be, but I'll explain 
+f-bunch: When you create a capability you also supply the binding adornment 
+under which the translator can translate a function call. You are supposed to
+always translate the core-cluster function, so use "fff .." which is the most
+general one.
+
+
+1.4.2 Creating a Mapped Type
+
+We are now ready to create a mapped type. This is done by calling the function
+create-mapped-type, see below for specifications of arguments.
+
+	(create-mapped-type typename supertypes propl keys
+			    cclusterfctn &optional systemtype)
+
+	* type name - A Lisp symbol which will be in the typename field
+	  of the mapped type. (Remember that types are represented by oid:s as 
+	  well.) The convention used in the wrappers is to append 
+	  _<datasource name> after each table name to make up the mapped type's
+	  name. It should really be an '@' sign but the parser has problems 
+	  dealing with that. In theory the name is
+	   <table name>@<datasource name>, though.
+
+	* supertypes - A Lisp list of the supertypes, if a type hierarchy of 
+	  mapped types is desired. If the empty list is passed the supertype 
+	  defaults to userobject.
+
+	* propl - property list. - A list of pairs <type, name> that describe 
+	  (actually they are not pairs at all, they are lists of length two,
+	  dont't ask me why.) the attributes of the mapped type, i.e. the 
+	  stored functions that operate on the type. The first in each pair is
+	  an datatype, the second is a name. This leads to creation of 
+	  functions for each property pair, see below. 
+
+	* keys - primary key properties. A subset of propl that make up the key
+	  to this mapped type, i.e. the list keys is always unique for every 
+	  mapped object.
+
+	* cclusterfctn - the name of the core cluster function as a symbol.
+
+	* &optional systemtype - I can't find documentation on this one. 
+
+This creates a mapped type object with the name <typename> and will also create
+for us a bunch of functions (one for each property) of the following style:
+
+    create function name(person p)->charstring as
+      select name
+      from integer ssn, charstring name, ....
+      where ccluster_person() = <ssn, name, ...> and
+            _decode_person(p) = ssn;
+
+Now, if we have successfully created a core-cluster function that is 
+executable and a mapped type, then transparent queries are actually 
+possible. 
+
+1.4.3 Importing a Table Automatically
+
+Now we are ready to write the function that actually imports the tables, so 
+that what was done in the previous two sections can be done automatically.
+
+First we need to create the core-cluster function. This is done in the function
+create-core-cluster-fn described above.
+
+If the core-cluster function is executable, all that really needs to be done is
+calling create-mapped-type, and everything will work. The function 
+import-table, if you look at it, does a little more than this. More precisely,
+it does the following things:
+
+   * sets up a translator. See section 1.5 for this.
+
+   * inserts the type in the type map. This is only neccesary for table 
+     *export* which will not be explained here.
+
+   * creates transparent update functions. Transparent updates will be 
+     explained in a different document.
+
+Finally, the mapped type is returned. The function import-table is wrapped 
+inside the Amos function(s) import_table. All resolvent calls  will eventually
+end up here.
+
+
+1.5 Setting up a Translator
+
+This section explains how to set up a translator under the wrapper definition
+API. A number of steps must be taken to hook everything up. First, though, some
+new Amos modules must be explained.
+
+
+1.5.1 Using the Environment
+
+files: AmosNT/lsp/environment.lsp
+
+The implementor of a translator has to use the module called environment.
+This data type respresents the variable environment, and various information
+is available about variables. It is the duty if an absorbent (see 1.5) to register 
+information about variables as translation moves along. The information that
+can be stored about a variable is:
+
+    * current binding
+
+    * entity - in SQL this is the column that the variable gets its value from
+
+    * type
+
+    * datasource
+
+The module also supports additional functions for compatibility with the rest
+of Amos:
+
+    * bpat (pred env)
+      Creates a binding pattern from the predicate's arguments: list of
+      -:es +:es used throughout Amos.
+
+    * bound-variables (env)
+      Returns a list of the variables that are bound in the environment.
+
+Typically, absorbents will bind all the varibles they see when translating a 
+predicate, And when translating a core-cluster function they will set the
+type and entity about a variable.
+
+There is a variable that is always present in the environment that is called
+*. This variable is always free and typeless, and any updates to it will be
+ignored, which is useful if you are going through a list of variables and
+inserting them all in the environment, no special case need be constructed
+for the * variable.
+
+
+1.5.2 Accumulator
+
+files: AmosNT/wrappers/relational/sqlquery.lsp
+
+First we have to create an accumulator for the translator. The best way to 
+describe the accumulator is like a parser that works in reverse. Typically 
+the accumulator will contain an abstract representation of code that the data
+source understands. In the last stage of translation this will translated into
+a call to the wrapper's execution function. 
+
+The SQL language is very rich and wordy and strings tend to be very long. The 
+accumulator for SQL, called sqlquery is in a big lisp file (>200 lines) with 
+the same name. It does not necessarily get as complicated for other data 
+sources. For B-trees the accumulator source code is just over 50 lines.
+
+There are no requirements on the accumulator, and typically it will have lots 
+of 'add-' functions for adding different predicates as you go along. The public
+interface for sqlquery (functions called from the absorbents) is this set of
+Lisp functions. :
+
+     * make-sqlquery :datasource ds :environment env  
+       constructor.
+
+     * sqlquery-add-table (q table) 
+       Adds a table name as symbol to the tables queried in this sqlquery.
+       Returns a tableinfo struct.
+
+     * sqlquery-add-predicate (q pred)
+       Adds a binary predicate to the query, such >, <, or =.
+     
+     * sqlquery-add-input (q v)
+       Adds a variable to the input varables to the query. If the query call is
+
+              sql("select p from person where age > ?",{age}); 
+
+       then age is the input variable.
+
+     * sqlquery-add-output (q v)
+       Adds a variable to the output varables in the query. If we are 
+       translating.
+
+		person@ds_cc (* * name * * )
+
+	into
+
+	      v = sql(ds, "select first_name from person") &
+	      name = v[0].
+
+       then name is an output variable
+
+     * sqlquery-input (q v)
+       Returns a Lisp list of the variable symbols that are inputs to the query.
+       If we are translating
+
+	  foo(integer i) :-
+		      person@ds_cc (i * name * *)
+		      
+       into 
+
+	    v = sql(ds, "select first_name from person where ssn=?",{i});
+
+       then i is an input variable.
+
+     * sqlquery-output
+       Returns a Lisp list of the variable symbols that are outpus of the 
+       query.
+
+     * get-sql-string (q)
+
+
+1.5.3 Three Phases of Translation
+
+files: AmosNT/wrappers/relational/relational_translator.lsp
+       AmosNT/lsp/translator.lsp
+
+We are now ready to actually start implementing the translator. An interface 
+is alrady specified a translator and this is the specication:
+
+A translator must implement three lisp functions:
+
+  *  x-initialize (ds env) returns accumulator
+
+     this function will be called as soon as the cost-based optimizer sees
+     the core-cluster function. Its purpose is to create an accumulator and
+     return it. It is optional to include the datasource object (ds) and the
+     environment (env) in the accumulator.
+
+  *  x-translate-core-cluster (ds pred env acc) returns t or nil
+
+     This is the default absorbent, and it will only be called with the core-
+     cluster predicate, unless it is registered via capabilities to handle
+     other predices as well.
+
+     If it returns t it is a signal to the wrapper definition API that the 
+     absorbtion has succeeded and that the accumulator and environment are
+     properly updated. The wrapper framework will now substitute the
+     core-cluster call for the contents of the accumulator, using the finalize
+     function below.
+
+     If nil is returned the environment and the accumulator must not be 
+     touched. The core-cluster call stays but additional absorbent may be
+     called.
+
+  *  x-finalize (ds env acc) returns t or nil.
+     
+     This function is supposed to materialize the contents of the accumulator
+     into a function call to the interface's execution function.
+     The wrapper framework will insert this definition where the first core-
+     cluster function appeared in the conjunction, if t is returned. If this
+     function returns nil, all translation is rolled back and nothing is being
+     translated. The cost-based optimizer might invoke another attempt starting
+     with x-initialize as it sees fit.
+
+And the translator can containt any number of absorbents, which will be called
+as soon as they are triggered by capabilities. Note however that the default
+absorbent will always be called once before any other absorbent.
+
+  *  x-translate-y (ds pred env acc) returns t or nil
+
+     A general absorbent. It will be declared by creating a capability 
+     (see 1.5.5.)
+     There is no way to guarantee in what order the absorbents will be called,
+     There may even be several translations going on, with different orders.
+
+     By returning t the absorbent has accepted the predicate and it will be
+     removed from the conjunction. Returning nil rejects the predicate.
+
+1.5.4 Tying it all Together: Registering the translator.
+
+The translator is registered by taking the following steps:
+
+    * put the property 'initializer on the datasource object. 
+
+    * put the property 'finalizer on the datasource object. 
+      This is done for JDBC on every object of type JDBC by
+
+      (/putobject jds 'initializer 'relational-initialize)
+      (/putobject jds 'finalizer 'relational-finalize)
+
+      Unfortunately, inheritance does not work in this context. Otherwise it
+      would be very nice indeed to be able to put this on the type object 
+      instead, or maybe even on the type object of relational. But by doing so
+      we might confuse ourselves: Amos II is an object-oriented system, Lisp
+      is just a functional Language. Lisp implements the OO features but does
+      not depend on them. Lisp only sees objects. I do admit, though, this is 
+      not very nice.
+
+    * For every core-cluster function, put the following properties:
+
+      * the tablename:
+	    (/putobject fno 'tablename <table name>)
+
+      * the datasource: 
+	    (/putobject fno 'datasource <ds object>) 
+
+      * the default absorbent:
+	    (/putobject fno 'defaultabsorbent <ds name>-translate-core-cluster)
+
+    * Registering the wrapper framework ( Finally! ) to handle translation:
+
+      (add-rewriter cc-fno '(+ + .... +) 'rewrite-extent)
+
+      Where the list of pluses if the same length as the length of the tuple 
+      of the core-cluster function.
+
+
+1.5.5 Registering new capabilities
+
+files: AmosNT/wrappers/relational/capabilities.osql
+       AmosNT/wrappers/relational/relational_translator.lsp
+
+Once the translator works it is nice to add some capabilities for the 
+datasource. This is done in two steps:
+
+     * Implementing a new absorbent in lisp
+
+     * creating a capability with
+
+       create_capability(<ds type>, <resolvent oid>, 
+			 <desired binding adornment>, <name of absorbent as a string>);
+
+This was done for relational and the greater-than/less-than operators. The 
+capabilities are called OBJECT.OBJECT.<->BOOLEAN@RELATIONAL etc, and they are
+all handled by one absorbent called relational-translate-comparison.
+
+
+2. JDBC Wrapper
+
+2.1 Implementing an interface
+files: AmosNT/wrappers/JDBC/jdbc_wrapper/JDBCWrapper.java
+       AmosNT/wrappers/JDBC/jdbc_wrapper/ResultSetTupleizer.java
+       AmosNT/wrappers/JDBC/jdbc_wrapper/Types.java
+       AmosNT/wrappers/JDBC/jdbc.osql
+       AmosNT/wrappers/JDBC/jdbc.lsp
+
+The interface to JDBC is implemented as foreign Java functions in the file 
+JDBCWrapper.java. The intention was to keep the code at a minimum: The methods
+act as a bridge from JDBC to OSQL and do very little themselves.
+
+2.1.1 DB2 Wrapper
+
+I prefer not commenting on the DB2 wrapper as it is now unneccesarily 
+implemented in Java, for which there is no need. The problem is that the DB2
+JDBC driver does not implement the metadata functions in JDBC, and we are 
+therefore forced to implement these function as queries to special system 
+tables. This is now done in Java, but could just as easily be done in AmosQL.
+
+3. Coding style
+
+There are some conventions in the files which possible make them look 
+different from other files in Amos II. They are by no means standard
+conventions but the style is (hopefully) consistent:
+
+     * No file mixes AmosQL and Lisp. For any module that requires both, the
+       module is split up in .osql and a .lsp file, *even* if there is only
+       one line of lisp in the .lsp file. This seemed a lot less error-prone.
+
+     * Foreign Lisp functions always have a separate layer between the AmosQL
+       function and the lisp code. These are commented as 'front' functions
+       and are easily recognized by their names, which end in a lot of + and -
+       symbols. What they do is convert all amos types to Lisp types (arrays 
+       to lists, booleans to t or nil, strings to symbols.) After that they
+       call the actual function, which has the same name, without the -:es and
+       +:es. There may be several front functions to the same Lisp function.
+       Shortly thereafter it converts the types back and call osql-result.
+
+     * All Lisp functions are commented as 'public' or 'private'. The public 
+       functions can be called from anywhere while the all private functions 
+       may change tomorrow.
+
+
+3.1 Abstract Functions
+
+It was simple to use a dedicated function for throwing errors when attempting 
+to call an abstract function. This is done by adding the following body to
+a function definition:
+  
+  create function foo(supertype st) -> ... as foreign 'abstract-function';
+
+Whenever this particular resolvent is called, an error message pops up saying
+"function supertype.foo->... is abstract."

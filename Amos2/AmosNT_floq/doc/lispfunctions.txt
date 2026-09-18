@@ -1,0 +1,1487 @@
+GENERAL OIDs
+============
+
+An OID is a datatype (Lisp data type name is 'OID') represented by an
+OID record with links to/from other objects.
+
+The functions described below are used for creating new OIDs and for
+accessing and updating properties of those OIDs. 
+
+Every OID has an associated property list which can get accessed and
+updated with a number of OID property list access and update functions
+(/PUTOBJECT, GETOBJECT, etc.). The property lists store various system
+information about the OID. Those OID property list update functions
+whose names start with a slash ('/') are transactional, i.e. the
+update is undone by a rollback.
+
+Ëach OID also has a number of properties directly stored as attributes
+of the OID record itself. These OID attributes can also be accessed
+and updated using the usual property list access and update functions.
+
+The properties of an OID depends on what kind of AMOS II object it
+represents.  For example, user objects typically have only the
+properties stored directly OID record attributes, while system objects
+can have many other properties.
+
+The OID attributes IDNO (OID number), TYPES (type set), and PROPL
+(property list) are always present.
+
+The system maintains the extent of each surrogate type (in AMOS II
+sence), along with an array of all OIDs bound to the ALisp variable
+_OBJECTS_. There are no extents for literals or collections. It is
+possible to define alias names of system objects by the function
+SET-ALIAS-NAME.
+
+A system symbol table (bound to the global variable _SYMBTAB_) is
+maintained to hold system names of OIDs. System names are always
+capitalized. The AmosQL function 
+objectname(object o)->character
+returns the name of a system object. The overloaded function 
+name(<own type>)->character 
+can be used for defining customized naming function for user types.
+It is defined as OBJECTNAME for system objects.
+
+General OID properties
+----------------------
+
+These properties are accessible with the usual property access
+function (GETOBJECT OID PROPERTY).
+
+IDNO
+Numeric id of object.
+
+NAME
+Name of object
+
+TYPES
+type set of object with most specific type first.
+
+PROPL
+property list of object.
+
+USEDBYFUNCTION
+A list of all Amos II functions referencing the object.
+
+
+General OID manipulation functions
+----------------------------------
+
+Parameter name conventions:
+
+TP   an object representing a type or the name of an object
+     representing a type as a symbol.
+TPO  an object representing a type.
+NAME a symbolic system name of an object (NIL => no name).
+O    an OID
+PROP a symbolic name of an OID property.
+VAL  the value stored for an OID property.
+
+(CREATEOBJECT TP NAME) 
+creates an Amos object whose type is specified by TP. NAME is an
+optional name for the object specified as a Lisp symbol.
+
+(/CREATEOBJECT TP NAME)
+Transactional version of CREATEOBJECT. Should normally be used rather
+than CREATEOBJECT.
+
+(/ADDOBJECT O PROP VAL)
+adds VAL to end of a list under (GETOBJECT O PROP). Transactional.
+
+(DIFFERENCEOBJECT O PROP L)
+removes elements in list L from list under (GETOBJECT O PROP).
+Transactional.
+
+(GETOBJECT O PROP)
+retrieves property PROP of OID O.
+
+(GETOBJECTNAMED NAME TPO &OPTIONAL NOERROR)
+retrieves the object named NAME (a symbol) of type TPO (an OID).
+If no such object found an error is raised, unless NOERROR!=NIL.
+
+(GETOBJECTNUMBERED NO)
+gets the OID having the ID number NO.
+Raises an error if no such object found.
+
+(OID-IDNO O) 
+returns the ID number of OID. The IDNO is stored directly in the OID
+record itself. Same as (GETOBJECT O 'IDNO).
+
+(OID-NAME O)
+returns the name of OID O or NIL if unnamed. Same as (GETOBJECT O
+'NAME).
+
+(OID-TYPES O) 
+returns the list of types of an OID. The most specific type is first
+in the list. This list is stored directly in the OID record.  Same as
+(GETOBJECT O 'TYPES).
+
+(OID-PROPERTIES O)
+returns the names of all properties of an object.
+
+(OID-PROPL O)
+returns the property list of OID, not including properties stored
+directly in the OID record. Same as (GETOBJECT O 'PROPL).
+
+(PUTOBJECT O PROP VAL)
+sets property PROP of OID O to VAL. Also properties stored directly in
+the OID record are updatable using PUTOBJECT. Avoid using this
+non-transactional version, use /PUTOBJECT instead!
+
+(/PUTOBJECT O PROP VAL)
+Transactional version of PUTOBJECT.
+
+(/RENAMEOBJECT O NEWNAME)
+changes name of OID to NEWNAME. Transactional.
+
+(RENAMEOBJECT O NEWNAME)
+same as /RENAMEOBJECT but not transactional.
+
+(SET-ALIAS-NAME NEWNAME OLDNAME TP)
+makes an alias name NEWNAME of an system object named OLDNAME of type
+TP. Not transactional!
+
+Global variables
+----------------
+
+_OBJECTS_
+array containing all surrogate objects in database indexed with OID number.
+
+_SYMBTAB_ 
+hash table for named system objects. (GETHASH <name> _SYMBTAB_)
+returns a list of the system objects named <name>. 
+
+
+TRANSIENT OBJECTS
+=================
+
+Objects created with CREATOBJECT are persistent, i.e. they stay in the
+database until they are explicitly deleted. Transient object are like
+regular OIDs, except that they do not have any ID number and they are
+automatically deleted by the garbage collector whenever not referenced
+from any other object in the database.  Transient objects are NOT in
+the type extent of their type.
+
+(CREATE-TRANSIENT-OBJECT TPO)
+creates and returns a transient object of type TPO.
+
+Transient objects are printed as
+    #[OID TRANSIENT:xxx]
+where xxx is the address of the OID, not an ID number.
+
+To obtain a pointer to a transient object printed as
+    #[OID TRANSIENT:1515392]
+use
+    (VAG 1515392)
+WARNING: Mispelling the adress might crash the system!
+
+(MAKE-PERSISTENT O)
+A transient object can be made into a persistent object by calling
+MAKE-PERSISTENT.  It assigns a new unique ID number for O and adds O
+to the extent of its type.
+
+MAPPED OBJECTS
+==============
+
+Transient and persistent objects may have an associated property
+ENCODES which is used as keys when comparing them. Thus two objects
+are considered equal if their ENCODES properties are
+equal. Analogously for inequality comparisons. This allows an object
+to represent a proxy (mapping) for another object (or literal). We say
+that such an object is a 'mapped object'. Mapped objects are used when
+importing data from external sources. Usually mapped object are
+transient so that imported objects are immediately deallocated when no
+longer used.
+
+(ENCODE-MAPPED-OBJECT KEY TYPE) 
+creates a transient mapped object of type TYPE and makes it a proxy
+for KEY.
+
+(DECODE-MAPPED-OBJECT MO)
+returns the object for with MI is proxy (i.e. the ENCODES property).
+
+ 
+TYPE OBJECTS
+============
+
+AMOS II types are represented by OIDs of a type name "TYPE", below
+called 'type objects'.
+
+Properties
+----------
+
+The following OID properties (accessed with GETOBJECT) are specific
+for type objects:
+
+ALLSUPERTYPES
+a list of all supertypes above the type in the type tree. The type
+itself is first in the list. This is the actual type set for all
+objects of the type. If you access the type set of an OID (with
+OID-TYPES) you will get a pointer to the ALLSUPERTYPES property of the
+most specific type of the OID. Access with function
+TYPE-ALLSUPERTYPES.
+
+NAME
+Name of type.
+
+SUBTYPES
+A list of the immediate subtypes of the object. Access with function
+SUBTYPES.
+
+SUPERTYPES
+A list of the immediate supertypes of the object. Access with function
+SUPERTYPES.
+
+Functions on type objects
+-------------------------
+
+Parameter conventions:
+TPO   object representing a type
+TP    either type object or symbolic type name of a type
+FNO   object representing a function
+FN    either a function object of symbolic name of a function
+X     expression, i.e. OID or literal (number, string, vector, etc.), or
+      a function call in format (FNO ...).
+
+(/ADDTYPE OID TPO)
+adds type TPO to types of OID. Transactional.
+
+(ALL-OID-PROPS TP)
+returns a list of all property names used by objects of type TP.
+
+(ARG-TYPE X)
+same as (MOST-SPECIFIC-TYPE (ARG-TYPES X))
+
+(ARG-TYPES X)
+Returns the type list of an expression X.  Can also use faster
+(OID-TYPES OID) for types of OIDs.  See also (ARG-TYPE X)
+
+(CREATELITERALTYPE NAME SUPERTYPES LISPTAG PRINTFN &OPTIONAL AMOSTYPEFN)
+creates a new literal type named NAME under literals SUPERTYPES.  The
+new literal objects are represented as Lisp objects of type LISPTAG.
+PRINTFN is Lisp 'print function' (explained in section 'PRINTING
+AmosQL OBJECTS') to print literal objects.  AMOSTYPEFN is optional
+'typing function' that given a Lisp object of type LISPTAG returns the
+Amos type of that object. Allows efficient type dispatch on value of
+Lisp object.
+
+(CREATETYPE NAME SUPERTYPES &OPTIONAL KIND-OF-TYPE SUBTYPES OID)
+creates a new type named NAME under SUPERTYPES.  KIND-OF-TYPE
+indicates subtype under meta-type named TYPE (default STOREDTYPE).
+SUBTYPES are optional subtypes.  OID is optional OID for new type
+object.  OID=NIL => new object created by system.  Transactional.
+
+(CREATEUSERTYPE NAME SUPERTYPES &OPTIONAL KIND-OF-TYPE SUBTYPES OID)
+as CREATETYPE but a user type is created inserted below type
+USEROBJECT.  All SUPERTYPES must also be user types.  Transactional.
+
+(CREATE-TYPE NAME) is a MACRO that translates into CREATEUSERTYPE.
+Used by AmosQL parser and should normally NOT be used from Lisp.
+
+(EXTENT-FUNCTION-NAME TP)
+construct the standard name for the extent function of type TP.
+
+(GET-EXTENT-FUNCTION TPO)
+returns the extent function for type TPO.
+
+(GETTYPENAMED TP &OPTIONAL NOERROR)
+returns the type object named TP.  If no such type is found then an
+error is raised, unless NOERROR!=NIL.  If TP is a type object it is
+returned directly.
+
+(MAPEXTENT TPO LISPFN)
+applies Lisp function LISPFN on each element of surrogate type TPO.
+Does not include the elements of the subtypes of TPO.
+
+(MOST-SPECIFIC-TYPE TL)
+Returns the most specific type of a type list TL (i.e. its first
+element).  See (OID-TYPES OID) for explanation of type list!  See also
+(ARG-TYPE X)!
+
+(MOVE-TYPE TP BELOW)
+Move the position of TP in the type hierarchy to below type BELOW.
+
+(OID-P X)
+tests if X is an OID.
+
+(OID-TYPES OID)
+Returns the 'type set' of an object OID.  The type set of an object
+represents all the types of the object, with the most specific type
+first. See also more general ARG-TYPES!
+
+(OSQL-CONSTANTP X)
+Tests is X is an ObjectLog constant (i.e. string, number, OID).
+
+(OSQL-SUBTYPEP X Y &OPTIONAL STRICT)
+Tests if a type object X is a subtype of another type object Y.
+STRICT=NIL => Test if X<=Y, otherwise X<Y.
+
+(/REMTYPES OID TOREMOVE)
+removes types TOREMOVE from types of OID. Transactional.
+
+(SORT-TYPES TYPEL)
+sort types in list TYPEL with most specific types first.
+
+(STORE-EXTENT-FUNCTION TP FNO)
+stores Amos function FNO as extent function for type TP. The extent
+function FNO returns all instances of type TP.
+
+(SUBTYPES TPO)
+returns the list of immediate subtypes of TPO.
+
+(SUPERTYPES TPO)
+returns the list of immediate supertypes of TPO.
+
+(SURROGATE-TYPE? TPO)
+tests if objects of type TPO are represented by OIDs.
+
+(TYPE-ALLSUPERTYPES TPO)
+Returns the property ALLSUPERTYPES of a type TPO.  ALLSUPERTYPES is
+the type list for all the objects of that type.
+
+(TYPE-CARDINALITY TPO)
+returns the number of objects in the extent of type TPO.
+
+(TYPE-EXTENT TPO)
+returns the list of objects in the extent of TPO. Notice that
+MAPEXTENT should be used when possible as it does not build a long
+list.
+
+(UT_P TPO)
+Tests if type TPO is a user type.
+
+Global variables
+----------------
+
+The most commonly accessed objects representing system types are
+stored as values of global Lisp variables with names _<typename>_:
+
+_OBJECT_, _FUNCTION_, _TYPE_, _NUMBER_, _REAL_, _INTEGER_, _LITERAL_,
+_RELATION_, _COLLECTION_, _BAG_, _TIMEVAL_, _PROXYTYPE_, _TIME_, _DATE_,
+_DERIVEDTYPE_, and _VECTOR_.
+
+PARAMETERIZED TYPES
+===================
+
+Parameterized types allow you to define types constructed from several
+other types, e.g. Bag of Integer, Vector of Integer, Bag of
+<Integer,Integer>. In general if PT is a parameterized type and Ti are
+any types, one may declare i AmosQL a specific parameterized type with:
+
+   PT of Ti
+or
+   PT of <T1,...,Ti>
+
+Every parameterized type PT needs a type constructor function in Lisp,
+TCF, with definition
+
+  (defun TCF (TYPES) ...)
+
+Given a list of parameter types, TYPES, TCF creates or finds the
+corresponding parameterized type object. For examples of how to make
+the type constructor functions, see file collections.lsp where the
+Lisp code for built-in parameterized types BAG and VECTOR is defined.
+The parameterized types BAG and VECTOR types are created in function
+BOOT in file boot.lsp.
+
+Parameterized types have the following properties:
+
+TYPE-PARAMETERS
+If the list of type objects for the elements of a parameterized
+type. For example, the type 'Vector of Integer' has as single
+TYPE-PARAMETERS the type INTEGER, and TYPE-PARAMETERS is therefore a
+list of the object representing the type named INTEGER. Elements can
+also be tuples and then the TYPE-PARAMETERS can contain more than one
+element. For example, TYPE-PARAMATERS of type 'Vector of
+<Integer,Real>' is the list of (#[OID 9 "INTEGER"] #[OID 10 "REAL"]).
+
+ITERATOR
+
+The generic foreign function implementation of AmosQL function IN
+iterates over the elements of a parameterized type to generate a bag
+of values.  For example,
+the iterator
+  IN(Vector of <Integer,Real>)-><Integer, Real>;
+is implemented by a generic foreign function in Lisp VECTOR.IN that
+iterates over any vector.
+
+TYPE-CHECKER
+The Lisp function F(O,TPO) tests if an object O is of the
+parameterized type TPO. For example, for any VECTOR type it is
+
+   (LAMBDA (O TPO)
+    (OSQL-SUBTYPEP
+       (ARG-TYPE O) 
+       #[OID 16 "VECTOR"])))
+
+PRINTING AmosQL OBJECTS
+=======================
+
+The results of query evalutions are always printed using the ALisp
+function:
+
+(PRINT-AMOS-OBJECT O STREAM)
+PRINT-AMOS-OBJECT prints an Amos II object O on stream STR using the
+standard string notation for Amos II objects.
+
+If you wish to stringify any AmosQL object so that it looks exactly as
+printed in query results, use the function:
+
+(STRINGIFY-AMOS-OBJECT O)
+where O is any Amos II object.
+
+The printing of Amos II objects of a given type can be customized by
+associating a Lisp function with the type object. Such a 'print
+function' takes two arguments:
+(MYPRINTFN O STR)
+where O is the Amos II object to be printed on stream STR.  If the
+print function returns NIL the standard system print function is
+used instead.
+
+To associate a print function PRINTFN with type named TP use
+(SET-PRINTFN TP PRINTFN)
+
+Single inheritance between print functions for types is allowed.
+
+
+FUNCTION OBJECTS
+================
+
+AMOS II functions are represented by OIDs of type FUNCTION, called
+'function objects' below.  Several system properties and functions are
+used for representing an AMOS II function.
+
+Function objects are accessed either though their OIDs or their
+symbolic names.  Below, argument FN denotes either an OID of or the
+symbolic name of a function, while FNO denotes a function's OID.
+
+OID Properties
+--------------
+
+ARGTYPES
+List of argument type of resolvent.
+
+BINDINGS
+A data structure representing the TBRs of the function
+object. Documented below.
+
+GENFN
+Pointer to OID of generic function from resolvent.
+
+NAME
+Name of function.
+
+ORGCODE
+The parsed code of the function. When the BISON/FLEX parser in C
+parses an AmosQL statement it will translate it to a Lisp form which
+is then evaluated by the ALisp interpreter. The parsed version of a
+function definition is stored under the property ORGCODE for function
+objects. This expression will also be generated if you use the
+primitive Amos function defintition function CREATEFUNCTION below
+which does not involve the AmosQL parser.
+
+RESOLVENTS
+The resolvents of a generic function. A list of the function itself
+for resolvents.
+
+RESTYPES
+List of the result types of resolvent.
+
+SOURCE_TEXT
+The original AMOSQL unparsed source code as a string. This property is
+generated only when the AmosQL function is parsed from a string or a
+file.
+
+SELECTBODY
+The selectbody of the function. A selectbody represents the execution
+plan of the function along with a number of other properties.
+
+USESOBJECTS
+The objects referenced by the function definition. Inverse is
+USEDBYFUNCTION.
+
+Functions on function objects:
+------------------------------
+
+The creation of function objects is normally done with the Lisp
+function CREATEFUNCTION defined in the next section.
+
+Parameter conventions:
+FNO   function object
+FN    either a function object of symbolic name of a function
+NAME  the symbolic name of a system object
+X     expression, i.e. OID or literal (number, string, vector, etc.), or
+      a function call in format (FNO ...).
+
+(CHECK-FUNCTIONS)
+Compile all functions that are marked for recompilation.
+
+(FUNCTIONTYPE FNO)
+returns the kind of function of FNO as string, e.g. "stored",
+"derived", or "foreign".
+
+(FUNCTION-ARGVARS FNO) 
+the names of the arugements of FNO
+
+(FUNCTION-RESVARS FNO)
+the names of the attributes in the result tuple of FNO.
+
+(GENERIC-FUNCTION-OF FNO)
+returns the generic function of a resolvent FNO.
+
+(GETFUNCTIONNAMED NAME &OPTIONAL NOERROR)
+returns the function named NAME.  If no such function is found an
+error is raised, unless NOERROR!=NIL.
+
+(GET-MOST-SPECIFIC-RESOLVENT FN TYPEL)
+Returns the correct resolvent of FN, given the types of the arguments
+in a call, TYPEL.
+
+(GET-RELATION FNO)
+Stored functions are internally represented as objects of type
+RELATION, which are simple tables, also called 'predicate functions'.
+You recognize the predicate functions by their names beinning with P_,
+e.g. P_FUNCTION._STATIC_FUNCS_->BOOLEAN. GET-RELATION returns the
+predicate functions associated with the stored function FNO.  For
+example, try: 
+(getrelation (functionnamed 'function._static_funcs_->boolean))
+
+(GET-RESOLVENT-ARGTYPES FNO)
+Retrieves list of type objects for the arguments of FNO.
+
+(GET-RESOLVENT-RESTYPES FNO)
+Retieves list of type objects for results from FNO.
+
+(GETARITY FNO)
+Number of arguments in FNO.
+
+(GETRESOLVENT FNO ATL &OPTIONAL ERRORFLG)
+gets the resolvent of the generic function FNO, given the list of
+exact matching argument type objects in ATL.  ERRORFLG != nil =>
+generate error if resolvent not found. Notice that this function does
+not deal with inheritance, unlike GET-MOST-SPECIFIC-RESOLVENT.
+
+(PC FN)
+prints execution plans of AMOSQL function FN (OID or symbolic name of
+function) along with the (parsed) Lisp definition of FN.
+
+The intermediate optimization steps of the optimizer are amos printed.
+
+If the flag _SAVE-INTERMEDIATES_ is true when the function is compiled more
+intermediate steps will be printed.
+
+(PPFF FN)
+pretty-prints the Lisp code of foreign Amosql function FN.
+
+(RECOMPILE_DEPEND FNO)
+Recompile function FN and all functions depending on FNO.
+
+(RESOLVENAME FN ARGL RESL)
+returns the resolvent of applying FN on argument tuple ARGL.
+Generates an error if function cannot be resolved.
+if RESL!=NIL then the system also checks the result types.
+
+(RESOLVENTS FNO)
+returns a list of the resolvents of a function object.
+
+(SET-EARLY-BOUND FN)
+prohibits late binding on the function FN. If FN is a generic function
+all its current resolvents will get this property. Implemented by OID
+property EARLY-BOUND.
+
+(SET-TYPE-CONTAINER FN)
+makes the foreign function FN be type container for all its argument
+and result types. For definition of type container, see
+ttp://www.dis.uu.se/~udbl/publ/tkde92.pdf. Stored and derived
+functions are always type containers, while foreign functins are type
+containers only if this property is set. If FN is a generic function
+all its current resolvents will get this property. Implemented by OID
+property TYPECONTAINER.
+
+(THERESOLVENT FN)
+returns the unique resolvent for the generic function name FN. An
+error is generated if the generic function FN is overloaded and has
+more than one resolvent.
+
+CREATING AmosQL FUNCTIONS
+=========================
+
+An AmosQL statement
+
+ create function ...  
+
+is first parsed into a MACRO called CREATE-FUNCTION (or
+CREATE-PROCEDURE for procedures). This macro is expanded into a call
+to CREATEFUNCTION which is documented below.
+
+You are recommended to always use the Lisp macro OSQL to create any
+kind of AmosQL function inside ALisp code. By using the macro OSQL you
+don't have to worry about how function creation statements are parsed
+into Lisp. For example:
+(osql "
+create function foo mysqrt(Number x)->Number y
+   as foreign 'mysqrt-+';") 
+
+It is NOT recommended to call the macro CREATE-FUNCTION and then
+evaluate the result. (In fact EVAL should never be used unless
+absolutely necessary).
+
+The rest of this section documents how function definitions are
+defined internally by Lisp function calls.
+
+Lisp functions:
+
+(CREATEFUNCTION NAME ARGTYPES RESTYPES RESV QUANT PRED &OPTIONAL FNO)
+creates a new AmosQL function. It can be derived, stored or foreign.
+CREATEFUNCTION is transactional.  
+
+A new function object is created, unless the optional argument FNO is
+specified. It must then be a pre-created object of type FUNCTION which
+will represent the function.
+
+NAME is name of the function.
+
+ARGTYPES is a parsed declaration list in Lisp format, e.g.
+   create function foo(integer x, real y) -> ...
+has the ARGTYPES list:
+   ((INTEGER X)(REAL Y))
+Names of types may be replaced with the corresponding type objects,
+   e.g.
+   ((#[OID 9 "INTEGER"] X)(#[OID 10 "REAL"] Y))
+
+Analogously RESTYPES is the parsed result declaration list.
+
+The arguments RESV, QUANT, and PRED are interpreted differently
+depending on what kind of AmosQL function is to be defined.
+
+Derived functions:
+------------------
+
+RESV is a parsed AMOSQL result list in Lisp fomat, e.g.
+   select f(g(x),y,h(x); 
+will have the following RESV:
+   ((F (G X)) Y (H X))
+
+For derived functions QUANT is a list of parsed AmosQL FROM
+declaration, e.g.
+   select ... from integer a, person b ... ;
+will have the following QUANT
+   ((INTEGER A)(PERSON B))
+
+PRED is a parsed AmosQL WHERE clause in Lisp format, e.g.
+  select .... where (f(x,y) and g(z)=11) or (a < 5 and b + f(g) > 32 and D);
+will have this PRED structure:
+ (OR (AND (F X Y) (= (G Z) 11)) 
+     (AND (< A 5) (> (PLUS B (F G)) 32) D))
+
+Stored functions:
+-----------------
+
+RESV, QUANT and PRED are all NIL for stored functions.
+
+Simple foreign functions:
+-------------------------
+
+RESV is the symbol FOREIGN
+
+QUANT contains a specification of how the foreign function is
+implemented. There are here some different variants:
+
+If QUANT is NIL the system will use a default name for the
+implementation. (Not recommended).
+
+If QUANT is a list of a string it is the name of the implementation, e.g.
+  create function foo(integer x)->real as foreign "foo";
+will have QUANT = ("foo") indicating that the foreign function is
+  implemented by the Lisp function named FOO.
+
+PRED is NIL if the function is a simple foreign function.
+
+Furthermore, there is a Lisp macro, FOREIGN-LISPFN (see external.pdf),
+that can be used for defining single-directional foreign functions.
+
+Multi-directional foreign functions:
+------------------------------------
+
+If QUANT is the symbol MULTIDIRECTIONAL it indicates the specification
+of a multidirectional function. In this case the argument PRED
+specifies the different TBR resolvents of the multidirectional
+function, e.g.
+  create function foo(integer x)->real as multidirectional
+        ('fb' foreign 'fie')
+        ('bf' foreign 'fum');
+will have the PRED structure:
+    (("fb" FOREIGN "fie") ("bf" FOREIGN "fum"))
+
+It is also possible to specify the cost and other properties of each
+TBR resolvent of multi-directional functions. For example:
+  create function foo(integer x)->real as multidirectional
+        ('fb' foreign 'fie' cost {2,1})
+        ('bf' foreign 'fum' cost fum);
+will have the following PRED structure:
+  (("fb" FOREIGN "fie" COST (2 1)) 
+   ("bf" FOREIGN "fum" COST FUM))) 
+
+Other properties can also be specified per TBR, e.g. REWRITER (to be
+documented later).
+
+Utility functions:
+
+(BPATLIST BPAT)
+translates the string representation of a binding pattern,
+e.g. "bffb", into the corresponding list representation, e.g. (- + +
+-), used by many of the internal query optimization functions.
+
+(LISTBPAT L)
+Inverse of BPATLIST. Converts list representation to string.
+
+CALLING AMOSQL FUNCTIONS
+========================
+
+In general the functions that access AMOSQL functions either take
+OIDs of type FUNCTION or symbolic names of AMOSQL functions.
+
+Parameter conventions:
+TPO   object representing a type
+TP    either type object or symbolic type name of a type
+FNO   object representing a function
+FN    either a function object of symbolic name of a function
+ARGL  an argument list of a call to an AmosQL function represented
+      either as a list or an array
+RESL  the result tuple of an update of an AmosQL function represented
+      either as a list or an array
+X     expression, i.e. OID or literal (number, string, vector, etc.), or
+      a function call in format (FNO ...).
+
+(ADDFUNCTION FN ARGL RESL)
+adds tuple RESL to the set of tuples stored for FN under argument tuple
+ARGL.
+
+(MAPFUNCTION FNO ARGL MAPFN)
+efficient function to apply the Lisp function MAPFN on each result row
+(represented as a list) of calling the resolvent FNO with arguments
+ARGL.  The function call is NOT type checked and FNO thus must be the
+correct resolvent.
+
+(MAPFUNCTIONRES FN ARGL DUPFLG MAPFN)
+applies the Lisp function MAPFN on each result row (represented as a
+list) of calling of AMOSQL function FN with arguments ARGL. If DUPFLG
+!= NIL and the same row is returned more than once the application
+will be done only once.  The function call is always type checked and
+the right resolvent chosen.
+
+(CALLFUNCTION FN ARGL)
+as GETFUNCION, but result tuples are vectors and duplicates cannot be
+removed. Used by C interface.
+
+(DELFUNCTION FN ARGL &OPTIONAL NOCHECK)
+removes bag of tuples stored for FN under the argument tuple ARGL.
+The arguments and results will not be typechecked if NOCHECK != NIL.
+
+(EXTENT FN)
+returns the extent of function FN as list of tuples where each tuple is
+represented as list.
+
+(GETFUNCTION FN ARGL &OPTIONAL DISTINCT)
+calls Amosql function FN with argument tuple ARGL.  (ARGL can be
+represented either as vector or list) Result is list of tuples where
+each tuple is list of elements.  DISTINCT!=NIL => duplicates removed.
+
+(GETFUNCTION-FIRSTTUPLE NAME ARGL &OPTIONAL FASTFLG)
+Get 1st tuple from calling AmosQL resolvent NAME with argument ARGL.
+FASTFLG = T => No type resolution
+
+(REMFUNCTION FN ARGL RESL &OPTIONAL NOCHECK) 
+removes tuple RESL from the set of tuples stored for FN under argument
+tuple ARGL.  The arguments and results will not be typechecked if
+NOCHECK != NIL.
+
+(SETFUNCTION FN ARGL RESL &OPTIONAL NOCHECK)
+sets value FN applied on argument tuple ARGL to RESL.
+
+
+QUERYING
+========
+
+(AMOS-EXECUTE CMD &OPTIONAL STOPAFTER)
+evaluates the AMOSQL statement CMD and returns a list of tuples where
+each tuple is represented as list of objects.  If STOPAFTER is a
+number, it specifies the maximum number of tuples to return in result
+list.
+
+(OBJLOG STRING)
+pretty-prints the ObjectLog of Amosql statement STRING.
+
+(OSQL STRING)
+is a Lisp macro version of AMOS-EXECUTE. Use AMOS-EXECUTE if you wish
+to dynamically evaluate AmosQL statements. The macro OSQL is intended
+for use in Lisp code. AmosQL variables in STRING names :<name> can be
+referenced through the corresponding Lisp variables named AMOS_<name>.
+
+(PREPARE-QUERY STRING PARAMS)
+generates an Amos II transient function with parameters named ?1,
+?2,...,?PARAMS and which is defined by substituting these parameters
+in the AmosQL query STRING.
+
+(QPLAN STRING)
+returns the optimized ObjectLog query plan for Amosql statement
+STRING.
+
+SELECTBODIES
+============
+
+A SELECTBODY is a stucture containing a compiled AMOSQL function for a
+given binding pattern. The selectbody is stored under the property
+SELECTBODY of a function object. It has the following fields:
+
+(DEFSTRUCT SELECTBODY
+   ARGL        ; Argument symbols
+   RESL        ; Result symbols
+   PRED        ; Re-written predicate
+   OPTPRED     ; Optimized selection predicate
+   DELPRED     ; Expression used when updating function. NIL if not
+               ; updatable definition.
+   LOCALS      ; Local symbols in predicates.
+   ORGPRED     ; Original unoptimized predicate.
+   ARGT        ; Types of arguments for this TBR.
+   REST        ; Types of results.
+   LOCT        ; Types of local variables.
+   COERCEDPRED ; Coerced predicate (if different).
+   DECOMPTREE) ; Decomposition tree.
+
+Functions
+---------
+
+(GETSELECTBODY FN)
+returns the selectbody of the resolvent FN. If FN is a generic
+function having only one resolvent that resolvent is returned,
+otherwise an error is raised.
+
+TBRs and Binding Patterns
+=========================
+
+Multi-directional AmosQL functions can have different definitions
+depending on the binding patterns of their argument(s) and
+result(s). For each implemented binding pattern of a resolvent (TR)
+there is a Type and Binding pattern Resolvent (see TKDE-92) having a
+selectbody and various other properties. The TBR data structure is a
+linked list that for each resolvent describes properties of its
+implemented TBRs. The property BINDINGS of a resolvent points to the
+TBR data structure. Each TBR also has a transient function object, the
+TBR function, that can be used as any other function.
+
+A binding pattern is internally represented as a list of '+' and '-'
+where '-' indicates a bound position and '+' an unbound one.
+
+The TBR descriptor has the following record layout:
+
+(DEFSTRUCT TBR ; To describe TBR instances of multi-directional functions
+  FNO ; The TBR function
+  BPAT ; binding pattern for the TBR
+  SELBODY ; selectbody
+  IMPL ; foreign implementation of TBR (Lisp of foreign C predicate)
+  COST ; query execution cost profile as a list, (cost fanout)
+  REWRITER ; query rewriter for TBR rewrite rules (not yet documented)
+  )
+
+Functions
+---------
+
+(BIND-FOREIGN TR BPAT IMPL &OPTIONAL FNAME)
+Define a TBR of resolvent named TR having binding pattern BPAT to be
+implemented as a foreign AmosQL function IMPL. IMPL is either a name
+of a Lisp function or a Lisp object of type EXTPRED. The latter
+represents foreign AmosQL functions implemented in C.
+
+(COVERS BP1 BP2)
+Returns a number if binding pattern BP1 covers BP2 (TKDE-92) and NIL
+otherwise. The lower the number the better coverage.
+
+(EXEC-COST-OF-TBR FNO BPAT &optional CATCHERROR)
+Computes a pair (COST . FANOUT) representing estimated cost and fanout
+to call the TBR of FNO with winding pattern BPAT. If the TBR is
+undefined CATCHERROR determines whether an error should be raised or
+NIL returned.
+
+(GET-BEST-COVERING-TBR FNO BPAT)
+Given a resolvent FNO find the TBR whose binding pattern best covers
+BPAT.
+
+(MAPBPATS FNO FN)
+Apply FN on all TBRs of resolvent FNO. If RETURN is called in FN it
+terminates the iteration.
+
+(THE-TBR-FUNCTION FNO BPAT &optional CATCHERROR) Get a TBR function
+for FNO and binding pattern FNO. If that function does not already
+exist, the system will try to compile a new TBR function. If the
+compilation fails the value of CATCHERROR determines whether an error
+should be raised or NIL returned. 
+
+RELATIONS
+=========
+
+Objects of type RELATION represent tables stored in the database, also
+called 'predicate functions'. A table is a set of rows represented as
+vectors with uniform length. Relations must have at least one INDEX
+for efficient row access. Indexes are represented as vectors
+describing index properties. Stored AmosQL functions are internally
+represented as objects of type RELATION.
+
+Properties:
+-----------
+
+INDEXES
+list of indexes.
+
+NAME
+Name of relation.
+
+PREDOF
+If the table represents a stored function this property points to it.
+
+WIDTH
+the width of a relation. 
+
+Functions:
+----------
+
+Variable conventions:
+
+RO  OID of type relation 
+R   OID of type relation or name of relation as symbol.
+    Symbol *TRANSIENT* => transient (nameless) and garbage collected relation.
+ROW a relational row represented as array or list.
+
+(/ASSERTRELATION RO ROW)
+inserts or replaces row in relation.
+
+(ASSERTRELATION RO ROW)
+non-transactional version of /ASSERTRELATION.
+
+(/CREATERELATION NAME INDEXES WIDTH)
+creates a new relation named NAME of the specified WIDTH.
+INDEXES is a list of index descriptors as lists
+ (POS TYPE UNIQUE)
+where POS is the index position (0 and up).
+      TYPE is kind of index (currently HASH or MBT)
+      UNIQUE is non-NIL if each index entry uniquely matches one row.
+
+(CREATERELATION NAME INDEXES WIDTH)
+is a non-transactional version of /CREATERELATION.
+
+(CLEARRELATION RO)
+removes all rows from the table.
+
+(/CLEARRELATION RO)
+transactional version of CLEARRELATION. Much slower than
+CLEARRELATION!
+
+(GET-RELATION FNO)
+retrives the table associated with the stored function FNO.
+
+(MAPRELATION R PAT MAPFN)
+iterates over the rows in relation R matching the pattern P applying
+the Lisp function MAPFN on each row.
+
+A pattern is a list or Lisp array with the same width as the
+relation. The symbol '*' in some pattern position matches any object,
+otherwise the pattern position must match the corresponding row
+position for MAPFN to be called.
+
+MAPFN is applied on the rows, i.e. its 1st arg is bound to the 1st
+element of each matching row, etc.
+
+(PRINTRELATION R)
+prints the rows of R as lists.
+
+(/PURGERELATION R)
+deletes relation R along with all its rows and indexes.
+
+(RELATION-CARDINALITY RO)
+returns size of table.
+
+(RELATION-INDEXES RO)
+returns list of indexes.
+
+(RELATION-ROWS R)
+returns list of the rows in the relation represented as lists.
+
+(RELATIONP X)
+tests if X is a relation object or the name of a relation.
+
+INDEXES
+=======
+
+An index is a record structure implemented in C that represents
+various kinds of indexes on tables. Notice that it is NOT an AmosQL
+object type.
+
+Attributes
+----------
+
+An index structure has the following attributes:
+
+CARDINALITY
+The number of entries in the index. Accessed with (INDEX-CARDINALITY I).
+
+OWNER
+The table (relation) owning the index. 
+
+POS
+The position of the index in the table. Accessed with (INDEX-POS I).
+
+TYPE
+The kind of index. Accessed with (INDEX-TYPE I).
+
+UNIQUE
+A flag indicating whether the index is unique. Accessed with (INDEX-UNIQUE I).
+
+Functions
+---------
+
+The following functions are defined for indexes:
+
+(/DROPINDEX RO POS)
+removes the index of table RO at position POS.
+
+(DROPINDEX RO POS)
+non-transactional version of /DROPINDEX.
+
+(GETINDEX RO POS NOERROR)
+retrieves the index of table RO at position POS. If there is no index
+at the position an error exception is raised, unless NOERROR != NIL in
+which case NIL is returned instead.
+
+Handling query variables
+========================
+
+The definitions of functions and predicates use variables. Variables
+are represented as Lisp symbols, e.g. AGE, _V1. Some symbols are used
+to represent special values and cannot be used as variables: TRUE,
+FALSE, NIL, and *. To test whether an expression X is a variable use
+the function (OSQL-VARIABLEP X).
+
+The system maintains the types of variables during query
+processing. The types of variables used in selectbodies are stored
+under the SELECTBODY attributes ARGT, REST, LOCT for argument,
+results, and local variables, respectively. 
+
+The special variable *BINDINGS* represent the current variable scope
+being processed. It is a list representing properties of the variables
+in the current scope. A new variable binding scope is defined by
+rebinding the Lisp variable *BINDINGS*.
+
+(B)
+Print bindings in current variable binding scope bound to *BINDINGS*.
+
+(DT_GENVAR TPO)
+Generates a new unique variable of type TPO in the current scope
+defined by *BINDINGS*. The generated variables are named _V1, _V2,
+etc. Notice that the macro RESETGENVAR must b used for reseting the
+generation of new variable numbers.
+
+(OSQL-CONSTANTP X)
+return true if X represents a constant in the AmosQL query language,
+e.g. a string, number, date, OID, etc.
+
+(OSQL-VARIABLEP X)
+returns true if X is a variable.
+
+(RESETGENVAR FORM)
+To avoid generating excessively new variable names the counter n for
+generating a new variable _Vn must be reset before the new variable is
+generated. The macro RESETGENVAR starts a local new counter when
+evaluating FORM.
+
+NOTICE that an error is raised if DT_GENVAR is called outside any
+variable scope or without being called inside RESETGENVAR. For
+example, it is forbidden to call DT_GENVAR from the Lisp top loop. 
+It also forbidden to call from the top loop
+(resetgenvar(dt_genvar _vector_))
+since no variable binding scope is defined there.
+
+(ADDBINDING VAR VAL TYPE)
+adds binding of variable VAR of type TYPE to VAL in current scope.
+
+(GETBINDING VAR)
+returns a structure called BINDING describing variable VAR in current
+scope.
+
+Events and transactions
+=======================
+
+Amos II contains a subsystem for managing transactions.  So called
+'write ahead logging' is used which means that just before a database
+object is to be modified (updated) the system will log the old
+(i.e. current) and the new (i.e. updated) state of the database
+object. The state change, called an 'event', is saved in a linked list
+called the 'history list' bound to the global Lisp variable _HISTORY_.
+If a 'rollback' command is issued the system will traverse the history
+list backwards to restore the old states.
+
+The history list can also be used for recovering crashed Amos II
+databases. What is required for this is to print the history list to
+disk after each commit and traverse it forward to restore the state
+when the Amos II crash happened (see
+http://www.dis.uu.se/~udbl/publ/recovery.pdf).
+
+The function HISTORY-ADD raises an event which then will be added to
+the history list. It is called from the Amos II kernel whenever a
+state change is detected there. It can also be called explicitly from
+Lisp programs to register state changes.
+
+Event records are represented by a special data structure with Lisp
+type named HISTEVENT. Events records can be of several different
+'event types' and the programmer can introduce new event types into
+the system using the Lisp function NEW-EVENT which creates an 'event
+descriptor' for the new event type.
+
+Event records
+-------------
+
+An event record has a number attributes described below. They are not
+directly accessible from Lisp, but are instead passed as arguments to
+Lisp functions when an event is raised.
+
+OBJ
+the Lisp object for which the event is raised.
+
+ARG
+an optional parameter for the raised event.
+
+OLD
+the current state of OBJ for parameter ARG.
+
+NEW
+the new state of OBJ for parameter ARG 
+
+
+Event descriptors
+-----------------
+
+New events are registered to the system with
+
+(NEW-EVENT NAME ROLLBACKFN &OPTIONAL ROLLFORWARDFN) 
+
+This function creates a new kind of event and returns its 'event
+descriptor'.
+
+The 'rollback function', ROLLBACKFN, is called when a transaction
+rollback has been issued to undo the effect of the event. It is called
+with the arguments OBJ, ARG, OLD, and NEW, the attributes of the
+event.
+
+The optional 'rollforward function', ROLLFORWARDFN, redoes the effect
+of the event. This happens when recovering databases and in some other
+situations. The default for the rollforward function is the 'inverse'
+of the rollback function, i.e. the default
+ROLLFORWARDFN(OBJ,ARG,OLD,NEW) == ROLLBACKFN(OBJ,ARG,NEW,OLD). The
+rollforward function needs to be specified only in the unusual cases
+when the rollforward action is assymetric from the rollback action.
+
+Raising events
+--------------
+
+Events are raised and log records are created with the function
+
+(HISTORY-ADD EVT OBJ ARG OLD NEW) 
+
+where EVT is an event descriptor and OBJ, ARG, OLD, NEW are as
+above. Notice that the ventts should be raised just before the update
+is to take place.
+
+The function call
+
+(PRHIST _HISTORY_)
+
+prints all events in the history list (the latest first).
+
+Event handlers
+--------------
+
+The programmer can associate one or several 'event handlers' with each
+event type. Event handlers are Lisp functions which are called when an
+event is raised before it is added to the history list.
+
+Event handlers are registered with the function
+
+(SUBSCRIBE-EVENT EVT EVENTFN) 
+
+The Lisp function EVENTFN is called whenever an event of type EVT is
+raised. There case be several event handlers associated with each
+event type. The arguments of EVENTFN OBJ, ARG, OLD, and NEW as above.
+
+If the event handler of an event returns a non-NIL value, the event
+will be logged in the history list, otherwise no logging takes place.
+Thus event functions can be used for controlling whether logging of a
+certain event should be done or not.
+
+Event handlers can be unregistered with
+
+(UNSUBSCRIBE-EVENT EVT EVENTFN) 
+
+Transaction control
+-------------------
+
+(COMMIT) 
+commits the transaction and deallocates the history list.
+
+(HISTORY-ROLLBACK SAVEPOINT) 
+If SAVEPOINT is NIL the history list is traversed in reverse order to
+undo all state changes and then deallocate the history list.
+SAVEPOINT can also be some nil-NIL binding of _HISTORY_ in which case
+the rollback will be done until that point (the savepoint) is reached.
+
+(ROLLBACK N) The prompter for AmosQL and ALisp prints a 'savepoint
+number' before each statement. Whenever a database update occurred
+during an evaluation this savepoint number is incremented. The system
+remembers the history list for each savepoint number.  ROLLBACK rolls
+the current transaction back to savepoint number N. There is only one
+global savepoint history per Amos II server.
+
+(UNDO-AT-ERROR &REST FORMS) (MACRO)
+evaluates the Lisp expressions FORMS. If an exception happened during
+the evaluation, the transaction will be rolled back to the state it
+was in just before UNDO-AT-ERROR was called.
+
+When requests are exchanged between Amos II peers (through the Lisp
+function REMOTE-EVAL) there is an implicit (COMMIT) issued after each
+call (auto-commit).
+
+
+
+DEBUGGING
+=========
+
+For debugging ALisp in general look at alisp.pdf! 
+
+In particular this function turns on/off debugging in Lisp:
+(DEBUGGING FLG)
+
+When FLG is true all errors are caught and an interactive break loop
+(see alisp.pdf) is entered.
+
+When the system is run in client/server mode and (DEBUGGING T) is
+specified server errors are caught on the client side and the break
+loop entered there.
+
+If (DEBUGGING T) is specified on the server the break loop is entered
+there instead.
+
+
+(TRACE-CINTERFACE FLG)
+By setting FLG the interface calls between C/Java and the Amos II
+kernel are traced. 
+
+(SETQ _PARSETRACE_ T) 
+prints the parsed Lisp representation of each parsed AmosQL
+expression.
+
+(SETQ _DEBUG_PRINT_ T) 
+turns on trace messages for different phases of the calculus optimizer
+(rewriter).
+
+(SETQ *PRINTOPT* T) 
+turns on tracing of cost-based optimization.
+
+(TRACE-PACKETS T)
+turns on printing of all communication messages form/to the current
+Amos II system.
+
+
+To debug an Amos II system running inside another program as an
+embedded database you can use the above trace functions in combination
+with REGISTER-INIT-FORM (documented earlier). You can turn on the
+above traces when the system is initialized by making a special
+prepared database image where the trace commands are called when the
+system is initialized by calling the function (REGISTER-INIT-FORM
+FORM) and then save the image.
+
+For example
+(REGISTER-INIT-FORM '(TRACE-CINTERFACE T)) ; trace C interface
+(ROLLOUT "myimage.dmp")                    ; save prepared image
+
+In the embedded application you then should use the prepared image
+'myimage.dmp' when initializing the system.
+
+You can also trace or break functions in the prepared image to by
+simply calling TRACE or BREAK before saving it. For example:
+
+(REGISTER-INIT-FORM '(PROGN (TRACE-PACKETS T) ; trace communication
+                            (DEBUGGING T)))   ; turn on debugger
+(TRACE PRINT&READ)        ; trace Lisp function PRINT&READ
+(BREAK CREATEFUNCTION)    ; break Lisp function CREATEFUNCTION
+(ROLLOUT "myimage.dmp")   ; Save prepared image 
+
+
+Storage leak tracing
+--------------------
+
+To trace where a storage leak happens you can use the system function
+
+(TRACE-EXPAND FLAG DEPTH)
+
+It makes a backtrace every time the high watermark of the database
+image is expanded if FLAG=T. The depth of the backtrace is specified
+with DEPTH. In this way you will know where the objects for a storage
+leak are allocated.
+
+The function (STORAGESTAT T) makes the system print a report of
+allocated and deallocated objects for every evaluated top level
+expression (see aLisp manual). Notice that logged objects are not
+deallocated until 'commit' or 'rollback' are called. Therefore, one
+usually tests storage leaks using through procedures or Lisp
+functions.
+
+A report of what objects were allocated in a function body can be
+obtained in a break loop through the command
+
+   :su
+
+It evaluates the body of the broken function and prints a report of
+what objects were allocated and not freed during the evaluation. The
+result of the evaluation is not saved, so :su does not replace :eval.
+
+You can get a backtrace for the allocation of each object that was NOT
+deallocated during an evaluation by:
+
+(STORAGE-TRACE FLAG DEPTH)
+  do your evaluation
+(PRINT-STORAGE-TRACE &OPTIONAL FILE)
+   
+If you get too many deallocations when extending Amos II in C yoc can
+use the function:
+
+  (TRAPDEALLOC X)
+
+It generates a break when X is deallocated.
+
+For serious C code storage errors used the SETDEMON function (see
+alisp.pdf).
+
+QUERY OPTIMIZER
+===============
+
+The following is an overview of the query optimizer:
+
+(CREATEFUNCTION NAME ARGTYPES1 RESTYPES1 RESV QUANT PRED PROID)
+Create new OSQL function
+RESV, QUANT and PRED = NIL => stored function
+RESV = FOREIGN => foreign function, RESV = implementation name for table FF
+otherwise derived function with select expression defined by RESV, QUANT, 
+and PRED.
+
+  (COMPILESELECT ARGTYPES RESTYPES RESV QUANT PRED SB FNO)
+   Part 1 of the query compilation: flattening and typechecks
+   FNO is the new meta-object of type FUNCTION
+   SB is the incomplete selectbody of FNO.
+   The other parameters as in CREATEFUNCTION
+
+     (FLATTENPREDICATE XPR)
+     Transforms (= (F (G xxx)) yyy) into
+                (and (= v1 (G xxx)(= yyy (F v1)))) etc.
+     Also deals with late binding and aggregate coersion.
+
+     (INSERT_VALIDATE PREDL)
+     Inserts validation predicates for variables bound to derived types in 
+     conjunct PREDL. Derived types are obsolete.
+
+     (GEN_TYPECHECKS DCLL)
+     Inserts calls to extent functions for variables declared as derived types
+     only. Derived types are obsolete.
+
+     (COMPILE_PHASE2 PREDL RESL ARGL QUANTL FNO SB)
+     Phase two in optimizer.
+       
+        (COMPILEPREDICATE PREDL FNO)
+        Transforms all (= X (F ...)) into (F ... X)
+        I.e. generates TR form of ObjectLog.
+        Also opens up stored functions in PREDL
+
+        (TRANSFORMPREDICATE PREDL)
+        Transforms predicate list to disjunctive normal form (DNF).
+
+        (EXPAND_PREDICATE PRED)
+        Expands derived function in predicate PRED
+
+        (PROCESS_TYPECHECKS PREDL SB ARGL RESL EXPANDFLG)
+        Expands the type declaration templates in predicate PREDL.
+        For (obsolete) derived types only.
+        
+           (REWRITE PRED SB) 
+           Non-exhaustive rule rewrites for ObjectLog calculus expressions 
+           until fixpoint. (VLDBJ paper).
+
+        (OPTIMIZE-PRED PREDL SB FNO)
+        Both coercer, decomposer and local optimizer!
+        Traverses a TR predicate and detects the coerctions needed
+
+          (DISTRIBUTED-DECOMPOSITION FNO SB OPT-COERCED-PRED)
+          Multi-database decomposition (Vanja), not elaborated
+
+          (COERCE_EXPAND PREDL SB)
+          Vanja's coersions (only for MDBs), not elaborated
+
+          (REWRITE COERCED-PRED SB)
+          Simplify coerce expanded predicate (usual TR-rewriter)
+
+          (DECOMPOSE-PRED PRED SB) 
+          Do cost-based local optimization of PRED with selectbody SB
+
+            (OLD-DECOMPOSE-PRED PRED SB)
+            OBSOLETE cost-based optimization of PRED with selectbody SB
+
+            (PURGE-VOID-PREDS PRED SB)
+            Performs a fix-point iteration of alternating removal of variables
+            and removal of predicates. purge-variables replaces unneccesary
+            variables by stars and purge-predicate removes those predicates
+            that have no effect of some argument is a star. For example the
+            function decode function, which always succeeds and therefore has
+            no effect if one argument is a star
+
+            (OPTIMIZE-AND-OR PRED ARGL)
+            Do cost-based optimization of arbitrary PRED when variables in 
+            ARGL are bound
+    
+              (OPTIMIZE-CONJUNCTION PRED ARGL)
+              Optimize a conjunction of predicates in list PREL when
+              variables in ARGL are bound
+ 
+                 (PSORT L BND)
+                 Optimize AND predicate L using strategy of 'nested loop'
+                 Choice between heuristic method (RANKSORT, default), 
+                 or dynamic programming (DYNPROGSORT), or            
+                 randomized optimization (RANDOM-OPT).
+                 RANKSORT is default and also contains a binding-pattern 
+                 driven rewrite system. RANKSORT is elaborated below.
+
+              (OPTIMIZE-DISJUNCTION PREDL ARGL)
+              Optimize a disjunction of predicates in list PREL when
+              variables in ARGL are bound
+
+(RANKSORT L BND)
+Uses heuristic method to optimize conjunction L given that variables in
+BND are bound.
+
+   (GET-BEST-RANK L BND)
+   Get predicate in conjunction L with best rank, given BND.
+      
+      (REWRITE-PREDS THIS PRED BND)
+      Binding pattern directed translator and rewriter from calculus to 
+      algebra. THIS is predicate to be translated to algenra. PRED are
+      other predicates in conjunction ANDed with PRED. The translation
+      and rewriting is done given bound variables BND. 
+      The data source dependent rewriter is applied through this function.
+      This rewriter is documented in rewrite.txt.
+
+   (NON-EXEC-ERROR PRED)
+   Error that predicate non-executable since RANKSORT cannot find any
+   executable conjunct in PRED.
+
+Other useful query optimization internal functions:
+
+(PREDIFY-TBR TBR)
+   Translate an (ordered) TBR plan into an (ordered) TR expression
+
+(BINDS-VARIABLES PRED BOUND)
+   Compute the variables always bound after PRED called given that
+   the variables in BOUND are called beforehand

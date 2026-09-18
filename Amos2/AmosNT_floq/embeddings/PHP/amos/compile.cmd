@@ -1,0 +1,1 @@
+msdev amos.dsw /make

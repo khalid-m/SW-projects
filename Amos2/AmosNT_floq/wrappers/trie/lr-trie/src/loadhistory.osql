@@ -1,0 +1,8 @@
+logging off;
+<'src/Historical_data.osql';
+lisp;
+(imagesize 1000000000)
+:osql
+loadhistory(cast (readfile("data\\hist_lite.out") as vector of integer));
+save "historylr.dmp";
+quit;

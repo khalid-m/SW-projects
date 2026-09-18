@@ -1,0 +1,47 @@
+/******************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2005 Johan Petrini, UDBL
+ * $RCSfile: master.amosql,v $
+ * $Revision: 1.36 $ $Date: 2013/01/03 21:23:40 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Master script to load SWARD system.
+ *****************************************************************************/
+lisp;
+(setq _prompter_ "Sward")
+(setq _sql-namespace_ nil) ;; sward uses old cc names
+(load "src/lsp/h.lsp")
+(load "src/lsp/export.lsp")
+; (load (concat (getenv "AMOS_HOME") "/lsp/sparql-lsp-parser/sparql-wrapper.lsp")) ; New parser by Andrej
+(load (concat (getenv "AMOS_HOME") "/SQoND/lsp/string-based-wrapper.lsp")) ; New parser by Andrej
+:osql
+
+<'src/AmosQL/h.amosql'; 
+/* <'src/AmosQL/rdql.amosql'; RDQL PARSER REMOVED 2011-01-25 */
+<'src/AmosQL/sql.amosql';
+/* <'src/AmosQL/sparql.amosql'; OLD SparQL PARSER REMOVED */
+<'src/AmosQL/ds.amosql';
+<'src/AmosQL/experiment.amosql';
+<'src/AmosQL/export.amosql';
+<'src/AmosQL/extended.amosql';
+
+/* Set SWARD system image size to 100M
+ */
+imagesize 100000000;
+
+/* Partial evaluation of predicates below is part of basic SWARD system
+ */
+parteval('TEVEXTENT');
+parteval('PMAP');
+parteval('CMAP');
+parteval('RMAP');
+parteval('ROWID');
+
+
+
+
+
+
+
+

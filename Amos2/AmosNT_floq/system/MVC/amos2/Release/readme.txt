@@ -1,0 +1,1 @@
+This directory will contain temporary files when compiling amos2 project

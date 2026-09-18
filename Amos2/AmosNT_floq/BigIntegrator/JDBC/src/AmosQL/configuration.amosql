@@ -1,0 +1,52 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year>Minpeng Zhu<author>, UDBL
+ * $RCSfile: configuration.amosql,v $
+ * $Revision: 1.10 $ $Date: 2012/05/31 09:12:00 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: configuration to setup absorber, finalizer, absorbability 
+                for a kind of DS.
+ ****************************************************************************/
+
+set_absorber('relational', 'absorb-sql'); /* In ../Lisp/rdbms.lsp */
+set_finalizer('relational', 'translate-sql'); /* In ../Lisp/rdbms.lsp */
+
+create_wrapper_absorbability('relational', '<', 
+                             'relational-translate-comparison-relaxing');
+                             /* In ../lisp/numwrapper.lsp */
+create_wrapper_absorbability('relational', '<=', 
+                             'relational-translate-comparison-relaxing');
+                             /* In ../lisp/numwrapper.lsp */
+create_wrapper_absorbability('relational', '>', 
+                             'relational-translate-comparison-relaxing');
+                             /* In ../lisp/numwrapper.lsp */
+create_wrapper_absorbability('relational', '>=', 
+                             'relational-translate-comparison-relaxing');
+                             /* In ../lisp/numwrapper.lsp */
+create_wrapper_absorbability('relational', '!=', 
+                             'relational-translate-comparison');
+                             /* In ../lisp/relational_translator.lsp */
+create_wrapper_absorbability('relational', 'like', 'relational-translate-like');
+                             /* In ../lisp/relational_translator.lsp */
+
+/*params: fn, sqlop, infix, hasvalue, reverse */
+sqloperator("!=","<>",true, false, false);
+
+create_wrapper_absorbability('relational', 'number.number.plus->number', 
+                             'relational-translate-numop');
+                             /* In ../lisp/numwrapper.lsp */
+
+create_wrapper_absorbability('relational', 'number.number.times->number', 
+                             'relational-translate-numop');
+                             /* In ../lisp/numwrapper.lsp */
+
+sqloperator('number.number.plus->number', '+', true, true, false);
+sqloperator('number.number.times->number', '*', true, true, false);
+
+create_wrapper_absorbability('relational', 'VECTOR.IN->OBJECT', 
+                             'relational-translate-in');
+                             /* In ../lisp/numwrapper.lsp */
+
+sqloperator('VECTOR.IN->OBJECT', 'in', true, false, true);

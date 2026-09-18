@@ -1,0 +1,127 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 Erik Zeitler, UDBL
+ * $RCSfile: nbg_srv.osql,v $
+ * $Revision: 1.3 $ $Date: 2011/01/27 11:26:15 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Background receiver test
+ *
+ ****************************************************************************
+ * $Log: nbg_srv.osql,v $
+ * Revision 1.3  2011/01/27 11:26:15  torer
+ * Changed from <...> to SQL's (...) notation for tuples (much nicer)
+ *
+ * Revision 1.2  2010/12/30 19:03:16  zeitler
+ * testing inbuffsize on inequality
+ *
+ * Revision 1.1  2010/12/16 14:31:14  zeitler
+ * lprint + lread tests
+ *
+ ****************************************************************************/
+
+logging off;
+register("bgsrv");
+
+lisp;
+(debugging t)
+(setq _batch_ t)
+
+(defun pause () (sleep 0.4))
+
+(defglobal _asocket_ (open-socket nil 0 1 t))
+(defglobal _sync_)
+(defglobal _sync2_)
+
+(foreign-lispfn asocketport () ((integer))
+	(foreign-result (socket-portno _asocket_)))
+
+:osql
+
+ship("s", "add bglisteners() = ('" + this_amosid() +  "', 'localhost', " 
+          + stringify(asocketport()) + ");");
+
+lisp;
+
+(defglobal _bs_ (mksymbol "*busy*"))
+
+(checkequal "default bg bufsize" ((> (get-bgbufsize) (* 2 16384)) t))
+
+(checkequal "bglistener (only) is registered"
+((osql "count(ship('s', 'bglisteners(\"BGSRV\");'));")
+ '((1)))
+((osql "count(ship('s', 'bglisteners(\"foo\");'));")
+ '((0))))
+
+;; establish sync channels
+
+(let (connectto)
+	(while (null (setq connectto 
+		(osql "ship('s', 'bglisteners(\"BGC1\");');")))
+		(sleep 0.2))
+	(setq _sync_ (open-socket (elt (caar connectto) 0) 
+		(elt (caar connectto) 1))))
+
+(let (connectto)
+	(while (null (setq connectto 
+		(osql "ship('s', 'bglisteners(\"BGC2\");');")))
+		(sleep 0.2))
+	(setq _sync2_ (open-socket (elt (caar connectto) 0) 
+		(elt (caar connectto) 1))))
+
+(checkequal "re-set bgbufsize" ((set-bgbufsize 40) 40))
+
+(defglobal _r1_) (defglobal _r2_)
+
+(checkequal "open bg socket to c1" 
+((socket-closed (setq _r1_ (accept-socket _asocket_))) nil))
+
+(checkequal "open bg socket to c2"
+((socket-closed (setq _r2_ (accept-socket _asocket_))) nil))
+
+(pf t _sync_) (read _sync_)
+(let (r)
+(checkequal "read c1" 
+((progn 
+  (while (eq _bs_ (setq r (lread _r1_))) (sleep 0.02) (formatl t ".")) 
+  r) "hej")))
+
+(dotimes (i 10)
+ (pf t _sync_) (read _sync_)
+ (let (r)
+ (checkequal "synchronuous read c1"
+ ((progn
+  (formatl t " " i "...")
+  (while (eq _bs_ (setq r (lread _r1_))) (sleep 0.02) (formatl t "."))
+  r) "hej"))))
+
+(pf t _sync_) (read _sync_)
+(dotimes (i 10)
+ (let (r)
+ (checkequal "asynchronuous read c1"
+ ((progn
+  (formatl t " " i "...")
+  (while (eq _bs_ (setq r (lread _r1_))) (sleep 0.02) (formatl t "."))
+  r) '((a)(b))))))
+;'
+
+(pf t _sync2_) (read _sync2_)
+(dotimes (i 20)
+ (let (r)
+ (checkequal "async binary read c2"
+ ((progn
+  (formatl t " " i "...")
+  (while (eq _bs_ (setq r (lread _r2_)))
+   (sleep 0.001))
+  (get-float r 0)) 100.5))))
+
+
+;; final sync before quit
+(formatl t " (final peer sync) ...")
+(pf t _sync_) (read _sync_)
+(formatl t " (c1 synced) ...")
+(pf t _sync2_) (read _sync2_)
+(formatl t " (c2 synced)" t)
+(sleep 0.1)
+(osql "kill_the_federation();")

@@ -1,0 +1,2 @@
+"java" JavaAMOS wsmed.dmp
+

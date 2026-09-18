@@ -1,0 +1,115 @@
+#---------------------------------------------
+# W4F configuration file
+# This file is a sample provided in the W4F
+# distribution. Change it to reflect
+# your configuration.
+#---------------------------------------------
+
+#----------- DOM IMPLEMENTATION --------------
+# The DOM_DOCUMENT variable tells which
+# DOM implementation you are using. Put here
+# the name of the class that implements org.w3c.dom.Document
+# in your DOM implementation.
+
+# if you use IBM's xml4j, uncomment this line
+#for DOM_DOCUMENT use com.ibm.xml.dom.DocumentImpl
+for DOM_DOCUMENT use org.apache.xerces.dom.DocumentImpl
+
+# if you use Oracle's XML parser, uncomment this line
+# for DOM_DOCUMENT use oracle.xml.parser.XMLDocument
+
+# if you use OpenXML, uncomment this line
+# for DOM_DOCUMENT use org.openxml.dom.DocumentImpl
+
+# if you use Sun's X Project, uncomment this line
+# for DOM_DOCUMENT use com.sun.xml.tree.XmlDocument
+
+#---------------------------------------------
+
+
+#------------ USING A PROXY ------------------
+# This is where you specify which proxy to use
+# comment these lines if you do not want to use
+# any proxy
+
+# PROXY_HOST: "my.web.proxy.com"
+# PROXY_PORT: 8080
+
+#---------------------------------------------
+
+#------------- JAVA COMPILER -----------------
+# This is the java compiler you want to use
+# to compile wrappers. The default is "javac"
+
+JAVA_COMPILER: javac
+# JAVA_COMPILER: jvc /nologo
+
+#---------------------------------------------
+
+
+#------------- W4F RESOURCES -----------------
+# Put here the path to the resources directory
+# within the W4F distribution.
+#W4F_RESOURCES: "/home/myname/w4f/resources"
+
+W4F_RESOURCES: "D:\java\w4f\resources"
+#---------------------------------------------
+
+
+#------------- W4F KEY -----------------------
+# put here the String representation of your
+# key to use W4F
+W4F_KEY: "-1d0sby92ij4hohr0fm2pxgkc8udbn9pvtzwkw4w9lbe0j464h0f9wld7ne9j79qiovjs97l78lf3022xcjwu6vnhcu0t7n1s1tfjtdtc1p4bj3mbriv4dqbqo9p4s015n9kve28lemo19wr4fbk5ezz9y33dkrceee7n29m6r9c26qhvn9w6olec7enhp4vupd3ntrug7fh2jrsztatz9isendn2j2ytlv1xvpujvo45cj8pcd7mh5r7ok427ay9zup4yn07mandlygat62u97wl2h9hswa7m15p3bkbl1162xlgomcovy41xugyfocg79381wxg5emh5wgff4wpoo1wg55w2ya0krebg21j29a7jmk55b0rylwcpqojl3qci2cn8"
+
+
+#---------------------------------------------
+
+
+#------------- STEVESOFT KEY -----------------------
+# If you purchased a licence for the regular expression
+# package from http://www.javaregex.com, write your key here
+#STEVESOFT_KEY: "???????????????"
+
+#---------------------------------------------
+
+
+#---------------------------------------------
+#-------- The following variables are --------
+#--------     for advanced users.     --------
+#---------------------------------------------
+
+#--------------- USER_AGENT ------------------
+# The USER AGENT is the value sent for "User-Agent"
+# in the HTTP request. By default, W4F simulates
+# Netscape Communicator 4.5, by sending this line:
+USER_AGENT: "Mozilla/4.5 [en] (X11; I; Linux 2.0.33 i686)"
+
+# You can choose to simulate MS IE 5, by uncommenting this line
+#USER_AGENT: "Mozilla/4.0 (compatible; MSIE 5.0; Windows NT; DigExt)"
+
+#---------------------------------------------
+
+
+
+#------------- STANDALONE WRAPPERS -----------------
+# STANDALONE_WRAPPER: if this variable is false,
+# then the wrapper will check all the parameters
+# in the config file at runtime. If you set this variable
+# to true, the settings found in the config file when
+# you compile the wrapper will be hard coded in it.
+# Hence no need to use a config file when you run the wrapper.
+
+STANDALONE_WRAPPER: true
+# STANDALONE_WRAPPER: false
+
+#---------------------------------------------
+
+
+
+#------------- NSL Operators -----------------
+# You can register in your W4F file your
+# NSLOperators, to avoid repeating them in all
+# your wrappers. See doc for details about creating
+# and registering your own NSLOperators
+
+# for my_cool_operator use my.cool.operator

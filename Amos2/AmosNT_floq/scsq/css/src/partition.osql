@@ -1,0 +1,203 @@
+/*-*-sql-*-*******************************************************************
+
+/* Functions to partition taxi request stream */
+
+/* This is how the boundaries were produced for the static methods. */
+
+/*
+[scsq] 1> minagg(select cast(readfile("/data/taxi/bulk_req.osql")[2] as real));
+717050.0
+[scsq] 1> maxagg(select cast(readfile("/data/taxi/bulk_req.osql")[2] as real));
+734399.0
+[scsq] 1> average(select cast(readfile("/data/taxi/bulk_req.osql")[2] as real));
+722796.148131609
+
+[scsq] 1> minagg(select cast(readfile("/data/taxi/bulk_req.osql")[3] as real));
+6169650.0
+[scsq] 1> maxagg(select cast(readfile("/data/taxi/bulk_req.osql")[3] as real));
+6182206.0
+[scsq] 1> average(select cast(readfile("/data/taxi/bulk_req.osql")[3] as real));
+6176349.7318105
+
+[scsq] 1> minagg(select cast(readfile("/data/taxi/bulk_req.osql")[4] as real));
+717098.0
+[scsq] 1> maxagg(select cast(readfile("/data/taxi/bulk_req.osql")[4] as real));
+734399.0
+[scsq] 1> average(select cast(readfile("/data/taxi/bulk_req.osql")[4] as real));
+724002.517005311
+
+[scsq] 1> minagg(select cast(readfile("/data/taxi/bulk_req.osql")[5] as real));
+6169586.0
+[scsq] 1> maxagg(select cast(readfile("/data/taxi/bulk_req.osql")[5] as real));
+6186134.0
+[scsq] 1> average(select cast(readfile("/data/taxi/bulk_req.osql")[5] as real));
+6175306.58724342
+*/
+
+
+create function fxa()->real;
+create function fya()->real;
+create function txa()->real;
+create function tya()->real;
+
+/* Averages */
+/*set fxa()=722796.148131609;
+set fya()=6176349.7318105;
+set txa()=724002.517005311;
+set tya()=6175306.58724342;*/
+
+/* Medians */
+set fxa()=722550.0;
+set fya()=6176650.0;
+set txa()=724769.0;
+set tya()=6175663.0;
+
+
+/* Hierarchical medians */
+
+create function fx()->real;
+
+create function fxlfy()->real;
+create function fxufy()->real;
+
+create function fxlfyltx()->real;
+create function fxlfyutx()->real;
+create function fxufyltx()->real;
+create function fxufyutx()->real;
+
+create function fxlfyltxlty()->real;
+create function fxlfyutxlty()->real;
+create function fxufyltxlty()->real;
+create function fxufyutxlty()->real;
+create function fxlfyltxuty()->real;
+create function fxlfyutxuty()->real;
+create function fxufyltxuty()->real;
+create function fxufyutxuty()->real;
+
+/* Manual boundaries. 
+These are better balanced than automatic boundaries. 
+However, it is a tedious taks to define them.
+*/
+
+/*
+set fx()=722561.0;
+
+set fxlfy()=6177150.0;
+set fxufy()=6175723.0;
+
+set fxlfyltx()=725018.0;
+set fxlfyutx()=724468.0;
+set fxufyltx()=724988.0;
+set fxufyutx()=724000.0;
+
+set fxlfyltxlty()=6176012.0;
+set fxlfyltxuty()=6176197.0;
+set fxlfyutxlty()=6175033.0;
+set fxlfyutxuty()=6176196.0;
+
+set fxufyltxlty()=6176209.0;
+set fxufyltxuty()=6172847.0;
+set fxufyutxlty()=6175033.0;
+set fxufyutxuty()=6175125.0;
+*/
+
+/* Auto kD boundaries */
+
+set fx()=722550.0;
+
+set fxlfy()=6177150.0;
+set fxufy()=6175723.0;
+
+set fxlfyltx()=725011.0;
+set fxlfyutx()=724468.0;
+set fxufyltx()=724988.0;
+set fxufyutx()=724000.0;
+
+set fxlfyltxlty()=6176152.0;
+set fxlfyltxuty()=6176196.0;
+set fxlfyutxlty()=6175032.0;
+set fxlfyutxuty()=6176196.0;
+
+set fxufyltxlty()=6176209.0;
+set fxufyltxuty()=6172847.0;
+set fxufyutxlty()=6175032.0;
+set fxufyutxuty()=6175125.0;
+
+/* Hair cross  (oct tree like partitioning) */
+create function octnodes(real fxl, real fxu, real fyl, real fyu, real txl, real txu, real tyl, real tyu)->integer nodenum;
+set octnodes(  0.0,     fxa(),   0.0,      fya(),   0.0,     txa(),   0.0,      tya())=0;
+set octnodes(fxa(), 1000000.0,   0.0,      fya(),   0.0,     txa(),   0.0,      tya())=1;
+set octnodes(  0.0,     fxa(), fya(), 10000000.0,   0.0,     txa(),   0.0,      tya())=2;
+set octnodes(fxa(), 1000000.0, fya(), 10000000.0,   0.0,     txa(),   0.0,      tya())=3;
+set octnodes(  0.0,     fxa(),   0.0,      fya(), txa(), 1000000.0,   0.0,      tya())=4;
+set octnodes(fxa(), 1000000.0,   0.0,      fya(), txa(), 1000000.0,   0.0,      tya())=5;
+set octnodes(  0.0,     fxa(), fya(), 10000000.0, txa(), 1000000.0,   0.0,      tya())=6;
+set octnodes(fxa(), 1000000.0, fya(), 10000000.0, txa(), 1000000.0,   0.0,      tya())=7;
+set octnodes(  0.0,     fxa(),   0.0,      fya(),   0.0,     txa(), tya(), 10000000.0)=8;
+set octnodes(fxa(), 1000000.0,   0.0,      fya(),   0.0,     txa(), tya(), 10000000.0)=9;
+set octnodes(  0.0,     fxa(), fya(), 10000000.0,   0.0,     txa(), tya(), 10000000.0)=10;
+set octnodes(fxa(), 1000000.0, fya(), 10000000.0,   0.0,     txa(), tya(), 10000000.0)=11;
+set octnodes(  0.0,     fxa(),   0.0,      fya(), txa(), 1000000.0, tya(), 10000000.0)=12;
+set octnodes(fxa(), 1000000.0,   0.0,      fya(), txa(), 1000000.0, tya(), 10000000.0)=13;
+set octnodes(  0.0,     fxa(), fya(), 10000000.0, txa(), 1000000.0, tya(), 10000000.0)=14;
+set octnodes(fxa(), 1000000.0, fya(), 10000000.0, txa(), 1000000.0, tya(), 10000000.0)=15;
+
+/* Hierarchical median (kD tree like partitioning) */
+create function kdnodes(real fxl, real fxu, real fyl, real fyu, real txl, real txu, real tyl, real tyu)->integer nodenum;
+set kdnodes(  0.0,      fx(),    0.0,    fxlfy(),       0.0,fxlfyltx(),          0.0,fxlfyltxlty())=0;
+set kdnodes(  0.0,      fx(),    0.0,    fxlfy(),       0.0,fxlfyltx(),fxlfyltxlty(),   10000000.0)=1;
+set kdnodes(  0.0,      fx(),    0.0,    fxlfy(),fxlfyltx(), 1000000.0,          0.0,fxlfyltxuty())=2;
+set kdnodes(  0.0,      fx(),    0.0,    fxlfy(),fxlfyltx(), 1000000.0,fxlfyltxuty(),   10000000.0)=3;
+set kdnodes(  0.0,      fx(),fxlfy(), 10000000.0,       0.0,fxlfyutx(),          0.0,fxlfyutxlty())=4;
+set kdnodes(  0.0,      fx(),fxlfy(), 10000000.0,       0.0,fxlfyutx(),fxlfyutxlty(),   10000000.0)=5;
+set kdnodes(  0.0,      fx(),fxlfy(), 10000000.0,fxlfyutx(), 1000000.0,          0.0,fxlfyutxuty())=6;
+set kdnodes(  0.0,      fx(),fxlfy(), 10000000.0,fxlfyutx(), 1000000.0,fxlfyutxuty(),   10000000.0)=7;
+set kdnodes( fx(), 1000000.0,    0.0,    fxufy(),       0.0,fxufyltx(),          0.0,fxufyltxlty())=8;
+set kdnodes( fx(), 1000000.0,    0.0,    fxufy(),       0.0,fxufyltx(),fxufyltxlty(),   10000000.0)=9;
+set kdnodes( fx(), 1000000.0,    0.0,    fxufy(),fxufyltx(), 1000000.0,          0.0,fxufyltxuty())=10;
+set kdnodes( fx(), 1000000.0,    0.0,    fxufy(),fxufyltx(), 1000000.0,fxufyltxuty(),   10000000.0)=11;
+set kdnodes( fx(), 1000000.0,fxufy(), 10000000.0,       0.0,fxufyutx(),          0.0,fxufyutxlty())=12;
+set kdnodes( fx(), 1000000.0,fxufy(), 10000000.0,       0.0,fxufyutx(),fxufyutxlty(),   10000000.0)=13;
+set kdnodes( fx(), 1000000.0,fxufy(), 10000000.0,fxufyutx(), 1000000.0,          0.0,fxufyutxuty())=14;
+set kdnodes( fx(), 1000000.0,fxufy(), 10000000.0,fxufyutx(), 1000000.0,fxufyutxuty(),   10000000.0)=15;
+
+create function getoctnode(real fx, real fy, real tx, real ty, integer nports)->integer as
+select j from integer i, integer j, real fxl, real fxu, real fyl, real fyu, real txl, real txu, real tyl, real tyu
+where octnodes(fxl,fxu,fyl,fyu,txl,txu,tyl,tyu)=i 
+and fxl<=fx and fxu>fx
+and fyl<=fy and fyu>fy
+and txl<=tx and txu>tx
+and tyl<=ty and tyu>ty
+and j = mod(i,nports);
+
+create function octnodefilter(vector v, integer nports) ->
+<integer port, object> as
+select port, w
+from vector of real w
+where w = v
+and port = getoctnode(w[2],w[3],w[4],w[5],nports);
+
+create function getkdnode(real fx, real fy, real tx, real ty, integer nports)->integer as
+select j from integer i, integer j, real fxl, real fxu, real fyl, real fyu, real txl, real txu, real tyl, real tyu
+where kdnodes(fxl,fxu,fyl,fyu,txl,txu,tyl,tyu)=i 
+and fxl<=fx and fxu>fx
+and fyl<=fy and fyu>fy
+and txl<=tx and txu>tx
+and tyl<=ty and tyu>ty
+and j = mod(i,nports);
+
+create function kdnodefilter(vector v, integer nports) ->
+<integer port, object> as
+select port, w
+from vector of real w
+where w = v
+and port = getkdnode(w[2],w[3],w[4],w[5],nports);
+
+create function randfilter(vector v, integer port, integer nports)->object as
+select o from object o where rand(10)>4 and o=v;
+
+/* The partition functions must be contained within the watermark. */
+
+lisp;
+(setq _system-watermark_ _oidno_)
+:osql

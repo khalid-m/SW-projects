@@ -1,0 +1,14 @@
+
+This batch-file generates the on-line HTML-documentation for the
+callin/callout-interfaces. The javadoc.exe utility shipped with JDK from Sun
+must be on the command-path.
+
+The makedoc.bat places the documentation in the ..\Java\doc directory.
+
+IMPORTANT!!!
+After generating the documentation you must copy the
+jdk1.1.X\docs\api\image directory and its contents to the ..\Java\doc
+directory. If you don't, there will be broken links in the HTML-pages.
+
+To start browsing the documentation, open the file packages.html in your
+favourite web-browser. Enjoy!

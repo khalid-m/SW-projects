@@ -1,0 +1,4 @@
+help("first");
+loadRDFSchema("../TMRDF.xml");
+help("me");
+loadXTM("http://www.techquila.com/tmsamples/xtm/punk/music-xtm.xml");

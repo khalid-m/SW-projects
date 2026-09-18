@@ -1,0 +1,99 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2013 Cheng Xu, UDBL
+ * $RCSfile: integrated.osql,v $
+ * $Revision: 1.2 $ $Date: 2013/09/30 14:55:32 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: the integrated demo, Sandvik and Hagglunds
+ *
+ ****************************************************************************
+ * $Log: integrated.osql,v $
+ * Revision 1.2  2013/09/30 14:55:32  chexu484
+ * playback only first N in the result stream
+ *
+ * Revision 1.1  2013/09/29 16:30:23  chexu484
+ * integrated demo (Sandvik and Hagglunds)
+ *
+ ****************************************************************************/
+
+< 'schema/SmartVortexSchema.osql'; /* The generic Smart Vortex schema 
+                                         based on D3.1 */
+
+cd("Sandvik");  /* load Sandvik's case */
+
+< 'CorenetWrapper.osql'; /* The general Corenet stream wrapper that handles 
+                            any equipment stream from Sandvik */
+
+< 'MillWrapper.osql'; /* The milling wrapper in terms of CORENET */
+
+< 'MillingModel.osql'; /* The math model for milling */
+
+< 'MillingValidator.osql'; /* model'n'validate for milling power consumption 
+                              produces 'validation stream' of tuples
+                              (ts, measured, expected, invalid)
+                              See D3.1 sec 2.3, D5.1 sec 3.2 */
+
+
+
+< 'OtherWrapper.osql'; /* The other Sandvik wrapper in terms of CORENET */
+
+< 'LearningModel.osql'; /* The learning model */
+
+< 'LearningValidator.osql'; /* The learning validator */
+
+< 'SandvikMetaData.osql'; /* Populate the Smart Vortex database with 
+                             meta-data */
+
+
+cd("../Hagglunds");
+
+< 'HagglundsCOOLERWrapper.osql'; /* The general Hagglunds stream wrapper that handles
+                              streams that logged in logdirectory from Hagglund */
+
+< 'HagglundsCOOLERModel.osql'; /* The Specefic Statistical Model from Hagglunds */
+
+< 'HagglundsCOOLERValidator.osql'; /* validate the stream based on the statistics */
+
+< 'HagglundsCOOLERMetaData.osql'; /* Populate the Smart Vortex database with hagglunds metadata */
+
+
+cd("../Sandvik");  /* load Sandvik's case */
+
+/* Run CQs for milling in FDSMS top loop */
+
+
+playback(first_N(millPower("A"), 10)); /* Return stream of current power consumption */
+
+
+playback(first_N(validateMill("A"), 10)); /* Play validation stream for mill */
+
+
+playback(first_N(millAlerts("A"), 5)); /* Play alert stream for mills */
+
+
+
+playback(first_N(touchingPower("B"), 10)); /* Play power consumtion when other machine 
+                                 is touching material */
+
+playback(first_N(validateOther("B"), 10));
+
+
+playback(first_N(otherStreamAlerts("B"), 10));
+
+
+cd("../Hagglunds");
+
+/* the hagglunds stream of records */
+set :s = hagglundsRecords("hsCOOLER");
+
+/* firt 10 record in the stream */
+in(first_N(:s, 10));
+
+/* a CQ that take the first 2000 record as training data 
+   learn the statistics and then use the statistics as a
+   reference to validate the coming records. The result
+   of the query is:
+   (timsStamp, measuredStatistics, learntExpectedStatistics) */
+playback(first_N(learn_n_validate(:s, #'buildStats', 2000, #'validateCOOLER'), 10));

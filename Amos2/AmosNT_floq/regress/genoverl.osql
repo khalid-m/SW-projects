@@ -1,0 +1,251 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 1995, Staffan Flodin, EDSLAB
+ * $RCSfile: genoverl.osql,v $
+ * $Revision: 1.13 $ $Date: 2011/01/27 11:26:15 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Testing generalized overloading
+ *
+ ****************************************************************************
+ * $Log: genoverl.osql,v $
+ * Revision 1.13  2011/01/27 11:26:15  torer
+ * Changed from <...> to SQL's (...) notation for tuples (much nicer)
+ *
+ * Revision 1.12  2008/11/23 15:00:28  torer
+ * Stricter type checking
+ *
+ * Revision 1.11  2008/11/11 07:46:14  torer
+ * Stricter checking of conformance with result types in function definitions
+ * Can be turned off with
+ *    (setq _strict-resulttypes_ nil)
+ *
+ * Revision 1.10  2008/02/07 13:17:54  torer
+ * Coersion of tuple valued functions to vectors
+ *
+ * Revision 1.9  2008/02/07 10:49:06  torer
+ * Possibility to assign variable to tuple if variable is of type vector: v = <1,2,3>
+ *
+ * Revision 1.8  2007/12/10 12:26:31  torer
+ * Generalized result type checking in late bound function call
+ *
+ * Revision 1.7  2006/07/24 18:10:08  torer
+ * Testing late bound function returning boolean result
+ *
+ * Revision 1.6  2006/04/14 10:02:43  torer
+ * Strict function result tuple declarations using <...>
+ *
+ ****************************************************************************/
+
+create type person;
+create type student under person;
+create type joboe under person;
+create function name(person p)->charstring as stored;
+create function we_know_one_like_that(person p, student s)->joboe as stored;
+create function we_know_one_like_that(person p, student s)->student as stored;
+create function we_know_one_like_that(person p, joboe s)->joboe as stored;
+create function we_know_one_like_that(person p, joboe s)->student as stored;
+
+create student(name) instances :s1('stud1'),:s2('stud2'),:s3('stud3'),:s4('stud4'),:s5('stud5');
+create joboe(name) instances :j1('joboe1'),:j2('joboe2'),:j3('joboe3'),:j4('joboe4'),:j5('joboe5');
+
+/* set we_know_one_like_that(:s1,:s2)=:j1; pers, stud, joboe 
+set we_know_one_like_that(:s1,:s2)=:s3; /* pers, stud, stud  */
+set we_know_one_like_that(:s3,:j2)=:s4; /* pers, joboe stud  */
+set we_know_one_like_that(:s2,:j3)=:s5; /* pers,  joboe stud */
+set we_know_one_like_that(:j2,:j3)=:s5; /* pers, joboe stud */
+
+create function foo(integer)->integer;
+set foo(17)=2;
+create function foo(integer)->charstring;
+set foo(17)="hej";
+
+create function who_knows_student(student s)-> (person,person) as 
+ select p,p2 from person p, student s2, joboe j, person p2  
+ where (we_know_one_like_that(p,s2)=s and p2=s2) or 
+       (we_know_one_like_that(p,j)=s and p2=s);
+
+create function known_students()->charstring as select name(s) 
+   from student s, person p, person s2 where (p,s2) = who_knows_student(s);
+
+lisp;
+(checkequal "Type resolution"
+; ((osql "select name(j) from student j, joboe j2 where we_know_one_like_that(:s3,j2)=j;") '(("stud4")))
+ ((osql "select name(s) from student s, joboe j where we_know_one_like_that(:s2,j)=s;") '(("stud5")))
+  ((osql "select i,o from integer i, charstring o where foo(i)=o;")'((17 "hej")))
+;  ((osql "select i,o from integer i, integer o where foo(i)=o;") '((17 2)))
+  ((sorttuples (osql "select distinct known_students();")) '(("stud4") ("stud5"))))
+
+:osql
+rollback;
+ /* foo(17);*/
+
+
+create function pl(real x, real y) -> real as select x+y;
+create function pl(integer x, integer y) -> integer as select x+y+1;
+create function pl(number x, number y) -> number as select x+y+2;
+/* it is now a system function
+create function plus(charstring x, charstring y) -> charstring
+       as select concat(x,y);
+*/
+
+create function avg(bag of integer b) -> integer
+       as select sum(b) / count(b);
+create function add1(number i)-> integer as select 1+i;
+create function add1(number i)-> real as select 2.0+i;
+
+create function numbs(integer)-> number as stored;
+set numbs(1)=1; 
+set numbs(2) = 2.0; 
+set numbs(3)=3;
+create function a1(number x)-> number as select x+1;
+create function a1(charstring x) -> charstring as select concat(x,"!");
+
+create function f1(number x, number y) -> bag of number;
+create function f1(number x) -> bag of number;
+add f1(1)=1;
+add f1(1,1)=1;
+create type pers;
+create function married(pers,pers)-> integer;
+create function married(pers) -> integer;
+create pers instances :tore;
+married(:tore); /* misslyckas */
+create pers (married) instances :ulla (2); 
+
+lisp;
+(checkequal "Full overloading"
+   ((osql "'te'+'st';") '(("test")))
+   ((osql "pl(pl(1,2),3);") '((8)))
+;   ((osql "select i from number i where add1(i) = 2;") '((1)))
+   ((osql "select i from number i where add1(i) = 2.0;") '((0.0)))
+   ((osql "a1(numbs(1));")'((2)))
+   ((osql "married(:ulla);") '((2))))
+:osql
+
+create function fie(integer)->integer;
+lisp;
+;To check that: set fie(12)='kalle' generates an error the call to resolveargs is isolated
+;and the error is caught
+(checkequal "Recognition of erroneous  function calls"
+  ((errstring (resolveargs (getfunctionnamed 'fie)) '(12) 
+                          (gettypenamed 'charstring))
+   "Cannot resolve function call"))
+:osql
+rollback;
+create type person properties (name charstring, age integer);
+create person (name,age) instances ("Tore",20);
+create type person2 properties (name charstring, age integer);
+create person2 (name,age) instances ("Tore",20);
+create type person3 properties (name charstring, age integer);
+create person3 (name,age) instances ("Tore",20);
+
+create function perprops(person p)-> (charstring name, integer age) as
+    select name(p),age(p);
+create function perprops2(person p)-> (charstring name, integer age) as
+    select name(p),age(p);
+create function perprops(person2 p)-> charstring as
+    select name(p);
+create function perprops(person3 p)-> (charstring, integer)
+   as select name(p), age(p);
+
+lisp;
+
+(checkequal "Width errors"
+((errstring
+  (osql "select a from person2 p, integer a where perprops(p)=('Tore',a);"))
+  "Cannot resolve function call")
+((errstring
+   (osql "select a from person p, integer a where perprops(p)='Tore';"))
+    "Cannot resolve function call")
+((length 
+ (osql "select p, q from person p, person q where perprops2(p)=perprops2(q);"))
+   1)
+((length 
+ (osql "select p, q from person p, person q where perprops(p)=perprops(q);"))
+   1)
+((errstring 
+   (osql "select n from charstring n, person p where perprops2(p)= (n,20,2);"))
+   "Cannot resolve function call")
+((errstring 
+   (osql "select n from charstring n, person p where perprops2(p)= (n);"))
+   "Cannot resolve function call")
+((errstring 
+  (osql "select n from charstring n, person p where perprops(p)= (n,20,'2');"))
+   "Cannot resolve function call")
+)
+:osql
+rollback;
+
+create type person properties (name charstring);
+create type employee under person;
+create type student under person;
+create function foo(person p, person p1)->integer as stored;
+create function foo(person p, employee e)->integer as stored;
+create person(name) instances :p1('p1'), :p2('p2');
+create employee(name) instances :e1('e1'), :e2('e2');
+create function foo1(person p)->integer as select foo(p,p1) from person p1;
+set foo(:p1,:p1)=1;
+set foo(:p1,:e1)=3;
+lisp;
+(checkequal "Late binding due to overloading on second argument"
+ ((sorttuples (osql "foo1(:p1);")) '((1) (3))))
+:osql
+create function f2() -> (integer,integer) as select 1,2;
+create function foo()-> (integer,integer) as select f2(); 
+lisp;
+(checkequal "Top"
+  ((osql "select f2();") '((1 2)))
+  ((osql "select f2() where true;") '((1 2)))
+  ((osql "foo();")'((1 2))))
+:osql
+/* create function f2()->integer as select 5;*/
+create function foo(integer i, integer j)->integer as select i + j;
+rollback;
+
+/* create type a (id charstring,id integer); */
+/* create a (id) instances :a(1), :b("1"); */
+     /* Fixas troligen med nya create-userobjects macron */
+create function f(integer nonkey)-> integer;
+lisp;
+(checkequal "value of add set remove"
+   ((osql "set f(1) = 1;") nil)
+   ((osql "add f(1) = 2;") nil)
+   ((osql "remove f(1)=2;") nil)
+   ((osql "f(1);") '((1))))
+:osql
+rollback;
+
+create type lit;
+create type num under lit;
+create function test(lit)->boolean as select true;
+create function test(num)->boolean as select false;
+create lit instances :l1;
+create num instances :n1;
+test(:l1);
+test(:n1);
+lisp;
+
+(checkequal "Late binding on function with boolean result"
+  ((osql "select test(x) from lit x where x=:l1;") '((true)))
+  ((osql "select test(x) from lit x where x=:n1;") nil)
+)
+:osql
+rollback;
+create type molecule;
+create function molecule_type(molecule)->Charstring 
+  as foreign 'abstract-function';
+create function name(molecule)->charstring;
+
+create type linear under molecule;
+create type octahedral under molecule;
+
+create function molecule_type(linear)-> charstring as select 'linear';
+create function molecule_type(octahedral)-> charstring as select
+'octahedral';
+
+create function sametype(molecule m)->  (charstring, charstring) as select
+ name(t), molecule_type(t) from molecule t
+ where molecule_type(t) = molecule_type(m); 
+
+rollback;

@@ -1,0 +1,27 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2008 Ruslan Fomkin, UDBL
+ * $RCSfile: EveryBkgs.2003.UNOPT.osql,v $
+ * $Revision: 1.1 $ $Date: 2008/01/20 13:03:18 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Experiments to measure performance of cuts for every of 41 bks file.
+ * For simple (ranksort) optimization on default AMOS cost model (i.e. without
+ * cost model for aggregates and udfs.
+ * Cut query based on 2003 in bad order.
+ * Run this script in ALEH started by run.current.limited.sh.
+ ****************************************************************************
+ * $Log: EveryBkgs.2003.UNOPT.osql,v $
+ * Revision 1.1  2008/01/20 13:03:18  ruslan
+ * performance evaluation of exp cut on every single bkg file
+ *
+ ****************************************************************************/
+
+cd('osql');
+<'../experiments/stream.osql';
+
+openwritefile('../experiments/EveryBkgs.2003.UNOPT.txt');
+ExpSingleBkgs(1);
+closewritefile();

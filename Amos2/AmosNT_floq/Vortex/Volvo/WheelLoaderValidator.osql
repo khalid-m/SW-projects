@@ -1,0 +1,28 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2013 Cheng Xu, UDBL
+ * $RCSfile: WheelLoaderValidator.osql,v $
+ * $Revision: 1.1 $ $Date: 2013/11/20 21:16:32 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: the validator for wheel loader in Volvo
+ *
+ ****************************************************************************
+ * $Log: WheelLoaderValidator.osql,v $
+ * Revision 1.1  2013/11/20 21:16:32  chexu484
+ * *** empty log message ***
+ *
+ ****************************************************************************/
+
+create function validateWheelLoader(Charstring cid) -> Stream of (Number, Charstring, Number)
+  as streamof(select invalidSignal(w, signals(cs))
+     	      from CanBusStream cs, Window w
+     	      where cs = theCanBusStream(cid) and
+              w in partwindowize(canBusStream(cs), #'partitionBy'));
+
+create function validateRecordedWheelLoader(Charstring cid) -> Stream of (Number, Charstring, Number)
+  as streamof(select invalidSignal(w, signals(cs))
+     	      from CanBusStream cs, Window w
+     	      where cs = theCanBusStream(cid) and
+	      w in partwindowize(simCanBusStream(cs), #'partitionBy'));

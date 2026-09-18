@@ -1,0 +1,101 @@
+/*-*-sql-*-*******************************************************************/
+
+/* Create a LogDirectory... */
+create logdirectory (name,folder,timeout,startseq) 
+       instances ('d1',pwd()+'/testdata/',10,0);
+
+create logdirectory (name,folder,timeout,startseq) 
+       instances ('d2',pwd()+'/realdata/',10,0);
+
+
+
+/* Look at a part of the stream */
+create function q1a() -> Bag of (Number,Charstring,Number,Number,Charstring)
+ as for each Logevent e where e in simlogeventstream(dirnamed('d1'))
+  return (select timestamp(e),variable(e),t_offset(e),value(e),
+                 filename(logfile(e))
+          where variable(e) = "REG401" and
+                value(e) >= 75);
+
+create function q1b() -> Bag of (Number,Charstring,Number)
+ as for each Logevent e where e in simlogeventstream(dirnamed('d2'))
+  return (timestamp(e), variable(e), value(e));
+
+/*
+a real logeventstream can be used as follows:
+change 'c:/some/dir/' to a real folder
+run q1b
+start moving/copying logfiles to the folder
+q1b will wait indefinitely for more logfiles to arrive (ctrl+c to stop)
+
+create logdirectory (name,folder) instances ('d1b','c:/some/dir/');
+
+create function q1b() -> bag of (number,charstring,number,number,charstring)
+ as for each logevent e where e in logeventstream(dirnamed('d1b'))
+  return (select timestamp(e),variable(e),t_offset(e),
+                 value(e),filename(logfile(e))
+          where variable(e) = "REG401" and
+                value(e) >= 75);
+*/
+
+
+/* Queries using more than one variable need 'record_agg' */
+create function recstream1() -> Stream of Record
+ /* Our stream of interest */
+ as filter_record_agg(simlogeventstream(dirnamed('d1')),{'REG401','REG403'});
+
+create function q2a() -> Bag of (Number,Number) as
+ for each Record r where r in recstream1()
+  return (select r["TS"],r["REG401"]
+          where r["REG401"]>=75 and r["REG403"]=1);
+
+/* Using events */
+create function q2b() -> Bag of (Number,Number) as
+ for each Record r where r in recstream1()
+  return (select timestamp(e401),value(e401)
+          from Logevent e401, Logevent e403
+          where e401=r["REG401-EVENT"] and e403=r["REG403-EVENT"] and
+		value(e401)>=75 and value(e403)=1);
+
+
+create function running_sum(Bag of Number input) -> Bag of Number
+ as begin
+  declare Integer sum;
+  set sum = 0;
+  for each Number n where n in input begin
+   set sum = sum + n;
+   return sum;
+  end;
+ end;
+
+/* Total time that REG401 has spent above value 75 */
+create function q3a() -> Bag of Number as
+ for each Logevent e where e in simlogeventstream(dirnamed('d1'))
+  return (select timestamp(e)-timestamp(prevevent(e))
+          where variable(e)="REG401" and value(e)>=75);
+
+create function q3a_sum() -> Bag of Number
+  as running_sum(q3a());
+
+/* Using record_agg */
+create function q3b() -> Bag of Number
+  as for each record r where r in recstream1()
+  return (select roundto(ts - tsprev,1)
+          from number ts, number tsprev
+          where ts=r["TS"] and tsprev=r["TS-PREV"] and 
+                r["REG401"]>=75 and r["REG403"]=1);
+
+create function q3b_sum() -> bag of number as
+ running_sum(q3b());
+
+/* Running area under REG401 */
+create function q4a() -> bag of number as
+ for each Logevent e where e in simlogeventstream(dirnamed('d1'))
+  return (select (timestamp(e)-timestamp(eprev))*
+                   ((value(e)+value(eprev)-150.0)/2.0)
+          from Logevent eprev
+          where eprev=prevevent(e) and
+                variable(e)="REG401" and value(e)>=75);
+
+create function q4a_sum() -> Bag of Number as
+ running_sum(q4a());

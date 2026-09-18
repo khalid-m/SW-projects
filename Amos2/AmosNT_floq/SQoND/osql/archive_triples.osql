@@ -1,0 +1,54 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2013 Silvia Stefanova UDBL
+ * $RCSfile: ,v 
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Functions needed to store triples selected 
+   by an archival query
+ ******************************************************************************/
+lisp;
+
+(defglobal _props_ nil) ;to store unique property URIs
+
+(defun dump-triples-andprops-- (fno filename triples)
+  (let ((outs (openstream filename "w")) 
+	(cc 0))
+    (unwind-protect
+	(progn
+	  (setq _props_ nil)
+	  (mapbag triples (f/l (triple)			    
+			       (dolist (term triple)	
+				 (incf cc)			 
+				 (rdf-dump term outs)
+				 (if (eq cc 2) 
+					(setq _props_ (adjoin term _props_)));;add to list olny a property URI
+				 (formatl outs " ")      )
+			       (formatl outs "." t)
+                               (setf cc 0)))        )
+      (closestream outs))))
+
+
+(defun list-props (fno ls)
+	(setq ls _props_)
+	(osql-result (listtoarray ls)))
+
+:osql
+create function props()->Vector of Literal
+	as foreign 'list-props';
+
+create function dump_triples_andprops(Charstring filename, Bag of (Literal, Literal, Literal) triples) -> Boolean
+  as foreign 'dump-triples-andprops--';
+
+
+
+create function archive_content_schema(Charstring datafile,Charstring schemafile, Bag of (Literal, Literal, Literal) queryfn)->Boolean
+/*Archives the data content selected by the function 'queryfn' in an NT file 'datafile' and 
+  the schema concerning the content in an NT file 'schemafile' */
+as
+ begin
+   dump_triples_andprops(datafile,queryfn);
+   /*dump_triples(schemafile,retrieve_schemaofProps());  */
+ end;
+

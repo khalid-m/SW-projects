@@ -1,0 +1,150 @@
+
+
+create function isExportable(Function f)-> Boolean as stored;
+
+create function theExportableResolvents(Charstring fn)-> Function f
+  as if some(isExportable(resolvents(theFunction(fn)))) 
+     then for each Function r
+          where isExportable(r) 
+           and r = resolvents(functionNamed(fn))
+          return r
+     else error("Function not exportable", fn);
+
+create function exportable (Charstring fn) -> boolean
+  as set isExportable(resolvents(theFunction(fn)))=true;
+
+
+create type funInfo properties (funName charstring, argsType charstring, 
+                                argsName charstring, rettype charstring, 
+                                retname charstring, resformat charstring);
+
+
+create function getFunInfo(charstring fn, charstring argst)
+                          -> (charstring rettype, charstring retname, charstring resformat) 
+  as select rettype(f), retname(f),resformat(f) 
+     from funInfo f 
+     where funName(f) = fn 
+       and argsType(f) = argst;
+
+
+create function getFuninfo(charstring fn)-> 
+       (charstring rettype, charstring retname, charstring argstype, 
+        charstring argsname)
+  as select rettype(f), retname(f), argsType(f), argsName(f) 
+     from funInfo f 
+     where funName(f) = fn;
+
+create function FunInfo(charstring funn, charstring argn, charstring argt, 
+                        charstring retn, charstring rett , charstring resf) -> boolean
+  as begin
+	declare funInfo p;
+	
+        if notany(select f 
+                  from funInfo f 
+                  where funname(f) = funn 
+                    and argsType(f) = argt) 
+        then 
+    		begin 
+		create funInfo instances p;
+        		set argsName(p) = argn;
+         		set retName(p) = retn;
+ 			set retType(p) = rett;
+         		set argsType(p) = argt;
+         		set funName(p) = funn;
+			set resformat(p)=resf;
+			return 1;
+    		end
+ 	else
+   		begin
+       		set argsName(fun) = argn 
+                    from funInfo fun 
+                    where funname(fun) = funn 
+                      and argsType(fun) = argt ; 
+       		set retName(fun) = retn 
+                    from funInfo fun 
+                    where funname(fun) = funn 
+                      and argsType(fun) = argt; 
+       		set retType(fun) =rett 
+                    from funInfo fun 
+                    where funname(fun) = funn 
+                      and argsType(fun) = argt; 
+		set resformat(fun) =resf
+                    from funInfo fun 
+                    where funname(fun) = funn 
+                      and argsType(fun) = argt; 
+		return 1;
+   		end  
+      
+end;
+
+
+
+create function isSubType(charstring superType, charstring subType) -> boolean
+  as select some(select t 
+                 from type t 
+                 where t in subtypes(typenamed(superType)) 
+                   and t = typenamed(subType));
+
+
+/*__________________________________________________________________________*/
+/*__________________________________________________________________________*/
+
+lisp;
+
+(defun concat-vector(fno iv oc)
+"Concat all vector elements as comma separated string"
+  (setq oc "")
+  (maparray iv
+	    (f/l (row i)
+		 (if (= oc "") (setq oc (concat oc row))
+		 (setq oc (concat oc " , " row)))))
+  (osql-result iv oc))
+
+(defun replace-str(fno is r)
+  (let ((s (explode is)) (rstr ""))
+     
+    (dolist (x s)
+      (cond   ((equal x "?")(setq rstr (concat rstr "\"")))
+              ((= x "^")(setq rstr (concat rstr "<")))
+	      (t (setq rstr (concat rstr x)))))
+    (osql-result is rstr)))
+
+:osql
+
+create function replace_str(charstring is)->charstring os as foreign "replace-str";
+
+create function concatvector(vector i)->charstring c as foreign "concat-vector";
+
+                               
+
+create function importWSDL(integer userid,charstring wsdlurl)-> Bag of charstring viewstr  as select a+","+b+","+c+","+d from vector v, charstring a, charstring b, charstring c, charstring d where a=v[0] and b=v[1] and  c=v[2] and  d=v[3] and v=importwsdl(wsdlurl);
+      
+
+funInfo('IMPORTWSDL','USERID.WSDLURL','INTEGER.CHARSTRING','VIEWSTR','CHARSTRING',"BAG"); 
+
+
+create function tableInfo(integer userid, charstring tname)-> (charstring authenticationstr, charstring servicename, charstring tablein, charstring tableout) as select tableInfo(tname);
+
+create function tableInfo(integer userid, charstring tname)-> charstring viewstr as select a+";"+b+";"+c+";"+d  from vector v, charstring a, charstring b, charstring c, charstring d where a=v[0] and b=v[1] and  c=v[2] and  d=v[3] and v=tableInfo(tname);
+                              
+
+funInfo('TABLEINFO','USERID.TNAME','INTEGER.CHARSTRING','VIEWSTR','CHARSTRING',"");
+
+create function authentication(integer userid, charstring tname, charstring authenticationstr)-> charstring status as select putsoaphvalue(tname,authenticationstr);
+
+
+funInfo('AUTHENTICATION','USERID.TNAME.AUTHENTICATIONSTR','INTEGER.CHARSTRING.CHARSTRING','STATUS','CHARSTRING',"");			      
+
+create function query (integer userid, charstring sqlq)-> charstring vo as 
+					begin
+				           return concatvector(cast (sql(replace_str(sqlq)) as Vector));
+					end;
+
+
+
+
+funInfo('QUERY','USERID.SQLQ','INTEGER.CHARSTRING','VO','CHARSTRING',"BAG");
+
+
+
+

@@ -1,0 +1,37 @@
+<html>
+<body>
+<pre>
+<h1>Build Log</h1>
+<h3>
+<<<<<<< LibProject.plg
+=======
+--------------------Configuration: Project - Win32 Debug--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp\RSPF3.tmp" with contents
+[
+raptor.lib Ws2_32.lib /nologo /subsystem:console /incremental:yes /pdb:"Debug/SparQL.pdb" /debug /machine:I386 /out:"../exe/SparQL.exe" /pdbtype:sept 
+.\Debug\lexSparQL.obj
+.\Debug\sparql_help.obj
+.\Debug\sparql_main.obj
+.\Debug\sparql_memory.obj
+.\Debug\sparql_parser_tab.obj
+..\..\..\bin\amoslib.lib
+..\..\..\wrappers\CRDF\lib\CRDF.lib
+]
+Creating command line "link.exe @C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp\RSPF3.tmp"
+<h3>Output Window</h3>
+Linking...
+<h3>
+>>>>>>> 1.4
+--------------------Configuration: LibProject - Win32 Debug--------------------
+</h3>
+<h3>Command Lines</h3>
+
+
+
+<h3>Results</h3>
+CRDF.lib - 0 error(s), 0 warning(s)
+</pre>
+</body>
+</html>

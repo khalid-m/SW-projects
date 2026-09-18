@@ -1,0 +1,45 @@
+/*** Return 0 if sql identifier is uri and 1 if rlit ***/
+create function is_sqllid(Charstring str)->Integer flg
+  as foreign 'is_sqllid';
+
+/*** Translates an sql string to corresponding uid. E.g. <monkey> is 
+     translated to monkey.
+     If the argument of sqltouid is a sql string representing an rdf literal 
+     sqltouid returns nothing ***/
+
+create function sqltouid(Charstring str)->Charstring r
+  as foreign 'sqltouid';
+
+
+(defun rdispatch (fno flg str r)
+  "Encapsulates the way an sql identifier (<id> or) is translated to 
+   corresponding resource"
+  (cond ((equal flg 0)
+	 (osql-result flg str (getfunction 
+			       (getfunctionnamed 'uri) (list str))))
+	(t (osql-result flg str (caar (getfunction (getfunctionnamed 'lit)
+						   (list str)))))))
+
+;;;Wrapper fn for rdispatch.
+(set-type-container 
+ (osql "
+create function rdispatch(Integer flg, Charstring str)->Resource r
+  as foreign 'rdispatch';"))
+
+;;;Translates a rlit to corresponding lid. Invertable and 1:1. 
+(set-type-container 
+ (osql "
+create function rtosqllid(Resource r)-> Charstring str 
+  as multidirectional ('bf' key select lid(r))
+                      ('fb' key select rdispatch(is_sqllid(str),str));"))
+
+;;;Translates a uri to corresponding uid. Invertable and 1:1
+(set-type-container 
+ (osql "
+create function rtosqluid(Resource r)->Charstring str 
+  as multidirectional ('bf' key select '<' + cast(uid(r) as Charstring)
+                                       + '>')
+                      ('fb' key select uri(sqltouid(str)));"))
+
+declare_key(theresolvent('RDISPATCH'),{'flg','str'});
+declare_key(theresolvent('RDISPATCH'),{'r'});

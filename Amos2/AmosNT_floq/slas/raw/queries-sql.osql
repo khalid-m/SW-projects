@@ -1,0 +1,21 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2013 Thanh Truong, UDBL
+ * $RCSfile: queries-sql.osql,v $
+ * $Revision: 1.1 $ $Date: 2013/12/09 17:37:13 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Queries on log files
+ *
+ ****************************************************************************
+ * $Log: queries-sql.osql,v $
+ * Revision 1.1  2013/12/09 17:37:13  thatr500
+ * rev23
+ *
+ *
+ ****************************************************************************/
+/*Find when on which machine sensor reading was deviating from its expected 
+  value 11 (bar) more than 120 seconds*/
+create function q1()->Bag of Vector of Number 
+as sql("select m,s,et-bt,mv from RawFile where abs(mv - 20) > 11 and et-bt>240.0");

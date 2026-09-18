@@ -1,0 +1,94 @@
+/*-*-sql-*-*******************************************************************/
+
+/* Examples with OPTIONAl and UNION from http://www.w3.org/TR/rdf-sparql-query/ */
+
+/*
+dropfunction(#'DEF',1);
+add DEF() = turtle('data/sparql/6.1.ttl');
+*/
+
+set :q6_1 = '
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+SELECT ?name ?mbox
+WHERE  { ?x foaf:name  ?name .
+         OPTIONAL { ?x  foaf:mbox  ?mbox }
+       }
+';
+
+/*
+dropfunction(#'DEF',1);
+add DEF() = turtle('data/sparql/3.ttl');
+*/
+
+/* Modified testcase: '< 30' changed to '= "23"' */
+set :q6_2 = '
+PREFIX  dc:  <http://purl.org/dc/elements/1.1/>
+PREFIX  ns:  <http://example.org/ns#>
+SELECT  ?title ?price
+WHERE   { ?x dc:title ?title .
+          OPTIONAL { ?x ns:price ?price . FILTER (?price = "23") }
+        }
+';
+
+/*
+dropfunction(#'DEF',1);
+add DEF() = turtle('data/sparql/6.3.ttl');
+*/
+
+set :q6_3 = '
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+SELECT ?name ?mbox ?hpage
+WHERE  { ?x foaf:name  ?name .
+         OPTIONAL { ?x foaf:mbox ?mbox } .
+         OPTIONAL { ?x foaf:homepage ?hpage }
+       }
+';
+
+/*
+dropfunction(#'DEF',1);
+add DEF() = turtle('data/sparql/7.ttl');
+*/
+
+set :q7a= '
+PREFIX dc10:  <http://purl.org/dc/elements/1.0/>
+PREFIX dc11:  <http://purl.org/dc/elements/1.1/>
+
+SELECT ?title
+WHERE  { { ?book dc10:title  ?title } UNION { ?book dc11:title  ?title } }
+';
+
+set :q7b= '
+PREFIX dc10:  <http://purl.org/dc/elements/1.0/>
+PREFIX dc11:  <http://purl.org/dc/elements/1.1/>
+
+SELECT ?x ?y
+WHERE  { { ?book dc10:title ?x } UNION { ?book dc11:title  ?y } }
+';
+
+set :q7c= '
+PREFIX dc10:  <http://purl.org/dc/elements/1.0/>
+PREFIX dc11:  <http://purl.org/dc/elements/1.1/>
+
+SELECT ?title ?author
+WHERE  { { ?book dc10:title ?title .  ?book dc10:creator ?author }
+         UNION
+         { ?book dc11:title ?title .  ?book dc11:creator ?author }
+       }
+';
+
+/*
+dropfunction(#'DEF',1);
+add DEF() = turtle('data/sparql/10.1.ttl');
+*/
+
+set :q10_1 = '
+PREFIX foaf:    <http://xmlns.com/foaf/0.1/>
+SELECT ?nameX ?nameY ?nickY
+WHERE
+  { ?x foaf:knows ?y ;
+       foaf:name ?nameX .
+    ?y foaf:name ?nameY .
+    OPTIONAL { ?y foaf:nick ?nickY }
+  }
+';
+

@@ -1,0 +1,12 @@
+
+declare Record :r;
+set :r = callwebserviceoperation("http://ws.strikeiron.com/USDAData?WSDL",                           "SearchFoodByDescription",make_record({"FoodKeywords","","FoodGroupCode","1900"}));
+
+declare Record :a;
+declare Record :b;
+declare Record :c;
+
+set :a= vref(:r,"SearchFoodByDescriptionResult");
+
+/*set :b= vref(:a,"SearchByKeywordsOutput");*/
+	

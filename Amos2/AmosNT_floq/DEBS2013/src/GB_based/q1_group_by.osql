@@ -1,0 +1,261 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2013 Sobhan, UDBL
+ * $RCSfile: q1_group_by.osql,v $
+ * $Revision: 1.2 $ $Date: 2013/10/29 14:45:25 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: q1 using group by
+ *
+ ****************************************************************************
+ * $Log: q1_group_by.osql,v $
+ * Revision 1.2  2013/10/29 14:45:25  sobso953
+ * more type checking for the new_group_by
+ *
+ * Revision 1.1  2013/10/29 10:32:19  sobso953
+ * re-arranging the group-by-based version of DEBS
+ *
+ * Revision 1.6  2013/10/27 15:41:06  sobso953
+ * -Flattened/type-checked new_group_by incorporated
+ * -Utilizes mergestreams() to simplify the application logic
+ * -AND: passes Q1 tests! :)
+ *
+ * Revision 1.5  2013/10/22 17:35:23  sobso953
+ * A "working" q1b using group by
+ *
+ * Revision 1.4  2013/10/17 09:08:37  sobso953
+ * A "working" q1a using group by
+ *
+ * Revision 1.3  2013/10/16 14:46:43  sobso953
+ * Added q1a using groupby
+ *
+ * Revision 1.2  2013/10/15 14:55:48  sobso953
+ * new_group_by function added to DEBS
+ *
+ * Revision 1.1  2013/10/15 12:48:48  sobso953
+ * Q1 using group by, source code outline added.
+ *
+ *
+ ****************************************************************************/
+
+/*
+the remaining problems in q1a:
+	-the interruption events are not paaseed through, 
+	because there is no addfn anymore! A fundamental change is
+	needed as to how the interruptions are handled.
+	-The distance calculations are not accurate because they do
+	not smooth down the first/last position by averaging left and
+	right feet positions. 
+*/
+
+load_lisp("GB_based/new_group_by.lsp");
+< 'GB_based/mergstreams.osql';
+
+create function i_stop()->Number as 0;
+create function i_trot()->Number as 1;
+create function i_low()->Number as 2;
+create function i_medium()->Number as 3;
+create function i_high()->Number as 4;
+create function i_sprint()->Number as 5;
+
+/*velocity to the intensity of the run*/
+create function intensity(Number velocity)-> Number as
+begin
+	if (velocity<=1) then return i_stop() /*stop*/
+	else if (velocity>1 and velocity<=11) then return i_trot() /*trot*/
+	else if (velocity>11 and velocity<=14) then return i_low() /*low*/
+	else if (velocity>14 and velocity<=17) then return i_medium() /*medium*/
+	else if (velocity>17 and velocity<=24) then return i_high() /*high*/
+	else if (velocity>24) then return i_sprint(); /*sprint*/
+end;
+
+create function strIntensity(Number velocity)-> Charstring as
+begin
+	declare Number i;
+	set i = intensity(velocity);	
+	if i = i_stop() then return "stop"
+	else if i = i_trot() then return "trot"
+	else if i= i_low()  then return "low"
+	else if i= i_medium() then return "medium"
+	else if i= i_high() then return "high"
+	else if i= i_sprint() then return "sprint"; /*sprint*/
+end;
+
+lisp;
+(defglobal _break_ 0)
+(defun isbreak+ (fno r) (osql-result (= _break_ 1)))
+(defun setbreak- (fno r) (setq _break_ r))
+:osql
+
+load_lisp("q1.lsp");
+
+
+
+create function isbreak() -> Boolean
+   as foreign 'isbreak+';
+
+create function setbreak (Integer x) -> Boolean
+   as foreign 'setbreak-';
+
+
+/*replaces mising values (-1) by zero.*/
+create function interpret_val(number val)-> number as
+begin
+	if val=-1 then return 0 else return val;
+end;
+
+/*takes the time stamped positions of a player, and returns the distance traveled
+by calculating the distance between the last position and the first one.*/
+create function movement_length_agg(Bag of vector b)-> Number dist
+as
+	euclid(cast((aggv(b,#'maxagg'))[1] as vector of number),
+	       cast((aggv(b,#'minagg'))[1] as vector of number));
+
+/*here is a test for the movement_length_agg*/
+/*
+set :bag1=(select {i,{i+1,i+2}}
+from number i where i in iota(1,10));
+
+movement_length_agg(:bag1);
+*/
+
+/*adds the intensity of movement, as a function of speed, to the output*/
+create function insert_intensity(bag of (Vector of Number,Number,Number) b)->bag of vector of number
+as
+	select {ts-microWinSize(),ts,player_id,intensity(speed),distance,speed}
+ 	from number ts,number player_id,number speed, number distance
+	where ({ts,player_id},speed,distance) in b;
+
+
+create function q1aagg0(Window w) -> Bag of Vector of Number
+  as insert_intensity(
+	new_group_by(
+		(select {ts(w),playersensor(sid(tpl))},vabs(tpl),{ts(tpl),{x(tpl),y(tpl)}}
+		from Numarray tpl
+		where tpl in w),
+		{#'avg',#'movement_length_agg'}));
+
+/* this is the part to inject break event for q1b! any better solution? 2013.04.11 Cheng */
+create function q1aagg(Window w) -> Bag of Vector of Number
+  as begin
+       return q1aagg0(w);	
+       if isbreak() then
+	begin
+	  return breakstartv(); 
+          return breakendv();
+	  setbreak(0);
+	end;
+     end;
+
+create function q1ats(Numarray e) -> Number as floor(e[0]);
+
+create function q1a_0(Stream of Numarray input) -> Bag of Vector of Number
+  as select q1aagg(w)
+     from Window w
+     where w in twindowize(input, #'q1ats',
+			   microWinSize(), microWinSize());
+
+/*merges the break stream with the output produced by q1a*/
+create function q1a(Stream of Numarray input) -> Stream of Vector of Number
+  as q1logger("output/q1a.csv", streamof(mergstreams(streamof(q1a_0(input)),streamof(breakbag()),0)));
+
+
+lisp;
+(setq _print-delay_ 0)
+:osql
+
+
+/*
+the user defined agg function to produce the aggregate running
+statistics per player as specified in the output format in DEBS-GC
+*/
+create function q1b_transpos_agg(bag of (vector of Number)  b)-> Vector of number
+as begin
+	declare vector of number res;
+	set res= new_vector(12, 0);
+	for each Number intensity, Number duration, Number dist
+	where {intensity,duration,dist} in b
+	begin
+		set_vref(res,intensity*2,duration);
+		set_vref(res,intensity*2+1,dist);
+    	end;
+	return res;
+end;
+
+/*de-normalizes the input bag by putting all the rows corresponding to the same player in a single row.*/
+create function transpose_q1b_output(bag of (Vector of Number,Number,Number) b)->bag of (object,vector)
+as new_group_by(
+	(select {tsw,pid},{intensity,duration,dist}
+	from Number tsw, Number pid, Number intensity,Number duration,Number dist
+	where ({tsw,pid,intensity},duration,dist) in b),
+	{#'q1b_transpos_agg'});
+
+/*
+Just wraps the output so that it is abag of  vector of numbers
+i.e. getting rid of extra curly brackets.
+*/
+create function q1b_output_wrapper( bag of (object,vector) b)-> bag of vector of Number
+as	select concat(cast(v[0] as vector),cast(v[1] as vector of vector)[0])
+	from vector v
+	where v in b;
+
+create function q1bagg(Window w) ->  bag of vector of Number
+  as  q1b_output_wrapper(
+      transpose_q1b_output(
+	new_group_by(
+	(
+	select
+		{ts(w),pid,intensity},tstop-tstart,dist
+	from 
+		Vector of Number tpl,
+		Number tstart, Number tstop, Number pid,
+		Number intensity, Number dist, number speed
+	where
+		tpl in w and
+		tstart=tpl[0] and tstop=tpl[1] and pid=tpl[2] and
+		intensity=tpl[3] and dist=tpl[4] and speed=tpl[5]
+	),
+	{#'sum',#'sum'})));
+
+create function q1bts(Vector of Number e) -> Number as floor(e[0]);
+
+create function q1outputfile(Number wsize) -> Charstring as stored;
+
+add q1outputfile(60) = "output/q1b_1M.csv";
+add q1outputfile(300) = "output/q1b_5M.csv";
+add q1outputfile(1200) = "output/q1b_20M.csv";
+add q1outputfile(4200) = "output/q1b_landmark.csv";
+
+/* functions to run 1, 5, 10 minutes window of q1b */
+create function q1b_0(Stream of Vector of Number input, Number wsize) ->  bag of vector of Number
+  as select q1bagg(w)
+     from Window w
+     where w in twindowize(input, #'q1bts',
+			   wsize, microWinSize(), microWinSize(),
+			   #'isInterruptBreakStartv', #'isInterruptBreakEndv');
+
+/*
+merges the interrupt stream into the output of q1a.
+note that in the group-by-based implementation, q1a does
+not pass the interrupt events to q1b anymore.
+*/
+
+
+create function q1b(Stream of Vector of Number input, Number wsize) -> Stream
+  as streamof(writecsvfile(q1outputfile(wsize), q1b_0(input, wsize)));
+
+
+create function q1(Stream of Numarray s) -> Stream
+  as mergestreams(svali:mapstreams(splitstream(q1a(s), 4, #'broadcastv'),
+                                   {#'q1b', #'q1b', 
+				    #'q1b', #'q1b'},
+				   {{60}, {300}, {1200}, 
+				    {4200}}));
+
+create function q1input(Charstring filename)
+                      -> Stream of Numarray
+  as streamof(select e from Numarray e
+	      where e in inputstreamna(filename)
+	      and (isPlayer(e) or isBreakInterrupt(e)));
+

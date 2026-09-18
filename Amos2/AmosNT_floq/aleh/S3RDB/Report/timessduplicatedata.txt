@@ -1,0 +1,268 @@
+
+
+
+
+101
+
+SQL Server parse and compile time: 
+   CPU time = 40 ms, elapsed time = 40 ms.
+
+elapsed time = 1 ms.
+
+threeLeptonCut;
+
+(6 row(s) affected)
+
+elapsed time = 582 ms.
+
+zVetoCut;
+
+(94 row(s) affected)
+
+elapsed time = 627 ms.
+
+topcut;
+
+(60 row(s) affected)
+
+elapsed time = 11154 ms.
+
+
+jetVetoCut;
+
+(15 row(s) affected)
+
+elapsed time = 46551 ms.
+
+
+leptoncuts;
+
+(14 row(s) affected)
+
+elapsed time = 239 ms.
+
+Misseecuts;
+
+(28 row(s) affected)
+
+elapsed time = 406 ms.
+
+
+
+
+Allcuts;
+
+SQL Server parse and compile time: 
+   CPU time = 9 ms, elapsed time = 9 ms.
+
+(1 row(s) affected)
+
+elapsed time = 711 ms.
+
+optAllcuts;
+
+SQL Server parse and compile time: 
+   CPU time = 9 ms, elapsed time = 10 ms.
+
+(1 row(s) affected)
+
+elapsed time = 757 ms.
+
+expcuts;
+
+SQL Server parse and compile time: 
+   CPU time = 8 ms, elapsed time = 10 ms.
+
+(1 row(s) affected)
+
+elapsed time = 37725 ms.
+
+
+
+
+
+25000
+
+
+threeLeptonCut;
+(475 row(s) affected)
+
+elapsed time = 389178 ms.
+
+zVetoCut;
+(23825 row(s) affected)
+
+elapsed time = 435402 ms.
+
+topcut;
+(14680 row(s) affected)
+
+elapsed time = 8042034 ms.
+
+jetVetoCut;
+(15 row(s) affected)
+
+elapsed time = 37706310 ms.
+
+leptoncuts;
+(5121 row(s) affected)
+
+elapsed time = 391751 ms.
+
+Misseecuts(e.idevent,e.pxmiss,e.pymiss)=1;
+(7044 row(s) affected)
+
+elapsed time = 339513 ms.
+
+
+Allcuts;
+SQL Server parse and compile time: 
+   CPU time = 9 ms, elapsed time = 9 ms.
+elapsed time = 529971 ms.
+
+optAllcuts;
+SQL Server parse and compile time: 
+   CPU time = 9 ms, elapsed time = 9 ms.
+elapsed time = 554899 ms.
+
+expcuts;
+(1 row(s) affected)
+
+SQL Server parse and compile time: 
+   CPU time = 9 ms, elapsed time = 9 ms.
+elapsed time = 26067975 ms.
+
+----------------------------------------------------------------------------------------------------
+
+
+
+
+SCHEMA3B
+
+101
+
+threeLeptonCut;
+
+(6 row(s) affected)
+
+140 ms,  elapsed time = 226 ms.
+
+zVetoCut;
+(94 row(s) affected)
+
+10 ms,  elapsed time = 15 ms.
+
+topcut;
+
+(60 row(s) affected)
+
+2474 ms,  elapsed time = 4875 ms.
+
+
+jetVetoCut;
+
+(15 row(s) affected)
+
+281074 ms,  elapsed time = 10289 ms.
+
+leptoncuts;
+(14 row(s) affected)
+
+381 ms,  elapsed time = 401 ms.
+
+Misseecuts;
+
+140 ms,  elapsed time = 117 ms.
+
+Allcuts;
+SQL Server parse and compile time: 
+   CPU time = 2374 ms, elapsed time = 3534 ms.
+
+(1 row(s) affected)
+
+10455 ms,  elapsed time = 12868 ms.
+
+optAllcuts;
+
+SQL Server parse and compile time: 
+   CPU time = 2103 ms, elapsed time = 2586 ms.
+
+(1 row(s) affected)
+
+10265 ms,  elapsed time = 12388 ms.
+
+
+expcuts;
+SQL Server parse and compile time: 
+   CPU time = 2253 ms, elapsed time = 2640 ms.
+
+(1 row(s) affected)
+
+10425 ms,  elapsed time = 16461 ms.
+
+
+
+
+
+25000
+
+threeLeptonCut;
+
+(6 row(s) affected)
+
+140 ms,  elapsed time = 23696 ms.
+
+zVetoCut;
+(94 row(s) affected)
+
+10 ms,  elapsed time = 6354 ms.
+
+topcut;
+
+(60 row(s) affected)
+
+2474 ms,  elapsed time = 1420292 ms.
+
+
+jetVetoCut;
+
+(15 row(s) affected)
+
+281074 ms,  elapsed time = 2997617 ms.
+
+leptoncuts;
+(14 row(s) affected)
+
+381 ms,  elapsed time = 15181 ms.
+
+Misseecuts;
+
+140 ms,  elapsed time = 34087 ms.
+
+Allcuts;
+SQL Server parse and compile time: 
+   CPU time = 2374 ms, elapsed time = 3534 ms.
+
+(1 row(s) affected)
+
+10455 ms,  elapsed time = 5031388 ms.
+
+optAllcuts;
+
+SQL Server parse and compile time: 
+   CPU time = 2103 ms, elapsed time = 2586 ms.
+
+(1 row(s) affected)
+
+10265 ms,  elapsed time = 4942812 ms.
+
+
+expcuts;
+SQL Server parse and compile time: 
+   CPU time = 2253 ms, elapsed time = 2640 ms.
+
+(1 row(s) affected)
+
+10425 ms,  elapsed time = 6403329 ms.
+
+

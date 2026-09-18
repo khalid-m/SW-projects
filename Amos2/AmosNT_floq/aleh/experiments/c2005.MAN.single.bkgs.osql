@@ -1,0 +1,7 @@
+cd('osql');
+<'cuts2005.stream.nohints.osql';
+<'../experiments/stream.osql';
+
+openwritefile('../experiments/c2005.MAN.single.bkgs.txt');
+MANsingleBkgs(3,5);
+closewritefile();

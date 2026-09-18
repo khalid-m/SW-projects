@@ -1,0 +1,23 @@
+/*-*-sql-*-*******************************************************************/
+
+logging off;
+
+set lroutputfiles() = "/local/home/javad/AmosNT/scsq/lr/scsq-plr/lrouput";
+create function distr_run_lr()
+                              ->Vector
+as
+  select in(mrg)
+        from stream of iarray src, stream mrg, Vector of Stream of iarray si, Vector of Stream so_hist
+        where
+        mrg = mergestreams(so_hist)
+        /*and so_hist = mapstreams( si, #'lr_dailyexp')*/
+	and so_hist = mapflexv((vselect {si[i], i}
+      		      from integer i where i in iota(0,255)),
+		      #'lr_dailyexp', make_record({}))
+        and si = splitstream( src, 256, #'idexpmodpartition')
+	and src = ostream(newsp(streamof(clrmultiply(ts_iarray(in(lreadbins(vselect('/local/home/javad/AmosNT/scsq/lr/data/l64-'+iota( 0, 2 ) ))),12),64,4))),0);
+
+
+distr_run_lr();
+q();
+

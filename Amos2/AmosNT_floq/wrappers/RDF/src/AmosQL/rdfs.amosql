@@ -1,0 +1,201 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2004 Johan Petrini, UDBL
+ * $RCSfile: rdfs.amosql,v $
+ * $Revision: 1.12 $ $Date: 2012/05/15 19:27:15 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Representation of RDFSchema, that is, a meta schema 
+ * describing the semantics of an RDF schema.
+ ****************************************************************************/
+create function make_rdf_type(rdf_resource r, vector v)->Object as foreign 'make-rdf-type';
+create function add_rdf_type(rdf_resource oid, object t)->Boolean as foreign 'add-rdf-type';
+
+ /*******************************************************
+ * Resources needed to bootstrap			* 
+ * RDF type system according to RDFS spec.		*
+ *******************************************************/
+make_rdf_type(the_persistent({"http://www.w3.org/1999/02/22-rdf-syntax-ns#","Property"}),{typenamed("RDF_RESOURCE")});
+make_rdf_type(the_persistent({"http://www.w3.org/2000/01/rdf-schema#","Literal"}),{typenamed("RDF_RESOURCE")});
+make_rdf_type(the_persistent({"http://www.w3.org/2000/01/rdf-schema#","Datatype"}),{typenamed("RDFSCLASS")});
+make_rdf_type(the_persistent({"http://www.w3.org/1999/02/22-rdf-syntax-ns#","XMLLiteral"}),{typenamed("RDF_LITERAL")});
+make_rdf_type(the_persistent({"http://www.w3.org/2000/01/rdf-schema#","Container"}),{typenamed("RDF_RESOURCE")});
+make_rdf_type(the_persistent({"http://www.w3.org/2000/01/rdf-schema#","ContainerMembershipProperty"}),{typenamed("RDF_PROPERTY")});
+make_rdf_type(the_persistent({"http://www.w3.org/1999/02/22-rdf-syntax-ns#","Seq"}),{typenamed("RDF_CONTAINER")});
+make_rdf_type(the_persistent({"http://www.w3.org/1999/02/22-rdf-syntax-ns#","Bag"}),{typenamed("RDF_CONTAINER")});
+make_rdf_type(the_persistent({"http://www.w3.org/1999/02/22-rdf-syntax-ns#","Alt"}),{typenamed("RDF_CONTAINER")});
+
+add_rdf_type(the_persistent({"http://www.w3.org/2000/01/rdf-schema#","domain"}), typenamed("RDF_PROPERTY"));
+add_rdf_type(the_persistent({"http://www.w3.org/2000/01/rdf-schema#","range"}),typenamed("RDF_PROPERTY"));
+add_rdf_type(the_persistent({"http://www.w3.org/1999/02/22-rdf-syntax-ns#","type"}),typenamed("RDF_PROPERTY"));
+add_rdf_type(the_persistent({"http://www.w3.org/2000/01/rdf-schema#","subClassOf"}),typenamed("RDF_PROPERTY"));
+add_rdf_type(the_persistent({"http://www.w3.org/2000/01/rdf-schema#","subPropertyOf"}),typenamed("RDF_PROPERTY"));
+add_rdf_type(the_persistent({"http://www.w3.org/2000/01/rdf-schema#","comment"}),typenamed("RDF_PROPERTY"));
+add_rdf_type(the_persistent({"http://www.w3.org/2000/01/rdf-schema#","member"}),typenamed("RDF_PROPERTY"));
+add_rdf_type(the_persistent({"http://www.w3.org/2000/01/rdf-schema#","seeAlso"}),typenamed("RDF_PROPERTY"));
+add_rdf_type(the_persistent({"http://www.w3.org/2000/01/rdf-schema#","isDefinedBy"}),typenamed("RDF_PROPERTY"));
+
+
+/* Set procedures invisible for GOOVI */
+set_invisible_fn("PICK_SEQUENCE");
+set_invisible_fn("PICK_COLL_OBJECTS");
+set_invisible_fn("PICK_COLL_STATEMENTS");
+set_invisible_fn("COLL_STATEMENTS_OF");
+set_invisible_fn("GET_NICKNAME");
+set_invisible_fn("CREATEOBJECT");
+set_invisible_fn("ALLFUNCTIONS_INHERITED");
+set_invisible_fn("ATTRIBUTES_INHERITED");
+set_invisible_fn("METHODS_INHERITED2");
+set_invisible_fn("ALLSUPERTYPES_EXCEPT_OBJECT");
+set_invisible_fn("ALLOBJECTS");
+set_invisible_fn("EXTENT_OF");
+set_invisible_fn("DEEP_EXTENT");
+set_invisible_fn("SHALLOW_EXTENT");
+/*set_invisible_type("RDFSCLASS");*/
+
+
+ /*******************************************************
+ * Migrating RDF data to typesystem			*
+ *******************************************************/
+create function subclassof(RDF_resource r)-> RDF_resource u
+  as select getprop(r,"subClassOf");
+
+create function intmaxagg(Bag of integer b) -> integer 
+   as select(maxagg(b));
+
+create function level(RDF_resource r)->integer i as
+
+	begin
+                declare integer res;
+		set res = intmaxagg(level(subclassof(r)));
+                if res=nil then return 0 else return 1+res;
+	end;
+
+create function less_level(RDF_resource r, RDF_resource s)-> boolean b as
+	select true where level(r) < level(s);
+
+create function sortresources(Bag of RDF_resource b)->Vector of RDF_resource as
+	select sortbag(b,"LESS_LEVEL");
+
+create function get_new_statements()->Bag of (rdf_resource, rdf_resource, 
+                                              rdf_resource)
+as
+	select s, p, o 
+	from rdf_resource s, rdf_resource p, rdf_resource o 
+	where stmt_store(s, p, o, 1);
+
+
+create function is_class(rdf_resource r)->boolean as
+       select true where nickname(getprop(r,"type"))="Class";
+
+create function get_new_classes()->rdf_resource r 
+as
+	select distinct s
+	from rdf_resource s, rdf_resource p, rdf_resource o
+	where (s,p,o) in get_new_statements() and 
+	is_class(s);
+
+create function migrate_types()-> boolean b as
+
+  begin
+        for each rdf_resource r, integer i 
+            where r=sortresources(get_new_classes())[i]
+        make_RDF_type(r,vectorof(subclassof(r)));
+  end;
+
+ /*Migrating RDF properties to Amos derived functions*/
+create function get_new_RDFS_properties()->RDF_resource s
+as 
+	select s
+	from RDF_resource p, RDF_resource o 
+	where stmt_store(s, p, o, 1) and 
+        nickname(p)="type" and
+        nickname(o)="Property";
+
+create function name(RDFsclass c)-> charstring 
+as
+	select type.name->charstring(c);
+
+create function migrate_RDFs_property
+   (RDF_resource prop, charstring nm, RDFSClass domain) -> function
+as 
+	begin
+        	eval("create function rdf_"+nm+"("+name(domain)+
+              	" domain)->RDF_resource 
+		as select getprop(domain,'"+nm+"');");      
+     	end;
+
+create function migrate_properties()->boolean 
+as
+	for each RDF_resource prop, RDFsclass domain
+	where prop =  get_new_RDFs_properties() and
+	domain = getprop(prop,"domain")
+	   
+	begin
+       		migrate_RDFs_property(prop,nickname(prop),domain);
+   	end;
+
+ /*Migrating instances of RDF classes to instances of Amos types*/
+create function new_instances ()-> rdf_resource s 
+as 
+	select distinct s
+	from rdf_resource p, rdf_resource o 
+   	where nickname(p)= "type" and 
+	stmt_store(s, p, o, 1) and 
+	nickname(o)!= "Class";
+
+create function has_correct_class(rdf_resource r) -> boolean as
+   select true where typeof(getprop(r,"type"))=typenamed("RDFSCLASS");
+
+create function print_resources_named(charstring nm)-> boolean
+as begin
+         for each rdf_resource r where nickname(r)=nm and
+                                       r in materialized_resources()
+             print(id(r));
+  end;
+
+create function migrate_instances()->boolean b as
+        for each rdf_resource r where r=new_instances() 
+        begin
+         if has_correct_class(r) then
+           add_RDF_type(r,getprop(r,"type"))
+         else begin print(id(r)+" has illegal type "+
+                          id(getprop(r,"type")));
+                    print(typeof(getprop(r,"type")));
+		    print(r);
+                    print("Resources named "+nickname(getprop(r,"type"))+" are:");
+                    print_resources_named(nickname(getprop(r,"type")));
+                    print("-------------------------------");
+              end;
+                    
+        end;
+
+ /*Markera att nya statements nu betraktas som gamla och har migrerats mha av att sätta flagga till 0*/
+create function clear_new_statements()->boolean
+as  	
+	for each RDF_resource s, RDF_resource p, RDF_resource o
+	where stmt_store(s, p, o, 1)  
+	begin
+    		set stmt_store(s, p, o, 1)=false; 
+		set stmt_store(s, p, o, 0)=true;
+	end;
+	
+ /*Migrating RDF Schema to SWARD Schema*/
+create function migrate_all()->boolean
+as begin
+   	migrate_types();
+	migrate_instances();
+	migrate_properties();
+	clear_new_statements();
+   end;  
+
+create function loadRDFSchema(charstring url)-> boolean
+as
+	begin
+		if like( url, "file://*" ) then
+		  set url = "file:/" + substring( url, 7, char_length(url) - 1 );
+        	loadRDF(url);
+       		migrate_all();
+	end;
+

@@ -1,0 +1,94 @@
+/*-*-sql-*-*******************************************************************/
+
+logging off;
+
+/* Removed 2010-07-16/EZ. lread.lsp is read from master.osql */
+/* load_lisp('lread.lsp'); */
+
+create function my_jdbc()->jdbc;
+create function dexp_jdbc(integer id)->jdbc;
+
+create function query_mysql(vector q)->vector as
+begin
+return ( select {q[0], q[1], 0, q[9], answer[0],q[12]}
+from vector answer
+where answer = sql(my_jdbc(),
+                   "select toll from hist where vid=? and day=? and xway=?",
+                   {q[2], q[14], q[4]})
+and q[0] = 3 );
+end;
+
+create function query_mysql_ts(vector q, Integer id)->vector as
+begin
+return ( select {q[0], q[1], 0, q[9], answer[0], q[12]}
+from vector answer
+where answer = sql(dexp_jdbc(id),"select toll from hist where vid=? and day=? and xway=?",{q[2], q[14], q[4]}) and q[0] = 3 );
+end;
+
+create function queryMaker_peer( Vector q, Integer id)
+                               -> Vector as
+  begin
+  return (select {q[0], q[1], 0, q[9], answer[0],q[12]}
+        from Charstring cmd, Charstring SQLstmt, Vector answer
+        where
+        answer = ship("p"+stringify(id), cmd+"("+SQLstmt+","+stringify(id)+","+stringify(q[0])+");")
+        and cmd = "sqlPeer"
+        and SQLstmt = "\"select toll from hist where vid="+q[2]+" and day="+q[14]+" and xway="+q[4]+"\"");
+
+end;
+
+create function queryMaker_peer( iarray q, Integer id)
+                               -> Charstring as
+  begin
+  declare Charstring cmd, Charstring SQLstmt;
+  set cmd = "sqlPeer";
+  set SQLstmt = "\"select toll from hist where vid="+q[2]+" and day="+q[14]+" and xway="+q[4]+"\"";
+  return (cmd+"("+SQLstmt+","+stringify(id)+","+stringify(q[0])+");");
+
+end;
+
+create function debq(vector q)->vector as begin
+declare vector res;
+set res = query_mysql(q);
+print({q, res, real(now())});
+return res;
+end;
+
+create function vector_in(stream s)->vector as
+select v from vector v where v=in(s);
+
+create function mysqltoll(charstring mysqlhost, charstring db, stream s)
+->vector as begin
+set my_jdbc() = jdbc("myds", "com.mysql.jdbc.Driver");
+connect(my_jdbc(), "jdbc:mysql://" + mysqlhost + ":3307/" + db, "fedemar", 
+        "");
+return tslrhoho(query_mysql(vector_in(s)));
+end;
+
+create function dailyexp(charstring mysqlhost, charstring db, stream s)
+-> stream as
+select streamof(mysqltoll(mysqlhost, db, s));
+
+/* Binary variants */
+create function query_mysqlbin(iarray q)->vector as
+select {q[0], q[1], 0, q[9], answer[0]}
+from vector answer
+where answer = sql(my_jdbc(),
+                   "select toll from hist where vid=? and day=? and xway=?",
+                   {q[2], q[14], q[4]})
+and q[0] = 3;
+
+create function iarray_in(stream s)->iarray as
+select v from iarray v where v in s;
+
+create function mysqltollbin(charstring mysqlhost, charstring db, stream s)
+->vector as begin
+set my_jdbc() = jdbc("myds", "com.mysql.jdbc.Driver");
+connect(my_jdbc(), "jdbc:mysql://" + mysqlhost + ":3306/" + db, "lr", 
+        "lr");
+return query_mysqlbin(iarray_in(s));
+end;
+
+create function dailyexpbin(charstring mysqlhost, charstring db, stream s)
+-> stream as
+select streamof(mysqltollbin(mysqlhost, db, s));

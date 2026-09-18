@@ -1,0 +1,23 @@
+/* Approximate Cost for gql java interface function call */
+/*
+costhint(theresolvent("CHARSTRING.CHARSTRING.VECTOR.GQL->VECTOR"),"bbbf",functionnamed("gqlcost"));
+*/
+
+lisp;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; gql cost function
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(foreign-lispfn gqlcost ((function f)(vector bpat)(vector args))
+	((integer cost)(integer fanout))
+		(let ((fanout 100))
+		 
+		(cond ((equal 14 (string-pos (aref args 1) "CITY")) (setq fanout 10000))
+		      ((equal 14 (string-pos (aref args 1) "STATE")) (setq fanout 50)))
+		      
+		(foreign-result 10000 fanout)))
+
+:osql
+

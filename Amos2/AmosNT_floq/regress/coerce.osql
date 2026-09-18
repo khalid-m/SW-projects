@@ -1,0 +1,62 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2006 Tore Risch, UDBL
+ * $RCSfile: coerce.osql,v $
+ * $Revision: 1.4 $ $Date: 2013/02/17 14:42:50 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Testing coersion
+ *
+ ****************************************************************************
+ * $Log: coerce.osql,v $
+ * Revision 1.4  2013/02/17 14:42:50  torer
+ * New functiion identity(Object x)->Object
+ * Removed problem with queries coercing numbers to integers
+ *
+ * Revision 1.3  2012/05/12 13:16:04  torer
+ * average() -> avg()
+ *
+ * Revision 1.2  2009/12/09 20:06:31  torer
+ * Testing bag coercion
+ *
+ * Revision 1.1  2006/12/26 16:59:18  torer
+ * Testing coercion
+ *
+ ****************************************************************************/
+
+create function p1(Integer x)->Integer y as stored;
+set p1(1)=1;
+
+lisp;
+
+(checkequal "Coereced numeric inequality"
+	    ((osql "select n from number n where p1(n)<3;") '((1)))
+	    )
+
+:osql
+
+create function iplus(integer i, integer j) -> integer 
+  as select integer(i)+j;
+
+create function fplus(real x, real y) -> real
+  as select x+y;
+
+create function add1(number i) -> integer
+  as select iplus(i,1);
+
+lisp;
+(checkequal "Coersion"
+	    ((osql "iplus(1,1);") '((2)))
+            ((osql "iplus(1.2,1.3);") '((2.3)))
+	    ((osql "fplus(1,1);") '((2.0)))
+	    ((osql "iplus(1.1,2);") '((3)))
+	    ((osql "iota(1.1,2);") '((1) (2)))
+            ((osql "add1(1);") '((2)))
+            ((osql "add1(1.5);") '((3)))
+            ((osql "sum(1);") '((1)))
+            ((osql "count(1);") '((1)))
+            ((osql "avg(1);") '((1)))
+	    )
+:osql
+rollback;

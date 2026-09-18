@@ -1,0 +1,17 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2005 Johan Petrini, UDBL
+ * $RCSfile: alias.amosql,v $
+ * $Revision: 1.1 $ $Date: 2005/02/17 12:41:46 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Creating aliases for URIs. For handling inconsistensies 
+ * between base URIs in RDF/S documents. 
+ ****************************************************************************/
+
+create function alias(Charstring uri) -> Charstring alias as stored;
+set alias("http://www.edutella.org/edutella#Variable") = "http://edutella.jxta.org/2002/01/edu-query#Variable";
+set alias("http://www.edutella.org/edutella#QEL3Query") = "http://edutella.jxta.org/2002/01/edu-query#QEL3Query";
+set alias("http://www.edutella.org/edutella#RDFReifiedStatement") = "http://edutella.jxta.org/2002/01/edu-query#RDFReifiedStatement";
+set alias("http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq") = "http://www.w3.org/2000/01/rdf-syntax-ns#Seq";

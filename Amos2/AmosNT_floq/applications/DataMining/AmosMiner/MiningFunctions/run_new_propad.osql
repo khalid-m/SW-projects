@@ -1,0 +1,15 @@
+/*-*-sql-*-*******************************************************************/
+
+create function transactions() -> Bag of Vector of Integer as stored;
+
+add_dfn(getenv('AMOS_HOME')+'/applications/datamining/amosminer/data/transactions1000.nt',#'transactions');
+
+"Running new PROPAD with 1000 transactions, minsupp = 100";
+
+set :before = now();
+
+/* completes in 0.535 s */
+count(propad(transactions(),100));
+
+timespan(:before, now());
+

@@ -1,0 +1,51 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Cheng Xu, UDBL
+ * $RCSfile: vMillWrapper.osql,v $
+ *
+ * Description: mill wrapper, for directly stream from file
+ *
+ ****************************************************************************
+ * $Log: vMillWrapper.osql,v $
+ * Revision 1.2  2013/01/04 13:18:00  chexu484
+ * experiment
+ *
+ * Revision 1.1  2012/12/19 20:07:05  chexu484
+ * central vs paralell
+ *
+ *
+ ****************************************************************************/
+
+create function ap(Vector v) -> Number
+  as select v[4];
+
+create function ae(Vector v) -> Number
+  as select v[21];
+
+create function fz(Vector v) -> Number
+  as select v[22];
+
+create function hex(Vector v) -> Number
+  as select v[23];
+
+create function vc(Vector v) -> Number
+  as select v[24];
+
+create function zt(Vector v) -> Number
+  as 4;
+
+create function dcap(Vector v) -> Number
+  as select v[5];
+
+create function measuredPower(Vector v) -> Number
+  as select v[13];
+
+/* when wrapped like: {ts, id, val} */
+create function measuredPower1(Vector v) -> Number
+  as select measuredPower(vv)
+     from Vector vv
+     where vv = v[2];
+
+create function timestamp(Vector v) -> Number
+  as v[0];

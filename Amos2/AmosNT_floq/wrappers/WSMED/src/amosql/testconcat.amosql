@@ -1,0 +1,4 @@
+create function concat_obj(Object a, Object b)-> vector as
+					begin
+					 result {a,b};
+					end;

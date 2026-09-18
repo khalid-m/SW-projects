@@ -1,0 +1,72 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 Erik Zeitler, UDBL
+ * $RCSfile: ub_rpsplit.osql,v $
+ * $Revision: 1.2 $ $Date: 2012/05/15 21:32:17 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: multitos = parallel fsplit over multiarrays
+ *              This file contains all functions neeeded to benchmark 
+ *              multitos on synthetic LR-like data.
+ *              w (inl*mult), b (promille), rep, multiarray size (msz), rrfo
+ *
+ ****************************************************************************
+ * $Log: ub_rpsplit.osql,v $
+ * Revision 1.2  2012/05/15 21:32:17  torer
+ * result -> return
+ *
+ * Revision 1.1  2011/02/21 16:29:59  zeitler
+ * *** empty log message ***
+ *
+ *
+ ****************************************************************************/
+
+create function f_rpsplit(charstring file, integer inl, integer mult,
+                          integer p) -> vector of number as
+select in(zipstreams(counters))
+from vector of stream counters, vector of stream of numarray rr,
+vector of stream fsplit, stream src, integer w
+where counters = mapstreams(fsplit, #'stcount')
+and fsplit = unpackfsplit(rr, w, #'xwayrfn', #'q2bfn', 15)
+and rr = rsplit_force_flex(src, p, {'hostnum':0, 'rem':'rsplit'})
+and src = ostream(newspflex(streamof(clrmultiply(in(
+lreadfastbins({file})), inl, mult)), {'hostnum':0, 'rem':'src'}), 0)
+and w = inl*mult;
+
+create function x_file_rpsplit(charstring file, integer inl, integer mult,
+                                 integer p)
+-> (integer, charstring, integer, real exetime, integer countsum, real gencpu,
+    real rcpu, real fscpu, real mcpu, real sumcpu)
+as begin
+reset_ipr();
+set res() = f_rpsplit(file, inl, mult, p);
+set gencpu = psum(remcpu('src'));
+set rcpu = psum(remcpu('rsplit'));
+set fscpu = psum(fscpu());
+set mcpu = psum(mergecpu());
+set sumcpu = gencpu + rcpu + fscpu + mcpu;
+print({inl*mult, file, p, res(), gencpu, rcpu, fscpu, mcpu, 
+       sumcpu});
+set exetime = exectime(res());
+set countsum = countsum(res());
+return(select inl*mult, file, p, exetime, countsum, gencpu,
+       rcpu, fscpu, mcpu, sumcpu);
+sleep(0.1);
+end;
+
+create function file_rpsplit(charstring file, integer inl,
+                             vector of integer mults, vector of integer ps)
+-> object as begin
+for each integer mult where mult in mults begin
+for each integer p where p in ps begin
+declare charstring outputfilename;
+set outputfilename = "rpsplit-" + stringify(inl*mult) + 
+                     "_p" + stringify(p);
+add res() = {x_file_rpsplit(file, inl, mult, p)};
+print(res());
+writefile("dp-" + outputfilename, {dprofile()});
+end;
+end;
+write_ntuples(res(), "rpsplit_" + timestamp());
+end;

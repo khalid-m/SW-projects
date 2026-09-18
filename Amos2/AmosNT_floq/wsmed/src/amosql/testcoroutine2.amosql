@@ -1,0 +1,50 @@
+
+/* To import web service meta data */
+load_amosql("src/amosql/parallel_exp3.amosql");
+
+
+
+/*To load the operator FF_APPLYP */
+
+load_lisp("src/lisp/ff_receive_static_co.lsp");
+
+/*To load the query parallellization functions*/
+load_lisp("src/lisp/pardecom_ff_static_co.lsp");
+
+/* To load helping lisp functions */
+load_lisp("src/lisp/coroutine_ffapplyp.lsp");	
+
+
+
+/*set fanout */
+setfanout({3,3});
+
+
+/* Test query with real web service call */
+
+create function q1()-> integer
+	as select count(sql("select gp.toplace
+           from GetAllStates gs, GetPlacesWithin gp
+           where gs.state=gp.State and gp.place= 'Atlanta' and gp.distance=15.0 and gp.placetypetofind='City' "));
+
+/*
+create function q2()-> integer
+	as select count(sql("select gl.City ,  gl.PlaceTypeId
+from   GetAllStates gs, GetPlacesWithin gp, GetPlaceList gl
+where  gs.State=gp.state and gp.distance=15.0 and gp.placeTypeToFind='City' and gp.place='Atlanta' and gl.placeName=gp.ToPlace+' ,'+gp.ToState and gl.MaxItems=100 and gl.imagePresence='true'"));*/
+
+
+ 
+
+
+lisp;
+
+(checkequal "Check FF_APPLYP with web services- query1" 
+	((osql "q1();") '((286))))
+(quote
+(checkequal "Check FF_APPLYP with web services- query2" 
+	((osql "q2();") '((360)))))
+
+
+:osql
+quit;

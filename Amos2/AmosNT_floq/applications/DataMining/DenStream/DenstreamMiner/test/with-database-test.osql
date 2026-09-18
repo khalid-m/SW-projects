@@ -1,0 +1,37 @@
+
+/*This script is used to test the database and some query functions on the database*/
+
+
+print("do the clustering on data stream and load the resulted microclusters in to database:");
+print(">loadMicroClusters('data/initializing.txt','data/synthetic_data.txt',0.5,10,16,0.25,2,0.25,0,1)");
+/*do the clustering on data stream and load the resulted microclusters in to database*/
+loadMicroClusters('data/initializing.txt','data/synthetic_data.txt',0.5,10,16,0.25,2,0.25,0,1); 
+
+/*print("do the clustering on data stream and load the resulted microclusters in to database:");
+print(">loadMicroClusters1('data/initializing.txt','data/synthetic_data.txt',0.5,10,16,0.25,2,0.25,0,1)");*/
+/*do the clustering on data stream and load the resulted microclusters in to database*/
+/*loadMicroClusters1('data/initializing.txt','data/synthetic_data.txt',0.5,10,16,0.25,2,0.25,0,1);*/  
+
+print("Display the microclusters at cluster 1 in time frame 1:");
+print(">microcluster(1,1,'data/synthetic_data.txt')");
+microcluster(1,1,'data/synthetic_data.txt');/* Display the microclusters at cluster 1 in time frame 1*/
+
+print("Display number of cluster at frame 3:");
+print(">numOfclusters(3,'data/synthetic_data.txt')");
+numOfclusters(3,'data/synthetic_data.txt');/*numbers of cluster at frame 3*/
+
+print("Display number of microclusters at frame 3:");
+print(">numOfMicroclusters(3,'data/synthetic_data.txt')");
+numOfMicroclusters(3,'data/synthetic_data.txt');/* number of microclusters at frame 3*/
+
+print("Display in which frame and which cluster this datapoint is:");
+print(">locateDatapoint({320,500},'data/synthetic_data.txt')");
+locateDatapoint({320,500},'data/synthetic_data.txt'); /* in which window and which cluster is this datapoint in*/
+
+print("Display which frame has the maximum number of clusters:");
+print(">maxNumCluWindow('data/synthetic_data.txt')");
+maxNumCluWindow('data/synthetic_data.txt');/*which frame has the maximum number of clusters*/
+
+print("Display the frames information between time 1 and 10:");
+print(">numCluAtTime(1,10,'data/synthetic_data.txt')");
+numCluAtRange(1,10,'data/synthetic_data.txt');/*Display the windows information between time 1 and 10*/

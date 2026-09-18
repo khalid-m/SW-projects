@@ -1,0 +1,75 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Johan Petrini, UDBL
+ * 
+ * Description: Setup of master regression test of SWARD system exporting 
+ * and querying the Company relational database with strategies END-P and DVS-P.
+ *****************************************************************************/
+/* Settings 
+ */
+lisp;
+(setq _save-intermediates_ t)
+:osql
+
+/* Define UPVDS for Company relational database.
+ * Only done once for each relational database by admin.
+ */
+defineDS("COMPANYDS",
+         getenv("URLDB"),
+         getenv("DRIVERDB"),
+         "",
+         "",
+         getenv("USERDB"),
+         getenv("PASSWORDDB"));
+
+/* Define UPV 'Comp' associated with UPV data source 'CompDS'. 
+ */
+defineUPV("COMPANYDS","CompI","http://udbl.it.uu.se/upv/comp/");
+
+/* Define UPV 'CompDPS' associated with UPV data source 'CompDS'. 
+ */
+defineUPV("COMPANYDS","CompII","http://udbl.it.uu.se/upv/comp_II/");
+
+/* Populate SWARD system tables 
+ */
+
+/* Set property and class mappings
+ */
+
+/* For UPV 'Comp'
+ */
+assignPropID("ORDERS","ORDERID","CompI","http://udbl.it.uu.se/schemas/company#OrderID");
+assignPropID("ORDERS","OCUSTID","CompI","http://udbl.it.uu.se/schemas/company#OrderCustomer");
+assignPropID("ORDERS","CLERK","CompI","http://udbl.it.uu.se/schemas/company#Clerk");
+assignPropID("CUSTOMER","CUSTID","CompI","http://udbl.it.uu.se/schemas/company#CustID");
+assignPropID("CUSTOMER","MKTSEGMENT","CompI","http://udbl.it.uu.se/schemas/company#Market");
+
+assignCRID("ORDERS","OCUSTID","CUSTOMER","CompI","http://udbl.it.uu.se/schemas/company#OrderedBy");
+
+assignClassID("CUSTOMER","CompI","http://udbl.it.uu.se/schemas/company#Customer");
+assignClassID("ORDERS","CompI","http://udbl.it.uu.se/schemas/company#Orders");
+
+
+/* For UPV 'CompDPS'
+ */
+assignPropID("ORDERS","ORDERID","CompII","http://udbl.it.uu.se/schemas/company#OrderID");
+assignPropID("ORDERS","OCUSTID","CompII","http://udbl.it.uu.se/schemas/company#OrderCustomer");
+assignPropID("ORDERS","CLERK","CompII","http://udbl.it.uu.se/schemas/company#Clerk");
+assignPropID("CUSTOMER","CUSTID","CompII","http://udbl.it.uu.se/schemas/company#CustID");
+assignPropID("CUSTOMER","MKTSEGMENT","CompII","http://udbl.it.uu.se/schemas/company#Market");
+
+assignClassID("CUSTOMER","CompII","http://udbl.it.uu.se/schemas/company#Customer");
+assignClassID("ORDERS","CompII","http://udbl.it.uu.se/schemas/company#Orders");
+
+
+/* Initialize predefined UPV data source assigned to UPV 'Comp'. 
+ */
+DSConnect("CompI");	
+
+/* Initialize predefined UPV data source assigned to UPV 'CompDPS'. 
+ */
+
+DSConnect("CompII");	
+
+

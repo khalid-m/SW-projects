@@ -1,0 +1,159 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<!-- saved from url=(0052)http://mysite.verizon.net/XiangYangL/XYNTService.htm -->
+<HTML><HEAD><TITLE>XYSystem: XYNTService</TITLE>
+<META http-equiv=Content-Type content="text/html; charset=iso-8859-1">
+<META content="Xiangyang Liu" name=Author>
+<META content="MSHTML 6.00.2900.2963" name=GENERATOR>
+<META content="XYNTService, NT Service" name=Description></HEAD>
+<BODY text=#000000 vLink=#551a8b aLink=#ff0000 link=#0000ee 
+bgColor=#ccffff><B><I><FONT color=#006600><FONT size=+2>XYSystem Components 
+Help</FONT></FONT></I></B> 
+<P><B><A 
+href="http://mysite.verizon.net/XiangYangL/XYRight.htm">[Copyright]</A></B> 
+<BR><B><FONT color=#000000><A 
+href="http://mysite.verizon.net/XiangYangL/XYContents.htm">[Table of 
+Contents]</A></FONT></B> 
+<P><B><FONT color=#3333ff><FONT size=+1>XYNTService</FONT></FONT></B> 
+<P><B><FONT color=#660000>XYNTService</FONT><FONT color=#000000> is an NT 
+service program that can be used to start and stop other programs.&nbsp; If you 
+are using </FONT><FONT color=#660000>Windows NT 4.0</FONT><FONT color=#000000> 
+or later, it is recommended that you start <A 
+href="http://mysite.verizon.net/XiangYangL/XYRoot.htm">XYRoot</A>, <A 
+href="http://mysite.verizon.net/XiangYangL/XYDataManager.htm">XYDataManager</A>, 
+<A 
+href="http://mysite.verizon.net/XiangYangL/XYDispatcher.htm">XYDispatcher</A>, 
+and other server processes using </FONT><FONT 
+color=#660000>XYNTService</FONT><FONT color=#000000>.&nbsp; When started by 
+</FONT><FONT color=#660000>XYNTService</FONT><FONT color=#000000>, the processes 
+will be able to run without user login to the operating system.&nbsp; Only 
+authorized persons are allowed to start and stop the processes.</FONT></B> 
+<P><B><FONT color=#000000>Here is how to use </FONT><FONT 
+color=#660000>XYNTService</FONT><FONT color=#000000>.</FONT></B> 
+<P><B><FONT color=#3333ff><FONT size=+1>Using XYNTService To Start And Stop 
+Other Processes</FONT></FONT></B> 
+<P><B><FONT color=#000000>First, the environment variable </FONT><FONT 
+color=#660000>XYSYSTEMSERVICE_INIFILE</FONT><FONT color=#000000> represents the 
+full path of the configuration file.&nbsp; If this environment variable is not 
+defined, the default configuration file will be </FONT><FONT 
+color=#660000>XYNTService.ini</FONT><FONT color=#000000> in the same directory 
+as the executable.&nbsp; The </FONT><FONT color=#660000>ProcCount</FONT><FONT 
+color=#000000> value in the </FONT><FONT color=#660000>Settings</FONT><FONT 
+color=#000000> section of the configuration file is the total number of 
+processes that </FONT><FONT color=#660000>XYNTService</FONT><FONT color=#000000> 
+needs to start.&nbsp; For each of these processes, the </FONT><FONT 
+color=#660000>CommandLine</FONT><FONT color=#000000> value in the </FONT><FONT 
+color=#660000>ProcessX</FONT><FONT color=#000000> section of the configuration 
+file is the command used to start the process, here </FONT><FONT 
+color=#660000>X</FONT><FONT color=#000000> is the index (between </FONT><I><FONT 
+color=#660000>0</FONT></I><FONT color=#000000> and </FONT><I><FONT 
+color=#660000>ProcCount-1 </FONT></I><FONT color=#000000>) of the process.&nbsp; 
+When </FONT><FONT color=#660000>XYNTService</FONT><FONT color=#000000> is 
+started, it will start all the processes defined in the configuration 
+file.&nbsp; When </FONT><FONT color=#660000>XYNTService</FONT><FONT 
+color=#000000> is stopped, the processes started by it will also be stopped in 
+the reverse order with an exception noted later.</FONT></B> 
+<P><B><FONT color=#000000>To install the </FONT><FONT 
+color=#660000>XYNTService</FONT><FONT color=#000000>, run the following at the 
+command prompt:</FONT></B> 
+<P><B><I><FONT color=#006600>XYNTService -i</FONT></I></B> 
+<P><B><FONT color=#000000>Note that some programs may need to access a user's 
+registry settings.&nbsp; If these programs are started by </FONT><FONT 
+color=#660000>XYNTService</FONT><FONT color=#000000>, then </FONT><FONT 
+color=#660000>XYNTService</FONT><FONT color=#000000> needs to be run under the 
+corresponding user's account.&nbsp; This can be configured using the 
+</FONT><FONT color=#660000>Services</FONT><FONT color=#000000> icon in the 
+</FONT><FONT color=#660000>control panel</FONT><FONT color=#000000>.</FONT></B> 
+<P><B><FONT color=#000000>To uninstall the </FONT><FONT 
+color=#660000>XYNTService</FONT><FONT color=#000000>, run the following at the 
+command prompt:</FONT></B> 
+<P><B><I><FONT color=#006600>XYNTService -u</FONT></I></B> 
+<P><B><FONT color=#000000>By default, the installed NT service will be started 
+automatically whenever the machine is rebooted.&nbsp; It can also be started and 
+stopped using the </FONT><FONT color=#660000>Services</FONT><FONT color=#000000> 
+icon in the </FONT><FONT color=#660000>control panel</FONT><FONT 
+color=#000000>.</FONT></B> 
+<P><B><FONT color=#000000>Here is a sample configuration file for </FONT><FONT 
+color=#660000>XYNTService</FONT><FONT color=#000000>:</FONT></B> 
+<P><B><FONT color=#000000>[Settings]</FONT></B> <BR><B><FONT 
+color=#660000>ProcCount</FONT><FONT color=#000000>=</FONT><I><FONT 
+color=#006600>3</FONT></I></B> <BR><B><FONT 
+color=#660000>LogFile=</FONT><I><FONT 
+color=#006600>XYNTService.log</FONT></I></B> <BR><B><FONT 
+color=#000000>[Process0]</FONT></B> <BR><B><FONT 
+color=#660000>CommandLine</FONT><FONT color=#000000>=</FONT><I><FONT 
+color=#006600>XYRoot</FONT></I></B> <BR><B><FONT 
+color=#660000>UserInterface</FONT><FONT color=#000000>=</FONT><I><FONT 
+color=#006600>No</FONT></I></B> <BR><B><FONT 
+color=#660000>PauseStart</FONT><FONT color=#000000>=</FONT><I><FONT 
+color=#006600>1000</FONT></I></B> <BR><B><FONT 
+color=#660000>PauseEnd</FONT><FONT color=#000000>=</FONT><I><FONT 
+color=#006600>1000</FONT></I></B> <BR><B><FONT 
+color=#000000>[Process1]</FONT></B> <BR><B><FONT 
+color=#660000>CommandLine</FONT><FONT color=#000000>=</FONT><I><FONT 
+color=#006600>XYDataManager</FONT></I></B> <BR><B><FONT 
+color=#660000>UserInterface</FONT><FONT color=#000000>=</FONT><I><FONT 
+color=#006600>No</FONT></I></B> <BR><B><FONT 
+color=#660000>PauseStart</FONT><FONT color=#000000>=</FONT><I><FONT 
+color=#006600>1000</FONT></I></B> <BR><B><FONT 
+color=#660000>PauseEnd</FONT><FONT color=#000000>=</FONT><I><FONT 
+color=#006600>1000</FONT></I></B> <BR><B><FONT 
+color=#000000>[Process2]</FONT></B> <BR><B><FONT 
+color=#660000>CommandLine</FONT><FONT color=#000000>=</FONT><I><FONT 
+color=#006600>java&nbsp; XYRoot.XYRoot&nbsp; XYRootJava.ini</FONT></I></B> 
+<BR><B><FONT color=#660000>UserInterface</FONT><FONT 
+color=#000000>=</FONT><I><FONT color=#006600>No</FONT></I></B> <BR><B><FONT 
+color=#660000>PauseStart</FONT><FONT color=#000000>=</FONT><I><FONT 
+color=#006600>1000</FONT></I></B> <BR><B><FONT 
+color=#660000>PauseEnd</FONT><FONT color=#000000>=</FONT><I><FONT 
+color=#006600>1000</FONT></I></B> 
+<P><B><FONT color=#000000>The parameter </FONT><FONT 
+color=#660000>UserInterface</FONT><FONT color=#000000> indicates whether the 
+process has a visible user interface.&nbsp; The parameter </FONT><FONT 
+color=#660000>PauseStart</FONT><FONT color=#000000> indicates the number 
+of&nbsp; milliseconds to wait after starting the current process.&nbsp; The 
+parameter </FONT><FONT color=#660000>PauseEnd</FONT><FONT color=#000000> 
+indicates the number milliseconds to wait before terminating the current process 
+by force, this will give the current process a chance to shutdown 
+itself.</FONT></B> 
+<P><B><FONT color=#000000>Note that a process started by </FONT><FONT 
+color=#660000>XYNTService</FONT><FONT color=#000000> is visible only when the 
+</FONT><FONT color=#660000>UserInterface</FONT><FONT color=#000000> parameter is 
+</FONT><I><FONT color=#006600>Yes</FONT></I><FONT color=#000000> and 
+</FONT><FONT color=#660000>XYNTService</FONT><FONT color=#000000> is running 
+under the default system account.</FONT></B> 
+<P><B><FONT color=#000000>While </FONT><FONT 
+color=#660000>XYNTService</FONT><FONT color=#000000> is running, it also 
+possible to bounce a process it had started.&nbsp; The following command, for 
+example, will shutdown and restart </FONT><FONT 
+color=#660000>Process2</FONT><FONT color=#000000> defined in the .ini 
+file:</FONT></B> 
+<P><B><I><FONT color=#006600>XYNTService -b 2</FONT></I></B> 
+<P><B>To shutdown and restart <FONT color=#660000>XYNTService</FONT> itself 
+(which will bounce all processes defined in the .ini file), use this 
+command:</B> 
+<P><B><I><FONT color=#006600>XYNTService -b</FONT></I></B> 
+<P><B><FONT color=#3333ff><FONT size=+1>Using XYNTService To Start And Stop 
+Other Services</FONT></FONT></B> 
+<P><B><FONT color=#000000>In addition, </FONT><FONT 
+color=#660000>XYNTService</FONT> has the capability to start and stop other 
+services.&nbsp; To start the <FONT color=#660000>IIS</FONT> server (<FONT 
+color=#660000>theMicrostoft Web Server</FONT>), for example, you need only to 
+execute the following command line:</B> 
+<P><B><I><FONT color=#006600>XYNTService -r IISADMIN</FONT></I></B> 
+<P><B>The following command line will kill the <FONT color=#660000>IIS</FONT> 
+server:</B> 
+<P><B><I><FONT color=#006600>XYNTService -k IISADMIN</FONT></I></B> 
+<P><B>The general syntax of using <FONT color=#660000>XYNTService</FONT> to 
+start another service is:</B> 
+<P><B><I><FONT color=#006600>XYNTService&nbsp; -r&nbsp; 
+NameOfServiceToStart&nbsp; [other parameters for the given 
+service]</FONT></I></B> 
+<P><B>The general syntax of using <FONT color=#660000>XYNTService</FONT> to stop 
+another service is:</B> 
+<P><B><I><FONT color=#006600>XYNTService&nbsp; -k&nbsp; 
+NameOfServiceToStop</FONT></I></B> 
+<P><B>In particular, you can use the above commands to start and stop <FONT 
+color=#660000>XYNTService</FONT> itself.</B> 
+<P><B><FONT color=#000000><A 
+href="http://mysite.verizon.net/XiangYangL/XYContents.htm">[Table of 
+Contents]</A></FONT></B> </P></BODY></HTML>

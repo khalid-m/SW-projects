@@ -1,0 +1,55 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Andrej Andrejev, UDBL
+ * $RCSfile: connect.osql,v $
+ * $Revision: 1.1 $ $Date: 2011/10/13 12:51:35 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Connection script to CheloniaDB @ lux.it.uu.se
+ *
+ ****************************************************************************
+ * $Log: connect.osql,v $
+ * Revision 1.1  2011/10/13 12:51:35  andan342
+ * Added basic examples to interact with remote MySQL on Linux, and with Chelonia scripts there
+ *
+ * Revision 1.1  2006/02/12 20:01:08  torer
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+
+/*
+MySQL should be configured according to:
+http://www.cyberciti.biz/tips/how-do-i-enable-remote-access-to-mysql-database-server.html
+
+1. File "/etc/mysql/my.cnf" should contain
+
+bind-address		= 130.238.11.78
+(server host)
+
+2. User at specified host should be granted access privilege to the database
+
+mysql> grant all on cheloniaDB.* to 'andrej'@'pc-andan342.it.uu.se' identified by 'andrej';
+Query OK, 0 rows affected (0.00 sec)
+
+NOTE:
+- MySQL prompt can also be accessed from Windows:
+ssh -t andrej@lux.it.uu.se "mysql -u root"
+*/
+
+
+set :a = jdbc("ibds", "com.mysql.jdbc.Driver" );
+
+set :dburl =  "jdbc:mysql://lux.it.uu.se:3306/cheloniaDB";
+
+set :userdb = "andrej";
+
+set :pswd = "andrej";
+
+connect(:a, :dburl, :userdb, :pswd);
+
+sql(:a,"show tables");
+
+
+
+

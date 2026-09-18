@@ -1,0 +1,65 @@
+/*****************************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2005 Johan Petrini, UDBL
+ * $RCSfile: museum.amosql,v $
+ * $Revision: 1.1 $ $Date: 2005/05/18 13:34:19 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Wrapping data source Museifönstret.
+ * Creating stmt fn of rdf_relational as RDF view in terms of
+ * fn tSpace over Museifönstret.
+ * 
+ * !!NOT PART OF RDFAmos!!
+ *****************************************************************************************/
+
+ /***********************************************************************
+ * Wrapping data source Museifönstret.					*
+ * 1. Create new JDBC datasource object :a for remote db Museifönstret.	*
+ * 2. Connect this object to JDBC data source. 				*
+ * 3. Load JDBC driver + connect to datasource.				*
+ ***********************************************************************/
+create function MSQLDS()->jdbc;
+set :a = jdbc("msqlds", "com.microsoft.jdbc.sqlserver.SQLServerDriver");
+set :dbdir = "jdbc:microsoft:sqlserver://193.10.40.63:1433";
+set MSQLDS()= :a;   
+connect(MSQLDS(),:dbdir, "uu", "uppsala");
+
+ /*******************************************************************************
+ * Add mapping between msql type 'UNIQUEIDENTIFIER' and amostype 'CHARSTRING'	*
+ *******************************************************************************/
+ add amos_type(MSQLDS(), "UNIQUEIDENTIFIER")=#[OID 11 "CHARSTRING"]; 
+
+ /*******************************************************************************************************
+ * Create wrapper function for import_table() with systemcatalog = 'museifonstret' and schema = 'dbo'.	*
+ * Function mt() adds suffix '_ds' to mapped type.							*
+ *******************************************************************************************************/
+create function mtname(charstring c)->charstring mtname as select c + "_ds";
+create function import_museumtable(relational r, charstring table)-> mappedtype mt as
+	begin result import_table(r, "museifonstret", "dbo", table, mtname(table), false, {}); end;
+
+import_museumtable(MSQLDS(), 'Resource');
+
+ /*******************************************************************************
+ * Create tSpace as RDF view over Museifönstret. 				*
+ *******************************************************************************/
+the_resource("http://www.sward.se/meta-data-schema#Museum");
+make_rdf_type(resource_named("Museum"),{typenamed("RDF_RELATIONAL")});
+create rdf_museum instances :m;
+
+set sm("http://user.it.uu.se/~udbl/Museifonstret/resourcename", the_resource("http://purl.org/dc/elements/1.1/title"))=true;
+set sm("http://user.it.uu.se/~udbl/Museifonstret/description", the_resource("http://purl.org/dc/elements/1.1/description"))=true;
+
+create function tSpace(rdf_museum rr)-><RDF_resource s, RDF_resource p, RDF_resource o>
+as
+	select s, p, o
+	from resource_ds r 
+	where (s = the_transient(uriKey("http://user.it.uu.se/~udbl/Museifonstret/RID/", resourceid(r))) and
+		sm("http://user.it.uu.se/~udbl/Museifonstret/resourcename", p)and
+		o = the_transient(resourcename(r)))or
+		(s = the_transient(uriKey("http://user.it.uu.se/~udbl/Museifonstret/RID/", resourceid(r))) and
+		sm("http://user.it.uu.se/~udbl/Museifonstret/description", p) and	
+		o = the_transient(description(r)));
+
+commit;
+

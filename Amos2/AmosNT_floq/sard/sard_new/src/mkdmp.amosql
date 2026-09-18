@@ -1,0 +1,24 @@
+/* Load Lsp-SPARQL_parser */
+lisp;
+(setq _sql-namespace_ nil) ;; SARD uses old CC function names
+(load "../../lsp/sparql-lsp-parser/sparql-tuples-wrapper.lsp");Sparql parser
+(setq _sq_ub_ "''") ; AmosQL Charstring to represent UNBOUND
+(load "../../lsp/ntriples-reader/ntriples-reader.lsp");N-triples reader
+:osql
+
+/* Load useful functions from SWARD */
+<'src/amosql/ds.amosql';
+<'src/amosql/export_SWARD.amosql';
+
+loadSystem(".","src/sard.amosql"); 
+
+
+lisp;
+;;(setq _prompter_ "SARD")
+
+:osql
+save "sard.dmp";
+quit;
+
+
+

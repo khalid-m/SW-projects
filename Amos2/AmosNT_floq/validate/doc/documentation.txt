@@ -1,0 +1,112 @@
+
+The system is started by: svali.exe svali.dmp
+
+1. svali supports different kinds of windows. 
+   a. counting based windows
+      function:
+	svali:winagg(Stream s, Integer size, Integer slide) -> Stream of Window
+      description:
+	takes stream of events (objects) and the size of window and the slide as auguments
+	returns stream of windows
+      note:
+	the sliding size should never be greater than the size of the window
+	when size == slide, the windows created are tumbling windows.
+      example:
+	see documentation.osql, part 1
+   
+   b. time based windows
+      function:
+	svali:twinagg(Stream s, Function ts, Integer size, Integer slide) -> Stream of Window
+      description:
+	the function ts should have the following signature: ts(Object o) -> Number
+      note:
+	currently time stamps are represented as numbers
+      example:
+	see documentation.osql, part 2
+
+   c. predicate based windows
+      function:
+	svali:pinagg(Stream s, Function startf, Function stopf) -> Stream of Window
+      description:
+	the predicate in the most general case are functions with the signature:
+	    startf(Object o) -> Object res
+	    stopf(Object res, Object o) -> Boolean
+      note:
+	both start and stop predicates are user defined.
+	stop function takes both THE RESULT FROM STARTF and THE EVENT IN THE STREAM as arguments
+      example:
+	see documentation.osql, part 3
+
+
+2. svali supports two validation scenarios
+   a. Model based validation: Manually define (mathematical) model and then use that model to validate.
+      function:
+	svali:validate(Stream s, Function invalidf, Number interval) ->
+			  Stream of (Number ts, Number measured, Number expected, Number invalid)
+      description:
+	the mathematical model is expressed in amosql function invalidf with the signature:
+	    invalidf(Object r, Number interval) -> 
+		(Number ts, Number measured, Number expected, Number invalid)
+	it takes the event in the stream and the threshold as arguments. It returns a tuple of
+	time stamps, measured value, expected value and a flag indicating whether the event is valid or not
+      extension:
+	logging are also supported:
+	   svali:validate_log(Stream s, Function invalidf, Number interval,
+	   		  Charstring logfile,Charstring mode) ->
+		Stream of (Number ts, Number measured, Number expected, Number invalid)
+	with log file, we can replay the validation off line
+	   svali:replay(Charstring logfile, Function invalidf, Number interval) ->
+	   	Stream of (Number ts, Number measured, Number expected, Number invalid)
+      example:
+	see documentation.osql, part 4
+
+   b. Recording based validaton: First several events (sub stream) in the stream are recorded to
+      build the validation model from the substream (learning)
+      and then validate.
+      function:
+	svali:p_record_n_validate(Stream s, Function startf, Function stopf, Function recordf,
+			  Integer recordn, Function validatef, Number threshold)
+			  	  	   	    	       -> Stream of (Integer, Vector)
+      description:
+	s,	      the stream to be validated
+	startf 	      start predicate for creating windows
+	stopf	      stop predicate for creating windows
+	recordf	      record functions with the following signature
+		      	     recordf(Vector of Vector of Object vvo) -> Vector of Obejct
+		      the parameter vvo is first n windows of the stream s represented in 2-d arrays
+		      return value is the built model (reference)
+	recordn	      indicates recording the first n in the stream s
+	validatef     validation functions to validate the stream s
+		      		 validatef(Vector reference, Vector v, Number threshold)
+				 -> (Integer, Vector)
+		      it takes the model (reference) and the orignal v and threshold
+		      returns tuple of a flag indicates if v is valid or not and the orginal v
+	threshold     parameter for validatef
+      note:
+	The function is predicate based, which is needed for the drilling scenarion.
+        From the raw data, it first forms windows for each drill and then builds a reference drilling 
+        window by apply recordf on the first recordn windows. 
+
+	In the most general case, the function should look like this:
+	   svali:record_n_validate(Stream s, Function recordf, Integer recordn,
+	   		     Function validatef, Number threshold)
+	  	   	    	       -> Stream of (Integer, Object)
+	svali:p_record_n_validate uses pinagg internally to form the stream sent to record_n_validate.
+      example:
+	see documentation.osql part 5
+
+
+3. window based processing
+   3.1 window average
+       Function:
+	window_average(Window w, Function accessor, Vector arg) -> Number
+       	window_average(Window, Function accessor) -> Number
+       Description:
+	The function is overloaded depending on how many arguments the access function takes.
+   3.2 ordinary least squares
+       Function:
+	ols_a_of_window_v(Window w) -> Number
+       Description:
+	returns the slope of the window
+       Note:
+	This is only for windows of 2-d vectors of number

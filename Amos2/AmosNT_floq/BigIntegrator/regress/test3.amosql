@@ -1,0 +1,76 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: test3.amosql,v $
+ * $Revision: 1.1 $ $Date: 2012/12/18 09:21:06 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: <description>
+ *
+ ****************************************************************************/
+
+lisp;
+
+/* you need to change the directory in order to load the source code */
+(load "Lisp/datasource.lsp")
+(load-amosql "AmosQL/createMetaschema.amosql")
+(load-amosql "AmosQL/loadForeignFunctions.amosql")
+(load "Lisp/bt.lsp")
+(load-amosql "AmosQL/wrapperfunctions.amosql")
+(load-amosql "AmosQL/configuration.amosql")
+(load-amosql "AmosQL/hj.amosql")
+(load "Lisp/gql.lsp")
+(load-amosql "AmosQL/bt.amosql") 
+
+
+:osql
+
+set :a = Bigtableds("A");
+
+accessBigtable(:a, "http://industrialmetadb.appspot.com/simpleprotocol");
+
+create function q0()->(charstring, integer, integer) as
+select MDeviceID(m), min(m), max(m)
+from MeasurementDevice@A m;
+
+
+/* create new type LOGDB */
+create type LogDB;
+
+create function mapping(LogDB ldb)->Vector as stored; 
+
+create function q3()->(charstring, charstring, number) as 
+select Tid(m), variable(m), value(m)
+from LogDB m, LogReg n
+where logdbid(m)=logdbid(n);
+
+/* access and query a mysql server through port 13306 */
+set :b = jdbc("B", "com.mysql.jdbc.Driver");
+
+connect(:b, "jdbc:mysql://localhost:13306/" + "regress", "regress", "regress");
+
+import_table(:b, 'LOGDATA');
+
+create function q1()->(charstring, charstring, number) as
+select Tid(n), variable(n), value(n)
+from LOGDATA@B n;
+
+
+/* join query */
+create function q2()->(charstring, charstring, number, charstring) as
+select MDeviceID(m), type(m), value(n), tid(n)
+from MeasurementDevice@A m, LOGDATA@B n
+where MDeviceID(m)=value(n);
+
+
+/* access and query another mysql server through port 13307 */
+set :c = jdbc("C", "com.mysql.jdbc.Driver");
+
+connect(:c, "jdbc:mysql://localhost:13307/" + "regress", "regress", "regress");
+
+import_table(:c, 'LOGDATA');
+
+create function q3()->(charstring, charstring, number) as
+select Tid(l), variable(l), value(l)
+from LOGDATA@C l;

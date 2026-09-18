@@ -1,0 +1,1 @@
+start /min corenet\corenetserver -p %2 -plug-file "%cd%/data/%1%" -plug-timeout 20 -plug-loop 1 -plug-datetimestamp 0 -run

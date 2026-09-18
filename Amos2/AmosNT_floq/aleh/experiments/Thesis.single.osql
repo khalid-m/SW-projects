@@ -1,0 +1,184 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2008 Ruslan Fomkin, UDBL
+ * $RCSfile: Thesis.single.osql,v $
+ * $Revision: 1.6 $ $Date: 2008/07/01 20:19:27 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Scripts of single experiments for the Thesis to demonstrate that
+ * profiled grouping performs better than MAN.
+ ****************************************************************************
+ * $Log: Thesis.single.osql,v $
+ * Revision 1.6  2008/07/01 20:19:27  ruslan
+ * checking with initialization
+ *
+ * Revision 1.5  2008/06/28 11:32:28  ruslan
+ * profiled grouping without collecting stat
+ *
+ * Revision 1.4  2008/06/28 10:52:07  ruslan
+ * bug is fixed
+ *
+ * Revision 1.3  2008/06/28 10:43:36  ruslan
+ * rpt exec
+ *
+ * Revision 1.2  2008/06/28 10:33:21  ruslan
+ * warming up was missing
+ *
+ * Revision 1.1  2008/06/28 10:01:30  ruslan
+ * single experiments on profiled grouping
+ *
+ ****************************************************************************/
+<'stream.osql';
+load_lisp("udfs_exectime.lsp");
+
+create function myprint(object, object, object, object, object, object, object,
+			object, object, object, object, object, object)-> 
+		boolean as foreign 'myprint';
+
+/* Run with run.current.sh */
+create function APG4GreedyGreedy() -> boolean as
+begin
+	declare charstring fn, real grouping, real profiling, 
+		integer collectStat, integer profiledEvents, 
+		real execSqSum, real execAvg, real execStdev, 
+		integer passedEvents;
+	openwritefile("singleExec.4.greedyOpt.greedyGroup.bkgs.2003.txt");
+	set fn = "integer.bkgexpcuts->event";
+
+	/* warming up */
+	execute(fn,1,1);
+
+	/* Grouping, profiling and reoptimization. */
+	grouping(true);
+	select a into grouping
+	from real a, real q, real s, integer p
+	where <a,q,s,p> = 
+		execute("charstring.reoptimize0->function",
+			fn,1);
+	slotstat(false);
+	sobjectstat();
+	collectstat();
+	profiling(true);
+	stopCollectProfileNoChanges(1.65,0.15,4);
+	select a into profiling
+	from real a, real q, real s, integer p
+	where <a,q,s,p> = 
+		execute(fn,1,1);
+	set collectStat = get_profiled_counter();
+	set profiledEvents = getEventCounter();
+
+	/* Measuring execution */
+	unprofile(fn);
+	for each integer i where i in {1,9,17,25,33,41}
+	begin
+		execute(fn,i,1); /* warm up memory */
+		select a,s,q,p into execAvg, execStdev, execSqsum, passedEvents
+		from real a, real q, real s, integer p
+		where <a,q,s,p> = 
+			execute(fn,i,5);
+		myprint(i,4,"FirstStat","Greedy","Greedy",grouping,profiling,
+			collectStat,profiledEvents,execAvg,execStdev,execSqSum,
+			passedEvents);
+	end;
+	closewritefile();
+	sendmessage("Single reopt, APG 4 greedy opt  greedy group bkgs 2003");
+end;
+
+create function PG4GreedyGreedy() -> boolean as
+begin
+	declare charstring fn, real grouping, real profiling, 
+		integer collectStat, integer profiledEvents, 
+		real execSqSum, real execAvg, real execStdev, 
+		integer passedEvents;
+	openwritefile("singleReopt.PG.4.greedyOpt.greedyGroup.bkgs.2003.txt");
+	set fn = "integer.bkgexpcuts->event";
+
+	/* warming up */
+	execute(fn,1,1);
+
+	/* Grouping, profiling and reoptimization. */
+	grouping(true);
+	select a into grouping
+	from real a, real q, real s, integer p
+	where <a,q,s,p> = 
+		execute("charstring.reoptimize0->function",
+			fn,1);
+	slotstat(false);
+	sobjectstat();
+	collectstat();
+	profiling(true);
+	stopNoChanges(4);
+	select a into profiling
+	from real a, real q, real s, integer p
+	where <a,q,s,p> = 
+		execute(fn,1,1);
+	set collectStat = get_profiled_counter();
+	set profiledEvents = getEventCounter();
+
+	/* Measuring execution */
+	unprofile(fn);
+	for each integer i where i in {1,9,17,25,33,41}
+	begin
+		execute(fn,i,1); /* warm up memory */
+		select a,s,q,p into execAvg, execStdev, execSqsum, passedEvents
+		from real a, real q, real s, integer p
+		where <a,q,s,p> = 
+			execute(fn,i,5);
+		myprint(i,4,"NoStat","Greedy","Greedy",grouping,profiling,
+			collectStat,profiledEvents,execAvg,execStdev,execSqSum,
+			passedEvents);
+	end;
+	closewritefile();
+	sendmessage("Single reopt, PG, 4, greedy opt, greedy group bkgs 2003");
+end;
+
+create function PG4InitGreedyGreedy() -> boolean as
+begin
+        declare charstring fn, real grouping, real profiling,
+                integer collectStat, integer profiledEvents,
+                real execSqSum, real execAvg, real execStdev,
+                integer passedEvents;
+        openwritefile("singleReopt.PG.4.init.greedyOpt.greedyGroup.bkgs.2003.txt");
+        set fn = "integer.bkgexpcuts->event";
+
+        /* warming up */
+        execute(fn,1,1);
+
+        /* Grouping, profiling and reoptimization. */
+	reoptimize(fn);
+        grouping(true);
+        select a into grouping
+        from real a, real q, real s, integer p
+        where <a,q,s,p> =
+                execute("charstring.reoptimize0->function",
+                        fn,1);
+        slotstat(false);
+        sobjectstat();
+        collectstat();
+        profiling(true);
+        stopNoChanges(4);
+        select a into profiling
+        from real a, real q, real s, integer p
+        where <a,q,s,p> =
+                execute(fn,1,1);
+        set collectStat = get_profiled_counter();
+        set profiledEvents = getEventCounter();
+
+        /* Measuring execution */
+        unprofile(fn);
+        for each integer i where i in {1,9,17,25,33,41}
+        begin
+                execute(fn,i,1); /* warm up memory */
+                select a,s,q,p into execAvg, execStdev, execSqsum, passedEvents
+                from real a, real q, real s, integer p
+                where <a,q,s,p> =
+                        execute(fn,i,5);
+                myprint(i,4,"NoStat","Greedy","Greedy",grouping,profiling,
+                        collectStat,profiledEvents,execAvg,execStdev,execSqSum,
+                        passedEvents);
+        end;
+        closewritefile();
+        sendmessage("Single reopt, PG, init, 4, greedy opt, greedy group bkgs 2003");
+end;

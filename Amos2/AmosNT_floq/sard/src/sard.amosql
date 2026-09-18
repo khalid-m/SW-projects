@@ -1,0 +1,29 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Santosh Kumar Reddy Maddula, UDBL
+ * $RCSfile: sard.amosql,v $
+ * $Revision: 1.2 $ $Date: 2007/08/08 20:51:07 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: SARD master file
+ *
+ ****************************************************************************
+ * $Log: sard.amosql,v $
+ * Revision 1.2  2007/08/08 20:51:07  torer
+ * System definition for RDFAmos
+ *
+ * Revision 1.1  2007/08/08 19:59:16  torer
+ * Added master file and system definition for SARD
+ *
+ ****************************************************************************/
+
+loadSystem("../wrappers/RDF","src/AmosQL/master.amosql"); /* RDFAmos system */
+loadSystem("../SWARD","src/AmosQL/master.amosql"); /* SWARD system */
+<'src/unloadSchema.amosql';
+<'src/unloadData.amosql';
+<'src/reloadDB.amosql';
+<'src/help.amosql';
+
+
+

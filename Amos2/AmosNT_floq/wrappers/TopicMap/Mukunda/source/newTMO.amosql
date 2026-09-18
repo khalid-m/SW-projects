@@ -1,0 +1,64 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Silvia Stefanova, UDBL
+ * $RCSfile: newTMO.amosql,v $
+ * $Revision: 1.1 $ $Date: 2008/02/04 08:51:54 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Creates a new topic if it doesn't exist in the database
+ *
+ ****************************************************************************/
+ 
+optmethod("exhaustive");
+create function theTopic(Charstring idt,  Charstring fileTopic, Integer num, Topicmap tm) -> Topic r
+as 
+	begin
+		declare Topic p;
+		select t into p from Topic t where idtopic(t)=idt and topicFile(t)=fileTopic;
+		if (p != NIL) then
+			result p;
+		if (p = NIL) then
+			begin
+				create TOPIC(idtopic, idTMO) instances r(idt, <fileTopic, num>);
+				add topicTopicMap(tm)=r;
+				result r
+			end;
+			
+	end;
+optmethod("ranksort");
+
+/*
+create function returnTopic(Charstring idt,  Charstring fileTopic) -> Topic r
+as 
+	begin
+		declare Topic p;
+		select t into p from Topic t where idtopic(t)=idt and URI(t)=fileTopic;
+		if (p != NIL) then
+			result p;
+	end;
+
+
+create function createTopic(Charstring idt, Charstring fileTopic) -> Topic r
+as 
+	begin
+		create TOPIC instances r;
+		set idtopic(r)=idt;
+		set URI(r)=fileTopic;
+		result r;
+	end;
+
+
+
+
+create function existsTopic(Charstring idTopic, Charstring fileTopic) -> integer i
+as 
+	begin
+		declare Topic p;
+		select t into p from Topic t where idtopic(t)=idTopic and URI(t)=fileTopic;
+		if (p != NIL) then result 1;
+		if (p = NIL) then result 0;	
+					
+	end;
+
+*/

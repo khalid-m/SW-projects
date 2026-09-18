@@ -1,0 +1,61 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Thanh Truong, UDBL
+ * $RCSfile: experiment1.osql,v $
+ * $Revision: 1.2 $ $Date: 2011/09/26 13:14:25 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Experiments for AQTI with Color Histogram using Manhattan
+ *
+ ****************************************************************************
+ * $Log: experiment1.osql,v $
+ * Revision 1.2  2011/09/26 13:14:25  thatr500
+ * *** empty log message ***
+ *
+ * Revision 1.1  2011/09/15 12:23:13  thatr500
+ * experimentation with real dataset ColorHistogram and ColorMoments
+ *
+ *
+ ****************************************************************************/
+load_amosql('data-schema.osql');
+
+/* For fast search among values of data function class_members: */
+create_index("known_data","v","XT","multiple");
+
+/* Overriding positions of identifier, and values in rows of mining file*/
+set idpos() = 0;
+set valposl()=  vectorof(iota(1, 32));
+
+/*Add data from file*/
+/*http://archive.ics.uci.edu/ml/datasets/Corel+Image+Features
+Color Histogram: 32 dimensions (8 x 4 = H x S) 
+- HSV color space is divided into 32 subspaces (32 colors : 8 ranges of H 
+  and 4 ranges of S). 
+- the value in each dimension in a ColorHistogram of an image is the density 
+  of each color in the entire image. 
+- Histogram intersection (overlap area between ColorHistograms of two images) 
+  can be used to measure the similarity between two images.*/
+/*add_dfn('ColorHistogram.asc', #'known_data', idpos(), valposl());*/
+
+/*Normalize the computed distance into [0, 1]*/
+create function q(Number id1, Number similar)->Number id2 as 
+select id2 from  Vector of Number v1, Vector of Number v2
+  where v1 in known_data(id1)
+  and   v2 in known_data(id2)       
+  and 1 - manhattan(v1, v2) > similar;
+
+
+/* 
+   n       = 10
+   similar = 0.75
+   id      = 500
+   Index XT 0.062s 
+   Index MBTREE  4.119 s 
+
+*/
+set :n = rand(1, 68040);
+
+create function queryimages()-> Bag of Number as stored;
+for each Integer i where i in iota(1, 200) 
+    add queryimages()= rand(1, 6804);

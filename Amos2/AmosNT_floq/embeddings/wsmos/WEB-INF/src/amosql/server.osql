@@ -1,0 +1,113 @@
+create type funInfo properties (funName charstring, argsType charstring, 
+                                argsName charstring, rettype charstring, 
+                                retname charstring, resformat charstring);
+
+
+create function deploy_dir()-> Charstring as stored;
+set deploy_dir()= getenv("WSDL_HOME"); 
+
+/* default deployment directory */
+
+create function generate_wsdl(Vector of Function vf,  Charstring filename, Charstring servicename)
+     -> boolean
+  as foreign "JAVA:wsdlcreator.WSDLGenerator/generate_wsdl";
+
+
+ create function isExportable(Function f)-> Boolean as stored;
+
+ create function exportableFunctions(Vector of Charstring fns)
+                ->Vector of Function
+  as select vectorof(select resolvents(functionNamed(fn))
+                     from Charstring fn
+                     where fn in fns);
+
+ create function exportable (Charstring fn) -> boolean
+  as set isExportable(resolvents(theFunction(fn)))=true;
+
+
+
+create function deploy_wsdl(Vector of Charstring fns, Charstring filename, Charstring servicename) 
+                -> Charstring file
+  as for each Charstring file
+     where file = deploy_dir()+filename
+       begin generate_wsdl(exportableFunctions(fns), file,servicename);
+             return file;
+       end;
+
+create function deploy_wsdl(Charstring peer, Vector of Charstring fns,
+                             Charstring file,Charstring servicename) -> Charstring depfile
+  as select ship(peer, "deploy_wsdl("+stringify(fns)
+                        +","+file+");")[0];
+
+
+create function getFunInfo(charstring fn, charstring argst)
+                          -> (charstring rettype, charstring retname, charstring resformat) 
+  as select rettype(f), retname(f),resformat(f) 
+     from funInfo f 
+     where funName(f) = fn 
+       and argsType(f) = argst;
+
+create function getFuninfo(charstring fn)-> 
+       (charstring rettype, charstring retname, charstring argstype, 
+        charstring argsname) 
+  as select rettype(f), retname(f), argsType(f), argsName(f) 
+     from funInfo f 
+     where funName(f) = fn;
+
+create function FunInfo(charstring funn, charstring argn, charstring argt, 
+                        charstring retn, charstring rett , charstring resf) -> boolean
+  as begin
+	declare funInfo p;
+	
+        if notany(select f 
+                  from funInfo f 
+                  where funname(f) = funn 
+                    and argsType(f) = argt) 
+        then 
+    		begin 
+		create funInfo instances p;
+        		set argsName(p) = argn;
+         		set retName(p) = retn;
+ 			set retType(p) = rett;
+         		set argsType(p) = argt;
+         		set funName(p) = funn;
+			set resformat(p)=resf;
+			return 1;
+    		end
+ 	else
+   		begin
+       		set argsName(fun) = argn 
+                    from funInfo fun 
+                    where funname(fun) = funn 
+                      and argsType(fun) = argt ; 
+       		set retName(fun) = retn 
+                    from funInfo fun 
+                    where funname(fun) = funn 
+                      and argsType(fun) = argt; 
+       		set retType(fun) =rett 
+                    from funInfo fun 
+                    where funname(fun) = funn 
+                      and argsType(fun) = argt; 
+		set resformat(fun) =resf
+                    from funInfo fun 
+                    where funname(fun) = funn 
+                      and argsType(fun) = argt; 
+		return 1;
+   		end  
+      
+end;
+
+
+
+create function isSubType(charstring superType, charstring subType) -> boolean
+  as select some(select t 
+                 from type t 
+                 where t in subtypes(typenamed(superType)) 
+                   and t = typenamed(subType));
+
+/*< 'WEB-INF/src/amosql/webamos.osql';*/
+
+set deploy_dir()= getenv("AMOS_HOME")+"/wsmed/wsdl/";
+
+save 'WEB-INF/wsmos.dmp';
+quit;

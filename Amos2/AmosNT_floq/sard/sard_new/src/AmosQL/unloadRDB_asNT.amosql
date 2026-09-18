@@ -1,0 +1,735 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *s
+ * Author: (c) 2010 Silvia Stefanova, UDBL * $State: Exp $ $Locker:  $
+ *
+ * Description: Unload RDB as N-triples
+ *
+ ****************************************************************************
+ *
+ ****************************************************************************/
+
+
+
+create function get_pkcolumns_fromURIst(Charstring URIst)->Vector
+as foreign 'separ-pkcolumns';
+
+
+create function printxmll(bag x)->boolean
+as begin 
+     for each object o where o in x print(o);
+  end; 
+
+ 
+
+create function printResource(Charstring res)->Charstring
+/*Prints in correct NT format IRI,Blank or Literal*/
+as  
+ begin
+   declare Charstring resl;
+   set resl="";  
+   if ( sparqlIRI(res) ) then set resl = (concat(concat("<",res),">"))
+	  else  if ( sparqlBlank(res) ) then set resl=res
+		else if (sparqltypedLiteral(res)) then set resl=res
+			else set resl="\""+res+"\""; 
+   return resl;
+ end;
+  
+
+create function unload_asNT(Charstring namef, Function qfun,Vector args)->Charstring 
+/*Unloads a (query) function in a NT-triple file*/
+as
+  begin
+  	openwritefile(namef);
+   	for each original Charstring st1, Charstring st2, Charstring l,Vector vect 
+		where call_function(qfun,args)= vect and vect=(st1,st2,l) 
+	  		printXmll ( printResource(st1)+ " "+ printResource(st2)+ " "+ printResource(l)+ " ." );
+	closewritefile();
+  end;
+
+
+
+
+
+create function callUPV_o(Charstring upv)->(Charstring,Charstring,Charstring)
+	as select s,p,o from Charstring s, Charstring p, Charstring o, Vector Vect
+	where Vect in evalv(upv+"();") and Vect={s,p,o};
+
+create function def()->(Charstring s,Charstring p,Charstring o)  ;
+
+
+create function make_def(Charstring upv)->Charstring
+/*Contsructs the def function*/
+as 
+ begin
+	eval("create function def()->(Charstring,Charstring,Charstring) 
+	     as select s, p, o from  Charstring s,Charstring p,Charstring o
+	     where (s,p,o) in "+upv+"();");
+	 eval("create function sdef()-> (Charstring s,Charstring p,Charstring o) 
+	as select s,p,o from Charstring s,Charstring p,Charstring o
+	where (s,p,o) in s"+upv+"();");
+
+ end;
+
+
+create function retrieve_typeOfClass(Charstring ss)->(Charstring,Charstring,Charstring)
+/*Retrieves the type of the class ss from the triples in supv*/
+	as select s, p, o  from Charstring s, Charstring p, Charstring o
+	   where (sdef()=(s,p,o) and s=ss and p='http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
+		and o="http://www.w3.org/2000/01/rdf-schema#Class" ) or
+		(sdef()=(s,p,o) and s=ss and  p='http://user.it.uu.se/~udbl/sard#TName');
+
+create function retrieve_typeOfProp(Charstring ss)->(Charstring,Charstring,Charstring)
+/*Retrieves the type of the property ss from the triples in supv*/
+	as select s, p, o  from Charstring s, Charstring p, Charstring o
+	   where sdef()=(s,p,o) and s=ss and p="http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+		and o="http://www.w3.org/1999/02/22-rdf-syntax-ns#Property";
+
+create function retrieve_typeOf(Charstring ss)->(Charstring,Charstring,Charstring)
+/*Retrieves the Class of the resource ss from the triples in upv*/
+	as select s, p, o  from Charstring s, Charstring p, Charstring o
+	where sdef()=(s,p,o) and s=ss and p='http://www.w3.org/1999/02/22-rdf-syntax-ns#type' and 
+ 	sdef()=(o,'http://www.w3.org/1999/02/22-rdf-syntax-ns#type','http://www.w3.org/2000/01/rdf-schema#Class');
+
+create function retrieve_FK(Charstring rdfscl)-> (Charstring,Charstring,Charstring)
+/*Retrieves all FK properties of the class rdfscl from the triples in supv*/
+	as select fk, prop, val
+	from Charstring fk, Charstring prop, Charstring val	
+	 where ( sdef()=(fk,prop,val) and fk=rdfscl and (like(prop,'*FOREIGN_KEY*') )) or
+	(sdef()=(fk, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq')
+	  and sdef()=(fk, prop, val) and like(prop,'http://www.w3.org/1999/02/22-rdf-syntax-ns#*') and
+	 sdef()=(rdfscl, 'http://user.it.uu.se/~udbl/sard#FOREIGN_KEY', fk)) ;
+
+create function retrieve_singleFK(Charstring rdfscl,Charstring rdfp)-> (Charstring,Charstring,Charstring)
+/*Retrieves all FK properties of the class rdfscl related to rdfp from the triples in supv*/
+	as select s, p, o from Charstring p, Charstring s, Charstring s1, Charstring p1, Charstring o,Charstring prop 
+	where sdef()=(s, p, o) and ((sdef()=(s1, p1, s) and s1 = rdfscl and p1='http://user.it.uu.se/~udbl/sard#FOREIGN_KEY'
+	and sdef()=(s, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq')
+	 and sdef()=(s, prop, rdfp)and like(prop,'http://www.w3.org/1999/02/22-rdf-syntax-ns#*') ) 
+	or (s = rdfscl and p='http://user.it.uu.se/~udbl/sard#FOREIGN_KEY' and sdef()=(o,prop, rdfp) and like(prop,'http://www.w3.org/1999/02/22-rdf-syntax-ns#*')
+	 and s1 = '' and p1 = ''));
+
+create function retrieve_PK(Charstring rdfscl)-> (Charstring,Charstring,Charstring)
+/*Retrieves all PK properties of the class rdfscl from the triples in supv*/
+	as select fk, prop, val
+	from Charstring fk, Charstring prop, Charstring val
+	where (sdef() =(fk,prop,val) and fk=rdfscl and (like(prop,'*PRIMARY_KEY') )) or
+	(sdef()=(fk, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq')
+	 and sdef()=(fk, prop, val) and like(prop,'http://www.w3.org/1999/02/22-rdf-syntax-ns#*') and
+	 sdef()=(rdfscl, 'http://user.it.uu.se/~udbl/sard#PRIMARY_KEY', fk)) ;
+ 
+create function retrieve_propsOfP(Charstring pp)->(Charstring,Charstring,Charstring)
+/*Retrieves type,domain,range,size of property pp representing a rel attribute*/
+	as select s, p, o  from Charstring s, Charstring p, Charstring o
+	where sdef() =(pp,"http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+	"http://www.w3.org/1999/02/22-rdf-syntax-ns#Property") and s= pp and 
+	sdef()=(s,p,o) and notlike(p,"*REFERENCES");
+
+create function retrieve_propsOfP1(Charstring pp)->(Charstring,Charstring,Charstring)
+/*Retrieves the class which is the domian of the pp representing a rel attribute*/
+	as select s, p, o  from Charstring s, Charstring p, Charstring o,Charstring p1,
+	Charstring o1
+	where sdef() =(pp,"http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+	"http://www.w3.org/1999/02/22-rdf-syntax-ns#Property") and sdef()=(pp,p1,o1)
+	and p1="http://www.w3.org/2000/01/rdf-schema#domain" and
+	retrieve_typeOfClass(o1) =(s,p,o);
+
+create function retrieve_propsOfP2(Charstring pp)->(Charstring,Charstring,Charstring)
+/*Retrieves the primary key props of the domain class of pp */
+	as select s, p, o  from Charstring s, Charstring p, Charstring o,Charstring p1,
+	Charstring o1 where sdef() =(pp,"http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+	"http://www.w3.org/1999/02/22-rdf-syntax-ns#Property") and sdef()=(pp,p1,o1) 
+	and p1="http://www.w3.org/2000/01/rdf-schema#domain" and retrieve_PK(o1) =(s,p,o) ;
+
+
+create function retrieve_propsOfP3(Charstring pp)->(Charstring,Charstring,Charstring)
+/*Reatrieves type,domain,range,size of the primary key props  of the domain class of pp */
+	as select s, p, o  from Charstring s, Charstring p, Charstring o,Charstring p1,
+	Charstring o1,Charstring s2,Charstring p2,Charstring o2 
+	where sdef() =(pp,"http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+	"http://www.w3.org/1999/02/22-rdf-syntax-ns#Property") and sdef()=(pp,p1,o1) 
+	and p1="http://www.w3.org/2000/01/rdf-schema#domain" 
+	and retrieve_PK(o1) =(s2,p2,o2) and retrieve_propsOfP(o2)=(s,p,o);
+
+create function retrieve_propsOfP4(Charstring pp)->(Charstring,Charstring,Charstring)
+	as select distinct s, p, o  from Charstring s, Charstring p, Charstring o,Charstring p1,
+	Charstring o1 where sdef() =(pp,"http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+	"http://www.w3.org/1999/02/22-rdf-syntax-ns#Property") and sdef()=(pp,p1,o1) 
+       and retrieve_singleFK(o1,pp)=(s,p,o);
+
+
+create function retrieve_propsFK1(Charstring pp)->(Charstring,Charstring,Charstring)
+/*Retrieves special properties of pp representin foreign key attribute*/
+	as select distinct s, p, o  from Charstring s, Charstring p, Charstring o,
+	Charstring p1 
+	where sdef() =(pp,"http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+	"http://www.w3.org/1999/02/22-rdf-syntax-ns#Property") and ( sdef()=(s,p,o) and o=pp
+	and like(p,"*FOREIGN*")) or ( sdef()=(pp,p1,s) and like(p1,"*_*") 
+	and sdef()=(s,p,o) and p='http://user.it.uu.se/~udbl/sard#REFERENCES' ) or 
+	(  sdef()=(pp,p1,s) and like(p1,"*_*") and (s,p,o) in retrieve_propsOfP(s) );
+	 
+
+
+create function retrieve_propsFK2(Charstring pp)->(Charstring,Charstring,Charstring)
+/*Retrieves the primary key props of the range class of pp representing FK attribute*/
+	as select s, p, o  from Charstring s, Charstring p, Charstring o,Charstring p1,
+	Charstring o1 where sdef() =(pp,"http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+	"http://www.w3.org/1999/02/22-rdf-syntax-ns#Property") and sdef()=(pp,p1,o1) 
+	and p1="http://www.w3.org/2000/01/rdf-schema#range" and (retrieve_PK(o1) =(s,p,o) or
+	(s,p,o) in retrieve_typeOfClass(o1));
+
+
+create function retrieve_propsFK3(Charstring pp)->(Charstring,Charstring,Charstring)
+/*Retrieves the props of the PKs of the table owning the FK, represented by pp*/
+	as select s, p, o  from Charstring s, Charstring p, Charstring o,Charstring p1,
+	Charstring p2, Charstring o2,Charstring o1 ,Charstring s2
+	where sdef() =(pp,"http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+	"http://www.w3.org/1999/02/22-rdf-syntax-ns#Property") and sdef()=(pp,p1,o1) 
+	and p1="http://www.w3.org/2000/01/rdf-schema#range" and retrieve_PK(o1) =(s2,p2,o2) 
+	and (s,p,o) in retrieve_propsOfP(o2);
+
+
+create function retrieve_RDFprop(Charstring pp)->(Charstring,Charstring,Charstring)
+/*Returns the closure of the RDF property pp*/
+	as select distinct s, p, o  from Charstring s, Charstring p, Charstring o
+	where (s,p,o) in  retrieve_propsOfP(pp) or (s,p,o) in retrieve_propsOfP1(pp)
+	or (s,p,o) in retrieve_propsOfP2(pp) or (s,p,o) in retrieve_propsOfP3(pp) or
+	(s,p,o) in retrieve_propsFK1(pp) or (s,p,o) in retrieve_propsFK2(pp) or
+	(s,p,o) in  retrieve_propsFK3(pp);
+
+
+create function generate_propertyq1(Charstring pp,Charstring upv)->Charstring
+/*Property query for a property pp representing attribute that is
+  not a foreign key */
+as
+	return
+	"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+	 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+	 PREFIX saq: <http://user.it.uu.se/~udbl/sard#>
+	 CONSTRUCT {
+		     <"+pp+">   rdf:type    	rdf:Property .
+		     <"+pp+">   rdfs:domain 	?tabClass .
+		     <"+pp+">   rdfs:range  	?range .
+	             <"+pp+">	saq:size        ?size .
+		     ?tabClass	rdf:type  	rdfs:Class .
+		     ?tabClass	saq:PRIMARY_KEY ?pk .
+		     ?pk 	rdf:type   	rdf:Seq .
+		     ?pk  	rdf:_1	  	?a1 .
+		     ?a1 	rdf:type  	rdf:Property .
+		     ?a1 	rdfs:domain	?tabClass .
+		     ?a1 	rdfs:range  	?xml_range1 .
+		     ?a1       	saq:size        ?size1 . }
+	FROM <"+URIofUPV(s_ofUPV(upv))+">
+	WHERE {
+		
+		     <"+pp+"> rdf:type    	rdf:Property .
+		     <"+ pp +"> rdfs:domain 	?tabClass .
+		     <"+ pp +"> rdfs:range  	?range .
+		     ?tabClass	rdf:type  	rdfs:Class .
+		     ?tabClass	saq:PRIMARY_KEY ?pk .
+		     ?pk 	rdf:type   	rdf:Seq .
+		     ?pk  	rdf:_1	  	?a1 .
+		     ?a1 	rdf:type  	rdf:Property .
+		     ?a1 	rdfs:domain	?tabClass .
+		     ?a1 	rdfs:range  	?xml_range1 .
+		     ?a1       	saq:size        ?size1 .
+		     OPTIONAL{  <"+ pp +"> saq:size  ?size }. } ";
+
+
+create function generate_propertyq2(Charstring pp,Charstring upv)->Charstring
+/*Property query for a property pp representing a foreign key */
+as
+	return
+	"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
+	 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+	 PREFIX saq: <http://user.it.uu.se/~udbl/sard#>
+	 CONSTRUCT {<" +pp + ">   rdf:type    	rdf:Property .
+		    <" +pp +">   rdfs:domain    ?tabclass .
+	            <" +pp +">   rdf:range    	?tabclass1 .
+		    <" + pp + ">  rdf:type	rdf:Seq . 
+		    <" + pp + ">  rdf:_1	?ak . 
+		    ?tabclass   saq:FOREIGN_KEY  <" + pp + "> .	
+		     ?ak	saq:REFERENCES	?bk .   
+		     ?ak 	rdf:type  	rdf:Property .  
+		     ?ak	rdfs:domain	?tabclass .
+		     ?ak	rdfs:range	?xml_range2 .
+		     ?ak	saq:size        ?size .
+		     ?bk 	rdf:type  	rdf:Property .  
+		     ?bk	rdfs:domain	?tabClass1 .
+		     ?bk	rdfs:range	?xml_range3 .
+		     ?bk	saq:size        ?size .
+		     ?tabClass1	rdf:type   	rdfs:Class .
+		     ?tabClass1	saq:PRIMARY_KEY ?pk1 .
+		     ?pk1 	rdf:type   	rdf:Seq .
+		     ?pk1  	rdf:_1		?bk   .
+ 		     ?tabClass	saq:PRIMARY_KEY ?pk .
+	             ?tabClass  rdf:type 	rdfs:Class .
+		     ?pk 	rdf:type   	rdf:Seq .
+		     ?pk  	rdf:_1	  	?a1 .    
+		     ?a1 	rdf:type  	rdf:Property .
+		     ?a1 	rdfs:domain	?tabClass .
+		     ?a1 	rdfs:range  	?xml_range1 .
+		     ?a1       	saq:size        ?size1 .   } 
+	FROM <"+URIofUPV(s_ofUPV(upv))+">
+	WHERE { 
+		    <" +pp +">   rdf:type     	rdf:Property . 
+		    <" +pp +">   rdfs:domain    ?tabclass .
+		     <" +pp +">   rdfs:range    ?tabclass1 .
+	            <" + pp + ">  rdf:type	rdf:Seq . 
+		    <" + pp + ">  rdf:_1	?ak . 
+		     ?tabclass  saq:FOREIGN_KEY  <" + pp + "> .	
+		     ?ak	saq:REFERENCES	?bk .   
+		     ?ak 	rdf:type  	rdf:Property .  
+		     ?ak	rdfs:domain	?tabclass .
+		     ?ak	rdfs:range	?xml_range2 .
+		     ?ak	saq:size        ?size .
+		     ?bk 	rdf:type  	rdf:Property .  
+		     ?bk	rdfs:domain	?tabClass1 .
+		     ?bk	rdfs:range	?xml_range3 .
+		     ?bk	saq:size        ?size .
+		     ?tabClass1	rdf:type   	rdfs:Class .
+		     ?tabClass1	saq:PRIMARY_KEY ?pk1 .
+		     ?pk1 	rdf:type   	rdf:Seq .
+		     ?pk1  	rdf:_1		?bk   .
+		     ?tabClass	saq:PRIMARY_KEY ?pk .
+	      	     ?tabClass  rdf:type 	rdfs:Class .
+		     ?pk 	rdf:type   	rdf:Seq .
+		     ?pk  	rdf:_1	  	?a1 .      
+		     ?a1 	rdf:type  	rdf:Property .
+		     ?a1 	rdfs:domain	?tabClass .
+		     ?a1 	rdfs:range  	?xml_range1 .
+		     ?a1       	saq:size        ?size1 .      } ";
+
+create function generate_propertyq3(Charstring pp,Charstring upv)->Charstring
+/*Property query for a property pp representing a many-to-many relationship */
+as
+	return
+	"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
+	 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+	 PREFIX saq: <http://user.it.uu.se/~udbl/sard#>
+	 CONSTRUCT {<" +pp + ">  rdf:type    	rdf:Property .
+		    <" +pp +">   rdfs:domain    ?tabclass .
+	            <" +pp +">   rdfs:range    	?tabclass1 .
+		     ?tabClass  rdf:type 	rdfs:Class .
+	             ?tabClass1  rdf:type 	rdfs:Class .
+		      ?tabClass	saq:PRIMARY_KEY ?pk .
+	      	     ?pk 	rdf:type   	rdf:Seq .
+		     ?pk  	rdf:_1	  	?a1 .      
+		     ?a1 	rdf:type  	rdf:Property .
+		     ?a1 	rdfs:domain	?tabClass .
+		     ?a1 	rdfs:range  	?xml_range1 .
+		     ?tabClass1	saq:PRIMARY_KEY ?pk1 .
+	      	     ?pk1 	rdf:type   	rdf:Seq .
+		     ?pk1  	rdf:_1	  	?b1 .      
+		     ?b1 	rdf:type  	rdf:Property .
+		     ?b1 	rdfs:domain	?tabClass1 .
+		     ?b1 	rdfs:range  	?xml_range2 .
+		     ?a1 	saq:size  	?size1 .
+		     ?b1 	saq:size  	?size2 }  
+      	FROM <"+URIofUPV(s_ofUPV(upv))+">
+	WHERE      {<" +pp + ">  rdf:type    	rdf:Property .
+		    <" +pp +">   rdfs:domain    ?tabclass .
+	            <" +pp +">   rdfs:range    	?tabclass1 .
+		     ?tabClass   rdf:type 	rdfs:Class .
+		     ?tabClass	saq:PRIMARY_KEY ?pk .
+	      	     ?pk 	rdf:type   	rdf:Seq .
+		     ?pk  	rdf:_1	  	?a1 .      
+		     ?a1 	rdf:type  	rdf:Property .
+		     ?a1 	rdfs:domain	?tabClass .
+		     ?a1 	rdfs:range  	?xml_range1 .
+		     ?tabClass1	saq:PRIMARY_KEY ?pk1 .
+	      	     ?pk1 	rdf:type   	rdf:Seq .
+		     ?pk1  	rdf:_1	  	?b1 .      
+		     ?b1 	rdf:type  	rdf:Property .
+		     ?b1 	rdfs:domain	?tabClass1 .
+		     ?b1 	rdfs:range  	?xml_range2 .
+		     OPTIONAL { ?a1 saq:size  ?size1 }
+		     OPTIONAL { ?b1 saq:size  ?size2 }  } ";
+
+
+create function correct_propertyq(Charstring pp, Charstring upv)->Charstring
+as
+/*Generates property query corresponding to the type of pp*/
+   if (some( select tn,cn from Charstring tn, Charstring cn where pMap(tn,cn,upv,pp)=true )) then
+	return generate_propertyq1(pp,upv)
+   else if (some( select tn1,tn2 from Charstring tn1, Charstring tn2 where rcMap(tn1,tn2,upv,pp)=true )) then
+	return generate_propertyq2(pp,upv)
+   else  if (some(select tn1,tn2 from Charstring tn,Charstring tn1, Charstring tn2, Vector of Charstring a1,Vector of Charstring a2 where rmmMap(tn,a1,a2,tn1,tn2, upv,pp)=true )) then
+	return generate_propertyq3(pp,upv);
+
+
+create function execute_propertyq(Charstring pp, Charstring upv)->(Charstring,Charstring,Charstring)
+/*Execute the property query for property pp*/
+	as select s, p, o  from Charstring s, Charstring p, Charstring o
+	where {s,p,o} in call_function(#'sparql',{correct_propertyq(pp,upv)});
+
+
+
+create function retrieve_properties_ofdomainClass1(Charstring rdfscl)-> (Charstring,Charstring,Charstring)
+/*Deep describe of all RDF properties having rdfscl as domanin*/
+	as select distinct s,p,o from Charstring s, Charstring p, Charstring o,Charstring s1 where
+	sdef()=(s1,"http://www.w3.org/2000/01/rdf-schema#domain", rdfscl) and retrieve_RDFprop(s1)=(s,p,o);
+
+create function retrieve_properties_ofrangeClass1(Charstring rdfscl)-> (Charstring,Charstring,Charstring)
+/*Deep describe of all RDF properties having rdfscl as range*/
+	as select distinct s,p,o from Charstring s, Charstring p, Charstring o,Charstring s1 where
+	sdef()=(s1,"http://www.w3.org/2000/01/rdf-schema#range", rdfscl) and retrieve_RDFprop(s1)=(s,p,o);
+
+
+create function gen_notlikes(Charstring str,Vector vv)->Bag of Charstring
+ as for each Charstring pat where pat=in(vv)
+	return "neq("+str+",'"+pat+"')";
+
+
+create function ornotlikelist(Charstring str, Vector bpat )->Charstring
+  as 
+    begin
+	if some(in(bpat)) then
+		return concatagg(inject(gen_notlikes(str,bpat)," and "))
+	else	return NIL;
+   end;
+
+
+
+
+create function retrieve_properties_ofdomainClass3(Charstring rdfscl,Vector rdfpr)->  (Charstring,Charstring,Charstring)
+/*(Deep) describe of all RDF properties having the RDFS Class rdfscl as domanin without the properties in rdfpr*/
+	as select s,p,o from Charstring s, Charstring p, Charstring o
+	where evalv("select distinct s,p,o from Charstring s, Charstring p, Charstring o,Charstring s1 where
+	sdef()=(s1,'http://www.w3.org/2000/01/rdf-schema#domain','"+ rdfscl+"') and retrieve_RDFprop(s1)=(s,p,o)
+        and " + ornotlikelist('s',rdfpr)+";")={s,p,o};
+
+
+create function retrieve_properties_ofrangeClass3(Charstring rdfscl,Vector rdfpr)->  (Charstring,Charstring,Charstring)
+/*(Deep) describe of all RDF properties having the RDFS Class rdfscl as range without the properties in rdfpr*/
+	as select s,p,o from Charstring s, Charstring p, Charstring o
+	where evalv("select distinct s,p,o from Charstring s, Charstring p, Charstring o,Charstring s1 where
+	sdef()=(s1,'http://www.w3.org/2000/01/rdf-schema#range','"+ rdfscl+"') and retrieve_RDFprop(s1)=(s,p,o)
+        and " + ornotlikelist('s',rdfpr)+";")={s,p,o};
+
+	
+
+create function retrieve_properties_ofdomainClass(Charstring rdfscl)-> (Charstring,Charstring,Charstring)
+/*Retrieves the domain properties of the class ss from the triples in supv*/
+	as select distinct s,p,o from Charstring s, Charstring p, Charstring o, Charstring o1,Charstring s1, 
+	Charstring p1,Charstring s2, Charstring p2, Charstring o2
+	where (sdef()=(s1,"http://www.w3.org/2000/01/rdf-schema#domain", rdfscl) and sdef()=(s1,p1,o1) 
+		and retrieve_typeOfClass(o1) =(s,p,o) ) or 
+	     (sdef()=(s1,"http://www.w3.org/2000/01/rdf-schema#domain", rdfscl) and sdef()=(s1,p1,o1) 
+	       and retrieve_PK(o1) =(s,p,o))           or
+	     ( sdef()=(s1,"http://www.w3.org/2000/01/rdf-schema#domain", rdfscl) and 
+		sdef()=(s1,"http://www.w3.org/2000/01/rdf-schema#range",o1) and retrieve_PK(o1)=(s2,p2,o2) 
+		and retrieve_propsOfP(o2)=(s,p,o) )    or
+	     (sdef()=(s,"http://www.w3.org/2000/01/rdf-schema#domain", rdfscl) and sdef()=(s,p,o));
+
+
+create function retrieve_properties_ofrangeClass(Charstring rdfscl)-> (Charstring,Charstring,Charstring)
+/*Retrieves the range properties of the class ss from the triples in supv*/
+/*If rdfscl represents a table owning F key */
+	as select distinct s,p,o from Charstring s, Charstring p, Charstring o, Charstring o1,
+	Charstring s1, Charstring p1,Charstring s2, Charstring p2, Charstring o2
+	where (sdef()=(s1,"http://www.w3.org/2000/01/rdf-schema#range", rdfscl) and sdef()=(s1,p1,o1) 
+		and retrieve_typeOfClass(o1) =(s,p,o)) or 
+	      (sdef()=(s1,"http://www.w3.org/2000/01/rdf-schema#range", rdfscl) and sdef()=(s1,p1,o1) 
+		and retrieve_PK(o1) =(s,p,o))  or 
+	      (sdef()=(s1,"http://www.w3.org/2000/01/rdf-schema#range", rdfscl) and sdef()=(s1,p1,o1) 
+		and retrieve_PK(o1) =(s2,p2,o2) and retrieve_propsOfP(o2)=(s,p,o)) or
+		(sdef()=(s,"http://www.w3.org/2000/01/rdf-schema#range", rdfscl) and sdef()=(s,p,o));
+
+
+create function retrieve_PFK(Charstring rdfscl)-> (Charstring,Charstring,Charstring)
+	as select fk, prop, val from Charstring fk, Charstring prop, Charstring val
+	 where ( sdef()=(fk,prop,val) and fk=rdfscl and (like(prop,'*FOREIGN_KEY') or like(prop,'*PRIMARY_KEY')) ) or
+	(sdef()=(fk, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq')
+	   and sdef()=(fk, prop, val) and like(prop,'http://www.w3.org/1999/02/22-rdf-syntax-ns#*') and
+	(sdef()=(rdfscl, 'http://user.it.uu.se/~udbl/sard#FOREIGN_KEY', fk) or 
+  	sdef()=(rdfscl, 'http://user.it.uu.se/~udbl/sard#PRIMARY_KEY', fk)));
+
+
+
+create function retrieve_sclass(Charstring rdfscl)->(Charstring,Charstring,Charstring)
+/*Retrieves all the schema info about the RDFS class rdfscl so that the relational data
+  mapped to RDF and represented by the rdfscl (and its properties to be restored) */
+	as select distinct s, p, o  from Charstring s, Charstring p, Charstring o where
+	retrieve_typeOfClass(rdfscl)=(s,p,o) or retrieve_properties_ofdomainClass(rdfscl)=(s,p,o) or
+	retrieve_properties_ofrangeClass(rdfscl)=(s,p,o) or retrieve_PK(rdfscl)=(s,p,o) or
+	retrieve_FK(rdfscl)=(s,p,o);
+
+create function retrieve_class_props(Charstring rdfscl,Vector rdfpr1,Vector rdfpr2)->(Charstring,Charstring,Charstring)
+/*Retrieves all the schema info about the RDFS class rdfscl (excluding the domain properties rdfpr1 or
+								rhe range properties rdfpr2) */
+	as select distinct s, p, o  from Charstring s, Charstring p, Charstring o where
+	retrieve_properties_ofdomainClass3(rdfscl, rdfpr1)=(s,p,o) or
+	retrieve_properties_ofrangeClass3(rdfscl, rdfpr2)=(s,p,o) ;
+
+
+
+create function retrieve_class_allprops(Charstring rdfscl)->(Charstring,Charstring,Charstring)
+/*Retrieves all the schema info about the RDFS class rdfscl (all domain and range properties) */
+	as select distinct s, p, o  from Charstring s, Charstring p, Charstring o, Charstring s1 where
+	(sdef()=(s1,'http://www.w3.org/2000/01/rdf-schema#domain',rdfscl) and retrieve_RDFprop(s1)=(s,p,o)) or 
+	(sdef()=(s1,'http://www.w3.org/2000/01/rdf-schema#range',rdfscl) and retrieve_RDFprop(s1)=(s,p,o)); 
+
+
+
+
+create function gen_orfs(Vector cls,Charstring funtitle )->Charstring
+  as 
+	for each Charstring rdfscl where rdfscl=in(cls)
+	return "(s,p,o) in "+ funtitle + "('"+rdfscl+"')";
+
+
+create function concators(Vector cls,Charstring funtitle )->Charstring
+as
+begin
+	if some(in(cls)) then
+		return concatagg(inject( gen_orfs(cls,funtitle)," or "))
+	else return NIL;
+ end;
+    
+		 
+
+create function gen_orclasses_o(Vector cls )->Charstring
+  as 
+	for each Charstring rdfscl,Vector rdfpr1,Vector rdfpr2 where {rdfscl,rdfpr1,rdfpr2}=in(cls)
+	return "(s,p,o) in retrieve_class_props('"+rdfscl+"',"+rdfpr1+","+rdfpr2+")";
+
+    
+create function orclasses_list_o(Vector cls )->Charstring
+as
+begin
+	if some(in(cls)) then
+		return concatagg(inject( gen_orclasses_o(cls)," or "))
+	else	return NIL;
+   end;
+
+
+
+create function retrieve_RDFSclasses_o(Vector ls) ->(Charstring,Charstring,Charstring)
+/*Retrieves all the schema info about the list of the RDFS classes ls 
+ (excluding the domain or range properties, defined as vector of vector, e.g.
+ retrieve_RDFSclasses({ {rdfscl1,{rdfpr11},{}rdfpr12},{rdfsclk,{rdfprk1},{}rdfprk2}})   */
+	as select s,p,o from Charstring s, Charstring p, Charstring o
+	where evalv("select distinct s, p, o from Charstring s, Charstring p, Charstring o
+	        where " + orclasses_list_o(ls) + ";") ={s,p,o};
+
+
+create function retrieve_RDFSclasses(Vector ls) ->(Charstring,Charstring,Charstring)
+/*Retrieves all the schema info about the list of the RDFS classes ls   */
+	as select s,p,o from Charstring s, Charstring p, Charstring o
+	where evalv("select distinct s, p, o from Charstring s, Charstring p, Charstring o
+	        where " + orclasses_list_o(ls) + ";") ={s,p,o};
+
+create function retrievefun(Vector incls,Vector inprops) ->Boolean
+as
+	eval("create function retRDF_classes_props()->(Charstring,Charstring,Charstring)
+		as select distinct s, p, o from Charstring s, Charstring p, Charstring o
+	        where "+ concators(incls,'retrieve_class_allprops') + " or " +
+			concators(inprops,'retrieve_RDFprop')+ ";");
+
+
+create function retrieveRDF_classes_props(Vector incls,Vector inprops) ->(Charstring,Charstring,Charstring)
+/*Retrieves schema info about classes incl and properties inprops*/
+	as select s,p,o from Charstring s, Charstring p, Charstring o
+	where evalv("select distinct s, p, o from Charstring s, Charstring p, Charstring o
+	        where (s=NIL or p=NIL or o=NIL) or " + concators(incls,'retrieve_class_allprops')+ " or " + 
+		concators(inprops,'retrieve_RDFprop')+ ";")={s,p,o};
+
+
+create function retrieveRDF_classes_props2(Vector incls,Vector excls,Vector inprops,Vector exprops) ->(Charstring,Charstring,Charstring)
+/*Retrieves schema info about classes incl and properties inprops*/
+	as select s,p,o from Charstring s, Charstring p, Charstring o
+	where evalv("select distinct s, p, o from Charstring s, Charstring p, Charstring o
+	        where (s=NIL or p=NIL or o=NIL) or " + concators(incls,'retrieve_class_allprops')+ " or " + 
+		concators(inprops,'retrieve_RDFprop')+  " or  (sdef()=(s,'http://www.w3.org/1999/02/22-rdf-syntax-ns#type',
+		'http://www.w3.org/1999/02/22-rdf-syntax-ns#Property') and sdef()=(s,p,o) and " + ornotlikelist('s',exprops)+ ");")={s,p,o};
+
+
+
+
+
+create function retrieveRDF(Vector inclpr) ->(Charstring,Charstring,Charstring)
+	as  select s,p,o from Charstring s, Charstring p, Charstring o,Vector incl, Vector inprops
+	 where  inclpr={incl,inprops} and (s,p,o) in retrieveRDF_classes_props(incl,inprops);
+
+	
+create function retrievelistof_RDFprops(Vector inprops) ->(Charstring,Charstring,Charstring)
+/*Retrieves schema info about properties inside the list inprops*/
+	as select s,p,o from Charstring s, Charstring p, Charstring o
+	where evalv("select distinct s, p, o from Charstring s, Charstring p, Charstring o
+	        where (s=NIL or p=NIL or o=NIL)  or " + 
+		concators(inprops,'retrieve_RDFprop')+ ";")={s,p,o};
+
+
+
+create function archive(Vector inclpr, Function dataarch_fun)->(Charstring,Charstring,Charstring)
+/*Archive all about the triple subject sub where archfun is implementing SPARQL DESCIBE ?sub*/
+	as begin
+	   unload_asNT("cl_archschema.nt",#'retrieveRDF',{inclpr});
+	   unload_asNT("archdata.nt", dataarch_fun,{});
+	   end;
+
+
+
+/*Table storing the list of uloaded properties*/
+create function store_prop(Charstring ch)->Boolean as stored;
+
+create function number_prop(Charstring ch)->Integer as stored;
+
+
+create function clean_store_prop()->Boolean
+/*Cleans the table store_prop*/
+as
+	for each Charstring ch where store_prop(ch)=true
+	   set store_prop(ch)=false;
+
+create function clean_number_pmap()->Boolean
+/*Cleans the table number_prop*/
+as
+	for each Charstring pp,Charstring tn, Charstring col,
+	Charstring upv
+	 where pMap(tn,col,upv)=pp 
+	   set number_prop(pp)=0;
+
+create function clean_number_rcmap()->Boolean
+/*Cleans the table number_prop*/
+as
+	for each Charstring pp,Charstring tn, Charstring tno,
+	Charstring upv
+	 where rcMap(tn,tno,upv)=pp 
+	   set number_prop(pp)=0;
+
+create function clean_number_rmmMap()->Boolean
+/*Cleans the table number_prop*/
+as
+	for each Charstring tn,Vector of Charstring cn1,
+	Vector of Charstring cn2,Charstring otn1,
+	Charstring otn2,Charstring upv,Charstring pp
+	where rmmMap(tn,cn1,cn2,otn1,otn2,upv)=pp 
+	   set number_prop(pp)=0;
+
+
+create function retrieve_store_prop()->Charstring 
+as 
+/*Retrieves the unloaded properties*/
+	select s from Charstring s where store_prop(s)=true;
+
+
+create function retrieve_schemaofProps()->(Charstring,Charstring,Charstring)
+/*Retrieves meta-data from the SUPV about the unloaded properties*/
+as
+	select distinct s, p, o from Charstring s, Charstring p, Charstring o
+	where (s,p,o) in retrieve_RDFprop(retrieve_store_prop());
+
+
+create function retrieve_schemaofPropsV()->Vector
+as
+	select {s, p, o} from Charstring s, Charstring p, Charstring o
+	where (s,p,o) in retrieve_schemaofProps();
+
+
+create function retrieve_mdataProps(Charstring upv)->(Charstring,Charstring,Charstring)
+/*Retrieves meta-data from the SUPV about the unloaded properties stored in 'retrieve_store_prop' */
+as
+	select distinct s, p, o from Charstring s, Charstring p, Charstring o
+	where (s,p,o) in execute_propertyq(retrieve_store_prop(),upv);
+
+	  
+
+create function archive_content_oldo(Function datafn,Charstring file1,Charstring file2)->Boolean
+/*Archives the content by the function 'datafn' in an NT file 'file1' and 
+  the schema concerning the content in an NT file 'file2' */
+as
+ begin
+   clean_store_prop();
+   openwritefile(file1);
+   for each Charstring ss,Charstring pp,Charstring oo where call_function(datafn,{})={ss,pp,oo}
+	begin
+	  printXmll ( printResource(ss)+ " "+ printResource(pp)+ " "+ printResource(oo)+ " ." );
+	  add store_prop(pp)=true;
+	end;
+   closewritefile();
+   write_triples_asNT( call_function(#'retrieve_schemaofProps',{}),file2);
+ end;
+
+
+create function archive_content_old(Function datafn,Charstring file1,Charstring file2,Charstring upv)->Boolean
+/*Archives the content retrieved by the query 'datafn' in an NT file 'file1' and 
+  the schema concerning the content in an NT file 'file2'
+  Schema is archived by executing one of three SPARQL, s.c property queries */
+as
+ begin
+   clean_store_prop();
+   openwritefile(file1);
+   for each Charstring ss,Charstring pp,Charstring oo where call_function(datafn,{})={ss,pp,oo}
+	begin
+	  printXmll ( printResource(ss)+ " "+ printResource(pp)+ " "+ printResource(oo)+ " ." );
+	  add store_prop(pp)=true;
+	end;
+   closewritefile();
+   write_triples_asNT( call_function(#'retrieve_mdataProps',{upv}),file2);
+ end;
+
+
+
+
+
+
+create function archive_content_new(Function datafn,Charstring file1,Charstring file2,Charstring file3)->Boolean
+/*Archives the content by the function 'datafn' in an NT file 'file1' and 
+  the schema concerning the content in an NT file 'file2' */
+as
+ begin
+   clean_store_prop();
+   clean_number_pmap();
+   clean_number_rcmap();
+   clean_number_rmmMap();
+   openwritefile(file1);
+   for each Charstring ss,Charstring pp,Charstring oo where call_function(datafn,{})={ss,pp,oo}
+	begin
+	  printXmll ( printResource(ss)+ " "+ printResource(pp)+ " "+ printResource(oo)+ " ." );
+	  add store_prop(pp)=true;
+	  set number_prop(pp)= number_prop(pp) +1;
+	end;
+   closewritefile();
+   unload_asNT(file2,#'retrieve_schemaofProps',{});
+   openwritefile(file3);
+    for each Charstring pp,Integer int 
+   where number_prop(pp)=int and int!=0
+	printXmll("number_prop('"+pp+"'): " + number_prop(pp) + ";");
+    closewritefile();
+ end;
+
+
+create function archive_content(Charstring datafn,Charstring file1,Charstring file2,Charstring file3)->Boolean
+/*Archives content extracted by the function 'datafn' in an NT file 'file1' and 
+  the schema concerning the content in an NT file 'file2' */
+as
+ begin
+   clean_store_prop();
+   clean_number_pmap();
+   clean_number_rcmap();
+   clean_number_rmmMap();
+   openwritefile(file1);
+   for each Charstring ss,Charstring pp,Charstring oo where evalv("remove_null("+datafn+"());")={ss,pp,oo}
+	begin
+	  printXmll ( printResource(ss)+ " "+ printResource(pp)+ " "+ printResource(oo)+ " ." );
+	  add store_prop(pp)=true;
+	  set number_prop(pp)= number_prop(pp) +1;		   	 
+	end;
+   closewritefile();
+   write_triples_asNT(retrieve_schemaofPropsV(),file2);
+    openwritefile(file3);
+    for each Charstring pp,Integer int 
+   where number_prop(pp)=int and int!=0
+	printXmll("number_prop('"+pp+"'): " + number_prop(pp) + ";");
+    closewritefile();
+  end;
+
+
+
+
+
+ 
+
+

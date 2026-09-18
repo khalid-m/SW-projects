@@ -1,0 +1,90 @@
+/*set my_jdbc() = jdbc("lrdb", "com.mysql.jdbc.Driver");*/
+create function mysql_host()->charstring as select "localhost";
+create function mysql_db_name()->charstring as select "regresstest";
+create function mysql_user()->charstring as select "regress";
+create function mysql_password()->charstring as select "regress";
+create function mysql_port()->Number as select
+  cast( unstringify( getenv("PORTDB") ) as Integer );
+
+
+create function init_lr()->vector as
+  select sql( my_jdbc(), "TRUNCATE historical_toll;" );
+
+create function my_sql_query(charstring sql)->vector as
+  select sql( my_jdbc(), sql );
+/*
+connect(my_jdbc(), "jdbc:mysql://" + mysql_host() + ":" + mysql_port() + "/"
++ mysql_db_name(), mysql_user(), mysql_password());
+*/
+writefile('./data/binarytest.bin', iarray(vreadfile('./data/test.txt')));
+
+init_lr();
+
+my_sql_query("INSERT INTO historical_toll(  vid, day, xway, toll ) VALUES( 1, 1, 0, 1);");
+my_sql_query("INSERT INTO historical_toll(  vid, day, xway, toll ) VALUES( 1, 2, 0, 2);");
+my_sql_query("INSERT INTO historical_toll(  vid, day, xway, toll ) VALUES( 1, 3, 0, 3);");
+my_sql_query("INSERT INTO historical_toll(  vid, day, xway, toll ) VALUES( 1, 4, 0, 4);");
+my_sql_query("INSERT INTO historical_toll(  vid, day, xway, toll ) VALUES( 1, 5, 0, 5);");
+my_sql_query("INSERT INTO historical_toll(  vid, day, xway, toll ) VALUES( 1, 6, 0, 6);");
+my_sql_query("INSERT INTO historical_toll(  vid, day, xway, toll ) VALUES( 1, 7, 0, 7);");
+my_sql_query("INSERT INTO historical_toll(  vid, day, xway, toll ) VALUES( 1, 8, 0, 8);");
+my_sql_query("INSERT INTO historical_toll(  vid, day, xway, toll ) VALUES( 1, 9, 0, 9);");
+my_sql_query("INSERT INTO historical_toll(  vid, day, xway, toll ) VALUES( 1, 10, 0, 10);");
+my_sql_query("INSERT INTO historical_toll(  vid, day, xway, toll ) VALUES( 1, 1, 1, 1);");
+my_sql_query("INSERT INTO historical_toll(  vid, day, xway, toll ) VALUES( 1, 2, 1, 2);");
+my_sql_query("INSERT INTO historical_toll(  vid, day, xway, toll ) VALUES( 1, 3, 1, 3);");
+my_sql_query("INSERT INTO historical_toll(  vid, day, xway, toll ) VALUES( 1, 4, 1, 4);");
+my_sql_query("INSERT INTO historical_toll(  vid, day, xway, toll ) VALUES( 1, 5, 1, 5);");
+my_sql_query("INSERT INTO historical_toll(  vid, day, xway, toll ) VALUES( 1, 6, 1, 6);");
+my_sql_query("INSERT INTO historical_toll(  vid, day, xway, toll ) VALUES( 1, 7, 1, 7);");
+my_sql_query("INSERT INTO historical_toll(  vid, day, xway, toll ) VALUES( 1, 8, 1, 8);");
+my_sql_query("INSERT INTO historical_toll(  vid, day, xway, toll ) VALUES( 1, 9, 1, 9);");
+my_sql_query("INSERT INTO historical_toll(  vid, day, xway, toll ) VALUES( 1, 10, 1, 10);");
+
+
+lisp;
+(checkequal "Read_file"
+  ((osql "count(stream_to_vector(lreadfast(getenv('AMOS_HOME') + '/scsq/lr/dexp/data/test.txt',1)));")
+   '((6))))
+
+(checkequal "Run Single Node count"
+  ((osql "count(callLR0(stream_to_vector(lreadfast(getenv('AMOS_HOME') + '/scsq/lr/dexp/data/test.txt',1))));")
+   '((6))))
+
+(checkequal "Run Single Node"
+  ((osql "callLR0(stream_to_vector(lreadfast(getenv('AMOS_HOME') + '/scsq/lr/dexp/data/test.txt',1)));")
+   '((#(3 17 0 5 10.0)) (#(3 19 0 5 10.0)) (#(3 23 0 5 10.0)) (#(3 28 0 5 10.0)) 
+     (#(3 32 0 5 10.0)) (#(3 33 0 5 10.0)))))
+
+(checkequal "splitstream"
+((osql "in(zipstreams(splitstream(siota(1, 12), 2,#'integer.integer.oddeven->integer', #'f')));")
+	'((#(2 1)) (#(4 3)) (#(6 5)) (#(8 7)) (#(10 9)) (#(12 11)))))
+
+(checkequal "splitstream_file count"
+((osql "count(in(zipstreams(splitstream(lreadfast(getenv('AMOS_HOME') + '/scsq/lr/dexp/data/test.txt',1), 2, #'dexpmodpartition'))));")
+	'((3))))
+
+(checkequal "splitstream_file iarray count"
+((osql "count(in(zipstreams(splitstream(lreadfastbin(getenv('AMOS_HOME') + '/scsq/lr/dexp/data/binarytest.bin'), 2, #'idexpmodpartition'))));")
+        '((3))))
+
+(checkequal "splitstream_file"
+((osql "in(zipstreams(splitstream(lreadfast(getenv('AMOS_HOME') + '/scsq/lr/dexp/data/test.txt',1), 2, #'dexpmodpartition')));")
+	'((#(#(3 19 1 -1 0 -1 -1 -1 -1 5 -1 -1 -1 -1 10) #(3 17 1 -1 1 -1 -1 -1 -1 5 -1 -1 -1 -1 10))) 
+	  (#(#(3 23 1 -1 0 -1 -1 -1 -1 5 -1 -1 -1 -1 10) #(3 28 1 -1 1 -1 -1 -1 -1 5 -1 -1 -1 -1 10)))
+	  (#(#(3 32 1 -1 0 -1 -1 -1 -1 5 -1 -1 -1 -1 10) #(3 33 1 -1 1 -1 -1 -1 -1 5 -1 -1 -1 -1 10))))))
+
+
+
+
+#(checkequal "Distribute Run"
+#((osql "count(distr_run_lr( getenv('AMOS_HOME') + '/scsq/lr/dexp/data/binarytest.bin', 'localhost', './data'));")
+#	'((3))))
+
+(checkequal "clrmultiply_count"
+((osql "count(clrmultiply(ts_iarray(in(lreadfastbin(getenv('AMOS_HOME') + '/scsq/lr/dexp/data/binarytest.bin')),12),64, 8));")
+'((48))))
+
+:osql
+sleep(1);
+q();

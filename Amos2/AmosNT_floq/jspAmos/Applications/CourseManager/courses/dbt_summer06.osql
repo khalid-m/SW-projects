@@ -1,0 +1,24 @@
+/******* DATA ****************************************************/
+/*** DBT course Summer 2006                                    ***/
+/*****************************************************************/
+
+assignment(1, "Normalization",              date(2006,6,30));
+assignment(2, "DB design and EER modeling", date(2006,8,4));
+assignment(3, "SQL",                        date(2006,8,18));
+assignment(4, "Amos II project", 	   date(2006,8,30));
+
+set :l1 = lecturer("Kjell","Orsborn","kjello",".ko?","Kjell.Orsborn@it.uu.se");
+set :l2 = lecturer("Tore","Risch","torer",".tr?","Tore.Risch@it.uu.se");
+
+set :r=assistant("Ruslan","Fomkin","ruslan",".rf?","Ruslan.Fomkin@it.uu.se");
+
+set share(:r)=1.0;
+
+declare course :c;
+set :c = course("DBT-ST2006");
+set currCourse() = :c;
+
+add responsible(:c) = :l1;
+add responsible(:c) = :l2;
+add assistants(:c) = allAssistants();
+add assignments(:c) = in(select a from assignment a);

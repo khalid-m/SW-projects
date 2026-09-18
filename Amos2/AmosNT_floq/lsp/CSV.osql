@@ -1,0 +1,37 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2013 Tore Risch, UDBL
+ * $RCSfile: CSV.osql,v $
+ * $Revision: 1.1 $ $Date: 2013/06/29 16:09:25 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: CSV file access
+ *
+ ****************************************************************************
+ * $Log: CSV.osql,v $
+ * Revision 1.1  2013/06/29 16:09:25  torer
+ * New file for CSV file access: lsp/CSV.osql
+ *
+ ****************************************************************************/
+
+lisp;
+
+(defun writecsvfile-- (fno file b)
+  (with-output-file
+   s file
+   (mapbag b (f/l (row)(write-csv-line (car row) s))))
+  (osql-result file b))
+
+:osql
+
+create function writecsvfile(Charstring file, Bag b) -> Boolean
+  as foreign 'writecsvfile--';
+
+create function csv_file_tuples (Charstring file) -> Bag of Vector
+  as foreign 'csv-file-tuples-+';
+
+create function csv_file_stream (Charstring file) -> Stream of Vector
+  as streamof(csv_file_tuples(file));
+
+

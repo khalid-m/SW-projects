@@ -1,0 +1,310 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Cheng Xu, UDBL
+ * $RCSfile: validate.osql,v $
+ * $Revision: 1.14 $ $Date: 2013/04/02 20:29:58 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: joins and primitives for validation
+ *
+ ****************************************************************************
+ * $Log: validate.osql,v $
+ * Revision 1.14  2013/04/02 20:29:58  chexu484
+ * threshold out of scope and // validation
+ *
+ * Revision 1.13  2013/01/08 13:14:07  chexu484
+ * revert
+ *
+ * Revision 1.12  2013/01/08 12:49:46  chexu484
+ * model and validate returns stream of vector instead of stream of qua-tuple
+ *
+ * Revision 1.11  2012/11/21 15:33:34  chexu484
+ * threshold as stored function
+ *
+ * Revision 1.10  2012/11/08 16:22:04  torer
+ * logging on
+ *
+ * Revision 1.9  2012/10/25 11:47:15  chexu484
+ * *** empty log message ***
+ *
+ * Revision 1.8  2012/07/24 22:22:04  chexu484
+ * MODEL AND VALIDATE requires:
+ * refn(Object o) -> Object r (i.e. only returns single element not a bag)
+ * LEARN AND VALIDATE support both.
+ * this is done by explicitly check if the (learned) model are a bag or just
+ * a single element. If the model is a bag, it is stored in memory as a
+ * aggr_bag list.
+ *
+ * Revision 1.7  2012/07/24 15:11:31  chexu484
+ * both model_n_validate and learn_n_validate use the same function:
+ * validatef(Object o, Object ref, Object threshold, Function validatefn)
+ *        			       -> (Number ts, Object m, Object e, Object d)
+ * the only difference is how these two approaches generate "ref".
+ *
+ * note: currently, "ref" can ONLY be SINGLE element, bag not supported
+ *
+ * Revision 1.6  2012/04/19 17:18:32  chexu484
+ * code refactoring
+ *
+ * Revision 1.5  2012/02/28 16:09:22  chexu484
+ * new mapstreams functions, allow map function takes more arguements
+ * than just stream and allow different map functions on vector of streams
+ *
+ * Revision 1.4  2012/02/15 14:47:50  chexu484
+ * namespace for functions svali:
+ *
+ * Revision 1.3  2012/01/03 16:22:23  chexu484
+ * 1. added new validation function
+ *    STREAM.FUNCTION.FUNCTION.FUNCTION.INTEGER.FUNCTION.NUMBER.RECORD_N_VALIDATE
+ * 							->STREAM-(INTEGER,VECTOR)
+ * 2. added regression test for data type window
+ * 3. added regression test for validation functions
+ *
+ * Revision 1.2  2011/12/08 14:24:06  chexu484
+ * function inwindow changed to in
+ *
+ * Revision 1.1  2011/05/20 13:20:06  chexu484
+ * *** empty log message ***
+ *
+ * Revision 1.1  2006/02/12 20:01:08  torer
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+
+/* anti-semijoin is used to validate w1 is the expected
+ * ******* answer while w2 is to be validated *********/
+create function anti_semijoin_w(Window w1, Window w2) -> Bag of Object
+  as select e
+  from Object e
+  where e in w2 and notany(e in w1); 
+
+create function anti_semijoin_b(Bag b1, Bag b2) -> Bag of Object
+  as select e
+  from Object e
+  where e in b2 and notany(e in b1); 
+
+/* binary */
+create function anti_semijoin_v(Vector of Window vw) -> Bag of Object
+  as anti_semijoin_w(vw[0], vw[1]);
+
+create function check_interval(Number a, Number b, Number interval) -> (Number, Number)
+  as select a, b
+  where abs(a - b) > interval;
+
+create function svali:mapstreams(Vector of Stream vs, Function f, Vector argv) -> Vector of Stream
+  as vselect ostream(p, 0)
+  from Sp p
+  where p in spv(vselect sapply(f, concat({s}, argv)) from Stream s where s in vs);  
+
+
+/* need to check the width of vs, vf, vargv */
+create function svali:mapstreams(Vector of Stream vs, Vector of Function vf, Vector of Vector vargv)
+       					   	      	     	-> Vector of Stream
+  as vselect ostream(p, 0)
+  from Sp p
+  where p in spv(vselect sapply(vf[i], concat({vs[i]}, vargv[i]))
+  	     	 from Integer i
+		 where i in iota(0, dim(vs) - 1));
+
+create function pvalidate(Vector of Stream vs, Vector of Function validatefns, Vector of Vector vargv)
+								-> Stream of Vector
+  as lsmjstreamsv(svali:mapstreams(vs, validatefns, vargv), 0);
+
+/********************* model and validate without logging **********************************/
+create function model_n_validate(Stream s, Function modelfn, Function validatefn) -> Stream of Vector
+  as streamof(model_n_validate_b(s, modelfn, validatefn));
+
+create function model_n_validate(Bag of Stream s, Function modelfn, Function validatefn) -> Stream of Vector
+  as select pvalidate(vs, validatefns, vargv)
+     from Vector of Stream vs, Vector of Function validatefns, Vector of Vector vargv, Integer scount
+     where vs = vectorof(s) and scount = count(vs)
+     and validatefns = (vselect #'STREAM.FUNCTION.FUNCTION.MODEL_N_VALIDATE->STREAM-VECTOR'
+			from Integer i where i in iota(0, scount - 1))
+     and vargv = (vselect {modelfn, validatefn}
+		  from Integer i where i in iota(0, scount - 1));
+
+/********************** model and validate with logging ***********************************/
+create function model_n_validate_b(Stream s, Function modelfn, Function validatefn, Charstring logfile)
+                               -> Bag of Vector /*(Number ts, Object m, Object e)*/
+  as begin
+	openlog(logfile, "a"); /* always append */
+       	for each Object o, Vector res
+     	    where o in s and res = model_n_validate_one(o, modelfn, validatefn)
+	 begin
+		write2log(o, logfile);
+    	 	return res;
+	 end;
+	closelog(logfile);
+  end;
+create function model_n_validate(Stream s, Function modelfn, Function validatefn, Charstring logfile)
+                             -> Stream of Vector /*(Number, Object, Object, Object)*/
+  as streamof(model_n_validate_b(s, modelfn, validatefn, logfile));
+
+
+/********************** model and validate streaming form file *************************************/
+create function model_replay(Charstring logfile, Function modelfn, Function validatefn)
+                         -> Stream of Vector /*(Number, Object, Object, Object)*/
+  as model_n_validate(streamof(readfile(logfile)), modelfn, validatefn);
+
+
+/********************************* learn and validate *********************************************/
+create function learn_n_validate(Stream s, Function learnfn, Integer n, Function validatefn)
+				-> Stream of Vector
+  as streamof(learn_n_validate_b(s, learnfn, n, validatefn));
+
+create function learn_n_validate(Bag of Stream s, Function learnfn, Integer n, Function validatefn) -> Stream of Vector
+  as select pvalidate(vs, validatefns, vargv)
+     from Vector of Stream vs, Vector of Function validatefns, Vector of Vector vargv, Integer scount
+     where vs = vectorof(s) and scount = count(vs)
+     and validatefns = (vselect #'STREAM.FUNCTION.INTEGER.FUNCTION.LEARN_N_VALIDATE->STREAM-VECTOR'
+			from Integer i where i in iota(0, scount - 1))
+     and vargv = (vselect {learnfn, n, validatefn}
+		  from Integer i where i in iota(0, scount - 1));
+
+/* note: fanout should equal to width of vector */
+create function svali:splitfn_from_fnv0(Object o, Integer fanout,
+					Vector of Function vfnv, Function accfn)
+       					      	 	   	-> Bag of (Integer, Object)
+  as select i, o
+  from Integer i
+  where i in iota(0,  fanout - 1)
+  and apply(accfn, {o})[0] in vfn_variable(vfnv[i], accfn);
+
+create function svali:splitstream(Stream s, Vector of Function vfnv, Function accfn)
+       					    	      	        -> Vector of Stream
+  as vselect ostream(p, i)
+  from Sp p, Integer i, Integer fanout, Vector sargs
+  where p = newspflex(s, make_record({'nsub', fanout,
+  	    		 	      'sfn', #'svali:splitfn_from_fnv0',
+  	    		 	      'sargs', sargs}))
+  and fanout = dim(vfnv)
+  and sargs = {vfnv, accfn}
+  and i in iota(0, fanout - 1);
+
+logging on;
+
+/* refactoring ************************************************************************************
+
+create function model_n_validate_b(Stream s, Function mValidate, Object threshold)
+                           -> Bag of (Number ts, Object m, Object e, Object d)
+  as select ts, m, e, d
+     from Object o
+     where o in s
+     and {ts, m, e, d} = apply(mValidate, {o, threshold});
+
+create function model_n_validate(Stream s, Function mValidate, Object threshold)
+                         -> Stream of (Number /ts/, Object /m/, Object/e/, Object/d/)
+  as streamof(model_n_validate_b(s, mValidate, threshold));
+
+create function model_replay_b(Charstring logfile, Function mValidate, 
+                               Object threshold)
+                         -> Bag of (Number ts, Object m, Object e, Object d)
+  as model_n_validate_b(streamof(readfile(logfile)), mValidate, threshold);
+
+create function model_n_validate_b(Stream s, Function mValidate, Object threshold,
+                                 Charstring logfile)
+                               -> Bag of (Number ts, Object m, Object e, Object d)
+  as begin
+	openlog(logfile, "a"); / always append /
+       	for each Object o, Number ts, Object m, Object e, Object d
+     	    where o in s and 
+                 {ts, m, e, d} = apply(mValidate, {o, threshold})
+	 begin
+		if d = 1 then write2log(o, logfile);
+    	 	return (ts, m, e, d);
+	 end;
+	closelog(logfile);
+  end;
+
+create function model_n_validate(Stream s, Function mValidate, Object threshold, Charstring logfile)
+                             -> Stream of (Number /ts/, Object /m/, Object/e/, Object/d/)
+  as streamof(model_n_validate_b(s, mValidate, threshold, logfile));
+
+/ record the first N sub-stream as a reference and validate the rest /
+/ learn(Vector s) -> Object l /
+/ validate(Object l, Object o, Object threshold)
+   		    	       -> (Number ts, Object m, Object e, Object d) /
+create function learn_n_validate0(Stream s, Function startf, Function stopf,
+       				  Function learn, Integer n,
+				  Function validatefn, Object threshold)
+				  	     -> Bag of (Number ts, Object m, Object e, Object d)
+  as learn_n_validate0(pwindowize(s, startf, stopf),
+     		       learn, n, validatefn, threshold);
+
+create function learn_n_validate(Stream s, Function startf, Function stopf,
+       				 Function learn, Integer n,
+				 Function validatefn, Object threshold)
+			-> Stream of (Number /ts/, Object /m/, Object /e/, Object /d/)
+  as streamof(learn_n_validate0(s, startf, stopf, learn, n, validatefn, threshold));
+
+******************************* refactoring ********************************************************/
+
+/* *********************** simple test for model and validate****************************************
+create function refn_foo(Integer i) -> Integer as i * i;
+create function validatefn_foo(Integer o, Integer ref, Integer threshold)
+       				       	  	  -> (Number ts, Integer m, Integer e, Integer d)
+  as select ts, m, e, d
+  where ts = rnow() and m = o + 1
+  and e = ref and d = abs(m - e) and d > threshold;
+model_n_validate_b(siota(1,100), #'refn_foo', #'validatefn_foo', 0); 
+
+currently the expected value is a single element, it does not support following case
+where model returns a bag! 
+create function refn_bag(Integer i) -> Bag of Integer as iota(i - 1, i);
+create function validatefn_bag(Integer o, Bag of Integer ref, Integer threshold)
+       				       	      	 -> (Number ts, Integer m, Integer e, Integer d)
+  as select ts, m, e, d
+  where ts = rnow() and m = o + 1
+  and e in ref and d = abs(m - e) and d > threshold;  
+
+model_n_validate_b(siota(1,100), #'refn_bag', #'validatefn_bag', 0);
+
+****************************************************************************************************/
+
+/******************************* simple test for learn and validate *********************************
+create function istartp(Integer i) -> Boolean
+  as mod(i, 10) = 0;
+create function istopp(Integer s, Integer i) -> Boolean
+  as mod(i, 10) = 5 and s > 0;
+
+set :s = pwindowize(siota(1, 40), #'istartp', #'istopp');
+
+create function learnfn(Vector of Window vw) -> Vector of Number
+  as sumvectors(select v
+  from Vector of Number v
+  where v = window2vector(in(vw))) / dim(vw);
+
+create function validatefn(Window v, Vector of Number l, Number threshold)
+       				     -> (Number ts, Vector m, Vector e, Number d)
+  as begin
+     for each Vector of Number m, Vector of Number e, Number dis
+       where m = window2vector(v) and e = l and dis = euclid(m, e)
+       begin
+         if dis > threshold
+         then return (0, m, e, 0)
+         else return (0, m, e, 1);
+       end;
+     end;
+
+create function learnfn_bag(Vector of Window vw) -> Bag of Vector of Number
+  as select window2vector(w)
+  from Window w
+  where w in vw;
+
+create function validatefn_bag(Window v, Bag of Vector of Number ref, Number threshold)
+       				       -> Bag of (Number ts, Vector m, Vector e, Number d)
+  as begin
+       for each Vector of Number m, Vector of Number e, Number dis
+         where m = window2vector(v) and e in ref and dis = euclid(m, e)
+	 begin
+	   if dis > threshold
+	   then return (0, m, e, 0)
+	   else return (0, m, e, 1);
+	 end;
+     end;
+
+learn_n_validate0(:s, 2, #'learnfn', #'validatefn', 0);  
+
+learn_n_validate0(:s, 2, #'learnfn_bag', #'validatefn_bag', 0);
+****************************************************************************************************/

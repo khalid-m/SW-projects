@@ -1,0 +1,197 @@
+/*-*-sql-*-*******************************************************************/
+
+
+/* PART 1. RUNNING FREQUENT ITEMSET AND ASSOCIATION RULES MINING ALGORITHMS */
+
+/* Store transactions as bag of varied-size vectors */
+
+create function transactions() -> Bag of Vector of Number
+   as stored;
+
+/* Read transactions from the file */
+
+set transactions() = read_ntuples('data/transactions1000.nt');
+
+/* Number of transactions read */
+
+set :n = count(transactions()); 
+
+/* Used Minimum Support parameter value */
+
+set :minsupp = 100;
+
+/* Used Minimum Confidence parameter value */
+
+set :minconf = 0.5;
+
+/* A function to store Frequent Itemsets and their support counts */
+
+create function frequent_itemsets() -> Bag of (Vector of Number fis, 
+                                               Number supp)
+  as stored;
+
+/* Generate intemsets and store them in FIS() function */
+
+set frequent_itemsets() = propad(transactions(), :minsupp);
+
+/* Get the number of frequent itemsets found */
+
+count(frequent_itemsets());
+
+/* A function to store association rules */
+
+create function association_rules() -> Bag of (Vector of Number head,
+                                               Vector of Number tail, 
+                                               Number supp, 
+                                               Number conf)
+  as stored;
+
+/* Generate association rules */
+
+set association_rules() = arm(frequent_itemsets(), :minconf);
+
+/* Get the number of association rules found */
+
+count(association_rules()); 
+
+/* TODO: try different :minsupp and :minconf values! */
+
+
+/* PART 2. PLOTTING THE NUMBER OF FREQUENT ITEMSETS PER SUPPORT THRESHOLD */
+
+create function fis_count(Number minsuppp) -> Number
+  as stored;
+
+/* Run propad for different minimum support values */
+
+/* This takes ~4.5 sec on Intel Q9400 */
+
+set fis_count(minsupp) = count(propad(transactions(), minsupp))
+  from integer minsupp
+  where minsupp in 10*iota(3, 30);
+
+/* Plot the number of frequent itemsets for minimum support values in 30, 40, 50 ... 300 */
+
+plot(vectorof(select {minsupp, fis_count(minsupp)} 
+                from integer minsupp));
+
+/* This plot might help selecting reasonable support thresholds! */
+
+
+/* Why does the frequent item set size increase so sharply when minimum
+   support approaches 0? */
+
+
+/* 3. PLOTTING THE NUMER OF RULES PER CONFIDENCE THRESHOLD */
+
+/* Prepare the set of frequent itemsets */
+
+set frequent_itemsets() = propad(transactions(), :minsupp);
+
+/* Get the big set of association rules with very low confindence threshold */
+
+/* For :minsupp=50 this takes ~36 seconds on Intel Q9400 */
+
+set association_rules() = arm(frequent_itemsets(), 0.2);
+
+/* Get the number of association rules found */
+
+count(association_rules()); 
+
+/* This function will return the number of association rules in association_rules() above the givn confidence threshold */
+
+create function association_rules_above_threshold(Number minconf) -> Number
+  as count(select head
+             from Vector of Number head, Vector of Number tail, Number supp, Number conf
+            where (head, tail, supp, conf) in association_rules()
+              and conf >= minconf);
+
+/* Plot the number of rules for threshold values 0.2, 0.21, 0.22 ... 1.0 */
+
+select plot(w)
+  from Vector of Vector w
+  where w = vectorof(select {minconf, association_rules_above_threshold(minconf)}
+                       from Number minconf
+                      where minconf = iota(20,100) / 100.0); 
+
+/* This plot might help selecting reasonable confidence thresholds! */
+
+/* 4. FURTHER EXPLORING THE DATASET */
+
+/* How many different items are there? */
+
+count(select distinct o
+        from Vector v, Number o
+       where v in transactions()
+         and o in v);
+
+/* Lower the support to 50, and try association rule mining with very high
+   confidence.
+
+   What does support 50 mean?
+   How many maximum confidence rules do you discover? */
+
+set frequent_itemsets() = propad(transactions(), 50);
+
+/* Count the number of frequent item sets found with support 50 */
+
+count(frequent_itemsets());
+
+/* Count the number of maximum confidence association rules with support 50 */
+/* This takes ~18 seconds on Intel Q9400 */
+
+count(arm(frequent_itemsets(), 1.0));
+
+/* How can the number of rules discovered be greater than the number of 
+   frequent item sets? */
+
+/* Try association rule mining on with a very high minimum confidence */
+
+set frequent_itemsets() = propad(transactions(), 100);
+
+arm(frequent_itemsets(), 1.0);
+
+/* Only one maximum confidence rule was found on a frequent item set with 
+   support 100. Look at the frequent item sets containing these items */
+
+select v, supp from Vector of Number v, Number supp
+  where (v, supp) in frequent_itemsets() and (280 in v);
+
+select v, supp from Vector of Number v, Number supp
+  where (v, supp) in frequent_itemsets() and (487 in v);
+
+/* What conclusions can be drawn from these queries?
+   Why was not the rule 280->487 induced? */
+
+/* Look at all transactions containing these items */
+
+select v from Vector of Number v 
+         where v in transactions() 
+           and 487 in v;
+
+select v from Vector of Number v 
+        where v in transactions() 
+          and 280 in v;
+
+/* Suppose that a shop manger wants to sell more of item 487.
+   Help him figure out if there are any association rules with item 487 on 
+   the right hand side, apart from 280->487!
+
+   If you found no such rules, explain why. */
+
+set frequent_itemsets() = propad(transactions(), 50);
+
+select lhs, rhs, conf, abs_supp
+  from Vector of Number lhs, Vector of Number rhs, Number conf, Number abs_supp
+ where (lhs, rhs, abs_supp, conf) in arm(frequent_itemsets(), 0.3)
+   and 487 in rhs;
+
+/* On the other hand, are there any association rules with item 280 on the
+   right hand side? */
+
+select lhs, rhs, conf, abs_supp
+  from Vector of Number lhs, Vector of Number rhs, Number conf, Number abs_supp
+ where (lhs, rhs, abs_supp, conf) in arm(frequent_itemsets(), 0.3)
+   and 280 in rhs;
+
+/* Note the distribution of confidence values in these rules */

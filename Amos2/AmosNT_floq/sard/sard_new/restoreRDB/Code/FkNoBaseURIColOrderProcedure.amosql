@@ -1,0 +1,83 @@
+/*Generates DROP PROCEDURE statements to drop the table procedures existing in the database.*/
+create function dropProceduresColOrderNoURI(JDBC jd)->Boolean
+as begin
+	declare Charstring proc_name;
+	for each Charstring tableURI,Charstring tname where (tableURI,tname) in ret_tableNameURIs()
+		for each Charstring colURI, Charstring col where ret_columnNameURIs(tableURI,tname)=(colURI,col)
+		begin	set proc_name="SP_"+tname+"_"+col;
+		sql(jd,"DROP PROCEDURE IF EXISTS "+ proc_name+";");end;
+end;
+
+/*Generates CREATE PROCEDURE statements to insert the data in database. These stored procedures are stored in the database nad called later during insertion.*/
+create function ProcColOrderNoURI(Charstring tname,Vector pkname,Vector pksize,Vector colname,Vector pktype,Vector coltype)->Charstring
+as begin
+	declare Integer z,Charstring t5,Charstring t1,Charstring t2,Charstring tm,Charstring tn,Charstring k1,Charstring k2,Charstring k3,Charstring k4,Charstring k5;
+	set z=1;set k1="";set k2="";set k3="";set k4="";set k5="";set t1="";set t2="";set tm="";set tn="";set t5="";
+	for each integer j where j in iota(1,dim(pkname))
+	 for each integer k where k in iota(1,dim(colname))
+	    if(pkname[j-1]=colname[k-1]) then set z=0;
+
+	for each integer i where i in iota(1,dim(pkname))
+	begin	if (pksize[i-1]!="") then set t1=t1+",IN PK_"+pkname[i-1]+" "+pktype[i-1]+"("+pksize[i-1]+")"
+		else set t1=t1+",IN PK_"+pkname[i-1]+" "+pktype[i-1];
+		set t2=t2+","+pkname[i-1];set tm=tm+",PK_"+pkname[i-1];
+		set tn=tn+" and "+ pkname[i-1]+"=PK_"+ pkname[i-1];set t5=t5+pkname[i-1];
+	end;
+	set t1=substring(t1,1,char_length(t1));	set t2=substring(t2,1,char_length(t2));	
+	set tm=substring(tm,1,char_length(tm));	set tn=substring(tn,4,char_length(tn));		
+	for each integer i where i in iota(1,dim(colname))
+	begin	set k1=k1+",IN P_"+colname[i-1]+" "+coltype[i-1]; 
+		set k2=k2+","+colname[i-1];set k3=k3+",P_"+colname[i-1];
+		set k4="UPDATE "+tname+" SET "+colname[i-1]+"=P_"+colname[i-1]+ " WHERE "+tn+"; "+k4;set k5=k5+colname[i-1];
+	end;
+	set k1=substring(k1,1,char_length(k1));	set k2=substring(k2,1,char_length(k2));
+	set k3=substring(k3,1,char_length(k3));	set k4=substring(k4,0,char_length(k4));	
+
+	if(z=1) then
+		return "CREATE PROCEDURE SP_"+tname+"_"+k5+"("+t1+","+k1+")
+			IF EXISTS (SELECT * FROM "+tname+" WHERE "+tn+") THEN
+				"+k4+"
+			ELSE 
+				INSERT INTO "+tname+ "("+t2+","+k2+") VALUES ("+tm+","+k3+");
+	                END IF;" 	
+
+	
+	else   
+	return "CREATE PROCEDURE SP_"+tname+"_"+k5+"("+t1+")
+		IF NOT EXISTS (SELECT * FROM "+tname+" WHERE "+tn+") THEN
+			INSERT INTO "+tname+ "("+t2+") VALUES ("+tm+");
+	        END IF;" 	
+end;
+
+/*Call to the function generating CREATE PROCEDURE staments with required parameters..*/
+create function ProcedureColOrderNoURI(JDBC jd)->Boolean
+as begin
+	declare Charstring dtype,Charstring dsize,Charstring fkM,Charstring x1,
+		Vector cnt,Vector fkMap,Vector pkname,Vector pksize,Vector colname,Vector coltype,Vector pktype,Integer z;
+	set z=0;set cnt={};
+		
+	/*Setting the respective primary keys and its info of the corresponding table into a vector.*/	
+	for each Charstring tableURI,Charstring tname where ret_tableNameURIs()=(tableURI,tname)
+	begin	
+		for each Charstring ch1,Charstring ch2 where ret_pkNameURIs(tableURI)=(ch1,ch2)
+		begin	
+			set pkname=concat(pkname,{ch2});
+			set pktype=concat(pktype,{ret_colDatatype(ch1)});
+			if (ret_colSize(ch1)!="") then set pksize=concat(pksize,{ret_colSize(ch1)})
+			else  set pksize=concat(pksize,{""});
+		end;
+		
+		for each Charstring colURI, Charstring col where ret_columnNameURIs(tableURI,tname)=<colURI,col>
+		begin
+			set colname=concat(colname,{col});
+			set dtype=ret_ColDatatype(colURI);
+			if (ret_colSize(colURI)!="") then 
+				set x1=dtype+"("+ret_colSize(colURI)+")"
+			else set x1=dtype;
+			set coltype=concat(coltype,{x1}); 
+		sql(jd,ProcColOrderNoURI(tname,pkname,pksize,colname,pktype,coltype));
+		set colname={};set coltype={};
+		end;
+		set pkname={};set pktype={};set pksize={};
+	end;
+end;

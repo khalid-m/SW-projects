@@ -1,0 +1,272 @@
+Error 1, Unbound variable: _SYSTEM-VERION_
+Fatal error in RESET
+Abending ....
+Error 1, Unbound variable: _SYSTEM-VERION_
+Fatal error in RESET
+Abending ....
+Error 1, Unbound variable: _SYSTEM-VERION_
+Fatal error in RESET
+Abending ....
+Error 1, Unbound variable: _SYSTEM-VERION_
+Fatal error in RESET
+Abending ....
+Error 1, Unbound variable: _SYSTEM-VERION_
+Fatal error in RESET
+Abending ....
+Error 1, Unbound variable: _SYSTEM-VERION_
+Fatal error in RESET
+Abending ....
+Error 1, Unbound variable: _SYSTEM-VERION_
+Fatal error in RESET
+Abending ....
+Error 1, Unbound variable: _SYSTEM-VERION_
+Fatal error in RESET
+Abending ....
+Error 1, Unbound variable: _SYSTEM-VERION_
+Fatal error in RESET
+Abending ....
+Error 1, Unbound variable: _SYSTEM-VERION_
+Fatal error in RESET
+Abending ....
+Error 1, Unbound variable: _SYSTEM-VERION_
+Fatal error in RESET
+Abending ....
+Error 1, Unbound variable: _SYSTEM-VERION_
+Fatal error in RESET
+Abending ....
+Error 1, Unbound variable: _SYSTEM-VERION_
+Fatal error in RESET
+Abending ....
+Error 1, Unbound variable: _SYSTEM-VERION_
+Fatal error in RESET
+Abending ....
+Error 1, Unbound variable: _SYSTEM-VERION_
+Fatal error in RESET
+Abending ....
+"Amos II Release 11, v3"
+Initializing successfully!
+2009-12-02 22:45:39.895 Sending on socket 1112, port 35021:
+(DBINIT PORT "dijin-PC" NIL)
+|
+2009-12-02 22:45:39.910 Received on socket 1112, port 35021:
+NIL
+|
+2009-12-02 22:45:39.910 Sending on socket 1112, port 35021:
+(AMOSINFO (QUOTE CM))
+|
+2009-12-02 22:45:39.910 Received on socket 1112, port 35021:
+#("CM" "dijin-PC" 49681)
+|
+2009-12-02 22:45:39.910 Sending on socket 1116, port 49681:
+(DBINIT PORT "dijin-PC" NIL)
+|
+2009-12-02 22:45:39.910 Received on socket 1116, port 49681:
+CM
+|
+2009-12-02 22:45:39.910 Sending on socket 1116, port 49681:
+(APPLY (QUOTE GETOBJECTNAMED) (QUOTE (BOOLEAN.AUTOSAVE->BOOLEAN #[X 4] T)))
+|
+2009-12-02 22:45:39.910 Received on socket 1116, port 49681:
+#[X 456 "BOOLEAN.AUTOSAVE->BOOLEAN"]
+|
+2009-12-02 22:45:39.910 Sending on socket 1116, port 49681:
+(APPLY (QUOTE CALLFUNCTION) (QUOTE (#[X 456] #(TRUE) -1)))
+|
+2009-12-02 22:45:39.910 Received on socket 1116, port 49681:
+(#(TRUE))
+|
+2009-12-02 22:45:39.910 Sending on socket 1116, port 49681:
+(APPLY (QUOTE GETOBJECTNAMED) (QUOTE (INTEGER.CHARSTRING.LISTSTUDENTS->VECTOR #[X 4] T)))
+|
+2009-12-02 22:45:39.910 Received on socket 1116, port 49681:
+#[X 1320 "INTEGER.CHARSTRING.LISTSTUDENTS->VECTOR"]
+|
+2009-12-02 22:45:39.910 Sending on socket 1116, port 49681:
+(APPLY (QUOTE CALLFUNCTION) (QUOTE (#[OID 1320] #(3 "inc") -1)))
+|
+2009-12-02 22:45:39.910 Received on socket 1116, port 49681:
+(#(#(#("di jin" "" "none") #("aaa bbb" "" "none"))))
+|
+"Amos II Release 11, v3"
+Initializing successfully!
+2009-12-02 22:48:08.138 Sending on socket 1088, port 35021:
+(DBINIT PORT "dijin-PC" NIL)
+|
+2009-12-02 22:48:08.138 Received on socket 1088, port 35021:
+NIL
+|
+2009-12-02 22:48:08.138 Sending on socket 1088, port 35021:
+(AMOSINFO (QUOTE CM))
+|
+2009-12-02 22:48:08.138 Received on socket 1088, port 35021:
+#("CM" "dijin-PC" 49681)
+|
+2009-12-02 22:48:08.153 Sending on socket 1092, port 49681:
+(DBINIT PORT "dijin-PC" NIL)
+|
+2009-12-02 22:48:08.153 Received on socket 1092, port 49681:
+CM
+|
+2009-12-02 22:48:08.153 Sending on socket 1092, port 49681:
+(APPLY (QUOTE GETOBJECTNAMED) (QUOTE (BOOLEAN.AUTOSAVE->BOOLEAN #[X 4] T)))
+|
+2009-12-02 22:48:08.153 Received on socket 1092, port 49681:
+#[X 456 "BOOLEAN.AUTOSAVE->BOOLEAN"]
+|
+2009-12-02 22:48:08.153 Sending on socket 1092, port 49681:
+(APPLY (QUOTE CALLFUNCTION) (QUOTE (#[X 456] #(TRUE) -1)))
+|
+2009-12-02 22:48:08.153 Received on socket 1092, port 49681:
+(#(TRUE))
+|
+2009-12-02 22:48:08.153 Sending on socket 1092, port 49681:
+(APPLY (QUOTE GETOBJECTNAMED) (QUOTE (INTEGER.CHARSTRING.LISTSTUDENTS->VECTOR #[X 4] T)))
+|
+2009-12-02 22:48:08.153 Received on socket 1092, port 49681:
+#[X 1320 "INTEGER.CHARSTRING.LISTSTUDENTS->VECTOR"]
+|
+2009-12-02 22:48:08.153 Sending on socket 1092, port 49681:
+(APPLY (QUOTE CALLFUNCTION) (QUOTE (#[OID 1320] #(3 "inc") -1)))
+|
+2009-12-02 22:48:08.153 Received on socket 1092, port 49681:
+(#(#(#("di jin" "" "none") #("aaa bbb" "" "none"))))
+|
+"Amos II Release 11, v3"
+2009-12-02 22:59:04.994 Sending on socket 1312, port 35021:
+(DBINIT PORT "dijin-PC" NIL)
+|
+2009-12-02 22:59:04.994 Received on socket 1312, port 35021:
+NIL
+|
+2009-12-02 22:59:04.994 Sending on socket 1312, port 35021:
+(AMOSINFO (QUOTE CM))
+|
+2009-12-02 22:59:04.994 Received on socket 1312, port 35021:
+#("CM" "dijin-PC" 49734)
+|
+2009-12-02 22:59:04.994 Sending on socket 1320, port 49734:
+(DBINIT PORT "dijin-PC" NIL)
+|
+2009-12-02 22:59:05.010 Received on socket 1320, port 49734:
+CM
+|
+2009-12-02 22:59:05.010 Sending on socket 1320, port 49734:
+(APPLY (QUOTE GETOBJECTNAMED) (QUOTE (BOOLEAN.AUTOSAVE->BOOLEAN #[X 4] T)))
+|
+2009-12-02 22:59:05.010 Received on socket 1320, port 49734:
+#[X 456 "BOOLEAN.AUTOSAVE->BOOLEAN"]
+|
+2009-12-02 22:59:05.010 Sending on socket 1320, port 49734:
+(APPLY (QUOTE CALLFUNCTION) (QUOTE (#[X 456] #(TRUE) -1)))
+|
+2009-12-02 22:59:05.010 Received on socket 1320, port 49734:
+(#(TRUE))
+|
+2009-12-02 22:59:05.010 Sending on socket 1320, port 49734:
+(APPLY (QUOTE GETOBJECTNAMED) (QUOTE (INTEGER.CHARSTRING.LISTSTUDENTS->VECTOR #[X 4] T)))
+|
+2009-12-02 22:59:05.010 Received on socket 1320, port 49734:
+#[X 1320 "INTEGER.CHARSTRING.LISTSTUDENTS->VECTOR"]
+|
+2009-12-02 22:59:05.010 Sending on socket 1320, port 49734:
+(APPLY (QUOTE CALLFUNCTION) (QUOTE (#[OID 1320] #(3 "inc") -1)))
+|
+2009-12-02 22:59:05.010 Received on socket 1320, port 49734:
+(#(#(#("di jin" "" "none") #("aaa bbb" "" "none"))))
+|
+2009-12-02 22:59:43.636 Sending on socket 1320, port 49734:
+(APPLY (QUOTE GETOBJECTNAMED) (QUOTE (CHARSTRING.USERNAMED->USER #[X 4] T)))
+|
+2009-12-02 22:59:43.636 Received on socket 1320, port 49734:
+#[X 1170 "CHARSTRING.USERNAMED->USER"]
+|
+2009-12-02 22:59:43.636 Sending on socket 1320, port 49734:
+(APPLY (QUOTE CALLFUNCTION) (QUOTE (#[OID 1170] #("boyang") -1)))
+|
+2009-12-02 22:59:43.636 Received on socket 1320, port 49734:
+NIL
+|
+2009-12-02 22:59:43.636 Sending on socket 1320, port 49734:
+(APPLY (QUOTE GETOBJECTNAMED) (QUOTE (STUDENT #[X 4] T)))
+|
+2009-12-02 22:59:43.636 Received on socket 1320, port 49734:
+#[X 1227 "STUDENT"]
+|
+2009-12-02 22:59:43.636 Sending on socket 1320, port 49734:
+(APPLY (QUOTE CALLFUNCTION) (QUOTE (#[OID 1227] #("bo" "yang" "boyang" "boyang" "boyang@uu.se" "none") -1)))
+|
+2009-12-02 22:59:43.651 Received on socket 1320, port 49734:
+(#(#[X 1370]))
+|
+2009-12-02 22:59:43.667 Sending on socket 1320, port 49734:
+(AMOS-EXECUTE "commit;")
+|
+2009-12-02 22:59:43.667 Received on socket 1320, port 49734:
+NIL
+|
+2009-12-02 22:59:53.621 Sending on socket 1320, port 49734:
+(APPLY (QUOTE CALLFUNCTION) (QUOTE (#[OID 1170] #("boyang") -1)))
+|
+2009-12-02 22:59:53.621 Received on socket 1320, port 49734:
+(#(#[X 1370]))
+|
+2009-12-02 22:59:53.621 Sending on socket 1320, port 49734:
+(APPLY (QUOTE GETOBJECTNAMED) (QUOTE (USER.PASSWORD->CHARSTRING #[X 4] T)))
+|
+2009-12-02 22:59:53.621 Received on socket 1320, port 49734:
+#[X 1158 "USER.PASSWORD->CHARSTRING"]
+|
+2009-12-02 22:59:53.621 Sending on socket 1320, port 49734:
+(APPLY (QUOTE CALLFUNCTION) (QUOTE (#[OID 1158] #(#[OID 1370]) -1)))
+|
+2009-12-02 22:59:53.621 Received on socket 1320, port 49734:
+(#("boyang"))
+|
+2009-12-02 22:59:53.621 Sending on socket 1320, port 49734:
+(APPLY (QUOTE GETOBJECTNAMED) (QUOTE (TYPENAME #[X 4] T)))
+|
+2009-12-02 22:59:53.621 Received on socket 1320, port 49734:
+#[X 696 "TYPENAME"]
+|
+2009-12-02 22:59:53.621 Sending on socket 1320, port 49734:
+(APPLY (QUOTE CALLFUNCTION) (QUOTE (#[X 696] #(#[OID 1370]) -1)))
+|
+2009-12-02 22:59:53.621 Received on socket 1320, port 49734:
+(#("STUDENT"))
+|
+2009-12-02 22:59:57.961 Sending on socket 1320, port 49734:
+(APPLY (QUOTE GETOBJECTNAMED) (QUOTE (LISTGROUPMEMBERS #[X 4] T)))
+|
+2009-12-02 22:59:57.961 Received on socket 1320, port 49734:
+#[X 1348 "LISTGROUPMEMBERS"]
+|
+2009-12-02 22:59:57.961 Sending on socket 1320, port 49734:
+(APPLY (QUOTE CALLFUNCTION) (QUOTE (#[OID 1348] #("dijin") -1)))
+|
+2009-12-02 22:59:57.961 Received on socket 1320, port 49734:
+(#("di jin" "" "none") #("aaa bbb" "" "none") #("bo yang" "" "none"))
+|
+2009-12-02 22:59:57.961 Sending on socket 1320, port 49734:
+(APPLY (QUOTE GETOBJECTNAMED) (QUOTE (STUDENTASSIGNMENTSTATUS #[X 4] T)))
+|
+2009-12-02 22:59:57.961 Received on socket 1320, port 49734:
+#[X 1350 "STUDENTASSIGNMENTSTATUS"]
+|
+2009-12-02 22:59:57.961 Sending on socket 1320, port 49734:
+(APPLY (QUOTE CALLFUNCTION) (QUOTE (#[OID 1350] #("dijin") -1)))
+|
+2009-12-02 22:59:57.961 Received on socket 1320, port 49734:
+(#(#()))
+|
+2009-12-02 23:05:09.297 Sending on socket 1320, port 49734:
+(APPLY (QUOTE CALLFUNCTION) (QUOTE (#[OID 1320] #(3 "inc") -1)))
+|
+2009-12-02 23:05:09.297 Received on socket 1320, port 49734:
+(#(#(#("aaa bbb" "" "none") #("bo yang" "" "none") #("di jin" "" "none"))))
+|
+2009-12-02 23:08:16.768 Sending on socket 1320, port 49734:
+(APPLY (QUOTE CALLFUNCTION) (QUOTE (#[OID 1320] #(3 "inc") -1)))
+|
+2009-12-02 23:08:16.768 Received on socket 1320, port 49734:
+(#(#(#("aaa bbb" "" "none") #("bo yang" "" "none") #("di jin" "" "none"))))
+|

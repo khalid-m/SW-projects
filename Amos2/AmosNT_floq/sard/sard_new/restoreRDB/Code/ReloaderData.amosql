@@ -1,0 +1,106 @@
+/*-*-sql-*-**************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Ekta Shrestha, 
+ * $RCSfile: ReloaderData.amosql,v $
+ * $Revision: 1.2 $ $Date: 2012/06/08 13:29:22 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Functions for restoring
+	relational schema and data from NT archives
+ *
+ ***********************************************************************
+ * $Log: ReloaderData.amosql,v $
+ * Revision 1.2  2012/06/08 13:29:22  torer
+ * *** empty log message ***
+ *
+ * Revision 1.1  2012/05/10 14:10:02  eksh8896
+ * Final files for Demo
+ *
+ * Revision 1.1  2012/04/04 16:41:27  eksh8896
+ * *** empty log message ***
+ *
+ * Revision 1.1  2012/03/30 14:02:58  eksh8896
+ * *** empty log message ***
+ *
+ * Revision 1.2  2012/03/27 08:51:40  eksh8896
+ * *** empty log message ***
+ *
+ * Revision 1.1  2012/02/28 14:02:33  eksh8896
+ * Datafile.
+ *
+ *
+ *  
+ * 
+ *
+ ****************************************************************************/
+
+
+/*****************************************************************************/
+		/***RETRIEVING TABLES FROM GIVEN FILES ***/
+/*****************************************************************************/
+
+create function ret_tableName(Charstring tableURI,Charstring baseURI)->Charstring
+as select t from Charstring t where t=clearURI(tableURI,baseURI);
+
+/*Retrieves table name from the given rowID which is retrieved from the given file.*/
+create function ret_tableNamefromrowID(Charstring baseURI,Charstring rowID)->Charstring 
+as select t from charstring t where t=str_exp1(clearURI(rowID,baseURI),'/');
+
+/*Retrieves table URI from the given rowID which is retrieved from the given file.*/
+create function ret_tableURIfromrowID(Charstring baseURI,Charstring rowID)->Charstring 
+as return "<"+baseURI+'#'+ret_tableNamefromrowID(baseURI,rowID)+">";
+
+/*****************************************************************************/
+		/***RETRIEVING primary key FROM GIVEN FILES ***/
+/****************************************************************************/
+
+/*Retrieve name of PK of the table for the given RowID*/
+create function ret_pkURIfromRowID(Charstring baseURI,Charstring rowID)->Charstring
+as select ch from Charstring ch,Charstring t where ch=ret_pkURIs(t) and  ret_tableURIfromRowID(baseURI,rowID)=t;
+
+/*Retrieve the name of the PK of the table represented by tableURI*/
+create function ret_pkNamefromRowID(Charstring baseURI,Charstring rowID) ->Charstring 
+as begin 
+	declare vector pk,Charstring a;
+	for each charstring ch where ch=ret_pkURIfromRowID(baseURI,rowID) 
+		set pk=concat(pk,{str_exp(clearURI(ch,baseURI),'/')});
+	for each Integer i where i in iota(1,dim(pk)) 
+		begin set a=pk[dim(pk)-i];return a;end;
+end;
+
+/*create function ret_pkNamefromRowID(Charstring baseURI,Charstring rowID)*/
+/*->Charstring*/
+/*as select str_exp(clearURI(ch,baseURI),'/') from Charstring ch where ch=ret_pkURIfromRowID(baseURI,rowID);*/
+
+/*Retrieve the name of the PK of the table represented by tableURI*/
+/*create function ret_pkNamefromRowID1(Charstring baseURI,Charstring rowID)->Charstring*/
+/*as select clearURI(ch,baseURI) from Charstring ch where ch=ret_pkURIfromRowID(baseURI,rowID);*/
+
+/****************************************************************************/
+		/*** RETRIEVING Value of RowID FROM GIVEN FILE***/
+/****************************************************************************/
+
+/*Retrieve PK value with of the table for the given RowID*/
+create function ret_pkVal(Charstring baseURI,Charstring rowID)->Charstring 
+as select ch from Charstring ch,charstring t1 where ch=str_exp1(t1,"_")
+and t1=substring(str_exp(clearURI(rowID,baseURI),'/'),1,char_length(str_exp(clearURI(rowID,baseURI),'/')));
+
+/*Retrieve PK value(composite) with of the table for the given RowID*/
+create function ret_pkVal1(Charstring baseURI,Charstring rowID)->Vector 
+as select str_exp3(substring(str_exp(t,'/'),1,char_length(str_exp(t,'/'))),'_')
+from Charstring t where t=clearURI(rowID,baseURI);
+/***************************************************************************/
+create function bulkload_data(JDBC jd,Charstring baseURI)->Boolean
+as begin
+	declare Charstring tname;
+	for each Charstring tableURI where ret_tableURIs()=tableURI
+	begin
+		set tname=clearURI(tableURI,baseURI);
+		sql(jd, "LOAD DATA LOCAL INFILE "+"'"+ tname+".csv'"+" INTO TABLE  "+ tname+" FIELDS TERMINATED BY  ',' LINES TERMINATED BY  '\\r\\n';");
+	end;	
+end;
+
+
+/****************************************************************************/
+create function vectorBag(Vector v) -> Bag of Object  as select v[i] from Integer i;

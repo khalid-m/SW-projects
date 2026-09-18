@@ -1,0 +1,207 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Mårten Svensson, UDBL
+ * $RCSfile: Toll_calc.osql,v $
+ * $Revision: 1.15 $ $Date: 2012/05/15 20:41:13 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Functions used in the toll_calculus box in Linear Road
+ *
+ ****************************************************************************
+ * $Log: Toll_calc.osql,v $
+ * Revision 1.15  2012/05/15 20:41:13  torer
+ * result -> return
+ *
+ * Revision 1.14  2008/11/23 14:43:13  torer
+ * Type errors
+ *
+ * Revision 1.13  2008/07/11 13:20:33  zeitler
+ * Account balance fixes
+ *
+ * Revision 1.12  2008/07/09 18:34:17  zeitler
+ * - get_nsport.sh: Automatically acquire a free nameserver TCP port
+ * - test scripts changed accordingly
+ *
+ * - NB: Some SCSQ tests currently fail due to changes in groupagg and Linear Road
+ *
+ * Revision 1.11  2008/04/22 12:22:37  zeitler
+ * - detailed time measurements
+ * - pre-emitting lread
+ *
+ * Revision 1.10  2008/04/17 22:15:45  zeitler
+ * Improved timestamping
+ *
+ * Revision 1.9  2008/04/17 11:12:19  zeitler
+ * Improved emit time reporting
+ *
+ * Revision 1.8  2008/02/15 11:59:53  zeitler
+ * Enabling individual history .dmp files for each sp in lr
+ *
+ * Revision 1.7  2008/02/04 17:47:01  zeitler
+ * - Fully streamed LR.
+ * - tdiff() replaced by real(). Faster file writes and less state kept.
+ *
+ * Revision 1.6  2007/12/18 20:55:34  masv3245
+ * minor updates
+ *
+ * Revision 1.5  2007/12/01 12:41:52  torer
+ * Code polish
+ *
+ * Revision 1.4  2007/11/05 15:08:55  masv3245
+ * Removed some of the vectors
+ *
+ * Revision 1.3  2007/10/22 17:31:25  torer
+ * Code indented and simplified
+ *
+ * Revision 1.2  2007/10/21 19:36:57  torer
+ * Added header, indented
+ *
+ ****************************************************************************/
+
+/****************************Vehicle info***************************/
+/* Used for storing all data about a vehicle*/
+
+create function vehicle_info(Integer vi)->
+          ( Integer xway, Integer pos, Integer seg,Integer dir,Real bal,
+            Integer lastupdate, Integer vav, Real nextexp)
+  as stored;	
+
+create function set_vehicle_info(Integer vi, Integer xway, Integer pos, 
+                                 Integer seg,Integer dir,Real bal,
+                                 Integer lastupdate, Integer vav, Real nextexp)
+                                -> Boolean
+  as set vehicle_info(vi)= (xway,pos,seg,dir,bal,lastupdate,vav,nextexp);
+
+create function add_vehicle_info(Integer vi,Integer xway, Integer pos, 
+                                 Integer seg,Integer dir,Real bal,
+                                 Integer lastupdate, Integer vav, Real nextexp)
+                                 ->boolean
+  as add vehicle_info(vi)=(xway,pos,seg,dir,bal,lastupdate,vav,nextexp);
+
+/***************************Vehicle info ends*********************************/
+
+create function giveme_seg(Integer vid)->Integer
+  as select s 
+     from Integer x, Integer p, Integer s,Integer d, Real b, Integer l, 
+          Integer va, Real n 
+     where vehicle_info(vid)=(x,p,s,d,b,l,va,n) ;
+
+create function giveme_xway(Integer vid)->Integer
+  as select x 
+     from Integer x, Integer p, Integer s,Integer d, Real b,Integer l, 
+          Integer va, Real n 
+     where vehicle_info(vid)=(x,p,s,d,b,l,va,n) ;
+
+create function check_new_seg_report(Integer vid,Integer seg,Integer xway)
+                                    -> Boolean
+  /* same seg in this report as in the latest report?*/
+  as select where giveme_seg(vid)=seg 
+              and giveme_xway(vid)=xway;
+
+create function add_previous_toll(Integer sec, Integer vid,Integer xway,
+                                  Integer pos, Integer seg, Integer dir, 
+                                  Integer spd)
+                                 ->boolean
+  as    select set_vehicle_info(vid, xway, pos, seg, dir, upbalance, 
+                                sec, spd, 0.0)
+	from Real upbalance
+        where upbalance=sum(select n + b
+                            from  Integer xw, Integer p, Integer s, Integer d,
+                                  Real b,Integer l, Integer va, Real n 
+                            where vehicle_info(vid) = (xw,p,s,d,b,l,va,n));
+
+create function giveme_balance(Integer vid)->Real
+  as select b 
+     from  Integer xway, Integer p, Integer s, Integer d, Real b, Integer l, 
+           Integer va, Real n 
+     where vehicle_info(vid)=(xway,p,s,d,b,l,va,n);
+
+create function giveme_lasttime(Integer vid)->Integer
+  as select l 
+     from Integer xway, Integer p, Integer s, Integer d, Real b, Integer l, 
+          Integer va, Real n 
+     where vehicle_info(vid)=(xway,p,s,d,b,l,va,n);
+
+create function update_vehicle_info(Integer sec, Integer vid, Integer xway,
+                                    Integer pos, Integer seg, Integer dir,
+                                    Integer spd) -> Boolean
+  /*Vehicle is on the exit lane, update info and remove nextexp*/
+  as select add_previous_toll(sec,vid,xway,pos,seg,dir,spd);
+
+create function update_vehicle_toll(Integer sec, Integer vid, Integer xway,
+                                    Integer pos, Integer seg,Integer dir,
+                                    Integer spd, Real toll)->Boolean 
+  as select set_vehicle_info(vid,xway,pos,seg,dir,
+                             giveme_balance(vid),
+                             sec, spd, toll);
+
+create function toll_alert()->(Integer ty, Integer vid,Integer time, 
+                               Real emit,Real vavg,Real toll)
+  as stored;
+
+create function generate_toll_alert(Integer vid, Integer time, Real vavg, 
+                                    Real toll)->vector as
+  /* Result[3] (emit time) is computed in timestamplr(). */
+  select {0, vid, time, 0, vavg, toll};
+
+create function generate_toll_alert_t(Integer vid, Integer time, Real vavg, 
+                                    Real toll, real ts)->vector as
+  /* Result[3] (emit time) is computed in timestamplr(). */
+  select {0, vid, time, 0, vavg, toll, ts}; 
+
+create function calc_toll(Integer sec, Integer vid, Integer xway, Integer pos,
+                          Integer seg, Integer dir, Integer spd)
+                         -> Vector
+  as begin
+       declare Real toll,Integer nr_of_cars,Real Avgv;
+       if is_accident_area(xway,seg,dir)
+	/* Return[2] (emit time) is computed in timestamplr(). */
+       then begin return {1, sec, 0, vid,
+                            get_accident_seg(xway) }; /* Send accident alert */
+	          set toll=0.0;
+	          set Avgv=avgv(seg,xway,dir,
+                                cast(current_minute()-1 as Integer));
+            end
+       else begin set nr_of_cars=count_visited(seg, xway, dir,
+                                               cast(current_minute() - 1
+                                                    as Integer));
+	          set Avgv=avgv(seg,xway,dir,
+                                cast(current_minute()-1 as Integer));
+	          if (nr_of_cars<=50) or (Avgv>=40) 
+                  then set toll=0.0
+                  else begin set toll=2*(nr_of_cars-50)*(nr_of_cars-50);
+		             /*print({"toll=", toll});*/
+                       end;
+           end;
+       update_vehicle_toll(sec, vid, xway, pos, seg, dir, spd, toll);
+       return generate_toll_alert(vid, sec, Avgv, toll);
+     end;
+
+create function calc_toll_t(Integer sec, Integer vid, Integer xway, Integer pos,
+                            Integer seg, Integer dir, Integer spd, real ts)
+                         -> Vector
+  as begin
+       declare Real toll, Integer nr_of_cars, Real Avgv;
+       if is_accident_area(xway,seg,dir)
+	/* Return[2] (emit time) is computed in timestamplr(). */
+       then begin return {1, sec, 0, vid,
+                            get_accident_seg(xway), ts}; /* Send accident alert */
+	          set toll=0.0;
+	          set Avgv=avgv(seg,xway,dir,
+                                cast(current_minute()-1 as Integer));
+            end
+       else begin set nr_of_cars=count_visited(seg, xway, dir,
+                                               cast(current_minute() - 1
+                                                    as Integer));
+	          set Avgv=avgv(seg,xway,dir,
+                                cast(current_minute()-1 as Integer));
+	          if (nr_of_cars<=50) or (Avgv>=40) 
+                  then set toll=0.0
+                  else begin set toll=2*(nr_of_cars-50)*(nr_of_cars-50);
+		             /*print({"toll=", toll});*/
+                       end;
+           end;
+       update_vehicle_toll(sec, vid, xway, pos, seg, dir, spd, toll);
+       return generate_toll_alert_t(vid, sec, Avgv, toll, ts);
+     end;

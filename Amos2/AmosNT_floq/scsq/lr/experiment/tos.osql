@@ -1,0 +1,62 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 Erik Zeitler, UDBL
+ * $RCSfile: tos.osql,v $
+ * $Revision: 1.10 $ $Date: 2010/10/27 12:53:36 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: TOS = parallel fsplit. 
+ *              multitos = parallel fsplit over multiarrays
+ *
+ ****************************************************************************
+ * $Log: tos.osql,v $
+ * Revision 1.10  2010/10/27 12:53:36  zeitler
+ * TOS benchmarks moved to src/ub_
+ *
+ * Revision 1.9  2010/06/03 11:22:32  zeitler
+ * variable sleep between experiments wastes less cpu cycles
+ *
+ * Revision 1.8  2010/05/12 14:26:24  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.7  2010/05/10 16:22:59  zeitler
+ * type checking bug fix
+ * flexible scale_multitos
+ *
+ * Revision 1.6  2010/03/24 19:58:30  zeitler
+ * TOS with multi arrays
+ *
+ * Revision 1.5  2010/03/04 17:33:11  zeitler
+ * *** empty log message ***
+ *
+ *
+ ****************************************************************************/
+
+/* Regular TOS experiments are defined in dasfaa10_scaleup.osql.
+   TOS of multiarrays are defined in src/ub_psplit.osql.
+   This file is obsoleted. */
+
+
+/* Input stream from file */
+
+create function mt_is(vector of charstring infiles, integer inl, integer mult,
+                      integer rrfo) -> vector as
+select in(zipstreams(pmerge))
+from vector of stream pmerge, vector of stream of numarray rr,
+vector of stream fsplit, stream src, integer fo
+where pmerge = mapstreams(vectorof(
+  select smjstreamsna(vectorize(
+    select j, fsplit[i + j*fo]
+    from integer j
+    where j in iota(0, rrfo - 1)), 1)
+  from integer i
+  where i in iota(0, fo - 1)), #'stcount')
+and fsplit = unpacksplitras(rr, fo, #'lrprfn', #'q2bfn', {0, 1}, 15)
+and rr = splitstream(src, rrfo, #'randr', #'f')
+and src = ostream(newsp(streamof(clrmultiply(in(lreadfastbins(infiles)),
+                                             inl, mult))), 0)
+and fo = inl*mult;
+
+
+/* LR working nodes (mapstream over result from mtos)  */

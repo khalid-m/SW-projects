@@ -1,0 +1,168 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> 2012 <author>Minpeng Zhu, UDBL
+ * $RCSfile: test.amosql,v $
+ * $Revision: 1.1 $ $Date: 2012/05/15 07:07:12 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: regression test of integrating data from different kind of
+ *              data sources. 
+ ****************************************************************************/
+
+/* load database image from Bigtable */
+lisp;
+
+(with-directory "../Bigtable/src/Lisp/"
+	        (load "master.lsp"))
+
+
+:osql
+
+/* Import meta-data and populate stored functions by ds and url for Bigtable */
+set :a = Bigtableds("A");
+
+accessBigtable(:a,  "http://oddseminzh812.appspot.com/simpleprotocol");
+
+setServerLog("on"); 
+
+
+/* queries to Bigtable */
+create function q0()->integer 
+  /* 2-way join made in client since GQL cannot handle join */
+  as select mid(i)
+     from Machine@A m, MachineInstallation@A i 
+     where name(m) = "M1" and
+           model(m) = model(i);
+
+pc("q0");
+
+q0();
+
+
+create function q1()->integer 
+  /* 3-way join made in client since GQL cannot handle join */
+  as select mid(i)
+     from Machine@A m, MachineInstallation@A i, Site@A s 
+     where name(m) = "M1" and
+           region(s) = "Uppland" and	
+           model(m) = model(i) and
+           sid(i) = sid(s);
+ 
+
+pc("q1");
+
+q1();
+
+
+
+/* initialize a relational data source and establish connection to 
+   relational database */
+set :b = jdbc("B", "com.mysql.jdbc.Driver");
+
+connect(:b, "jdbc:mysql://localhost:3306/" + "regress", "regress", "regress");
+
+import_table(:b, 'Operator');
+
+
+create function q2()->Charstring 
+  /* Ship query to MySQL */
+  as select name(o)
+     from Operator@B o
+     where skill(o) = "Operation";
+
+pc("q2");
+
+q2();
+
+
+
+create function q3()->(integer, Charstring) 
+  /* Multi-database equi-join between MySQL and Bigtable */
+  as select mid(i), name(o)
+     from Machine@A m, MachineInstallation@A i, Site@A s, 
+          Operator@B o 
+     where name(m) = "M1" and
+           region(s) = "Uppland" and	
+           model(m) = model(i) and
+           sid(i) = sid(s) and
+           mid(i) = Operates(o);
+
+pc("q3");
+
+q3();
+
+/* SQL syntax: */
+
+sql("
+select i.MID, o.Name 
+from Machine_A m, MachineInstallation_A i, Site_A s, Operator_B o 
+where m.Name = 'M1' and
+      m.Model = i.Model and
+      i.SID = s.SID and
+      s.Region = 'Uppland' and
+      i.MID = o.Operates");
+
+pc("*select*");
+
+create function q4()->(integer, Charstring) 
+  /* Multi-database equi-join between MySQL and Bigtable  with SQL condition
+     pushed down */
+  as select mid(i), name(o)
+     from Machine@A m, MachineInstallation@A i, Site@A s, 
+          Operator@B o 
+     where name(m) = "M1" and
+           region(s) = "Uppland" and	
+           model(m) = model(i) and
+           sid(i) = sid(s) and
+           skill(o) >= "maintenance" and
+           mid(i) = Operates(o);
+
+pc("q4");
+
+q4();
+
+
+create function q5()->(integer, Charstring) 
+  /* Multi-database theta-join between MySQL and Bigtable */
+  as select mid(i), name(o)
+     from MachineInstallation@A i, Operator@B o 
+     where sid(i) = 1 and
+           mid(i) > Operates(o);
+
+pc("q5");
+
+q5();
+
+
+create function q6()->(integer, Charstring) 
+  /* Multi-database equi-join between MySQL and Bigtable in the paper */
+  as select mid(i), name(o)
+     from Machine@A m, MachineInstallation@A i, Site@A s, 
+          Operator@B o 
+     where name(m) = "M1" and
+	   like(manufacturer(m),'V*') and
+           region(s) = "Uppland" and
+	   sid(s) = 1 and	
+           model(m) = model(i) and
+           sid(i) = sid(s) and
+           mid(i) = Operates(o);
+
+pc("q6");
+
+q6();
+
+/* SQL syntax: */
+
+sql("
+select i.MID, o.Name 
+from Machine_A m, MachineInstallation_A i, Site_A s, Operator_B o 
+where m.Name = 'M1' and
+      m.Manufacturer like 'V%' and
+      s.Region = 'Uppland' and
+      s.Sid = 1 and
+      m.Model = i.Model and
+      i.Sid = s.Sid and
+      i.Mid = o.Operates");
+
+pc("*select*");

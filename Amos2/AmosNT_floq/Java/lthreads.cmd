@@ -1,0 +1,1 @@
+java -Djava.library.path=..//bin -classpath ..//bin/javaamos.jar;..//wrappers/JDBC/;. localThreads java.dmp 10 10 cciota

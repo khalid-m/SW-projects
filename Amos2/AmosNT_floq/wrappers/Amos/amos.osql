@@ -1,0 +1,60 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2002 Martin Hansson, UDBL
+ * $RCSfile: amos.osql,v $
+ * $Revision: 1.8 $ $Date: 2004/11/27 15:55:50 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: <description>
+ *
+ ****************************************************************************/
+
+create function import(amos a, charstring remote_type_name) 
+  -> mappedtype mt
+as foreign 'import--+';
+
+create function import(amos a, charstring remote_type_name, 
+		       charstring mapped_type_name) 
+  -> mappedtype mt
+as foreign 'import---+';
+
+create function ship(amos a, charstring query) -> vector
+as select ship(name(a), query);
+
+create function stored_functions(charstring amos_name, charstring type_name)
+  -> < charstring function_name, 
+       vector of type arguments, 
+       vector of type results >
+as 
+select function_name, arguments, results
+from vector v
+where function_name = v[0] and
+      arguments = v[1] and
+      results = v[2] and
+      v=ship(amos_name, 'select generic_name(f),'+
+			       'vectorof(argument_types(f)),'+
+			       'result_types(f) '+
+		   	'from function f '+
+		   	'where f=allfunctions(typenamed("'+type_name+'")) and '+
+		   	'kindoffunction(f)="stored";');
+
+create function apply_remote(amos a, opaque_proxy remote_function) -> object 
+as foreign 'apply_remote--*';
+
+create function amos_cost(function f, vector bpat, vector args)
+  -> <integer costval, integer fanout>
+as foreign 'amos_cost---++';
+
+create function amos_core_cluster_cost(function f, vector bpat, vector args)
+  -> <integer costval, integer fanout>;
+
+create function supertype_names(amos a, charstring type_name) -> charstring nm
+as 
+select nm 
+from integer i
+where nm = ship(name(a), 'name(supertypes(typenamed("'+type_name+'")));')[i];
+
+create function local_supertypes(amos a, charstring remote_type_name) -> type
+as
+select amos_type(a, supertype_names(a, remote_type_name));

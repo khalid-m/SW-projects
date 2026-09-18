@@ -1,0 +1,246 @@
+/*-*-sql-*-********************************************************************
+*                            Tutorial on                                      *
+*                         Amos II for Miners                                  *
+*                        Tore Risch, 2013-10-23                               *
+******************************************************************************/
+
+/*************************************************************************
+ * Basic AmosQL for datamining                                           *
+ *                 INSTRUCTIONS                                          *
+ * 1. Run the introductory Amos II tutorial in                           *
+ *          http://www.it.uu.se/research/group/udbl/amos/doc/intro.amosql*
+ * 2. Install amosMiner by running the script install.cmd or install.sh  *
+ * 3. Run amosMiner.cmd (Windows) or amosMiner.sh (Unix)                 *
+ * 4. Cut-and-paste the commands below and observe effects               *
+ ************************************************************************/
+
+                      /******************************************
+                       * Those of you who use emacs:            *
+                       * The file init.el defines the F2 button *
+                       *  to move forward in this script        *
+                      /*****************************************/
+
+/* Inspect environment */
+
+/* In what folder am I? */
+
+pwd();
+
+/* Change current folder: */
+
+cd("MiningFunctions");
+
+/* Change back again: */
+
+cd("..");
+
+/* What are the osql files in the current folder? */
+
+dir(".","*.osql");
+
+/* Documentation of function 'dir()': */
+
+doc("dir");
+
+/* Finding functions whose names contain the string 'nearest': */
+
+apropos("nearest");
+
+/* Documentation of all functions whose names contan the string 'nearest': */
+
+doc(apropos("nearest"));
+
+
+/****************** collections ******************/
+
+/* General aggregate function over elements in bag of vectors: */
+
+set :vectors = (select {i,i+1} from Number i where i in iota(1,5));
+
+in(:vectors);
+
+aggv(:vectors,#'count');
+
+aggv(:vectors,#'sum');
+
+aggv(:vectors,#'avg');
+
+aggv(:vectors,#'stdev');
+
+/* Six kinds of user 'data functions' used in datamining exercises */
+
+/* Type A, collections of attribute vectors without identifiers */
+
+/* To store data to be mined, e.g. determining their cluster identifiers   */
+/* based on data learned from collections of tuples with known identifiers */
+
+create function myvalues() -> Bag of Vector of Number 
+  as stored;
+
+/* Type B, mapping from indentifier to its attribute vector */
+
+/* To associate identifier with each attribute vectors. This kind of tables  */
+/* represent unique identifier for each attribute vectors, e.g. transaction  */
+/* numbers when mining user transactions in department store                 */
+
+create function valueof(Number id) -> Vector of Number
+  as stored;
+
+/* Type C, mapping from indentifier to collection attribute vectors */
+
+/* For example to associate a class identifier with a set of attribute */
+/* vectors as is often the result of data mining from examples         */
+
+create function class_members(Number cid) -> Bag of Vector of Number
+  as stored;
+
+/* Type D, vector-to-vector relationships */
+
+create function neighbors(Vector of Number p) -> Bag of Vector of Number
+  as stored;
+
+/* Type E, non-unique numeric values associated with vectors */
+
+create function weight(Vector of Number p) -> Number w
+  as stored;
+
+/* Type F, associaction rules produced during Associatiation Rules Mining 
+   (ARM) */
+
+create function AR() -> Bag of (Vector of Integer head,
+                                Vector of Integer tail, 
+                                Integer supp, 
+                                Number conf) as stored;
+
+/* You can store constants as singleton functions without arguments: */
+
+create function myk() -> Number as stored;
+
+/* Stored functions can be populated and updated: */
+
+set myvalues()= bag({1,2,3},{4,5,6},{7,8,9});
+
+set valueof(1)={1,2,3};
+
+set valueof(2)={4,5,6};
+
+set valueof(3)={7,8,9};
+
+set class_members(1)= {1,2,3};
+
+add class_members(1)= {3,4,5};
+
+set class_members(2)= {2,5,9};
+
+set myk()=3;
+
+/* Functions are objects too that can be accessed with #'fnname' notation: */
+
+#'myvalues';
+
+/* A function's 'extent' is it tuples of arguments and results as a bag of
+   vectors: */
+
+extent(#'class_members');
+
+/****************** quantifiers ******************/
+
+/* Testing for non-empty bag: */
+
+some(:b3);
+
+/* Testing for empty bag: */
+/* No result means false! */
+
+notany(:b3;
+
+in(:b3);
+
+notany((select v from Number v
+                 where v in :b3 and
+                       v=0));
+
+
+/****************** More on functions ******************/
+
+
+/* Same function for different kinds of argument, 'overloaded' function: */
+
+plus(1,2);
+
+1+2;
+
+"a" + "b";
+
+resolvents(functionnamed("plus"));
+
+/* Cannot use #'...' notation on overloaded functions (ambigous): */
+
+#'plus';
+
+/* Can use resolvent name instead: */
+
+#'number.number.plus->number';
+
+/* Inspecting source code: */
+
+sourcecode("minus");
+
+sourcecode("k_nearest");
+
+
+/****************** Define your own functions ******************/
+
+create function divisors (Number n) -> Bag of Number
+  as select x 
+     from Number x
+     where x != 1 and
+           x in iota(1,n-1) and
+           mod(n,x)=0;
+
+divisors(203);
+
+divisors(17);
+
+/* Use of not exists: */
+
+create function prime (Number n) -> Boolean b
+  as notany(divisors(n));
+
+prime(17);
+
+/* False is empty answer: */
+
+prime(203);
+
+sourcecode("notany");
+
+/* Miners' functions: */
+
+create function upper_range(Bag of Vector of Number vals)
+                           -> Vector of Number 
+  /* Get the upper limit of values in vals */
+  as aggv(vals,#'maxagg');
+
+upper_range(myvalues());
+
+/* Substitute value in Vector: */
+
+substv(0,-1,{0,1,2,3,0});
+
+create function normalize_range(Bag of Vector of Number vals)
+                               -> Bag of Vector of Number
+  /* Range normalize a bag of vectors */
+  as select (val - lower) ./ substv(0,1,upper - lower)
+     from Vector of Number lower, 
+          Vector of Number upper,
+          Vector of Number val
+     where lower = aggv(vals,#'minagg') and
+           upper = aggv(vals,#'maxagg') and
+           val in vals;
+
+normalize_range(myvalues());
+
+quit;
+
+

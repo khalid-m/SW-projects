@@ -1,0 +1,168 @@
+<html>
+    <head>
+        <title>Student group registration</title>
+        <script type="text/javascript" src="scripts/SOAPClient.js"></script>
+        <script type="text/javascript" language="javascript">
+            var validateStudent;
+            var v;
+            var error;
+            var students = new Array();
+            var passwords = new Array();
+            var oMyObject = window.dialogArguments;
+            var cname = oMyObject.selectedCourse;
+
+            function btnV_onclick() {
+                error = null;
+                for (var i=0; i< students.length; i++){
+                    if (!(students[i] == ""||students[i] == null)){
+                        var studentName = students[i];
+                        var password = passwords[i];
+                        SOAPClient.invoke("REGISTERSTUDENTGROUP", [studentName,password,cname], false, btnV_callBack,error_callBack);
+                    }
+                }
+            }
+
+            function btnV_callBack(o, xmlDoc)
+            {
+                if ('none' == o || 'false' == o){
+                    validateStudent = (validateStudent && false);
+                }
+                else {
+                    validateStudent = (validateStudent && true);
+                }
+                v = validateStudent;
+            }
+
+            function updateGroup(students) {
+                error = null;
+                SOAPClient.invoke("UPDATEGROUP", [students,cname], true, updateGroup_callBack,error_callBack);
+            }
+
+            function updateGroup_callBack(o, xmlDoc)
+            {
+                if(o.length == 2){
+                    document.getElementById("registerDiv").style.display='none';
+                    var result = "";
+                    result += "<h>Your group consist of:</h><br><br><table>";
+                    for (var i = 0; i < students.length; i++){
+                        result += "<tr><td>student" + (i+1) + ":</td><td>"+students[i]+"</td></tr>";
+                    }
+                        result += "<tr><td>group number:</td><td>"+ o[0] +"</td></tr>";
+                        result += "<tr><td>assistant:</td><td>"+ o[1] +"</td></tr></table>";
+                        document.getElementById("resultDiv").innerHTML = result;
+                }
+                else if(o.length != 2){
+                    document.getElementById("errorDivFont").innerText = "** Create group failed. **";
+                    document.getElementById("errorDiv").style.display='block';
+                    document.getElementById("student0").focus();
+                    document.getElementById("password0").value="";
+                    document.getElementById("password1").value="";
+                    document.getElementById("password2").value="";
+                }
+            }
+
+            function error_callBack(e, errorCode){
+                if (e != null){
+                    error = e;
+                    document.getElementById("registerDiv").style.display='none';
+                    document.getElementById("resultDiv").innerHTML="Error callBack:<br>" + error + "<br><br>Error code:<br>" + errorCode;
+                }
+            }
+
+            function btnReset_onclick(){
+                document.getElementById("student0").value="";
+                document.getElementById("password0").value="";
+                document.getElementById("student1").value="";
+                document.getElementById("password1").value="";
+                document.getElementById("student2").value="";
+                document.getElementById("password2").value="";
+                document.getElementById("student3").value="";
+                document.getElementById("password3").value="";
+                document.getElementById("student4").value="";
+                document.getElementById("password4").value="";
+            }
+		
+            function btnClose_onclick(){
+                window.close();
+            }
+
+            function registerGroup_onclick(){
+                students = [];
+                passwords = [];
+                document.getElementById("errorDiv").style.display='none';
+                v = true;
+                validateStudent = true;
+                for(var i=0;i<5;i++){
+                    if (!(document.getElementById("student" + i).value == '')){
+                        students.push(document.getElementById("student" + i).value);
+                    }
+                    if (!(document.getElementById("password" + i).value == '')){
+                        passwords.push(document.getElementById("password" + i).value);
+                    }
+                }
+                if ((students.toString()!="") && (passwords.toString()!="") && (students.length == passwords.length)){
+                    btnV_onclick(students,passwords);
+                }else{
+                    v = false;
+                }
+                if (v == true){
+                    updateGroup(students);
+                }else{
+                    document.getElementById("errorDivFont").innerText = "** Student name or password not correct. **";
+                    document.getElementById("errorDiv").style.display='block';
+                    document.getElementById("student0").focus();
+                    document.getElementById("password0").value="";
+                    document.getElementById("password1").value="";
+                    document.getElementById("password2").value="";
+                }
+            }
+
+            function window_onload(){
+                document.getElementById("student0").onfocus;
+            }
+        </script>
+    </head>
+    <body onload="return window_onload();">
+        <h1>Student group registration</h1>
+        <div id="registerDiv" style="display:block;">
+        Group registration rules:
+        <ul>
+            <li>Minimum 1 student in a group.
+            <li>Maximum 3 students in a group for Database Design course. Maximum 5 students in a groups for E_commerce course.
+            <li>Everyone is member of exactly one group.
+            <li>In all other cases, please contact your assistant.
+            <li>The students form the groups by themselves and do not ask the course leader or the assistants to form groups.
+        </ul>
+        Please enter below the user name and password of all students in your group.<br><br><br>
+        <table width="90%" border="0" cellspacing="0">
+            <tr>
+                <td>Student 1:</td><td><input type="text" id="student0" size="15"></td>
+                <td>Password 1:</td><td><input type="password" id="password0" size="15"></td>
+            </tr>
+            <tr>
+                <td>Student 2:</td><td><input type="text" id="student1" size="15"></td>
+                <td>Password 2:</td><td><input type="password" id="password1" size="15"></td>
+            </tr>
+            <tr>
+                <td>Student 3:</td><td><input type="text" id="student2" size="15"></td>
+                <td>Password 3:</td><td><input type="password" id="password2" size="15"></td>
+            </tr>
+            <tr>
+                <td>Student 4:</td><td><input type="text" id="student3" size="15"></td>
+                <td>Password 4:</td><td><input type="password" id="password3" size="15"></td>
+            </tr>
+            <tr>
+                <td>Student 5:</td><td><input type="text" id="student4" size="15"></td>
+                <td>Password 5:</td><td><input type="password" id="password4" size="15"></td>
+            </tr>
+
+        </table><br>
+        <div id="errorDiv" style="display:none;"><font id="errorDivFont" color="red"></font></div><br>
+        <input type="button" id="register_group" value="Register group" onclick="return registerGroup_onclick();">
+        <input type="button" id="reset" value="Reset" onclick="return btnReset_onclick();">
+        </div>
+        <div align="center" id="resultDiv"></div>
+        <input type="button" id="close" value="Close" onclick="return btnClose_onclick();">
+        <hr>Back to <a href="index.html">home</a>.<hr>
+    </body>
+</html>

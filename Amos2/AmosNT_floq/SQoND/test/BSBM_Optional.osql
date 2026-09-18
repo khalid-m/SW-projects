@@ -1,0 +1,223 @@
+/*-*-sql-*-*******************************************************************/
+
+/* BSBM OPTIONAL Queries against Berlin generated triples */
+
+/*
+
+
+/*LOAD(<berlin1.ttl>);*/
+
+/* BSBM modified Q2 */
+
+set :q2 = '
+PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> 
+PREFIX inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1/>               
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> 
+PREFIX dc: <http://purl.org/dc/elements/1.1/> 
+SELECT ?productFeature ?propertyTextual4 ?propertyTextual5 ?propertyNumeric4
+WHERE {
+      inst:Product1  rdfs:label ?label .
+      inst:Product1  rdfs:comment ?comment .
+      inst:Product1  bsbm:producer ?p .
+      ?p rdfs:label ?producer .
+      inst:Product1  dc:publisher ?p .
+      inst:Product1  bsbm:productFeature ?f .
+      ?f rdfs:label ?productFeature .
+      inst:Product1  bsbm:productPropertyTextual1 ?propertyTextual1 .
+      inst:Product1  bsbm:productPropertyTextual2 ?propertyTextual2 .
+      inst:Product1  bsbm:productPropertyTextual3 ?propertyTextual3 .
+      inst:Product1  bsbm:productPropertyNumeric1 ?propertyNumeric1 .
+      inst:Product1  bsbm:productPropertyNumeric2 ?propertyNumeric2 .
+      OPTIONAL {inst:Product1  bsbm:productPropertyTextual4 ?propertyTextual4 }
+      OPTIONAL {inst:Product1  bsbm:productPropertyTextual5 ?propertyTextual5 }
+      OPTIONAL {inst:Product1  bsbm:productPropertyNumeric4 ?propertyNumeric4 }}' ;
+
+
+/* BSBM Q3 */
+
+set :q3 ="
+PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> 
+PREFIX inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1/>               
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> 
+PREFIX dc: <http://purl.org/dc/elements/1.1/> 
+SELECT ?product ?label
+WHERE {
+      ?product rdfs:label ?label .
+      ?product rdf:type <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType2>   .
+      ?product bsbm:productFeature <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature5> .
+      ?product bsbm:productPropertyNumeric1 ?p1 .
+      FILTER ( ?p1 > 214 )
+      ?product bsbm:productPropertyNumeric3 ?p3 .
+      FILTER (?p3 < 698 )
+      OPTIONAL {
+      ?product bsbm:productFeature <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature26> .
+      ?product rdfs:label ?testVar }
+      FILTER (!bound(?testVar)) }
+      LIMIT 10" ;
+
+/* Modified BSBM Q3 */
+/*Virtuoso: http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1/Product1  manner gatemen   manner gatemen */
+
+set :q3m= "
+PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> 
+PREFIX inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1/>               
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> 
+PREFIX dc: <http://purl.org/dc/elements/1.1/> 
+SELECT ?product ?label ?testVar
+WHERE {
+      ?product rdfs:label ?label .
+      ?product rdf:type <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductType2>   .
+      ?product bsbm:productFeature <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature5> .
+      ?product bsbm:productPropertyNumeric1 ?p1 .
+      FILTER ( ?p1 > 214 )
+      ?product bsbm:productPropertyNumeric3 ?p3 .
+      FILTER (?p3 < 698 )
+      OPTIONAL {
+      ?product bsbm:productFeature <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/ProductFeature26> .
+      ?product rdfs:label ?testVar } }" ;
+
+
+
+/* BSBM Q7 */
+set :q7= "
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>  
+PREFIX rev: <http://purl.org/stuff/rev#> 
+PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> 
+PREFIX inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1/>               
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> 
+PREFIX dc: <http://purl.org/dc/elements/1.1/> 
+SELECT ?productLabel ?offer ?price ?vendor ?vendorTitle ?review ?revTitle ?reviewer ?revName ?rating1 ?rating2 
+WHERE {
+      inst:Product1 rdfs:label ?productLabel .
+      OPTIONAL {
+	       ?offer bsbm:product inst:Product1  .
+	       ?offer bsbm:price ?price .
+	       ?offer bsbm:vendor ?vendor .
+	       ?vendor rdfs:label ?vendorTitle .
+	       ?vendor bsbm:country <http://downlode.org/rdf/iso-3166/countries#DE> .
+	       ?offer dc:publisher ?vendor .
+	       ?offer bsbm:validTo ?date .
+	       FILTER (?date > '2001-09-16' ) . }
+      OPTIONAL {
+	       ?review bsbm:reviewFor inst:Product1 .
+	       ?review rev:reviewer ?reviewer .
+	       ?reviewer foaf:name ?revName .
+	       ?review dc:title ?revTitle .
+	       OPTIONAL { ?review bsbm:rating1 ?rating1 . }
+	       OPTIONAL { ?review bsbm:rating2 ?rating2 . } } }" ;
+
+
+/* BSBM Q8 */
+
+set :q8 = "
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>  
+PREFIX rev: <http://purl.org/stuff/rev#> 
+PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> 
+PREFIX inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1/>               
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> 
+PREFIX dc: <http://purl.org/dc/elements/1.1/> 
+SELECT ?title ?reviewDate ?reviewer ?reviewerName ?rating1
+?rating2 ?rating3 ?rating4
+WHERE {
+      ?review bsbm:reviewFor inst:Product1  .
+      ?review dc:title ?title .	
+      ?review rev:text ?text .
+      ?review bsbm:reviewDate ?reviewDate .
+      FILTER REGEX (?title, 'hope' ) .	
+      ?review rev:reviewer ?reviewer .
+      ?reviewer foaf:name ?reviewerName .
+	 	    OPTIONAL { ?review bsbm:rating1 ?rating1 . }
+		    OPTIONAL { ?review bsbm:rating2 ?rating2 . }
+		    OPTIONAL { ?review bsbm:rating3 ?rating3 . }
+		    OPTIONAL { ?review bsbm:rating4 ?rating4 . } } ";
+
+set :q8_0 = "
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>  
+PREFIX rev: <http://purl.org/stuff/rev#> 
+PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> 
+PREFIX inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1/>               
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> 
+PREFIX dc: <http://purl.org/dc/elements/1.1/> 
+SELECT ?reviewer ?reviewerName ?rating1
+?rating2 ?rating3 ?rating4
+WHERE {
+      ?review bsbm:reviewFor inst:Product1  .
+      ?review dc:title ?title .	
+      ?review rev:text ?text .
+      ?review bsbm:reviewDate ?reviewDate .
+      ?review rev:reviewer ?reviewer .
+      ?reviewer foaf:name ?reviewerName .
+	 	    OPTIONAL { ?review bsbm:rating1 ?rating1 . }
+		    OPTIONAL { ?review bsbm:rating2 ?rating2 . }
+		    OPTIONAL { ?review bsbm:rating3 ?rating3 . }
+		    OPTIONAL { ?review bsbm:rating4 ?rating4 . } } ";
+
+
+set :q81 = "
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>  
+PREFIX rev: <http://purl.org/stuff/rev#> 
+PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> 
+PREFIX inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1/>               
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> 
+PREFIX dc: <http://purl.org/dc/elements/1.1/> 
+SELECT ?reviewer ?reviewerName ?rating1 ?rating2 
+WHERE {
+      ?review bsbm:reviewFor inst:Product1  .
+      ?review dc:title ?title .	
+      ?review rev:text ?text .
+      ?review bsbm:reviewDate ?reviewDate .
+      ?review rev:reviewer ?reviewer .
+      ?reviewer foaf:name ?reviewerName .
+      OPTIONAL { ?review bsbm:rating1 ?rating1 . }		               
+      OPTIONAL { ?review bsbm:rating2 ?rating2 . 
+                 ?review bsbm:rating1 ?rating1 .} } ";
+
+
+set :q82 = "
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>  
+PREFIX rev: <http://purl.org/stuff/rev#> 
+PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> 
+PREFIX inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1/>               
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> 
+PREFIX dc: <http://purl.org/dc/elements/1.1/> 
+SELECT ?reviewer ?reviewerName ?rating1 ?rating2 
+WHERE {
+      ?review bsbm:reviewFor inst:Product1  .
+      ?review dc:title ?title .	
+      ?review rev:text ?text .
+      ?review bsbm:reviewDate ?reviewDate .
+      ?review rev:reviewer ?reviewer .
+      ?reviewer foaf:name ?reviewerName .
+      OPTIONAL { ?review bsbm:rating2 ?rating2 . 
+	         ?review bsbm:rating1 ?rating1 .} 
+      OPTIONAL { ?review bsbm:rating1 ?rating1 . } } ";
+		    
+
+set :q83 = "
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>  
+PREFIX rev: <http://purl.org/stuff/rev#> 
+PREFIX bsbm: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/vocabulary/> 
+PREFIX inst: <http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromProducer1/>               
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> 
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> 
+PREFIX dc: <http://purl.org/dc/elements/1.1/> 
+SELECT ?reviewer ?reviewerName ?rating1 ?rating2 ?rating3 ?rating4
+WHERE {
+      ?review bsbm:reviewFor inst:Product1  .
+      ?review dc:title ?title .	
+      ?review rev:text ?text .
+      ?review bsbm:reviewDate ?reviewDate .
+      ?review rev:reviewer ?reviewer .
+      ?reviewer foaf:name ?reviewerName .
+       OPTIONAL { ?review bsbm:rating1 ?rating1 . 
+        OPTIONAL { ?review bsbm:rating2 ?rating2 . 
+	   OPTIONAL { ?review bsbm:rating3 ?rating3 . 
+	      OPTIONAL { ?review bsbm:rating4 ?rating4 . }}}}} ";

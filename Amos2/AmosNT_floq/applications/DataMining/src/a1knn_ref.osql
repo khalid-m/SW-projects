@@ -1,0 +1,55 @@
+/*-*-sql-*-*******************************************************************/
+
+create function weights()->Vector of Number;
+set weights() = {1,1,1,1,1,1,1,1,1};
+
+create function nclassdistances(Vector of Number x, 
+                                Bag of (Vector of Number, Number) P)
+                            -> Bag of (Number distance, Number class)
+  /* Normalizing with euclides */ 
+  as select euclid((x - m)./s .* weights(), (v - m)./s), class
+     from Vector of Number v, Vector of Number m, Vector of Number s
+     where (v, class) in P and
+	 m = aggv(knowncoordinates(), #'avg') and
+	 s = aggv(knowncoordinates(), #'stdev');
+
+create function nk_nearest(Vector of Number x, Integer k, 
+                           Bag of (Vector of Number, Number) P)
+                       -> Bag of (Object, Object)
+  as leastk(nclassdistances(x, P), k);
+
+create function nk_votes(Vector of Number x, Integer k, 
+                         Bag of (Vector of Number, Number) P)
+                     -> Bag of (Integer class, Number count)
+  as groupby((select cl 
+              from Number cl, Real dist
+              where (dist, cl) in nk_nearest(x, k, P)),
+			  #'count');
+
+/* Classifies datapoints x according to k neighbours in P */
+create function knnclassify(Vector of Number x, Integer k, 
+                            Bag of (Vector of Number, Number) P) 
+	                -> Number
+  as select class from Number class, Number votes 
+     where (votes,class) in 
+           topk((select vo,cl from Number cl, Number vo  
+	         where (cl, vo) in nk_votes(x, k, P)), 1);
+
+create function similarity(Integer k) 
+                       -> Boolean
+  as select from Vector of Number x 
+     where x =  knowncoordinates() 
+       and knnclassify(x, k, all_but_this(x) ) = knownclasses(x); 	
+		
+create function countknown(Integer k)		
+	               -> (Number,Number)
+  as select count(similarity(k)), k;
+			  
+/* Evaluates the best k between values 1 and 10 */
+/*set k() = (select e2 from number e1, number e2 where (e1, e2) = topk(countknown(iota(1,10)),1));*/
+set k() = 1;
+
+/* Store class belongning for the 30 data points without known class belonging */
+add testclasses(x) = knnclassify(x, k(), knowntuples())
+    from Vector of Number x
+    where x = unknown();

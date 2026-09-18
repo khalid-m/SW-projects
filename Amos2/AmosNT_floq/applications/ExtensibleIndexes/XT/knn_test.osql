@@ -1,0 +1,103 @@
+ /*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 thanh, UDBL
+ * $RCSfile: knn_test.osql,v $
+ * $Revision: 1.1 $ $Date: 2011/05/06 02:04:21 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Queries of KNN SEARCH.
+ * A foreign C function xtree_knn_search will be used if there
+ * is an Xtree index
+ *
+ ****************************************************************************
+ * $Log: knn_test.osql,v $
+ * Revision 1.1  2011/05/06 02:04:21  thatr500
+ * *** empty log message ***
+ *
+ * Revision 1.2  2010/12/01 19:20:01  thatr500
+ * use EXSTMA to integerate Xtree
+ *
+ * Revision 1.1  2010/10/07 13:30:42  thatr500
+ * add test cases ( similarity / knn search) with and without Xtree
+ *
+ *
+ ****************************************************************************/
+
+/*Knn operator is replaced with xtree knn search.
+Knn takes a function to search on*/
+create function q11() -> Bag of Charstring 
+as select p from Charstring p
+   where p in knn( {1, 2, 3, 4}, 3, #'pictureFeatures');
+
+/*Rewrite knn operator with xtree knn search.
+Knn takes a function to search on*/
+create function q12() -> Bag of Charstring 
+as select p from Charstring p, Charstring q
+   where p in knn({1, 2, 3, 4}, 3,  #'pictureFeatures')
+    and	 q in knn({1, 2, 3, 5}, 3,  #'pictureFeatures')
+	and p > q;
+
+create function allPictureFeatures()-><Charstring , Vector of Number>
+as
+   select str, fv from Charstring str, Vector of Number fv
+	where fv = pictureFeatures(str);
+  
+/*Knn taking a bag to search on*/
+create function q13() -> Bag of Charstring 
+as select p from Charstring p, Charstring q
+    where p in knn({1, 2, 3, 4}, 3, 
+		( select str, fv from Charstring str, Vector of Number fv
+		where fv = pictureFeatures(str)))
+    and	 q in knn({1, 2, 3, 5}, 3, 
+		( select str, fv from Charstring str, Vector of Number fv
+		where fv = pictureFeatures(str)))
+	and p > q;
+
+
+/*Naive knn implementation*/
+create function q14() -> Bag of <Number, Charstring> 
+ as
+  select roundto(dist, 3), st from Number dist , Charstring st where
+	<dist, st> in k_nearest({1, 2, 3, 5}, 3, 
+                      	    #'euclid', 0, 
+			  (select str, fv from Charstring str, 
+		           Vector of Number fv
+		           where fv = pictureFeatures(str)));
+
+
+/*Another naive knn implementation*/
+create function q15() -> Bag of <Number, Charstring> 
+ as
+  select roundto(dist, 3), st from Number dist , Charstring st where
+	<dist, st> in k_nearest_with_fn({1, 2, 3, 5}, 3, 
+                      	    #'euclid', 0, #'pictureFeatures');
+
+lisp;
+
+(checkequal
+  "Knn operator (input function)utilizing XTREE index"
+ ((osql "q11();")
+  '(("Pic001") ("Pic002") ("Pic003"))))
+
+(checkequal
+ "Knn operator(input function) utilizing XTREE index"
+ ((osql "q12();")
+  '(("Pic002") ("Pic003") ("Pic003"))))
+
+(checkequal
+  "Knn operator (input bag) utilizing XTREE index "
+ ((osql "q13();")
+  '(("Pic002") ("Pic003") ("Pic003"))))
+
+(checkequal
+ "Naive knn (input bag) without XTREE index"
+ ((osql "q14();")
+  '((1.414 "Pic003") (1.0 "Pic001") (0.0 "Pic002"))))
+
+(checkequal 
+ "Naive knn(input function) without XTREE index"
+ ((osql "q15();")
+  '((1.414 "Pic003") (1.0 "Pic001") (0.0 "Pic002"))))
+
+:osql

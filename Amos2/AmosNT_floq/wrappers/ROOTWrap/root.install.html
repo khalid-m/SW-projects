@@ -1,0 +1,41 @@
+Download ROOT library from <a href="http://root.cern.ch/root/Version510.html">ROOT download web page</a>: <A 
+href="ftp://root.cern.ch/root/root_v5.10.00.win32gdk.tar.gz">WindowsXP/NT/w2000 
+with VC++ 7.1 (runs with VC++6 and VC++8.0), version 5.10/00 (good old tar file) 
+**WIN32GDK**</A> (37.5 MB).<BR>
+This version is compiled and linked with the GDK driver implemented by Bertrand 
+Bellenot and optimized by Valeriy Onuchin. <B>This is our recommended 
+version</B>: For more instructions to install this version, see also <A 
+href="http://www.slac.stanford.edu/~gentit/">Francois-Xavier Gentit's web 
+site</A>.<BR>
+<BR>
+<B>Note valid for all Windows versions</B>: <BR>This version has been compiled 
+with the ANSISTREAM compatibility option. To use this version, you may have to: 
+<OL>
+<LI>Add the option <B>-GX</B> in your compiler options. 
+<LI>In your includes replace <B>iostream.h</B> by <B>Riostream.h</B> 
+<LI>Replace reference to <B>MSVCIRT.LIB</B> by <B>MSVCPRT.LIB</B> when linking. 
+</LI></OL>
+<P>The <B>win32</B> and <B>win32gdk</B> versions have been compiled under 
+VisualC++7.NET. These versions may not run correctly under Windows95 or 
+Windows98 (we do not support these obsolete versions anymore). To use these 
+files with the old <b>VisualC++6</b>, you may have to download the following DLLs and 
+store them in a directory accessible in your PATH: 
+<UL>
+<LI><A href="ftp://root.cern.ch/root/dformd.dll">dformd.dll</A> 
+<LI><A href="ftp://root.cern.ch/root/msvcp71.dll">MSVCP71.dll</A> 
+<LI><A href="ftp://root.cern.ch/root/msvcr71.dll">MSVCR71.dll</A> 
+<LI><A href="ftp://root.cern.ch/root/msfrt40.dll">MSFRT40.dll</A> </LI></UL>
+<BR>
+<P>Some old Windows systems may also require: 
+<UL>
+<LI><A href="ftp://root.cern.ch/root/MSVCIRT.DLL">MSVCIRT.DLL</A> 
+<LI><A href="ftp://root.cern.ch/root/MSVCP60.DLL">MSVCP60.DLL</A> 
+<LI><A href="ftp://root.cern.ch/root/MSVCPRT.LIB">MSVCPRT.lib</A> </LI></UL>
+
+<P>To install, unzip and untar the file. For example:</P><PRE>$ gunzip   root_v5.10.00.Linux.slc3.gcc3.2.3.tar.gz
+$ tar xvf  root_v5.10.00.Linux.slc3.gcc3.2.3.tar
+</PRE>
+<P>This will create the directory <TT>root</TT>. Before getting started read the 
+file <TT>README/README</TT>. <I>Remember</I>, you can find the full 
+documentation of the ROOT classes on <a href="http://root.cern.ch/">ROOT web site</a>. The distribution also 
+contains all tutorials and a set of test programs.</P>

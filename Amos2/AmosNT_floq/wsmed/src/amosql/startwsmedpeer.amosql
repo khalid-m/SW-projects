@@ -1,0 +1,32 @@
+lisp;
+
+(defun startnameserver(fno)
+  (system  "start amos2 -n") )
+
+(defun startpeer(fno r)
+  (system (concat "start java -cp .;classes;%AMOS_HOME%wsmed\lib\xercesImpl.jar;%AMOS_HOME%wsmed\lib\jdom.jar;%AMOS_HOME%wsmed\lib\qname.jar;%AMOS_HOME%wsmed\lib\wsdl4j.jar;%AMOS_HOME%wsmed\lib\castor-1.0.2.jar;%AMOS_HOME%wsmed\lib\saaj-api.jar;%AMOS_HOME%wsmed\lib\saaj-impl.jar;%AMOS_HOME%wsmed\lib\jaxp-api.jar;%AMOS_HOME%wsmed\lib\jax-qname.jar;%AMOS_HOME%wsmed\lib\jaxm-api.jar;%AMOS_HOME%bin/javaamos.jar; JavaAMOS wsmed.dmp src/amosql/peer" r ".amosql")))
+
+(defun starthost(fno r)
+  (system (concat "start java -cp .;classes;%AMOS_HOME%wsmed\lib\xercesImpl.jar;%AMOS_HOME%wsmed\lib\jdom.jar;%AMOS_HOME%wsmed\lib\qname.jar;%AMOS_HOME%wsmed\lib\wsdl4j.jar;%AMOS_HOME%wsmed\lib\castor-1.0.2.jar;%AMOS_HOME%wsmed\lib\saaj-api.jar;%AMOS_HOME%wsmed\lib\saaj-impl.jar;%AMOS_HOME%wsmed\lib\jaxp-api.jar;%AMOS_HOME%wsmed\lib\jax-qname.jar;%AMOS_HOME%wsmed\lib\jaxm-api.jar;%AMOS_HOME%bin/javaamos.jar; JavaAMOS wsmed.dmp src/amosql/host" r " .amosql")))
+
+(defun startallpeers(fno r)
+   (system  "start amos2 -n") 
+  (do ((I 1 (+ 1 I)))
+      ((= I (+ 1 r)))
+	(system (concat "start java -cp .;classes;%AMOS_HOME%wsmed\lib\xercesImpl.jar;%AMOS_HOME%wsmed\lib\jdom.jar;%AMOS_HOME%wsmed\lib\qname.jar;%AMOS_HOME%wsmed\lib\wsdl4j.jar;%AMOS_HOME%wsmed\lib\castor-1.0.2.jar;%AMOS_HOME%wsmed\lib\saaj-api.jar;%AMOS_HOME%wsmed\lib\saaj-impl.jar;%AMOS_HOME%wsmed\lib\jaxp-api.jar;%AMOS_HOME%wsmed\lib\jax-qname.jar;%AMOS_HOME%wsmed\lib\jaxm-api.jar;%AMOS_HOME%bin/javaamos.jar; JavaAMOS wsmed.dmp src/amosql/peer" I ".amosql"))))
+
+
+
+    
+:osql
+
+
+create function startNameserver()->boolean as foreign "startnameserver";
+create function startHost(integer i)->boolean as foreign "starthost";
+create function startPeer(integer i)->boolean as foreign "startpeer";
+create function startAllpeers(integer i)->boolean as foreign "startallpeers"; 
+
+
+
+
+

@@ -1,0 +1,205 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *s
+ * Author: (c) 2012 Silvia Stefanova, UDBL * $State: Exp $ $Locker:  $
+ *
+ * Description: Unload RDB as DISTINCT N-triples
+ *
+ ****************************************************************************
+ *
+ ****************************************************************************/
+
+
+/*
+I ) Needed to set up on the SQL server:
+
+1)
+EXEC sp_configure 'show advanced options', 1
+GO
+RECONFIGURE
+GO
+EXEC sp_configure 'xp_cmdshell', 1
+GO
+-- To update the currently configured value for this feature.
+RECONFIGURE
+GO
+
+
+2) How to enable non-sysadmin accounts to execute the "xp_cmdshell" extended stored
+
+CREATE CREDENTIAL ##xp_cmdshell_proxy_account## WITH IDENTITY = 'PC-Silvias\Silvia', SECRET = '<password>' ;
+GO
+
+II) Necessary to give the following permission for the MS SQL login and user
+x
+1) Permissions to create table
+	for the user give a database role memebership 'db_owner'
+
+2) Permissions to use the bulk load statement:
+	for the login give server roles 'dbcreator', 'bulkadmin'
+
+3) EXECUTE permission was denied on the object 'xp_cmdshell', database 'mssqlsystemresource', schema 'sys'
+	- for the login: User Mapping: chose database 'master', deafult schema 'sys' and for that role:db_datawriter, db_backupoperator
+	- for the user in system databases 'master' : give the user persmissions to use extneded stored procedure 'xp_cmdshell'
+
+
+ */
+
+
+create function make_tripleTab(Charstring ds, Charstring tripletable) -> Charstring
+as
+ if (sql(jdbcOfDS(ds), "CREATE TABLE "+schemaOfDS(ds)+"."+tripletable+" (
+					[s] [varchar](200) NOT NULL,
+					[p] [varchar](200) NOT NULL,
+					[o] [varchar](2200) NOT NULL ) ;") ) 
+   then print ("Table '" + tripletable +"' created on the DBMS. ");
+ 
+
+
+create function make_view(Charstring ds,Charstring viewname,Charstring tripletable)->Charstring
+as
+ if( sqlu(jdbcOfDS(ds),"create view "+schemaOfDS(ds)+"."+viewname+" as	
+		select distinct s ,p ,o, ' .'t 
+		from " +schemaOfDS(ds)+"."+tripletable+";" ) )
+ then print ("View for select distinct created. ");
+
+
+create function insertintoCSV_procedure_old(Charstring ds,Charstring totable)->Charstring
+as
+  if 
+    (sql(jdbcOfDS(ds),"create procedure "+schemaOfDS(ds)+".bulkinsertTriple
+		@fromfile varchar(200)
+			AS
+			begin
+			DECLARE @bulkinsert NVARCHAR(2000);
+			SET @bulkinsert='bulk insert producer180m.MyTriple from ''' +
+			@fromfile + '''
+			WITH 
+			 ( 
+			FIELDTERMINATOR = ''|'' ,
+			ROWTERMINATOR = ''n'' )';
+			exec sp_executesql @bulkinsert;		
+			end; ") )
+  then print("Procedure 'bulkinsertTriple' created. ");
+
+
+create function insertintoCSV_procedure(Charstring ds,Charstring totable)->Charstring
+as
+  if 
+    (sql(jdbcOfDS(ds),"create procedure "+schemaOfDS(ds)+".bulkinsertTriple
+			AS
+			bulk insert "+schemaOfDS(ds)+"."+totable+" from 
+			'C:/AmosNT/sard/sard_new/tripledata.CSV'
+			WITH 
+			 ( 
+			FIELDTERMINATOR = '|',
+			ROWTERMINATOR = '\n' );"))
+  then print("Procedure 'bulkinsertTriple' created. ");
+
+
+create function writeout_procedure(Charstring ds)->Charstring
+as
+ if 
+  ( sql(jdbcOfDS(ds), "create procedure "+schemaOfDS(ds)+".bcpoutTriple
+			   @outfile varchar(200)
+			   AS
+			   declare @sql varchar(1000)
+			   select
+			   @sql = 'bcp 'select s,p,o,''.''t from archive.archive.MyTriple order by s'' + ' queryout ' + @outfile+' -c -T -S'+ @@servername
+
+			   exec master..xp_cmdshell @sql ; ") )
+	then print ("Procedure for bcp write out was created.");
+
+
+
+create function prepareArchive(Charstring ds,Charstring tripletable)->Charstring
+as
+ begin
+	make_tripleTab(ds,tripletable);
+	insertintoCSV_procedure(ds,tripletable);
+ 	writeout_procedure(ds);
+ end;
+
+
+/* Preapre, e.g.  prepareArchive(:id_a, "MyTable") has to be run when initializing SAQ */
+
+/* Delete from the table used to sort has to run before any single archive: sql(jdbcOfDS(:id_a),"delete from  MyTriple;");  */
+
+
+
+create function archive_schemaNT_contentNT_new(Charstring ds,Function datafn,Charstring filent,Charstring fileschema)->Boolean
+/*Archives the content by the function 'datafn' in a CSV file 'file1' and 
+  the schema in an NT file 'file2' */
+as
+ begin
+   clean_store_prop();
+   write_asCSV(call_function(datafn,{}),'tripledata.CSV');  
+    write_triples_asNT(call_function(#'retrieve_schemaofProps',{}),fileschema);
+   sql(jdbcOfDS(ds),"exec "+schemaOfDS(ds)+".bulkinsertTriple ;");
+   sql(jdbcOfDS(ds),"exec "+schemaOfDS(ds)+".bcpoutTriple '" + filent+ "';");
+ end;
+
+
+
+create function archive_schemaNT_contentNT(Charstring ds,Function datafn,Charstring filent,Charstring fileschema)->Boolean
+/*Archives the content by the function 'datafn' in a CSV file 'file1' and 
+  the schema in an NT file 'file2' */
+as begin
+   declare Number time;
+   clean_store_prop();
+   set time=real(now());
+   openwritefile('tripledata.CSV');
+   for each Charstring ss,Charstring pp,Charstring oo where call_function(datafn,{})={ss,pp,oo}
+	begin
+	  /*printXmll ( printResource(ss)+ " "+ printResource(pp)+ " "+ printResource(oo)+ " ." );*/
+	   printXmll ( printResource(ss)+ "|"+ printResource(pp)+ "|"+ printResource(oo) );
+	 add store_prop(pp)=true;
+	end;
+   closewritefile();
+   print("Time to unload data triples: " + (real(now())-time));
+   set time=real(now());
+   /*unload_asNT(fileschema,#'retrieve_schemaofProps',{});*/
+    write_triples_asNT(call_function(#'retrieve_schemaofProps',{}),fileschema);
+   print("Time to unload schema triples: " + (real(now())-time));
+   set time=real(now()); 
+   sql(jdbcOfDS(ds),"exec "+schemaOfDS(ds)+".bulkinsertTriple ;");
+    print("Time to insert triples for ordering: " + (real(now())-time));
+    set time=real(now());
+   sql(jdbcOfDS(ds),"exec "+schemaOfDS(ds)+".bcpoutTriple '" + filent+ "';");
+    print("Time to order by s and write out archive: " + (real(now())-time));
+ end;
+
+create function orderByS(Charstring ds,Charstring filent)->Boolean
+/*Archives the content by the function 'datafn' in a CSV file 'file1' and 
+  the schema in an NT file 'file2' */
+as begin
+   declare Number time;
+   set time=real(now()); 
+   sql(jdbcOfDS(ds),"exec "+schemaOfDS(ds)+".bulkinsertTriple ;");
+    print("Time to insert triples for ordering: " + (real(now())-time));
+    set time=real(now());
+   sql(jdbcOfDS(ds),"exec "+schemaOfDS(ds)+".bcpoutTriple '" + filent+ "';");
+    print("Time to order by s and write out archive: " + (real(now())-time));
+ end;
+
+
+create function archive_schemaNT_contentNT_ver2(Charstring ds,Function datafn,Charstring filent,Charstring fileschema)->Boolean
+/*Archives the content obtained by datafn by doing INSERT in a CSV file 'file1', and 
+  the schema in an NT file 'file2' */
+as
+ begin
+   clean_store_prop();
+   openwritefile('tripledata.CSV');  	
+   for each Charstring ss,Charstring pp,Charstring oo where call_function(datafn,{})={ss,pp,oo}
+	begin
+	  /*printXmll ( printResource(ss)+ " "+ printResource(pp)+ " "+ printResource(oo)+ " ." );*/
+	  sql(jdbcOfDS(ds),"insert into MyTriple(s,p,o) values ('" + printResource(ss)+
+				"','"+printResource(pp)+"','"+printResource(oo)+"');");
+	 add store_prop(pp)=true;
+	end;
+   closewritefile();
+   unload_asNT(fileschema,#'retrieve_schemaofProps',{});  
+   sql(jdbcOfDS(ds),"exec "+schemaOfDS(ds)+".bcpoutTriple '" + filent+ "';");
+ end;
+
+

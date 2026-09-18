@@ -1,0 +1,92 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012, Cheng Xu, UDBL
+ * $RCSfile: profile-config-uppmax.osql,v $
+ *
+ * Description: configuration for profiling
+ *
+ ****************************************************************************
+ * $Log: profile-config-uppmax.osql,v $
+ * Revision 1.2  2013/01/14 09:39:49  chexu484
+ * return vector
+ *
+ * Revision 1.1  2013/01/08 12:34:09  chexu484
+ * configuration for uppmax
+ *
+ * Revision 1.1  2012/12/19 20:07:04  chexu484
+ * central vs paralell
+ *
+ *
+ ****************************************************************************/
+
+/* default dump file */
+set dumpfile() = "profileUppmax.dmp";
+set prepstartcmd("") = getenv("AMOS_HOME") + "/bin/svali.exe";
+set sp_start("") = "cd " + getenv("TMPDIR") + ";";
+set prephome() = "";
+set cpus_per_host() = 8;
+
+
+/* coord is on the host which does mkdmp */
+set prepcoordhost() = gethostname();
+
+/* prephosts is going to be re-set if in queue system */
+set prephosts() = {"localhost"};
+
+/* Default config for queue system */
+
+create function slrsh() -> Charstring as "srun -A p2009046";
+create function slstdout() -> Charstring as getenv("TMPDIR") + "/PrepLog";
+create function distgenodes() -> Charstring as
+select distinct genodes();
+
+create function slnodes() -> Charstring
+  as exec("srun -A p2009046 -p node -N 13 -n 104 hostname | sort");
+create function distslnodes() -> Charstring as
+select distinct slnodes();
+
+/* Set a generous timeout for open-port */
+
+porttimeout(20.0);
+
+set prepstartcmd(h) = getenv("AMOS_HOME") + "/bin/svali.exe"
+from charstring h
+where h in prephosts(); 
+
+set sp_start(h) = "cd /scratch/" + getenv("USER") + ";"
+from charstring h
+where h in prephosts(); 
+
+set sp_username(h) = getenv("USER")
+from charstring h
+where h in prephosts(); 
+
+create function initmill(Charstring dmp) -> Vector
+as begin
+     set prepcoordhost() = gethostname();
+     print("before!");
+     set prephosts() = vectorof(distslnodes());
+     print("after: "+ prephosts());
+     sp_stdout(getenv("TMPDIR") + "/SPlog");
+     daemon_mode(1);
+     select scsqsld(shortname(s), dmp)
+       from Charstring s
+       where s in uniqueprephosts()
+       and s != gethostname();
+   end;
+
+create function pass(Stream s) -> Stream
+  as streamof(in(s));
+
+/* for data generation */
+< 'gen.osql';
+
+/* load model and validate */
+< 'vMillWrapper.osql';
+
+< 'vMillValidator.osql';
+
+save "../../../bin/profileUppmax.dmp";
+
+quit;

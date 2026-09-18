@@ -1,0 +1,26 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 Erik Zeitler, UDBL
+ * $RCSfile: config-linux.osql,v $
+ * $Revision: 1.1 $ $Date: 2010/02/16 18:56:39 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Config file for EZgen
+ *
+ ****************************************************************************
+ * $Log: config-linux.osql,v $
+ * Revision 1.1  2010/02/16 18:56:39  zeitler
+ * std linux config
+ *
+ *
+ ****************************************************************************/
+
+/* maxvid and maxqid: The maximum vid and qid for one single xway */
+
+set maxvid() = 140000;
+set maxqid() = 125000;
+
+/* Location of full input files */
+set inputfilesdir() = getenv('HOME') + '/ezgen/';
+set inputfilesmask() = 'cdp';

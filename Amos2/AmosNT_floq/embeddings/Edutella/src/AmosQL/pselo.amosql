@@ -1,0 +1,27 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2005 Johan Petrini, UDBL
+ * $RCSfile: pselo.amosql,v $
+ * $Revision: 1.2 $ $Date: 2005/03/02 14:45:12 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Loading extension PSELO tSpace fns and overriding stmt fn.
+ *
+ * !!NOT PART OF PSELO.DMP!!
+ ****************************************************************************/
+
+lisp;
+(load-amosql "../../wrappers/rdf/src/amosql/relational.amosql")	
+(load-amosql "../../wrappers/rdf/src/amosql/museum.amosql")	
+:osql
+
+create function stmt(rdf_resource s, rdf_resource p, rdf_resource o)->Boolean
+as
+	select true 
+	from rdf_filebased f, rdf_museum m 
+	where tSpace(m) = <s, p, o> or
+	tSpace(f) = <s, p, o>;
+
+
+commit;

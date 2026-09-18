@@ -1,0 +1,1018 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2002-2006 Tore Risch et al, UDBL
+ * $RCSfile: functions.osql,v $
+ * $Revision: 1.134 $ $Date: 2013/11/20 21:00:23 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: System AmosQL functions. Loaded below the watermark.
+ *
+ ****************************************************************************
+ * $Log: functions.osql,v $
+ * Revision 1.134  2013/11/20 21:00:23  torer
+ * aggv() is foreign function
+ *
+ * Revision 1.133  2013/11/11 18:51:19  torer
+ * Foreign function definition of realbytes()
+ *
+ * Revision 1.132  2013/11/07 19:44:30  torer
+ * Integer -> Number in arguments
+ *
+ * Revision 1.131  2012/10/26 15:28:14  torer
+ * *** empty log message ***
+ *
+ * Revision 1.129  2012/10/12 12:59:37  torer
+ * Basic stream algebra
+ *
+ * Revision 1.128  2012/10/12 07:24:27  torer
+ * Reverted kernel C bug
+ *
+ * Revision 1.126  2012/08/13 21:22:48  chexu484
+ * stream operator changed(Stream s) -> Stream
+ *
+ * Revision 1.125  2012/05/15 19:27:51  torer
+ * result -> return
+ *
+ * Revision 1.124  2012/05/13 20:38:01  torer
+ * Changed signature of winagg()
+ *
+ * Revision 1.123  2012/02/21 07:02:24  torer
+ * Documentation of amos-functions
+ *
+ * Revision 1.122  2012/01/15 11:08:12  torer
+ * Master comments on Amos functions
+ *
+ * Revision 1.121  2011/12/14 20:06:07  torer
+ * Added warnings for coersions
+ * Removed coresion storage leak
+ *
+ * Revision 1.120  2011/12/01 09:48:03  larme597
+ * Moving stream functions start_at and first_n to Amos.
+ *
+ * Revision 1.119  2011/09/27 16:59:43  larme597
+ * pi(), acos(), asin() amos functions.
+ *
+ * Revision 1.118  2011/09/02 13:40:11  thatr500
+ * Added Manhattan distance function based on Minkowski
+ *
+ * Revision 1.117  2011/06/23 16:01:31  thatr500
+ * added powerfbb to compute a base x given power and y = (x) /\ power
+ *
+ * Revision 1.116  2011/05/02 12:54:09  torer
+ * New function to unload both schema and data:
+ *   unloadDatabase(Charstring file)-> Charstring
+ *
+ * Revision 1.115  2011/05/02 12:04:45  torer
+ * New function (SET-WATERMARK) to set system watermark
+ *
+ * Revision 1.114  2011/01/29 11:04:39  torer
+ * Base system uses (...) tuple notation, 'return' statement, and systematic indentation
+ *
+ * Revision 1.113  2011/01/06 15:41:03  torer
+ * section over bags renamed to bsection to remove overloading
+ *
+ * Revision 1.112  2010/12/30 18:59:35  zeitler
+ * dir(path, mask): equality replaced by in
+ *
+ * Revision 1.111  2010/12/25 21:40:17  torer
+ * (Partial) aggregate functions in C now work correctly
+ * Common aggregate functions now in C
+ *
+ * Revision 1.110  2010/10/28 07:01:13  torer
+ * Restored readfile in Lisp
+ *
+ * Revision 1.107  2010/09/07 21:07:04  torer
+ * Integer -> Number in function arguments to avoid coersion
+ *
+ * Revision 1.106  2010/09/04 09:13:37  torer
+ * Corrected result ype of aggv
+ *
+ * Revision 1.105  2010/08/30 18:21:18  torer
+ * Added function substv
+ *
+ * Revision 1.104  2010/08/25 20:52:19  torer
+ * New function dropfunction(Function fn, Integer permanent)->Function
+ *
+ * Revision 1.103  2010/06/08 15:58:19  torer
+ * Result type of euclid changed to Number
+ *
+ * Revision 1.102  2010/06/08 14:08:18  torer
+ * Key on euclid
+ *
+ * Revision 1.101  2010/05/07 18:44:17  torer
+ *  applyFunction1 and mapVector added
+ *
+ * Revision 1.100  2010/04/15 19:18:46  torer
+ * dir()->Bag of Charstring
+ *
+ * Revision 1.99  2010/04/15 18:47:13  torer
+ * wrong placement
+ *
+ * Revision 1.98  2010/04/15 18:43:30  torer
+ * added file_exists(Charstring file)->Boolean
+ *
+ * Revision 1.97  2010/03/13 14:41:54  torer
+ * uncache_costs() clears all cost caches
+ *
+ * Revision 1.95  2010/02/18 14:11:16  zeitler
+ * cost of mlhash
+ *
+ * Revision 1.94  2010/02/17 20:27:06  torer
+ * Checking for function existence when creating index
+ *
+ * Revision 1.93  2010/01/20 09:10:07  torer
+ * Abstract vref removed because of typing problem
+ *
+ * Revision 1.92  2010/01/20 07:37:33  torer
+ * vref as abstract function
+ *
+ * Revision 1.91  2009/11/20 15:00:01  zeitler
+ * power(Number, Number)->Number infix operator ^
+ * elempower(Vector of Number, Number)->Vector of Number infix operator .^
+ *
+ * Revision 1.90  2009/11/17 15:47:11  zeitler
+ * lpcascore(Bag of <Vector of Number, object> b, Integer d)
+ *  -> <Vector of Number, object label>
+ * include a label for each projected vector
+ *
+ * Revision 1.89  2009/11/16 19:34:02  torer
+ * = changed to in
+ *
+ * Revision 1.88  2009/11/13 16:13:12  zeitler
+ * vectornumplusbfb should not have key property.
+ *
+ * Revision 1.87  2009/11/11 15:05:09  zeitler
+ * plus(Vector of Number, Number) and minus(Vector of Number, Number)
+ *
+ * Revision 1.86  2009/11/06 18:35:25  torer
+ * Generalized transition functions in tclose
+ *
+ * Revision 1.85  2009/11/02 07:58:03  torer
+ * Incremental recompilation of derived functions with transient subplans now works
+ *
+ * Revision 1.84  2009/10/22 20:25:57  zeitler
+ * pcascore(Bag of Vector of Number b, Integer d)
+ * extracts the d principal components from the data vectors b
+ *
+ * Revision 1.83  2009/10/22 18:21:33  torer
+ * NIL-intolerant project(vector,vector)->vector
+ *
+ * Revision 1.82  2009/10/22 16:36:24  zeitler
+ * Normalization: meansub, zscore, maxmin
+ *
+ * Revision 1.81  2009/10/22 14:42:08  zeitler
+ * Vector roundto
+ *
+ * Revision 1.80  2009/10/16 09:28:47  zeitler
+ * Generic vector aggregation
+ * aggv(Bag of Vector, Function) -> Vector
+ *
+ * Primitive vector generation
+ * zeros(Integer) -> Vector of Number
+ * ones(Integer) -> Vector of Number
+ *
+ * Revision 1.79  2009/10/02 20:22:15  zeitler
+ * Name change:
+ * avgstdev(vector)-><real,real>
+ * replaced by
+ * vavgstdev(vector)-><real,real>
+ *
+ * New function: avgstdev(bag of number)-><real,real>
+ *
+ * Revision 1.78  2009/10/02 17:35:53  torer
+ * Vector times and plus in C
+ *
+ * Revision 1.77  2009/10/01 09:35:57  torer
+ * Pure definition of asserteq
+ *
+ * Revision 1.76  2009/09/30 15:16:28  zeitler
+ * asserteq(Object x, Object y, Bag of Charstring message)-> Boolean
+ * asserts equality. Error /message/ is raised otherwise.
+ *
+ * element-wise vector arithmetic
+ * vector-scalar multiplication
+ *
+ * Revision 1.74  2009/09/09 11:10:11  zeitler
+ * - euclid(vector of number, vector of number)->real
+ *
+ * - ntriples(bag of vector rowset, charstring outputfile)->charstring
+ *   export bag of vector to file
+ *
+ * Revision 1.73  2009/05/18 19:57:55  torer
+ * New function mapped_functions(Type)->Vector of Function
+ *
+ * Revision 1.72  2009/05/07 14:53:53  zeitler
+ * SQL group_by
+ * readfiles returns object
+ *
+ * Revision 1.71  2009/03/25 00:05:03  zeitler
+ * added mlhash()
+ *
+ * Revision 1.70  2009/03/06 19:05:41  torer
+ * readlines returns stream of charstring
+ *
+ * Revision 1.69  2009/03/06 15:50:57  gyogi445
+ * bag.integer.integer.section->bag ==> stream.integer.integer.section->stream
+ *
+ * Revision 1.68  2009/03/06 10:55:33  torer
+ * power as in SQL:99
+ *
+ * Revision 1.67  2009/03/06 09:58:15  torer
+ * son, cos, tan, atan, exp, ln defined
+ *
+ * Revision 1.66  2009/03/06 07:53:48  torer
+ * ceiling and round to C
+ *
+ * Revision 1.65  2009/03/05 20:59:06  torer
+ * FLOOR in C
+ *
+ * Revision 1.64  2009/02/09 15:05:02  zeitler
+ * readfile is generalized to binary files
+ *
+ * Revision 1.63  2008/11/28 07:21:31  torer
+ * Added bag equality, bequal
+ *
+ * Revision 1.62  2008/11/25 19:24:46  torer
+ * TCLOSE not overloaded on strings since we now have functional constants
+ *
+ * Revision 1.61  2008/11/23 14:57:17  torer
+ * Undeclared variables
+ *
+ * Revision 1.60  2008/10/10 09:15:39  torer
+ * userfunctions() returns resolvents only, not generic functions
+ *
+ * Revision 1.59  2008/08/21 14:10:29  torer
+ * New functions vavg(Vector v) -> Real n
+ *               vsdev(Vector v) -> Real s
+ *
+ * Vector construction partial evaluated.
+ *
+ * Revision 1.58  2008/02/26 11:31:28  zeitler
+ * readfile(vector of filenames)
+ *
+ * Revision 1.57  2007/12/01 15:49:04  torer
+ * readfile to Amos II kernel in filefns.c
+ *
+ * Revision 1.56  2007/11/20 19:22:24  torer
+ * theresolvent always partial evaluated
+ *
+ * Revision 1.55  2007/10/09 18:19:14  torer
+ * Invertible string concatenation
+ *
+ * Revision 1.54  2007/03/09 14:34:37  torer
+ * New functions:
+ *   stringify(Object)->Charstring
+ *   unstringify(Charstring)->Object
+ *   theFunction(Charstring fn)->Function (get function named fn or error)
+ *
+ * Revision 1.53  2007/02/20 09:20:57  torer
+ * Added procedure set_bijective_function(Charstring fn, Boolean flg)->Function
+ * to declare bijective functions
+ *
+ * Revision 1.52  2007/02/19 11:05:05  torer
+ * Inverse of rfft defined
+ *
+ * Revision 1.51  2006/07/28 11:08:42  torer
+ * cost hint functions now take strings and generic function names
+ *
+ * Revision 1.50  2006/06/08 21:25:57  torer
+ * Possibility to choose between optimizing top level or including transients
+ *
+ * Revision 1.49  2006/06/08 17:46:50  torer
+ * wrong name on fullrecompile
+ *
+ * Revision 1.45  2006/04/16 19:03:18  torer
+ * Added apropos(Charstring fn)->Function to find AmosQL functions containing fn
+ *
+ * Revision 1.44  2006/03/27 09:24:24  torer
+ * Partial evaluation in kernel
+ *
+ * Revision 1.42  2006/02/15 14:57:16  torer
+ * sourcecode(Charstring fn) lists Amos II function sourcecode
+ * scalar product: times(Vector, Vector)->Number
+ *
+ * Revision 1.41  2006/02/07 19:39:56  torer
+ * New AmosQL function
+ * directoryp(Charstring file)->Boolean
+ *
+ ****************************************************************************/
+
+/**************************/
+/* Second order functions */
+/**************************/
+
+create function applyFunction1(Function fn, Object arg) -> Bag of Object r
+  /* Call function fn(arg) */
+  as foreign 'applyFunction1--+';
+
+create function mapVector(Function fn, Vector v) -> Vector r
+  /* Apply function fn of each element of vector v */
+  as foreign 'mapVector--+';
+
+/**************************/
+/*** Utility functions ****/
+/**************************/
+
+create function clear_function(Charstring fn) -> Function
+   /* Permanently remove contents of stored function fn */
+   as dropfunction(theresolvent(fn),1);
+
+create function sourcecode(Charstring fn) -> Bag of Charstring
+  /* Source code of resolvent or resolvents of generic function */ 
+  as sourcecode(resolvents(functionnamed(fn)));
+
+create function apropos(Charstring str) -> Bag of Function f
+  /* Functions whose names contain str */
+  as select f
+     where like(name(generic(f)),"*" + upper(str) + "*");
+
+create function doc(Function fn)->Charstring
+  /* Documentation of function */
+  as foreign 'function.doc-+';
+
+create function doc(Charstring pat)->Bag of Charstring
+  /* Get function documentation matching pat */
+  as in(sort(select d
+             from Charstring d, Function f
+             where d = doc(f)
+               and like_i(d,"*"+pat+"*")));
+
+create function id(Object o) -> Object 
+  /* Identity function */
+  as select o;
+
+create function asserteq(Object x, Object y, Charstring message) -> Boolean
+  /* Print error message if x and y different */
+  as if x=y then return true else return error(message);
+
+create function dir(Charstring) -> Bag of Charstring 
+  /* List files in directory named charstring.
+     Empty string is cwd. */
+  as foreign 'dirbf';
+
+create function dir() -> Bag of Charstring
+  /* List files in current directory */
+  as dir(".");
+
+create function dir(Charstring path, Charstring mask) -> Bag of Charstring
+  /* List files in directory named charstring, whose names match 
+     the regexp in 2nd argument */
+  as select ddd from charstring ddd
+     where ddd in dir(path) and like(ddd, mask);
+
+/* Streams */
+create function section (Stream s, Number start, Number stop) -> Stream
+  /* The section of stream s starting at position start and ending at stop */
+  as streamof(bsection(in(s), start, stop));
+
+create function start_at(stream s, Number i) -> stream
+  /* The substream starting at position i of s */
+  as streamof(start_at0(in(s), i));
+
+create function first_n(stream s, Number i) -> Stream
+  /* The substream ending at position i of s */
+  as section(s, 0, i);
+
+create function changed(Stream s) -> Stream
+  /* Stream contians only events which are different than previous ones */
+  as streamof(changed0(in(s)));
+
+create function readlines0(Charstring file, Charstring delim)
+                       -> Bag of Charstring
+  as foreign 'readlines--+';
+
+create function readlines(Charstring file, Charstring delim)
+                      -> Stream of Charstring
+  /* Stream of lines separated by delim in a file */
+  as streamof(readlines0(file,delim));
+
+lisp;
+
+(defun lreadfile-+ (fno filename o)
+  (with-input-file s filename
+		   (let (row)
+		     (while (neq (setq row (read s)) '*EOF*)
+		       (osql-result filename row)))))
+
+:osql
+
+create function readfile(Charstring filename) -> Bag of Object o
+  as foreign 'lreadfile-+';
+
+create function readfiles(Vector v) -> Bag of Object
+  as select readfile(s) 
+     from charstring s
+     where s in v;
+
+create function winagg(Bag b, Number size, Number stride) -> Bag of Vector 
+  /* winagg(input, bufsize, step).
+     From an input stream of objects, generate vectors of objects.
+     Each [step] incoming objects, emit a vector containing
+     the [bufsize] last incoming objects.
+     winagg is used for aggregation, sampling etc.
+  */
+  as foreign 'winaggbf';
+
+create function javagc() -> Boolean 
+  /* Call Java's garbage collector */
+  as foreign "JAVA:AmosLib/javaGC";
+
+create function filedate(Charstring file) -> Date
+   /* The time when a file was last updated */
+   as foreign "filedate-";
+
+create function file_exists(Charstring file) -> Boolean
+  /* Does a file exist? */
+  as some(filedate(file));
+
+create function directoryp(Charstring file) -> Boolean
+  /* Is a file a directory? */
+  as foreign "directoryp-";
+
+create function concat(Charstring x, Charstring y) -> Charstring
+  /* Concatenate strings */
+  as x+y;
+
+/*******************************/
+/***   Math functions        ***/
+/*******************************/
+
+create function pi() -> real 
+  /* The constant PI */
+  as 3.1415926535897932384626433832795;
+
+create function mlhash(Number x, Number div, Number hashmax) -> Integer
+  as multidirectional ("bbbf" foreign "mlhash" cost {2,1});
+
+create function floor(Number x) -> Integer
+  /* The closest integer <= x */
+  as foreign "floorbf";
+
+create function ceiling(Number x) -> Integer
+  /* The closest integer >= x */
+  as foreign "ceilingbf";
+
+create function round(Number x) -> Integer
+  /* Round x to closest integer */
+  as integer(x);
+
+create function realbytes(Number x) -> Integer
+  /* Convert x to single precision integer without checking sign */
+  as foreign "realbytes-+";
+
+create function sin(Number x) -> Real
+  /* Sine */
+  as foreign "sinbf";
+
+create function asin(Number x) -> Real
+  /* Inverse of sine */
+  as foreign "asinbf";
+
+create function cos(Number x) -> Real
+  /* Cosine */
+  as foreign "cosbf";
+
+create function acos(Number x) -> Real
+  /* Inverse of cosine */
+  as foreign "acosbf";
+
+create function tan(Number x) -> Real
+  /* Tangent */
+  as foreign "tanbf";
+
+create function atan(Number x) -> Real
+  /* Inverse of tangent */
+  as foreign "atanbf";
+
+create function exp(Number x) -> Real
+  as foreign "expbf";
+
+create function ln(Number x) -> Real
+  /* Natural logarithm */
+  as foreign "lnbf";
+
+create function power(Number base, Number power) -> Number
+  /* Exponent base^power and its inverse */
+  as multidirectional ('bbf' foreign 'powerbbf') ('fbb' foreign 'powerfbb'); 
+
+/*******************************/
+/*** Vector functions        ***/
+/*******************************/
+
+create function times(Vector x, Vector y) -> Number
+   /* Scalar product of two vectors */
+  as foreign "vectortimesbbf";
+
+create function vavg(Vector x) -> Number a
+  /* Average of vector of numbers */
+  as select a
+     from Number s
+     where vavgstdev(x) = (a, s);
+
+create function vstdev(Vector x) -> Number s
+  /* Standard deviation of vector of numbers */
+  as select s
+     from Number a
+     where vavgstdev(x) = (a, s);
+
+create function avg(Bag of Number x) -> Number a
+  /* Average of bag of numbers */
+  as select a
+     from Number s
+     where avgstdev(x) = (a, s);
+
+create function stdev(Bag of Number x) -> Number s
+  /* Standard deviation of bag of numbers */
+  as select s
+     from Number a
+     where avgstdev(x) = (a, s);
+
+create function euclid(Vector of Number x, Vector of Number y) -> Number r
+  /* Euclidean distance between two vectors */
+  as foreign 'EUCLIDBBF';
+
+declare_key(#'euclid',{"x","y"});
+
+create function minkowski(Vector of Number, Vector of Number, Number r) 
+                        -> Real 
+  /* Minkowski distance between two vectors */
+  as foreign 'MINKOWSKIBBBF';
+
+create function manhattan(Vector of Number v1, Vector of Number v2) -> Number
+  /* Manhattan distance between two vectors */
+  as minkowski(v1, v2, 1);
+
+create function maxnorm(Vector of Number, Vector of Number) -> Real 
+  /* Maxnorm distance between two vectors */
+  as foreign 'MAXNORMBBF';
+
+create function assertdim(Vector v, Vector w) -> Boolean
+  as asserteq(dim(v), dim(w), 
+              "Dimension mismatch (" + dim(v) + "d, " + dim(w) + "d)");
+
+create function elemtimes(Vector of Number v, Vector of Number w)
+                      -> Vector of Number
+  /* Multiply two vectors element by element */
+  as select vectorize(select i, v[i]*w[i] 
+                      from Integer i)
+     where assertdim(v, w);
+
+create function elempower(Vector of Number v, Number exp)
+                      -> Vector of Number
+  /* Make e^exp for each element e in v */
+  as vectorize(select i, power(v[i], exp) from Integer i);
+
+create function plus(Vector x, Vector y) -> Vector of Number r
+  /* Add elements in vectors x and y */
+  as multidirectional
+    ('bbf' key foreign 'vectorplusbbf' cost {5,1})
+    ('bfb' key foreign 'vectorplusbfb' cost {5,1})
+    ('fbb' key select x where y + x = r); /* x and y commutative */
+
+create function minus(Vector x, Vector y) -> Vector of Number r
+  /* subtract elements in vectors x and y */
+  as select r where y + r = x; 
+
+create function uminus(Vector of Number x) -> Vector of Number
+  /* Negate numbers in vector */
+  as select vectorize(select i, -x[i] from Integer i);
+
+
+create function plus(Vector x, Number y) -> Vector of Number r
+  /* Vector-scalar addition */
+  as multidirectional
+    ('bbf' key foreign 'vectornumplusbbf' cost {5,1})
+    ('fbb' key foreign 'vectornumplusfbb' cost {5,1})
+    ('bfb' foreign 'vectornumplusbfb' cost {5,1});
+
+create function plus(Number lambda, Vector x) ->  Vector of Number r
+  /* Add constant lambda to elements x in vector */
+  as plus(x, lambda);
+
+create function minus(Vector lambda, Number y) -> Vector of Number r
+  /* Subtract constant lambda from elements x in vector */
+  as plus(lambda, - y);
+
+create function minus(Number lambda, Vector of Number y) -> Vector of Number r
+  /* Subtract elements y in vector from constant lambda */
+  as plus(-y, lambda);
+
+/* Vector element operations */
+
+create function elemdiv(Vector of Number v, Vector of Number w) 
+                    -> Vector of Number
+  /* Divide each element in vector v with those in w */
+  as select vectorize(select i, v[i]/w[i] 
+                      from Integer i)
+     where assertdim(v, w);
+
+create function times(Number lambda, Vector of Number w)
+                  -> Vector of Number
+  /* Multiply each element in vector v with those in w */
+  as vectorize(select i, lambda*w[i] 
+               from Integer i);
+
+create function times(Vector of Number w, Number lambda)
+                  -> Vector of Number
+  /* Multiply each element in vector w with constant lambda */
+  as lambda * w;
+
+create function div(Vector of Number w, Number lambda)
+                -> Vector of Number
+  /* Divide each element in vector w with constant lambda */
+  as vectorize(select i, w[i]/lambda from Integer i);
+
+create function zeros(Number dim) -> Vector of Number
+  /* Vector of 0:s */
+  as vectorof(select 0 from Integer i where i in iota(1, dim));
+
+create function ones(Number dim) -> Vector of Number
+  /* Vector of 1:s */
+  as vectorof(select 1 from Integer i where i in iota(1, dim));
+
+create function roundto(Vector of Number v, Number d) -> Vector of Number
+  /* Round each element in vector v to d digits */
+  as vectorize(select i, roundto(v[i], d) from Integer i);
+
+create function meansub(Bag of Vector of Number b) -> Vector of Number
+  /* Transform to N(0, s): Subtract mean */
+  as select w - av
+     from Vector of Number w, Vector of Number av
+     where av = aggv(b, #'avg')
+       and w in b;
+
+create function zscore(Bag of Vector of Number b) -> Vector of Number
+  /* Transform to N(0, 1): Subtract mean, divide by standard deviation */
+  as select (w - av) ./ substv(0,0.00001,st)
+     from Vector of Number w, Vector of Number av, Vector of Number st
+     where av = aggv(b, #'avg')
+       and st = aggv(b, #'stdev')
+       and w in b;
+
+create function maxmin(Bag of Vector of Number b) -> Vector of Number
+  /* Transform to [0, 1]: Subtract min, divide by (max - min) */
+  as select (w - mi) ./ substv(0,00001,ma - mi)
+     from Vector of Number w, Vector of Number ma, Vector of Number mi
+     where ma = aggv(b, #'maxagg')
+       and mi = aggv(b, #'minagg')
+       and w in b;
+
+create function vmtimes(Vector of Number v, Vector of Vector of Number m)
+                    -> Vector of Number
+  /* Vector-matrix multiplication */
+  as vectorize(select i, v * m[i] 
+               from Integer i 
+               where i in iota(0, dim(m)-1));
+
+create function sortpca(Vector of Number val, Vector of Vector of Number vec)
+                    -> Vector 
+  /* Sort the output from PCA() according to the eigval magnitude */
+  as sort((select val[i], vec[i]
+           from Integer i), 'dec');
+
+create function pcascore(Bag of Vector of Number b, Number d)
+                     -> Vector of Number
+ /* Compute the d principal components of the data vectors in b */
+ as select vmtimes(v, topv)
+    from Vector of Vector of Number topv, Vector of Number v
+    where v in b
+      and topv = vectorize(select i, sorted[i][1]
+                           from Vector of Vector sorted, Integer i 
+                           where sorted = sortpca(pca(b))
+                             and i in iota(0, d - 1));
+
+create function unlabel(Bag of (Vector of Number, Object) b)
+                    -> Vector of Number
+  as select v
+     from Vector of Number v, Object label
+     where (v, label) in b;
+
+create function lpcascore(Bag of (Vector of Number, Object) b, Number d)
+                      -> (Vector of Number, Object label)
+ /* Compute the d principal components of the data vectors in b */
+ as select vmtimes(v, topv), label
+    from Vector of Vector of Number topv, Vector of Number v, 
+         Bag of Vector of Number intopca
+    where (v, label) in b
+      and intopca = unlabel(b)
+      and topv = vectorize(
+       select i, sorted[i][1]
+       from Vector of Vector sorted, Integer i 
+       where sorted = sortpca(pca(intopca))
+         and i in iota(0, d - 1));
+
+/*******************************/
+/***    Mapped types         ***/
+/*******************************/
+
+create function mapped_functions (Type mtpo) -> Vector of Function
+   as foreign 'mapped-functions-+';
+
+/*******************************/
+/***    Bag functions        ***/
+/*******************************/
+
+create function bequal(Bag x, Bag y) -> Boolean
+  /* Are bags x and y equal? */
+  as sort(x)=sort(y);
+
+/*******************************/
+/*** Meta-database functions ***/
+/*******************************/
+
+create function theFunctions(Vector of Charstring fns) -> Vector of Function
+  /* Vector of functions with given names fns */
+  as vectorof(select theFunction(fn)
+              from Charstring fn
+              where fn in fns);
+
+create function attributes(Type t) -> Function fn
+  /* The generic names of all property functions of type t */
+  as generic(methods(t));
+
+
+create function generic_name(Function f) -> Charstring
+  /* The generic name of function f */ 
+  as name(generic(f));
+
+create function allsubtypes(Type t) -> Bag of Type
+  /* All types under t in type hierarchy */
+  as select distinct subt
+     from type subt
+     where subt in tclose(#'SUBTYPES', t) and
+           subt != t;
+
+create function allsubtypes(Charstring tn) -> Bag of Charstring
+  /* All types under type named tn in type hierarchy */
+  as name(allsubtypes(typenamed(tn)));
+
+create function getwatermark() -> Object 
+  as foreign 'getwatermark+';
+
+create function usertypes() -> Type t
+   /* Get all user defined types */
+  as select t where oid_nr(t)>getwatermark() and
+                    notany(select name(allsupertypes(t))="COLLECTION");
+
+create function userfunctions() -> Function f
+   /* Get all user defined functions */
+  as select f 
+     where oid_nr(f)>getwatermark() and
+           kindoffunction(f)!="generic";
+
+/*********************************/
+/***        Index utilities    ***/
+/*********************************/
+
+create function create_index(Function f, Charstring var, 
+                             Charstring indtype, Charstring multiplicity)
+                         -> Vector
+   /* Create index identifier on function f, position var, index type indtype. 
+      Multiplicity = 'unique' or 'multiple' */
+   as foreign 'build-index';
+
+create function create_index(Charstring fn, Charstring var, 
+                             Charstring indtype, Charstring multiplicity)
+                         -> Vector
+   /* Create index on function named fn, position var, index type indtype */
+   as create_index(theresolvent(fn),var,indtype,multiplicity);
+
+create function drop_index(Function f, Charstring par) -> Integer
+   /* Remove index on function f parameter par */
+   as foreign 'drop-index';
+
+create function drop_index(Charstring fn, Charstring par) -> Integer
+  /* Remove index on function named fn parameter par */
+  as drop_index(theresolvent(fn),par);
+
+/*********************************/
+/*** Optimization utilities    ***/
+/*********************************/
+
+create function costhint(Charstring fn, Charstring bpat, Object h) -> Function
+  /* Define cost model for function fn and binding pattern bpat. 
+     If h is a vector {c,f} it defines a constant cost c and fanout f.
+     If h is a function if defines an Amos function comuting the cost model */ 
+  as costhint(theresolvent(fn), bpat, h);
+
+create function costhints(Charstring fn)-> Bag of (Charstring bpat, Object c)
+  /* Get all cost models for binding patterns of function fn */
+   as costhints(theresolvent(fn));
+
+create function uncache_costs() -> Integer
+   /* Uncache costs of all functions */
+   as count(uncache_cost(allfunctions()));
+
+create function reoptimize0(Function f) -> Function
+   /* Reoptimize execution plan of function named f, excluding subqueries */
+   as foreign 'reoptimize0-+';
+
+create function reoptimize0(Charstring fn) -> Function
+   /* Reoptimize execution plan of function fn, excluding subqueries */
+   as reoptimize0(theresolvent(fn));
+
+create function reoptimize(Function f) -> Function
+   /* Reoptimize execution plan of function f, including subqueries */
+   as foreign 'reoptimize-+';
+
+create function reoptimize(Charstring fn) -> Function
+   /* Reoptimize execution plan of function FN, including subqueries */
+   as reoptimize(theresolvent(fn));
+
+create function recompile(Function f) -> Function 
+   /* Recompile function f */
+   as foreign 'recompile-+';
+
+create function recompile(Charstring fn) -> Function
+   /* Recompile function named fn */
+   as recompile(theresolvent(fn));
+
+create function calledbySomehow(Function f) -> Function 
+  /* Get all functions called by function f somehow */
+  as tclose(theresolvent("useswhich"),f);
+
+create function derivedCalledbySomehow(Function f) -> Function 
+  /* Get all functions called by function f somehow */
+  as select r from Function r
+     where r = calledbySomehow(f) and
+           kindoffunction(r) in {"derived","foreign"};
+
+create function subplans(Function f) -> Function
+  /* Get all subplans for function f */
+  as foreign 'subplans-+';
+
+create function fullReoptimize(Function f) -> Function
+  /* Reoptimize function f and all functions called by f somehow */
+  as begin
+      for each Function d where d = derivedCalledbySomehow(f)
+          uncache_cost(d);
+      for each Function d where d = derivedCalledbySomehow(f)
+          return reoptimize(d);
+     end;
+
+create function fullReoptimize(Charstring fn) -> Function
+  /* Reoptimize function named fn and all functions called by fn somehow */
+  as fullReoptimize(theresolvent(fn));
+
+create function bijective_function(Function f)->Boolean
+ /* Is function f bijective? */ 
+  as stored;
+
+create function set_bijective_function(Charstring fn, Boolean flg) -> Function
+  /* Declare funtion named fn as bijective */
+  as begin if functionnamed(fn) 
+           then begin set bijective_function(functionnamed(fn))=flg;
+                      return functionnamed(fn);
+                end           
+           else error("No function named " + fn);
+     end;
+
+
+/*********************************/
+/*** Functions needed by Goovi ***/
+/*********************************/
+
+/*
+Real supertypes is used in the GOOVi-typeinspector as underlying 
+for the amos-outliner showing the supertypes of the inspected type.
+*/
+create function real_supertypes(Type t) -> Type 
+  as select x 
+     from Type x 
+     where x=allsupertypes(t) and x != t;
+
+create function allsupertypes_except_object(Type t) -> Type
+  as select x
+     from Type x 
+     where x=allsupertypes(t) and x != typenamed("OBJECT");
+
+create function methods_inherited2(Type t) -> Function
+  as methods(allsupertypes_except_object(t));
+
+create function methods_gen_inherited2(Object o)
+                                   -> (Function x, Charstring, Charstring)
+  as select x, name(generic(x)), name(result_type(x)) 
+     where x = methods_inherited2(typeof(o));
+
+create function supertypenames(Type t) -> Charstring
+  as name(supertypes(t));
+      
+create function methods_inherited(Type t) -> Function
+  as methods(allsupertypes(t));
+
+create function typename(Object o) -> Charstring
+  as name(typeof(o));
+
+create function methods_gen_inherited(Object o) 
+                                  -> (Function x, Charstring, Charstring)
+  as select x, name(generic(x)), name(result_type(x)) 
+     where x = methods_inherited(typeof(o));
+
+create function attributes_inherited(Type t) -> Function
+  as generic(methods_inherited(t));
+
+create function allfunctions_inherited(Type t) -> Function
+  as allfunctions(allsupertypes(t));
+
+create function get_type_structure(Charstring s) -> (Charstring, Vector)
+  as get_type_structure(typenamed(upper(s)));
+
+create function get_type_structure2(Charstring s) -> (Charstring, Vector)
+  as get_type_structure2(typenamed(upper(s)));
+
+create function goovi() -> Object as foreign "JAVA:Goovi.Starter:calloutMain";
+
+
+/**********************************/
+/*** Unload database functions  ***/
+/**********************************/
+
+create function excluded_fns() -> Bag of Function 
+  /* Functions that are excluded by the unloader */
+  as stored;
+
+create function unloadFunction(Function fn) -> Boolean 
+  as foreign 'unloadFunction-';
+
+create function openWritefile(Charstring filename) -> Boolean
+  /* Open file as standard output */ 
+  as foreign 'openWritefile-';
+
+create function closeWritefile() -> Boolean 
+  /* Close standard output file */
+  as foreign 'closeWritefile-';
+
+create function withWritefile(Charstring file, Function fn) -> Object
+  /* Call function fn with file as standard output */
+  as foreign 'withWritefile--+';
+
+create function unloadData1(Charstring file) -> Charstring
+  as begin	declare Function fun, Integer wm;
+                set wm = getwatermark();
+                print("logging off;");
+                for each Function fun 
+                where OID_NR(fun)> wm and
+                      notany(fun in excluded_fns())
+		  unloadFunction(fun);
+		print("clear_oid_mappings();");
+                print("logging on;");
+                return file;
+     end;
+
+create function unload(Charstring file) -> Charstring
+  /* Unload all user data to file */
+  as withWritefile(file, #'unloadData1');
+
+create function oid_mapping(Number orig_oid key) -> Object o as stored;
+
+create function create_new_object(Number orig_oid, Charstring tp)
+	                      -> object
+  as foreign 'new_object--+';
+
+create function new_object(Number orig_oid, Charstring tp) -> Object o
+  as begin
+	set o = oid_mapping(orig_oid) ;
+	if o = nil then
+	  begin
+		set o = create_new_object(orig_oid, tp);
+		set oid_mapping(orig_oid) = o;
+	  end;      
+	return o;
+     end;
+
+create function clear_oid_mappings() -> Boolean
+  as begin clear_function("OID_MAPPING"); end;
+
+add excluded_fns()=resolvents(functionnamed("OID_MAPPING"));
+add excluded_fns()=resolvents(functionnamed("EXCLUDED_FNS"));
+
+/**********************************/
+/*** Partial evaluation         ***/
+/**********************************/
+
+create function parteval(Charstring fn) -> Function
+  /* Declare function fn to be partially evaluated */
+  as begin
+     declare Function fno;
+     set fno = functionnamed(fn);
+     set _static_funcs_(fno)=true;
+     return fno;
+     end;
+
+create function unparteval(Charstring fn) -> Function
+  /* Make function fn not be partially evaluated any longer */
+  as begin
+     declare Function fno;
+     set fno = functionnamed(fn);
+     set _static_funcs_(fno)=false;
+     return fno;
+     end;
+
+parteval("pi");
+parteval("functionnamed");
+parteval("typenamed");
+parteval("theresolvent");
+parteval("vector"); /* Vector construction partial evaluated */
+
+< 'streams.osql';

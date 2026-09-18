@@ -1,0 +1,130 @@
+/*****************************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2005 Ruslan Fomkin, UDBL
+ * $RCSfile: generator.osql,v $
+ * $Revision: 1.3 $ $Date: 2005/03/10 09:29:14 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Generates xRSL script for executing a query on Ingrid and Hagrid. Assumed 
+ * that it runs on Linux (see createAll).
+ *
+ ****************************************************************************/
+load_lisp('../lsp/generator.lsp');
+<'grids_schema.osql';
+<'grids_data.osql';
+
+create function createQueryFile(bag of charstring queries, bag of EventData evfiles, charstring QueryFile) -> charstring as
+begin
+	openwritefile(QueryFile);
+	for each EventData evF where evF=in(evfiles)
+		print("load_root_file(\""+name(evF)+"\");");
+	for each charstring qu where qu=in(queries)
+		print(qu+";");
+	print("quit;");
+	closewritefile();
+	result QueryFile;
+end;
+
+create function createQueryFile(charstring query, bag of EventData evfiles, charstring QueryFile) -> charstring as
+begin
+	openwritefile(QueryFile);
+	for each EventData evF where evF=in(evfiles)
+		print("load_root_file(\""+name(evF)+"\");");
+	print(query+";");
+	print("quit;");
+	closewritefile();
+	result QueryFile;
+end;
+
+create function createQueryFile(bag of charstring queries, EventData evfile, integer partBeg, integer partEnd, charstring QueryFile) -> charstring as
+begin
+	openwritefile(QueryFile);
+	print("load_root_file(\""+name(evfile)+"\","+itoa(partBeg)+","+itoa(partEnd)+");");
+	for each charstring qu where qu=in(queries)
+		print(qu+";");
+	print("quit;");
+	closewritefile();
+	result QueryFile;
+end;
+
+create function createAJob(cluster c, charstring QueryFile, bag of EventData evfiles, charstring fileOut, charstring Executable, charstring Image, integer CPUtime) -> charstring as
+begin
+	openwritefile(fileOut);
+	printfile("&");
+	printfile("(executable="+Executable+")");
+	printfile("(arguments=\""+Image+"\")");
+	printfile("(inputfiles=");
+	printfile("	("+Executable+" \""+binarypath(c)+Executable+"\")");
+	printfile("	("+Image+" \""+binarypath(c)+Image+"\")");
+	printfile("	("+QueryFile+" \""+QueryFile+"\")");
+	for each EventData evF where evF=in(evfiles)
+		printfile("	("+name(evF)+" \""+path(evF)+name(evF)+"\")");
+	printfile(")");
+	printfile("(cputime="+itoa(CPUtime)+")");
+	printfile("(runtimeenvironment="+rootRE(c)+")");
+	printfile("(stdin=\""+QueryFile+"\")");
+	printfile("(middleware>=\"nordugrid\")");
+	printfile("(stdout=\"outGen.out\")");
+	printfile("(stderr=\"errGen.err\")");
+	printfile("(gmlog=\"grid.debug\")");
+	printfile("(jobName=\"POQSEC: "+fileOut+"\")");
+	printfile("(notify=\"be Ruslan.Fomkin@it.uu.se\")");
+	closewritefile();
+	result fileOut;
+end;
+
+create function filesList(integer current, integer files) -> eventdata as
+begin
+	for each integer i, charstring c, eventdata ev where i=iota(cast((files*current) as integer),cast((files*(current+1)-1) as integer)) and c=name(ev) and like(c,"bkg*0"+itoa(i)+".root")
+		result ev;
+end;
+
+create function jobList() -> bag of charstring as stored;
+
+create function statisticJobs(cluster c, integer files, integer jobs) -> bag of charstring as
+begin
+	declare charstring qFile, charstring jFile;
+	for each integer i where i=iota(0, cast((jobs-1) as integer))
+	begin
+		set qFile="files"+itoa(files)+"current"+itoa(cast((i+1) as integer))+".osql";
+		set jFile=nickname(c)+itoa(files)+"files_"+itoa(jobs)+"jobs_"+itoa(cast((i+1) as integer))+".xrsl";
+		createQueryFile("count(optallcuts(:g))",(select ev from eventdata ev where ev=filesList(i,files)),qFile);
+		add jobList() = createAJob(c,qFile,filesList(i,files),jFile,"aleh","aleh.dmp",cputime(c,files));
+	end;
+	result jobList();
+end;
+
+
+create function submissionscript(bag of charstring xrsls, cluster site, charstring fName) -> charstring as
+begin
+	openwritefile(fName);
+	print("date");
+	for each charstring c where c=in(xrsls)
+		print("ngsub -f "+c+" -c "+name(site));
+	print("ldapsearch \'(|(objectclass=nordugrid-cluster)(norudgird-cluster-name="+name(site)+"))\' -h "+name(site)+"  -x -p 2135 -b \'mds-vo-name=local,o=grid\' \'nordugrid-cluster-queuedjobs\' \'nordugrid-cluster-totaljobs\'");
+	closewritefile();
+end;
+
+/* NOTE: Execute on of the Linux command */
+create function createAll(cluster site, integer files, integer jobs) -> charstring as
+begin
+	declare charstring shFile;
+	statisticJobs(site, files, jobs);
+	set shFile="submit"+nickname(site)+".sh";
+	result submissionscript(jobList(),site,shFile);
+	toSystem("chmod u+x "+shFile);
+end;
+
+create function clusterNamed(charstring name) -> cluster as
+	select cl from cluster cl where nickname(cl)=name;
+
+create function createAll(charstring site, integer files, integer jobs) -> charstring as
+begin
+	declare charstring shFile;
+	statisticJobs(clusterNamed(site), files, jobs);
+	set shFile="submit"+site+".sh";
+	result submissionscript(jobList(),clusterNamed(site),shFile);
+	toSystem("chmod u+x "+shFile);
+end;

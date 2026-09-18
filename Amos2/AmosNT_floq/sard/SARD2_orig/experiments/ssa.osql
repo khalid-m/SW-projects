@@ -1,0 +1,116 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) Silvia Stefanova, UDBL
+ * $RCSfile: ssa.osql,v $
+ * $Revision: 1.2 $ $Date: 2013/12/11 16:29:01 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: SSA Queries from http://surveys.roe.ac.uk/ssa/sqlcookbook.html
+ ****************************************************************************
+ ****************************************************************************/
+
+/* create triple view from local mysql setting */ 
+
+set :id="pssaDS";
+set :url="jdbc:microsoft:sqlserver://localhost;DatabaseName=pssa";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="pssa";
+set :usern="pssa";
+set :passw="pssa";
+set :catal="PSSA";
+set :schem="pssa";
+
+set :upv="pssa";
+set :uriOfupv="http://user.it.uu.se/~udbl/pssa";
+
+defineDS(:id,
+         :url,
+         :driver,
+         :catal,
+         :schem,
+         :usern,
+         :passw);
+
+
+defineUPV(:id,:upv, :uriofupv);
+/*defineUPV(:id,:upv_fn, :uriofupv_fn);*/
+
+DSConnect(:upv);
+
+wrapRDB(jdbcOfDS(:id), :dbname, :catal, :schem);
+
+/*
+set cMap("Source","pssa")=uri("http://udbl.it.uu.se/PSSA/Source"); 
+set cMap("CrossNeighboursEDR","pssa")=uri("http://udbl.it.uu.se/PSSA/"); 
+set ucMap("Source","pssa")="http://udbl.it.uu.se/PSSA/Source"; 
+set ucMap("CrossNeighboursEDR","pssa")="http://udbl.it.uu.se/PSSA/"; 
+set pmap("CrossNeighboursEDR","sdssPrimary","pssa")=URI("http://user.it.uu.se/~udbl/pssa#CrossNeighboursEDR/sdssPrimary");
+set pmap("CrossNeighboursEDR","sdssType","pssa")=URI("http://user.it.uu.se/~udbl/pssa#CrossNeighboursEDR/sdssType");
+set pmap("CrossNeighboursEDR","distanceMins","pssa")=URI("http://user.it.uu.se/~udbl/pssa#CrossNeighboursEDR/distanceMins");
+set pmap("CrossNeighboursEDR","sdssID","pssa")=URI("http://user.it.uu.se/~udbl/pssa#CrossNeighboursEDR/sdssID");
+set pmap("CrossNeighboursEDR","ssaID","pssa")=URI("http://user.it.uu.se/~udbl/pssa#CrossNeighboursEDR/ssaID");
+set pmap("Source","objID","pssa")=uri("http://user.it.uu.se/~udbl/pssa#Source/objID");
+set pmap("Source","ellipI","pssa")=uri("http://user.it.uu.se/~udbl/pssa#Source/ellipI");
+set pmap("Source","ellipR2","pssa")=uri("http://user.it.uu.se/~udbl/pssa#Source/ellipR2");
+set pmap("Source","ellipR1","pssa")=uri("http://user.it.uu.se/~udbl/pssa#Source/ellipR1");
+set pmap("Source","ellipB","pssa")=uri("http://user.it.uu.se/~udbl/pssa#Source/ellipB");
+set pmap("Source","qualI","pssa")=uri("http://user.it.uu.se/~udbl/pssa#Source/qualI");
+set pmap("Source","qualR2","pssa")=uri("http://user.it.uu.se/~udbl/pssa#Source/qualR2");
+set pmap("Source","qualR1","pssa")=uri("http://user.it.uu.se/~udbl/pssa#Source/qualR1");
+set pmap("Source","qualB","pssa")=uri("http://user.it.uu.se/~udbl/pssa#Source/qualB");
+*/
+
+assignIDs(:upv,:catal, :schem);
+
+ViewRDB("pssa");
+
+
+lisp;
+
+(setq _rewrite_filter_ t)
+(setq _save-intermediates_ t)
+
+:osql
+
+Q1: Find the positions of all galaxies brighter than magnitude 20 in B with a local B band extinction is >0.1 mag.
+SELECT TOP 30 ra,dec
+FROM ReliableGalaxies
+WHERE ebmv*4.09 > 0.1
+ORDER BY ra,dec 
+
+set :q1 =
+
+
+Q2:
+SELECT TOP 30 ra,dec, sCorMagB, sCorMagR1, sCorMagR2, sCorMagI
+FROM Source
+WHERE
+ellipR1 < 0.33 AND qualR1 < 2048 AND (prfstatR1 > -5 AND prfstatR1 < +5) AND
+ellipR2 < 0.33 AND qualR2 < 2048 AND (prfstatR2 > -5 AND prfstatR2 < +5) AND
+ABS (sCorMagR1-sCorMagR2) > 3 AND scorMagR1 > 0.0 AND sCorMagR2 > 0.0
+ORDER BY ra,dec 
+
+set :q2 = 
+"select  ?ra ?dec ?scormagb ?scormr1 ?scormr2 ?scormagi
+ from <http://user.it.uu.se/~udbl/pssa>
+ where { ?s <http://user.it.uu.se/~udbl/pssa#Source/ellipR1>   ?er1 .
+	 ?s <http://user.it.uu.se/~udbl/pssa#Source/qualR1>    ?qr1 .
+	 ?s <http://user.it.uu.se/~udbl/pssa#Source/prfStatR1> ?pfsr1 .
+	 ?s <http://user.it.uu.se/~udbl/pssa#Source/ellipR2>   ?er2 .
+	 ?s <http://user.it.uu.se/~udbl/pssa#Source/qualR2>    ?qr2 .
+	 ?s <http://user.it.uu.se/~udbl/pssa#Source/prfStatR2> ?pfsr2 .        
+	 ?s <http://user.it.uu.se/~udbl/pssa#Source/sCorMagR1> ?scormr1 .
+	 ?s <http://user.it.uu.se/~udbl/pssa#Source/sCorMagR2> ?scormr2 .
+	 ?s <http://user.it.uu.se/~udbl/pssa#Source/sCorMagI>  ?scormagi .
+	 ?s <http://user.it.uu.se/~udbl/pssa#Source/sCorMagB>  ?scormagb .
+	 ?s <http://user.it.uu.se/~udbl/pssa#Source/ra>        ?ra .
+	 ?s <http://user.it.uu.se/~udbl/pssa#Source/dec>       ?dec .
+         FILTER ( (?er1 < 0.33) && (?qr1 < 2048) && (?pfsr1 > -5)  && (?pfsr1 < 5 )) .    
+	 FILTER (?er2< 0.33 && ?qr2<2048 && (?pfsr2>-5  && ?pfsr2< 5 )) .    
+	 FILTER ( ABS( ?scormr1 -  ?scormr2)> 3 &&  ?scormr1>0.0 && ?scormr2 >0.0 ) .   }";
+
+eval("create function q2()-><Literal,Literal,Literal,Literal,Literal,Literal> as " + sparql_translate(:q2, true));
+
+pc("q2");
+

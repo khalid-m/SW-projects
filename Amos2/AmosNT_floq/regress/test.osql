@@ -1,0 +1,357 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 1993-2006 Tore Risch, EDSLAB,UDBL
+ * $RCSfile: test.osql,v $
+ * $Revision: 1.96 $ $Date: 2013/12/31 09:28:17 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: AmosQL master regression test
+ ****************************************************************************
+ * $Log: test.osql,v $
+ * Revision 1.96  2013/12/31 09:28:17  torer
+ * Full regression test on all platforms
+ *
+ * Revision 1.95  2013/12/31 09:05:44  torer
+ * Testing advanced updates
+ *
+ * Revision 1.94  2012/08/20 12:56:21  thatr500
+ * Added test cases for MBT rewriter.
+ * Bug fixed :
+ *   Wrong low bound ,and high bound are chosen if there are many indexed
+ *   inequalities.
+ *
+ * Revision 1.93  2012/08/15 18:23:14  torer
+ * New function
+ * (CREATE-TRANSIENT-FOREIGN-FUNCTION ARGTYPES RESTYPES DEF &OPTIONAL COST)
+ * to create transient foreign function which is garbage collected when
+ * no longer referenced
+ *
+ * Revision 1.92  2012/07/17 16:32:36  torer
+ * Regression testing map-query()
+ *
+ * Revision 1.91  2012/04/27 18:44:20  torer
+ * More tests for parallel optional()
+ *
+ * Revision 1.90  2012/04/26 12:49:39  torer
+ * optional(pred) now supported in AmosQL
+ *
+ * Revision 1.89  2012/04/22 19:23:09  torer
+ * nil tolerant mapfunction + better regression testing of nil
+ *
+ * Revision 1.88  2012/01/17 21:51:29  torer
+ * Closure testing to basic Lisp
+ *
+ * Revision 1.87  2011/11/25 04:42:41  larme597
+ * Adding scan regression to Linux.
+ *
+ * Revision 1.86  2011/11/22 18:04:55  torer
+ * Separated regression test of Lisp kernel
+ *
+ * Revision 1.85  2011/04/01 09:12:32  chexu484
+ * non blocking print/read
+ *
+ * Revision 1.84  2011/03/08 13:32:56  torer
+ * grm test at the end
+ *
+ * Revision 1.83  2011/03/07 11:37:27  andan342
+ * Replaced the old Charstring-based parser with new one from SQoND project
+ * (SQoND will next migrate to use AmosQL Object as a base type)
+ *
+ * Revision 1.82  2011/03/05 17:20:05  torer
+ * Test for ObjectLog performance
+ *
+ * Revision 1.81  2011/02/13 16:00:53  torer
+ * merge join as procedural function
+ *
+ * Revision 1.80  2011/01/21 07:30:51  torer
+ * Using debugging(true);
+ *
+ * Revision 1.79  2010/10/12 15:10:18  larme597
+ * Fixing a server problem with remote scans.
+ *
+ * Revision 1.78  2010/09/10 14:41:13  larme597
+ * Adding scans to regression test.
+ *
+ * Revision 1.77  2010/09/08 18:10:20  torer
+ * Testing apply
+ *
+ * Revision 1.76  2010/08/27 12:15:31  andan342
+ * Included GRM parser generator test into main test
+ *
+ * Revision 1.75  2010/08/27 09:03:01  andan342
+ * New SparQL parser test works now
+ *
+ * Revision 1.74  2010/08/27 07:36:05  torer
+ * Andrej's parser test does not work any more
+ *
+ * Revision 1.73  2010/03/01 20:49:15  torer
+ * Labels and parser to kernel regression test
+ *
+ * Revision 1.72  2009/11/09 09:31:25  larme597
+ * Added coroutines again
+ *
+ * Revision 1.71  2009/10/23 14:57:40  zeitler
+ * plot test
+ *
+ * Revision 1.70  2009/10/07 14:55:11  zeitler
+ * read and write numeric and textual ntuples
+ *
+ * Revision 1.69  2009/10/02 18:10:09  torer
+ * *** empty log message ***
+ *
+ * Revision 1.68  2009/09/30 09:05:24  zeitler
+ * topk in release
+ *
+ * Revision 1.67  2009/09/29 21:16:52  zeitler
+ * topk, leastk (and bestk) added to system and tests
+ *
+ * Revision 1.66  2009/09/21 20:30:10  zeitler
+ * Record test not in release
+ *
+ * Revision 1.65  2009/09/21 08:20:33  larme597
+ * Adding coroutines for unix again
+ *
+ * Revision 1.64  2009/09/10 21:15:33  torer
+ * *** empty log message ***
+ *
+ * Revision 1.63  2009/09/04 11:58:02  torer
+ * Temporarily removed leak test
+ *
+ * Revision 1.62  2009/09/01 13:57:02  zeitler
+ * Record tests enabled
+ *
+ * Revision 1.61  2009/08/21 15:01:09  msabesan
+ * Removed record.lsp
+ *
+ * Revision 1.60  2009/08/21 12:44:36  larme597
+ * Adding regresstion tests of scan functions
+ *
+ * Revision 1.59  2009/08/20 17:47:15  zeitler
+ * record tests added to regression
+ *
+ * Revision 1.58  2009/07/31 10:00:13  torer
+ * Testing dynamic lexical Lisp closures
+ *
+ * Revision 1.57  2009/07/07 11:57:29  larme597
+ * coroutines added to unix regression.
+ *
+ * Revision 1.56  2008/12/28 18:46:01  torer
+ * Using function NORMALIZATION to disable/enable DNF
+ *
+ * Revision 1.55  2008/12/27 21:06:04  torer
+ * Non-DNF plans allowed with dynamic programming
+ *
+ * Revision 1.54  2008/12/25 19:36:17  torer
+ * Testing optimization without normalization to DNF
+ *
+ * Revision 1.53  2008/12/18 21:59:28  torer
+ * Testing composite key mapped types
+ *
+ * Revision 1.52  2008/11/25 16:38:08  torer
+ * Aggregate function
+ *   groupby(Bag of <Object gr, Object gv>, function aggop) -> Bag of <Object gr, Object agg>
+ *
+ * Revision 1.51  2008/11/23 15:00:29  torer
+ * Stricter type checking
+ *
+ * Revision 1.50  2008/11/19 07:52:04  torer
+ * groupby not ready yet
+ *
+ * Revision 1.49  2008/11/17 20:28:59  torer
+ * Testing general functional expressions
+ *
+ * Revision 1.48  2008/09/27 17:55:42  torer
+ * Testing coroutines again
+ *
+ * Revision 1.47  2008/09/27 15:16:27  torer
+ * Removed regression testing coroutines
+ *
+ * Revision 1.46  2008/09/23 21:05:04  torer
+ * Added coroutines to ALisp. See regress/coroutines.lsp.
+ *
+ * Revision 1.45  2008/09/03 11:49:00  torer
+ * Removed test for DELAY-EMIT
+ *
+ * Revision 1.44  2008/09/03 11:41:52  torer
+ * *** empty log message ***
+ *
+ * Revision 1.43  2008/08/18 14:23:35  torer
+ * Setting bag values allowed
+ *
+ * Revision 1.42  2008/08/13 09:34:21  torer
+ * Regression testing released version too
+ *
+ * Revision 1.41  2007/12/19 21:06:08  torer
+ * Added externalization of Amos II code for shipping between peers
+ *
+ * Revision 1.40  2007/12/18 16:25:09  torer
+ * Bugs when sending transients with constructor forms over sockets
+ *
+ * Revision 1.39  2007/11/07 14:40:19  torer
+ * Testing C foreign functions
+ * Testing Linear Road
+ *
+ * Revision 1.38  2007/10/18 12:24:16  torer
+ * Added tests for subplan partitioner
+ *
+ * Revision 1.37  2007/01/07 01:32:49  torer
+ * Testing of coercion reinstalled
+ *
+ * Revision 1.36  2007/01/07 00:29:11  torer
+ * Test of coercion temporarily disabled
+ *
+ * Revision 1.35  2006/12/26 16:55:43  torer
+ * Coercion introduced
+ *
+ * Revision 1.34  2006/12/02 15:29:32  torer
+ * Type inference for vector construction
+ *
+ * Revision 1.33  2006/11/24 23:03:39  torer
+ * Datatype STREAM (of type) instroduced
+ *
+ * Revision 1.32  2006/11/07 22:13:55  torer
+ * Added tests for disjunctive queries
+ *
+ * Revision 1.31  2006/07/28 11:09:56  torer
+ * Added regression test of optimizer
+ *
+ * Revision 1.30  2006/05/22 14:31:48  torer
+ * Testing multi-directional derived functions
+ *
+ * Revision 1.29  2006/05/19 13:32:12  zeitler
+ * stat regress testing
+ *
+ * Revision 1.28  2006/05/18 14:50:27  torer
+ * SCSQ functions moved to kernel regression test
+ *
+ * Revision 1.27  2006/04/08 15:39:13  torer
+ * Testing compound keys
+ *
+ * Revision 1.26  2006/03/27 09:41:46  torer
+ * Regression test with partial evaluation and TR rewrite rules
+ *
+ ****************************************************************************/
+
+
+/******************* NOTICE !!!!!!!!!!!!!!! *******************/
+/* Anybody resetting optimization flags should restore them   */
+/* again and all optimizer flags should be transactional!!!   */
+/**************************************************************/
+
+lisp;
+
+(checkequal "Amos Lisp code"
+	    ((verify-all) t)
+	    )
+
+:osql
+debugging(true);
+< 'readtest.osql';
+< 'nb_printread.osql';
+load_lisp("coroutines.lsp");
+< 'cfunctions.osql';
+< 'testamos.osql';
+load_lisp("mapquery.lsp");
+load_lisp("scanregress.lsp");
+normalization(false);
+< "testamos.osql";
+normalization(true);
+< 'resolverr.osql';
+< 'apply.osql';
+< 'bags.osql';
+< 'tuple.osql';
+< 'null.osql';
+< 'optional.osql';
+< 'paroptional.osql';
+< 'updates.osql';
+< 'wildcard.osql';
+< 'disjunctions.osql';
+< 'rewrite.osql';
+< 'multidir.osql'; 
+< 'compkey.osql';
+< 'mapped.osql';
+< 'coerce.osql';
+< 'optimizer.osql';
+< 'distinct.osql';
+load_lisp("testsubplan.lsp");
+< 'sample.osql'; 
+< 'person.osql';
+< 'school.osql';
+< 'cursor.osql';
+< 'join.osql';
+< 'index.osql';
+< 'drugs.osql';
+< 'typeinf.osql';
+< 'testagg.osql';
+< 'groupby.osql'; 
+< 'testvector.osql';
+< 'streams.osql';
+lisp;
+(load "topk.lsp")
+(load "ntuples.lsp")
+(load "plot.lsp")
+(if (not (getenv 'releasing))(load "record.lsp"))
+:osql
+< 'prime.osql';
+< 'genoverl.osql';
+/*< 'family.osql'; recursion disallowed */
+< 'proc.osql'; 
+< 'recproc.osql';
+< 'lobbug.osql';
+< 'inferequal.osql';
+< 'constructor.osql'; /* Leak */
+< 'redeffns.osql';
+< 'testlate.osql'; /* Leak */
+< 'if.osql';
+< 'correctedbugs.osql';
+< 'tclose.osql';
+< 'mbt.osql'; /* Big leak! */
+< 'mbt-rewrite.osql'; 
+< 'dt.osql'; /* Leak */
+< 'integr.osql'; /* Big leak */
+< 'test_temporal.osql';
+< 'testupdates.osql';
+< 'testunload.osql';
+load_lisp("typeinf.lsp");
+< 'transient.osql';
+
+/************ Testing optimization options *****************/
+latebinding("OR"); /* Implement late binding as disjunctions */
+< 'testlate.osql';
+latebinding("DTR"); /* Back to default!!! */
+
+optmethod("randomopt"); /* Test randomized optimization */
+<'testamos.osql'; 
+<'testvector.osql';
+
+optmethod("exhaustive"); /* Test dynamic prog. optimization */
+normalization(false);
+< "testamos.osql";
+<'testvector.osql';
+normalization(true);
+
+optmethod("ranksort");
+rollback;
+/************* Testing creating many objects ****************/
+< 'manyobjs.osql';
+/************* Testing ECA rules ****************/
+lisp;
+(cond (_eca-enabled_ (load-amosql "eca_rules.osql")
+                     (load-amosql "net_effect.osql")
+                     (load-amosql "eca_without_logging.osql")))
+:osql
+
+/***********  Testing statistics *********************/
+lisp;
+
+(load "stat.lsp")
+
+;(with-directory "../lsp/grm" (load "ascend.lsp"))
+;(with-directory "../lsp/grm" (load "regress.lsp"))
+;;; New Charstring-based SparQL parser regression test
+;(with-directory "../lsp/sparql-lsp-parser/test" (load "regress.lsp"))
+
+:osql
+
+

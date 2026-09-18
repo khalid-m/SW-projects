@@ -1,0 +1,54 @@
+Setup MySQL in Linux without root access
+-----------------------------------------
+
+1. Download MySQL Server from http://dev.mysql.com/downloads/mysql/ (Compressed Tar Version preferably)
+
+2. Unpack 
+
+3. Create a .my.cnf file (Include the first DOT) in your home directory.
+
+The .my.cnf file should look something like:
+
+****************************************
+[mysqld]
+datadir=/scratch/javad/mysql/data
+socket=/scratch/javad/mysql/thesock
+port=3036
+
+[mysql]
+socket=/scratch/javad/mysql/thesock
+port=3036
+
+[mysql.server]
+basedir=/scratch/javad/mysql
+
+[safe_mysqld]
+err-log=/scratch/javad/mysql/the.log
+pid-file=/scratch/javad/mysql/the.pid
+****************************************
+
+Create the mysql and mysql/data directories yourself
+
+4. Goto the MySQL Server downloaded directory
+	shell> cd mysql-5.1.59-linux-x86_64-glibc23
+5. Run these commands
+	shell> ./scripts/mysql_install_db
+	shell> ./bin/mysqld_safe --log-error=/scratch/javad/mysql/my.err
+Note that my.err must be in a place that you have access to and it should be writeable
+
+6. Run MySQL Server by
+	shell> mysql --socket=/scratch/javad/mysql/thesock
+--socket must be equal to the value in .my.cnf file.
+
+7. Add the regress user according to http://www.it.uu.se/research/group/udbl/software/setup_instructions.txt
+
+If you don't have the access to create Users in MySQL try command bellow instead of stage 6.
+
+	shell> mysql --socket=/scratch/javad/mysql/thesock --user=root 
+
+
+set :s = mapflex({siota(1,10), siota(11,20)}, #'id', {'hostname':{'u2','u3'}});
+
+GRANT USAGE ON * . * TO 'regress'@'u3.uppmax.uu.se' IDENTIFIED BY 'regress'
+  WITH MAX_QUERIES_PER_HOUR 0 MAX_CONNECTIONS_PER_HOUR 0 
+  MAX_UPDATES_PER_HOUR 0 MAX_USER_CONNECTIONS 0 ;

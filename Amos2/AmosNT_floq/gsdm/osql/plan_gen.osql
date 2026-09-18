@@ -1,0 +1,144 @@
+/**** Plan generation */
+
+create function WD()-> charstring as stored;
+set WD()="round_robin_part";
+
+create function WS(charstring fun)-> <charstring part, charstring comb>
+	 as stored;
+set WS("fft3")=<"fft3part","fft3combine">;
+set WS("pure_polar")=<"stream_part","tuple-concat">;
+set WS("dft3") = <"stream_part","dft3combine">;
+
+create function max_par_degree()-> integer as stored;
+set max_par_degree()=2;
+
+/* {"%","#"} */
+
+create function WS_part(charstring fun)-> charstring p as
+select p from charstring c
+where WS(fun)=<p,c>;
+
+create function WS_comb(charstring fun)-> charstring c as
+select c from charstring p
+where WS(fun)=<p,c>;
+
+/* Auxiliary timestamping dataflow*/
+create function ts_dfg(integer ds)->dataflow d
+as begin
+	declare dataflow c1, integer wsz;
+
+	if ds>2048 then set wsz= round(ds/2048)
+		else set wsz=1;
+	if wsz>1 then
+		set c1= lpipe("ts_it",{},"agg",{wsz})
+	else set c1 = central_dataflow("ts_it",{});
+
+	result c1;
+end;
+
+create function ts_dfg()->dataflow d
+as select ts_dfg(256);
+
+create function add_ts(dataflow x)->dataflow d
+as begin
+	declare dataflow t, dataflow d;
+
+	set t = ts_dfg();
+	set d = pipe(t,x);
+
+	result d;
+end;
+
+create function generator(charstring fun, vector args)-> dataflow
+as begin
+	declare dataflow c, dataflow tsc, dataflow ws, dataflow tsws,
+	dataflow wd, dataflow tswd;
+	
+	set c= central_dataflow(fun,args);
+	set tsc= add_ts(c);
+	set name(tsc)="central";
+	result tsc;
+
+	for each integer p
+	where p=iota(2,max_par_degree())
+	begin
+		set wd= PCC(p,WD(),fun,args,"S-Merge",{0.1});
+		set tswd= add_ts(wd);
+		set name(tswd)="RR";
+		result tswd;
+		set ws= PCC(p,WS_part(fun),fun,args,"OS-Join",{WS_comb(fun)});
+		set tsws= add_ts(ws);
+		set name(tsws)="WS";
+		result tsws;
+	end;
+end;
+
+
+
+create function try_run(dataflow d) -> boolean
+as begin
+	declare integer k;
+
+	register_dataflow(d);	
+
+	start_all(d);
+	wait_for_listening(d);
+
+	install_dataflow(d);
+	install_stop(d);
+	activate_dataflow(d);
+
+	set_wn_globals(d);
+	cq_servers_on(d);
+
+	wait_for_completion(d);
+	report_to_statsrv(d);
+	sleep(5);
+	print_exec_stat(d); 
+
+end;
+
+create function plans() -> bag of dataflow;
+create function newcost(dataflow d) -> real x as stored;
+
+create function set_newcost(dataflow d)-> boolean
+as begin
+	if name(d) = "WS" then set newcost(d)=1.0
+	else if name(d) = "RR" then set newcost(d)=2.0
+	else set newcost(d)=3.0;
+end;
+
+
+create function get_opt(bag of dataflow bd) -> dataflow d as
+select d
+from dataflow d
+where d = bd and
+	newcost(d) = minagg(select newcost(d1) from dataflow d1
+		 where d1 = bd);
+
+
+create function opt(charstring fun, vector args)-> dataflow
+as begin
+	declare dataflow optd,  mstream outs;
+
+	set outs= register_result_stream("LOCAL","LATENCY");
+
+	for each dataflow d where d=generator(fun,args)
+	add plans()=d;
+
+	/* start statistical server */
+	start_statsrv("LOCAL");
+	sleep(5);
+
+	for each dataflow d
+	where d = plans()
+	begin
+		set_exp_params(d,256,10,0.1,100);
+		compexp(d,exp_stream(256),outs);
+		try_run(d);
+		kill_all(d);	
+	end;
+	set optd=get_opt(plans());
+	result optd;
+end;
+

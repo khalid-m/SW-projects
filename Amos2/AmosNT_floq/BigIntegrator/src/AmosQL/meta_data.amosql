@@ -1,0 +1,19 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> 2012 <author> Minpeng Zhu, UDBL
+ * $RCSfile: meta_data.amosql,v $
+ * $Revision: 1.2 $ $Date: 2012/06/12 15:51:25 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: meta data model.
+ *
+ ****************************************************************************/
+
+create function extent_collection(Function efn) -> Charstring coll
+  /* The name of a collection for a source predicate */
+  as stored;
+
+create function collectionSize(Charstring dsn, Charstring collectionname)
+                               -> Integer numOfTuples
+  as stored;

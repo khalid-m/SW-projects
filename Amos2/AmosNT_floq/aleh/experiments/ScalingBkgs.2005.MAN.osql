@@ -1,0 +1,28 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2008 Ruslan Fomkin, UDBL
+ * $RCSfile: ScalingBkgs.2005.MAN.osql,v $
+ * $Revision: 1.1 $ $Date: 2008/01/29 20:34:53 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Experiments to measure scaling performance of cuts over different size
+ * of files from 1 to 41 bkgs files. 
+ * For simple (ranksort) optimization on default AMOS cost model (i.e. without
+ * cost model for aggregates and udfs.
+ * Cut query based on 2005 in best order, which is the paper order.
+ * Run this script in ALEH started by run.current.limited.2005.sh.
+ ****************************************************************************
+ * $Log: ScalingBkgs.2005.MAN.osql,v $
+ * Revision 1.1  2008/01/29 20:34:53  ruslan
+ * scaling experiment for MAN 2005
+ *
+ ****************************************************************************/
+
+cd('osql');
+<'../experiments/stream.osql';
+
+openwritefile('../experiments/ScalingBkgs.2005.MAN.txt');
+manscaling(5);
+closewritefile();

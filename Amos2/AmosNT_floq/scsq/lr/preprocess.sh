@@ -1,0 +1,2 @@
+cat cardatapoints150.out|awk '{print "#(",$1,")"}'|sed 's/ // 'g|sed 's/,/ /'g >cardatapoints15.out
+cat historical-tolls150.out|awk '{print "#(",$1,")"}|sed 's/ // 'g|sed 's/,/ / /'g >historical-tolls15.out

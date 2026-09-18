@@ -1,0 +1,154 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2006 Ruslan Fomkin, UDBL
+ * $RCSfile: stream.osql,v $
+ * $Revision: 1.2 $ $Date: 2006/12/18 14:32:00 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Streaming approach. For Each event vector returned by ROOT wrapper an 
+ * event struct and sturcts for particles are created. Particle structs are 
+ * stored as properties during event struct constructing. Each kind of 
+ * particles are stored in own property vector.
+ *
+ ****************************************************************************
+ * $Log: stream.osql,v $
+ * Revision 1.2  2006/12/18 14:32:00  ruslan
+ * Loading operation.lsp is moved from formulas.osql to stream.osql
+ *
+ * Revision 1.1  2006/12/13 13:25:51  ruslan
+ * stream implementation of ALEH with structs
+ *
+ ****************************************************************************/
+
+load_lisp("../lsp/stream.lsp");
+
+create function get_slot(struct ev, integer i)-> object o as
+	foreign "get_slotbbf";
+/* General functions to create ALEH objects. */
+create function new_event(Object r, Vector cont)-> event s key
+   as foreign "new_structbbf";
+create function new_particle(Object r, Vector cont)-> particle s key
+   as foreign "new_structbbf";
+create function new_jetb(Object r, Vector cont)-> jetb s key
+   as foreign "new_structbbf";
+create function new_lepton(Object r, Vector cont)-> lepton s key
+   as foreign "new_structbbf";
+create function new_electron(Object r, Vector cont)-> electron s key
+   as foreign "new_structbbf";
+create function new_muon(Object r, Vector cont)-> muon s key
+   as foreign "new_structbbf";
+
+parteval('typenamed');
+
+/* Functions creating specific structs and storing the given properties. */
+create function new_event(integer id, charstring filename, real PxMiss, 
+		real PyMiss, vector electrons, vector muons, 
+		vector jetbs)-> Event ev  as
+	select new_event(typenamed("event"),{id,filename,PxMiss,PyMiss,
+		electrons, muons, jetbs});
+
+create function new_electron(integer kf, real px, real py, real pz, real ee)->
+		electron e as
+	select new_electron(typenamed("electron"),{kf,px,py,pz,ee});
+
+create function new_muon(integer kf, real px, real py, real pz, real ee)->
+		muon m as
+	select new_muon(typenamed("muon"),{kf,px,py,pz,ee});
+
+create function new_jetb(integer kf, real px, real py, real pz, real ee)->
+		jetb j as
+	select new_jetb(typenamed("jetb"),{kf,px,py,pz,ee});
+
+/* Functions returning values of different stuct fields. */
+/* For events. */
+create function id(event ev) -> integer as
+	select get_slot(ev,0);
+create function filename(event ev) -> charstring as
+	select get_slot(ev,1);
+create function PxMiss(event ev) -> real as
+	select get_slot(ev,2);
+create function PyMiss(event ev) -> real as
+	select get_slot(ev,3);
+create function electrons(event ev) -> bag of electron as
+	select in(v)
+	from vector v
+	where v=get_slot(ev,4);
+create function muons(event ev) -> bag of muon as
+	select in(v)
+	from vector v
+	where v=get_slot(ev,5);
+create function jetbs(event ev) -> bag of jetb as
+	select in(v)
+	from vector v
+	where v=get_slot(ev,6);
+
+/* For particles. */
+create function kf(particle p)-> integer as
+	select get_slot(p,0);
+create function px(particle p)-> real as
+	select get_slot(p,1);
+create function py(particle p)-> real as
+	select get_slot(p,2);
+create function pz(particle p)-> real as
+	select get_slot(p,3);
+create function ee(particle p)-> real as
+	select get_slot(p,4);
+
+/* Creating electron structs for a given event and streaming them. */
+create function electrons(vector props)-> Electron as
+select new_electron(cast(cast(props[3] as vector)[i] as integer),
+	cast(cast(props[4] as vector)[i] as real),
+	cast(cast(props[5] as vector)[i] as real),
+	cast(cast(props[6] as vector)[i] as real),
+	cast(cast(props[7] as vector)[i] as real))
+from integer i
+where i=iota(0,cast(cast(props[2] as integer)-1 as integer));
+
+/* Creating muon structs for a given event and streaming them. */
+create function muons(vector props)-> Muon as
+select new_muon(cast(cast(props[9] as vector)[i] as integer),
+	cast(cast(props[10] as vector)[i] as real),
+	cast(cast(props[11] as vector)[i] as real),
+	cast(cast(props[12] as vector)[i] as real),
+	cast(cast(props[13] as vector)[i] as real))
+from integer i
+where i=iota(0,cast(cast(props[8] as integer)-1 as integer));
+
+/* Creating jetb structs for a given event and streaming them. */
+create function jetbs(vector props)-> JetB as
+select new_jetb(cast(cast(props[15] as vector)[i] as integer),
+	cast(cast(props[16] as vector)[i] as real),
+	cast(cast(props[17] as vector)[i] as real),
+	cast(cast(props[18] as vector)[i] as real),
+	cast(cast(props[19] as vector)[i] as real))
+from integer i
+where i=iota(0,cast(cast(props[14] as integer)-1 as integer));
+
+/* Accessing wrapper, creating event structs and streaming them. */
+create function aleh_stream(charstring filename)-> bag of Event ev as
+select ev
+from integer id, vector v
+where <{filename,"/ATLFAST","h51;1",id,{"Pxmiss","Pymiss","Nele","Kfele",
+	"Pxele","Pyele","Pzele","Eeele","Nmuo","Kfmuo","Pxmuo","Pymuo","Pzmuo",
+	"Eemuo","Njetb","Kfjetb","Pxjetb","Pyjetb","Pzjetb","Eejetb"}},v> 
+	= 
+	root_access_project(filename,"/ATLFAST","h51;1",{"Pxmiss","Pymiss",
+	"Nele","Kfele","Pxele","Pyele","Pzele","Eeele","Nmuo","Kfmuo","Pxmuo",
+	"Pymuo","Pzmuo","Eemuo","Njetb","Kfjetb","Pxjetb","Pyjetb","Pzjetb",
+	"Eejetb"})
+	and ev=new_event(id,filename,cast(v[0] as real),cast(v[1] as real),
+		vectorof(electrons(v)),vectorof(muons(v)),vectorof(jetbs(v)));
+
+
+/* Streaming more general particle types. */
+create function leptons(event ev)-> Lepton l as
+select l
+where l=electrons(ev) or l=muons(ev);
+
+create function particles(event ev)-> Particle p as
+select p
+where p=leptons(ev) or p=jetbs(ev);
+
+load_lisp("../lsp/operations.lsp");

@@ -1,0 +1,87 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Ruslan Fomkin, UDBL
+ * $RCSfile: stream.profiling.osql,v $
+ * $Revision: 1.7 $ $Date: 2007/12/12 09:59:50 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Regression test for ALEH project for streamed approach with 
+ * ontology implemented with use of structs, which represent objects in
+ * transient way. The disjunctive call for retrieving particles of more
+ * general type is closed by using multidirectional with select stmt. 
+ * Dynamic profiling.
+ * Tests that some cut queries over entire file t.root located in ROOT wrapper
+ * home directory.
+ ****************************************************************************
+ * $Log: stream.profiling.osql,v $
+ * Revision 1.7  2007/12/12 09:59:50  ruslan
+ * loading cost models removed from cuts script to making scripts to be able to have different cost model in parallel, e.g. for desktop and for Hagrid
+ *
+ * Revision 1.6  2007/09/28 09:55:55  ruslan
+ * more robust test
+ *
+ * Revision 1.5  2007/09/28 07:37:28  ruslan
+ * meeting better randomization in randomopt
+ *
+ * Revision 1.4  2007/09/20 09:32:12  ruslan
+ * stabilizing regression test result
+ *
+ * Revision 1.3  2007/09/20 07:07:55  ruslan
+ * stabilizing regression test result
+ *
+ * Revision 1.2  2007/09/19 14:39:27  ruslan
+ * more profiling time to get stable result
+ *
+ * Revision 1.1  2007/09/17 08:12:56  ruslan
+ * regression test of dynamic profiling
+ *
+ ****************************************************************************/
+
+lisp;
+(setq _clock-profile_ 0.8) ; otherwise regression test is to slow
+:osql
+
+cd("osql");
+<'formulas.stream.osql';
+<'cost_model.udfs.stream.osql';
+<"cuts.const.stream.osql";
+
+grouping(true);
+
+create function idExpCuts() -> integer as
+select id(ev) from event ev where 
+	ev=expcuts("../../wrappers/ROOTWrap/t.root");
+
+lisp;
+(checkequal "Fragmentation of id(expcuts()) into groups"
+	    ((length (selectbody-groups-fns
+		      (getselectbody 'idExpCuts->integer)))
+	     '2)
+	    ((length (second (selectbody-groups-fns
+			      (getselectbody 'idExpCuts->integer))))
+	     '8))
+:osql
+
+profiling(true);
+set_nochange_counter(2);
+
+lisp;
+(checkequal "Collecting statistics about groups"
+	    ((osql "idExpCuts();")
+	     '((19015) (24455)))
+	    ((osql "count(select print_aggstat());")
+	     '((9)))
+	    ((gethash (car (selectbody-groups-fns 
+			    (getselectbody 'idExpCuts->integer))) 
+		      _counter-of-calls_)
+	     '6))
+
+(checkequal "Greedy optimization with the dynamic profiling, exp cuts"
+	    ((second (lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'idexpcuts->integer)) 
+	      '(2 10)))
+	     '2990041)
+	    ((osql "idexpcuts();")
+	     '((19015) (24455))))
+:osql

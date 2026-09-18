@@ -1,0 +1,31 @@
+/***************************************************************
+ * AMOS2
+ *  
+ * Author: (c) 2011 Robert Kajic, UDBL
+ * $RCSfile: master.osql,v $
+ * $Revision: 1.4 $ $Date: 2011/04/27 18:16:37 $
+ * $State: Exp $ $Locker:  $
+ * 
+ * Description: Loads all regression tests. 
+ * ============================================================
+ * $Log: master.osql,v $
+ * Revision 1.4  2011/04/27 18:16:37  roka4241
+ * Turns out we do need an unwind protect wrapping iterator emission. Settings for command line building and regression testing.
+ *
+ * Revision 1.3  2011/04/27 14:23:44  torer
+ * *** empty log message ***
+ *
+ * Revision 1.2  2011/04/07 17:48:21  roka4241
+ * Calling of python functions with amos scans and iterating over the scan transparently in python.
+ *
+ * Revision 1.1  2011/02/01 18:45:03  roka4241
+ * Added regression tests for much of the current callout functionality.
+ *
+ *
+ **************************************************************/
+lisp;
+
+(load "regress/list.lsp")
+(load-amosql "regress/callout.osql")
+
+:osql

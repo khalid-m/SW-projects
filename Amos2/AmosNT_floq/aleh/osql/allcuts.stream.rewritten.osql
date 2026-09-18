@@ -1,0 +1,235 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2008 Ruslan Fomkin, UDBL
+ * $RCSfile: allcuts.stream.rewritten.osql,v $
+ * $Revision: 1.2 $ $Date: 2008/09/06 10:48:33 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Cuts queries for SALEH. Names are according the Thesis
+ *  It contains cuts for the both analyses.
+ * It is rewritten implementation.
+ ****************************************************************************
+ * $Log: allcuts.stream.rewritten.osql,v $
+ * Revision 1.2  2008/09/06 10:48:33  ruslan
+ * paper and scientist order of cuts in partial queries implementing six cuts
+ *
+ * Revision 1.1  2008/09/03 11:24:20  ruslan
+ * Implementations of the both analyses are moved in one file and function names correspond to the thesis
+ *
+ ****************************************************************************/
+
+/* Three Lepton Cut. Used in both analyses */
+create function isolatedLeptons(Event ev) -> bag of Lepton as
+	select l from Lepton l
+	where l=leptons(ev) and pt(l) > 7.0 and abs(eta(l)) < 2.4;
+
+create function threeLeptonCut (Event ev) -> Boolean as
+	select count(isolatedLeptons(ev))=3 and
+		somec(select r from real r 
+			where r=Pt(isolatedLeptons(ev)) and r>20.0);
+
+/* Z Veto Cut. Used in the Six Cuts Analysis */
+create function oppositeLeptons(Event ev) -> bag of <Lepton l1, Lepton l2> as
+	select l1, l2
+	where l1 = leptons(ev) and l2 = leptons(ev) and Kf(l1)=-Kf(l2)
+		and kf(l1)>0;
+
+create function EvInvMass(Event ev) -> bag of real r as
+	select r
+	from lepton l1, lepton l2
+	where <l1,l2> = oppositeLeptons(ev) and
+		r = absinvMass(l1,l2,91.1882) and
+		r < 10.0;
+
+create function zVetoCut(Event ev) -> Boolean as
+	select notanyc(EvInvMass(ev));
+
+/* Hadr Top Cut. Used in the Six Cuts Analysis */
+create function okJetsFn(Event ev) -> bag of Jet as
+	select j from Jet j where j=jets(ev) and abs(eta(j))<4.5 and
+		pt(j)>20.0;
+create function okJets(Event ev) -> bag of Jet as
+	select cachefn(functionnamed("EVENT.OKJETSFN->JET"),20,ev);
+
+create function bJets(Event ev) -> bag of Jet as
+	select j from Jet j where j=okJets(ev) and
+		kf(j)=5;
+
+create function wJets(Event ev) -> bag of Jet as
+	select j from Jet j where j=okJets(ev) and
+		kf(j)!=5;
+
+create function wPairs(Event ev) -> bag of <Jet j1, Jet j2> as
+	select j1,j2
+	where j1=wJets(ev) and j2=wJets(ev) and
+		absInvMass(j1,j2,80.419)<15.0 and j1>j2; 
+
+create function topComb(Event ev) -> bag of <Jet j1, Jet j2, Jet bj> as
+	select j1,j2,bj
+	where <j1,j2> = wPairs(ev) and bj=bJets(ev) and
+		absInvMass(j1,j2,bj,174.3)<35.0;
+
+create function hadrTopCut(Event ev) -> Boolean as
+	select somec(topComb(ev));
+
+/* Jet Veto Cut. Used in the Six Cuts Analysis */
+create function mTopComb(Event ev) -> <Jet j1, Jet j2, Jet bj> as
+	select j1,j2,bj
+	from real r
+	where <r,j1,j2,bj> = minagg4(select rt, j1,j2,bj
+				from real rt,
+					Jet j1, Jet j2, Jet bj
+				where <j1,j2,bj> = topComb(ev) and
+					rt=absInvMass(j1,j2,bj,174.3));
+
+create function leftJets(Event ev) -> bag of Jet as
+	select j from Jet j, Jet j1, Jet j2, Jet bj
+	where j=okJets(ev) and <j1,j2,bj> =mTopComb(ev)
+		and not_in(j,j1,j2,bj);
+
+create function jetVetoCut(Event ev) -> Boolean as
+	select notanyc(select j from Jet j 
+			where j=leftJets(ev) and Pt(j)>70.0);
+
+/* Other cuts. Used in Six Cuts Analysis. */
+create function leptonCuts(Event ev) -> Boolean as
+	select notanyc(select l from Lepton l 
+			where l=isolatedLeptons(ev) and Pt(l)>150.0)
+		and somec(select r from real r 
+			where r=Pt(isolatedLeptons(ev)) and r<=40.0);
+
+create function missEeCuts(Event ev) -> Boolean as
+	select modulo(PxMiss(ev),PyMiss(ev))>=40.0
+		and <x,y> = sum2(select Px(l),Py(l) from lepton l
+				where l=isolatedleptons(ev))
+		and effectiveMass(PxMiss(ev),PyMiss(ev),x,y)<=150.0
+	from real x, real y;
+
+/* Two Lepton Cut. Used in the Four Cuts Analysis */
+create function TwoLeptonCut(Event ev) -> boolean as
+select TRUE
+where somec(
+	select l1,l2
+	from real r, lepton l1, lepton l2
+	where r=invMass(l1,l2)and 
+		l1=isolatedleptons(ev) and l2=isolatedleptons(ev) and 
+		kf(l1)=-kf(l2) and r>10 and r<63 and kf(l1)>0);
+
+/* Top Cut. Used in the Four Cuts Analysis */
+create function wPair(Event ev) -> <Jet j1, Jet j2> as
+select j1, j2
+where j1=okJets(ev) and j2=okJets(ev) and j1>j2 and
+	absInvMass(j1,j2,80.419)<15.0;
+
+create function threeJets(Event ev) -> <Jet j1, Jet j2, Jet bj> as
+select j1,j2,bj
+where <j1,j2> = wPair(ev) and not_in(bj,j1,j2) and
+	absInvMass(j1,j2,bj,174.3)<35.0 and bj=okJets(ev);
+
+create function topCut(Event ev) -> boolean as
+select TRUE
+where somec(threeJets(ev));
+
+/* Jet Cut. Used in the Four Cuts Analysis */
+create function jetCut(Event ev) -> boolean as
+select TRUE
+where sum(select pt(j)
+	from Jet j, Jet j1, Jet j2, Jet bj, real r
+	where not_in(j,j1,j2,bj) and
+			<r,j1,j2,bj> = minagg4(select rt,j1,j2,bj
+					from real rt, Jet j1, Jet j2, Jet bj
+					where <j1,j2,bj> = threeJets(ev) and
+						rt=absInvMass(j1,j2,bj,174.3))
+		and pt(j)>50 and j=jets(ev))<300;
+
+/************************* The Six Cuts Analysis ****************/
+/* expensive order */
+create function sixcuts(charstring filename) -> Event ev as
+select ev
+where ev=aleh_stream(filename) and
+	hadrTopCut(ev) and jetvetocut(ev) and 
+	misseecuts(ev) and zvetocut(ev) and 
+	threeleptoncut(ev) and leptoncuts(ev);
+/* Best-effort manually optimized order */
+create function optsixcuts(charstring filename) -> Event ev as
+	select ev
+	where ev=aleh_stream(filename) and
+		threeleptoncut(ev) and leptoncuts(ev) and 
+		misseecuts(ev) and zvetocut(ev) and 
+		hadrTopCut(ev) and jetvetocut(ev);
+/* Order from original paper 2003, but some cuts are different */
+create function papersixcuts(charstring filename) -> Event ev as
+select ev
+where ev=aleh_stream(filename) and
+	threeleptoncut(ev) and hadrTopCut(ev) and
+	zvetocut(ev) and jetvetocut(ev) and
+	leptoncuts(ev) and misseecuts(ev);
+/* Order from Christian's implementation */
+create function scientsixcuts(charstring filename) -> Event ev as
+	select ev
+	where ev=aleh_stream(filename) and
+		threeLeptonCut(ev) and zVetoCut(ev)
+		and hadrTopCut(ev) and jetVetoCut(ev) and 
+		leptonCuts(ev) and missEeCuts(ev);
+
+/************* On partition of a file. *************/
+/* An expensive order */
+create function sixcuts(charstring filename, integer firstEvent, 
+		integer lastEvent) -> Event ev as
+select ev
+where ev=aleh_stream(filename, firstEvent, lastEvent) and
+	hadrTopCut(ev) and jetvetocut(ev) and 
+	misseecuts(ev) and zvetocut(ev) and 
+	threeleptoncut(ev) and leptoncuts(ev);
+
+create function optsixCuts(charstring filename, integer firstEvent, 
+		integer lastEvent) -> Event ev as
+	select ev
+	where ev=aleh_stream(filename, firstEvent, lastEvent) and
+		threeleptoncut(ev) and leptoncuts(ev) and 
+		misseecuts(ev) and zvetocut(ev) and 
+		hadrTopCut(ev) and jetvetocut(ev);
+
+create function scientsixCuts(charstring filename, integer firstEvent, 
+		integer lastEvent) -> Event ev as
+	select ev
+	where ev=aleh_stream(filename, firstEvent, lastEvent) and
+		threeLeptonCut(ev) and zVetoCut(ev)
+		and hadrTopCut(ev) and jetVetoCut(ev) and 
+		leptonCuts(ev) and missEeCuts(ev);
+
+create function papersixCuts(charstring filename, integer firstEvent, 
+		integer lastEvent) -> Event ev as
+	select ev
+	where ev=aleh_stream(filename, firstEvent, lastEvent) and
+	threeleptoncut(ev) and hadrTopCut(ev) and
+	zvetocut(ev) and jetvetocut(ev) and
+	leptoncuts(ev) and misseecuts(ev);
+
+/*********************** The Four Cuts Analysis ********************/
+/* Expensive order */
+create function fourcuts(charstring filename) -> Event ev as
+select ev
+where ev=aleh_stream(filename) and jetCut(ev) and topCut(ev) and
+	threeLeptonCut(ev) and twoLeptonCut(ev);
+/* Best-effort manually optimized order, which is the same as paper order */
+create function OptfourCuts(charstring filename) -> Event ev as
+select ev
+where ev=aleh_stream(filename) and threeLeptonCut(ev) and
+        twoLeptonCut(ev) and topCut(ev) and jetCut(ev);
+
+/************* On partition of a file. *************/
+/* An expensive order */
+create function fourCuts(charstring filename, integer firstEvent,
+	integer lastEvent) -> Event ev as
+select ev
+where ev=aleh_stream(filename,firstEvent,lastEvent) and jetCut(ev) and 
+	topCut(ev) and threeLeptonCut(ev) and twoLeptonCut(ev);
+
+create function OptfourCuts(charstring filename, integer firstEvent,
+	integer lastEvent) -> Event ev as
+select ev
+where ev=aleh_stream(filename,firstEvent,lastEvent) and threeLeptonCut(ev) and
+        twoLeptonCut(ev) and topCut(ev) and jetCut(ev);

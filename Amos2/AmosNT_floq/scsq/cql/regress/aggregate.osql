@@ -1,0 +1,11 @@
+lisp;
+
+(checkequal "aggregation with multiple aggregation functions."
+            ((swinbag-in (osql "
+in(w_group_by({2}, 
+              {3, 3}, 
+              {#'sum', #'count'}, 
+              w_tuple(vstreamfile('data/bid'), 10, 10, 0)));"))
+             '((#(1 360 3)) 
+               (#(1 360 3) #(3 50 1) #(4 80 1)) 
+               (#(1 360 3) #(3 50 1) #(4 80 1) #(10 170 5)))))

@@ -1,0 +1,99 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2002 Martin Hansson, UDBL
+ * $RCSfile: amostest.osql,v $
+ * $Revision: 1.8 $ $Date: 2005/01/04 17:51:42 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Regression test of Amos wrapper.
+ *
+ ****************************************************************************/
+lisp;
+
+(global-eval
+ '(with-directory 
+   (concat (getenv "amos_home") "/wrappers/Amos") 
+   (load "load_wrapper.lsp")))		; load Amos add-on
+
+(defvar _temp_watermark_ _system-watermark_)
+:osql
+set :nameserver='FOO';
+
+register('nano');
+
+create type hemmaraggare properties(ssn integer, name charstring);
+create hemmaraggare(ssn, name) instances :kalle(1, "Kalle"), :Jocke (1, "Jocke");
+
+ship(:nameserver, 'create type raggare properties(ssn integer, name charstring);');
+ship(:nameserver, 'create raggare(ssn, name) instances :kalle(1, "Kalle"), :Jocke (2, "Jocke");'); 
+
+import(amos_named('FOO'),'raggare','bortaraggare');
+
+lisp; 
+(debugging t)
+(defvar p)
+(defvar poc)
+(defvar ponc)
+
+(setq p (gettypenamed 'bortaraggare))
+(setq poc (getfunctionnamed 'bortaraggare_cc->opaque_proxy))
+(setq ponc (getfunctionnamed 'bortaraggare_name_cc->opaque_proxy.charstring))
+
+(checkequal "rudimenteray queries"
+  ((amos-execute "sort(select name(p) from bortaraggare p);") '((#("Jocke" "Kalle"))))
+  ((amos-execute "sort(select ssn(p) from bortaraggare p);")  '((#(1 2)))))
+
+:osql
+create function get_name(integer ssn) -> charstring
+as select name(p) from bortaraggare p where ssn(p)=ssn;
+lisp;
+
+(checkequal "remote compilation of functions with system types as arguments"
+  ((amos-execute "get_name(1);") '(("Kalle")))
+  ((amos-execute "get_name(2);") '(("Jocke"))))
+
+:osql
+
+/* Redefinition of the cost function for core-cluster functions.
+   This will cause the optimizer to choose not to translate all core-cluster
+   function calls and the local execution plan (optpred) for the query
+
+	select name(p), ssn(p) from bortaraggare p;
+
+  Will become:
+
+	(*SELECT* _V_NANO_1+ _V_NANO_2+) <-
+	  (AND (CALL BORTARAGGARE_NAME_CC->OPAQUE_PROXY.CHARSTRING++ 
+		     #[OID 945 "BORTARAGGARE_NAME_CC->OPAQUE_PROXY.CHARSTRING"]
+		     _V_NANO_3 _V_NANO_1)
+	       (CALL APPLY_REMOTE--*
+                     #[OID 787 "AMOS.OPAQUE_PROXY.APPLY_REMOTE->OBJECT"]
+                     #[OID 934 "OPUS"] #[OID {n}] _V_NANO_3 _V_NANO_2))
+  where the argument _v_nano_3 is actually the proxified version of a  raggare
+  object. We thus have the ability to test the case when a remote function is
+  called with an argument that is present on the remote node.
+*/
+
+lisp;
+(setq _system-watermark_ 
+      (1-
+       (oid-idno
+	(getfunctionnamed
+	 'function.vector.vector.amos_core_cluster_cost->integer.integer))))
+:osql
+
+create function amos_core_cluster_cost(function f, vector bpat, vector args)
+  -> <integer costval, integer fanout>
+as select 1,1;
+
+lisp;(setq _system-watermark_ _temp_watermark_):osql
+
+lisp;
+
+(checkequal "calling a remote function locally with a remote object as argument"
+  ((amos-execute "sort(select ssn(p) from bortaraggare p);") 
+   '((#(1 2)))))
+
+:osql
+quit;

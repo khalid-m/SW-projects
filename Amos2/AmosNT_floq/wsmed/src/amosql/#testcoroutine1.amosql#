@@ -1,0 +1,51 @@
+register("me");
+
+
+lisp;
+(checkequal "Check Record Structure" ((osql "record_length(make_record({'a',1}));") '((1))))
+:osql
+
+
+/*To load the operator FF_APPLYP */
+load_lisp('src/lisp/ff_receive_dynamic_mixed_co.lsp');
+
+/*To load the query parallellization functions*/
+load_lisp('src/lisp/pardecom_ff_dynamic_mixed_co.lsp');
+
+
+
+/* To load helping lisp functions */
+load_lisp("src/lisp/coroutine_ffapplyp.lsp");	
+
+
+
+
+create function testfnargs(number delay, integer resultsize)-> <number d, integer a> as
+								 select delay,iota(1,resultsize);
+
+create function javatest(integer finish, integer sleeptime)
+                 -> Object r as foreign  "JAVA:javaTest/startThread";
+
+
+lisp;
+(setq  _regresstest_ t)
+(set-hop 1 2)
+(setq _fanoutl_ (list (list 1 (list 2) "testfun")))
+
+(checkequal "Check PAP with  with Lisp functions" 
+	((osql  "count(PAP(1,{#'testfun'},testfnargs(1,10),{{1,2}},{{1,1}},1));") '((55))))
+	
+(checkequal "Check PAP with  with java functions" 
+	((osql  "count(PAP(1,{#'javatest'},testfnargs(1,5),{{1,2}},{{1,1}},1));") '((15))))
+
+
+(setq _fanoutl_ nil)
+(CLRHASH _hophash_)
+
+:osql
+
+<'src/amosql/test_wsmed.amosql';
+
+
+
+

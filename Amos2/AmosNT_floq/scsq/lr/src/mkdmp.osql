@@ -1,0 +1,47 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 M�rten Svensson, UDBL
+ * $RCSfile: mkdmp.osql,v $
+ * $Revision: 1.8 $ $Date: 2013/05/13 11:59:43 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Master file for creating lr.dmp. given historylr.dmp
+ *
+ ****************************************************************************
+ * $Log: mkdmp.osql,v $
+ * Revision 1.8  2013/05/13 11:59:43  jaba9649
+ * Connecting to JDBC at the beginning of SP runs.
+ *
+ * Revision 1.7  2010/02/02 13:27:37  torer
+ * Revert
+ *
+ * Revision 1.6  2009/11/23 16:56:45  fred2431
+ * Add delay option
+ *
+ * Revision 1.5  2008/10/09 16:10:46  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.4  2008/07/21 13:13:51  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.3  2008/02/12 15:34:05  zeitler
+ * LR cleanup
+ *
+ * Revision 1.2  2007/11/05 15:08:55  masv3245
+ * Removed some of the vectors
+ *
+ * Revision 1.1  2007/10/19 11:30:02  torer
+ * New directory 'src' contains all Linear Road source code
+ * Master files cleaned up
+ *
+ ****************************************************************************/
+
+loadsystem("src","master.osql");
+lisp;
+(register-init-form '(delay-emit nil))
+:osql
+
+
+save "../../bin/lr.dmp";
+quit;

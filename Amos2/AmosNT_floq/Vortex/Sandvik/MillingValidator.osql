@@ -1,0 +1,76 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: MillingValidator.osql,v $
+ * $Revision: 1.7 $ $Date: 2013/11/20 21:01:44 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Milling validation model
+ *
+ ****************************************************************************
+ * $Log: MillingValidator.osql,v $
+ * Revision 1.7  2013/11/20 21:01:44  chexu484
+ * *** empty log message ***
+ *
+ * Revision 1.6  2013/11/16 17:02:40  chexu484
+ * returning stream of tuples
+ *
+ * Revision 1.5  2013/09/29 15:39:40  chexu484
+ * validation stream change to stream of vector instead of stream of tuple
+ *
+ * Revision 1.4  2013/04/29 11:42:53  chexu484
+ * code refactor, consistent with the paper
+ *
+ * Revision 1.3  2012/11/13 10:06:57  chexu484
+ * 1. Learning validator seperated from learning model, similar as milling
+ * 2. Alert messages are time stamped as well
+ *
+ * Revision 1.2  2012/11/12 17:37:05  chexu484
+ * 1. change threshold by function call: th("A", val);
+ * 2. alert stream becomes tuple of (Charstring, Number)
+ *
+ * Revision 1.1  2012/11/08 16:14:46  torer
+ * New milling model
+ *
+ *
+ ****************************************************************************/
+
+create function validate_power(Record r, Number ref) 
+                        -> (Number ts, Number measured)
+  as select ts, measured
+     where measured = powerConsumption(r) and
+           ts = timestampMill(r) and
+	   abs(measured - ref) > th("A");
+
+create function validateMill_b(MillStream cs)
+                             -> Bag of (Number ts, Number measured, Number expected)
+  as select ts, measured, expected
+     where {ts, measured, expected} in
+	model_n_validate(rawStreamTuples(cs), #'expected_power', #'validate_power');
+
+create function validateMill(MillStream cs) -> Stream of (Number, Number, Number)
+  as streamof(validateMill_b(cs));
+
+create function sandvikMillAlertMsg(Vector invalidTuple, CorenetStream s)
+                       -> (Number ts, Charstring msg)
+  as select ts, alertString(s) + ". Threshold: " + th(s) +
+	        ". Measured: " + measured + ". Expected: "+ expected
+     from Number ts, Number measured, Number expected
+     where {ts, measured, expected} = invalidTuple;
+
+create function millAlerts_b(MillStream cs) -> Bag of (Number ts, Charstring msg)
+  as select alertMsg(validationStream, #'sandvikMillAlertMsg', {cs})
+     from Stream validationStream
+     where validationStream = model_n_validate(rawStreamTuples(cs), #'expected_power', #'validate_power');
+
+create function millAlerts(MillStream cs) -> Stream of (Number, Charstring)
+  as streamof(millAlerts_b(cs));
+
+/*** Conveniance functions ***/
+
+create function validateMill(Charstring coreid) -> Stream of (Number, Number, Number)
+  as validateMill(theMillStream(coreid));
+
+create function millAlerts(Charstring coreid) -> Stream of (Number, Charstring)
+  as millAlerts(theMillStream(coreid));

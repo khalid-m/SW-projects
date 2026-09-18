@@ -1,0 +1,77 @@
+/*-*-sql-*-*******************************************************************/
+
+/* Vectors */
+
+/* Single SP */
+
+select count(uall({a}))
+from sp a
+where a = sp(select vectorof(iota(1,2220)) from integer i where i=iota(1,2000));
+
+/* IBM X41: 5.0 s*/
+
+select count(extract(a))
+from sp a
+where a = sp(select vectorof(iota(1,2220)) from integer i where i=iota(1,2000));
+
+/* IBM X41: 4.7 s */
+
+/* Multiple SP */
+
+select count(uall(a))
+from vector of sp a
+where a = spv(vectorof(
+select streamof(select vectorof(iota(1,2220)) from integer i where i=iota(1,500))
+from integer i
+where i=iota(1,4)));
+
+/* IBM X41: 5.5 s */
+
+select count(merge(a))
+from vector of sp a
+where a = spv(vectorof(
+select streamof(select vectorof(iota(1,2220)) from integer i where i=iota(1,500))
+from integer i
+where i=iota(1,4)));
+
+/* IBM X41: 5.4 s */
+
+/* Binary */
+
+/* Single SP */
+
+select count(uall({a}))
+from sp a
+where a = sp(gen_array(1,10000));
+
+/* HP 7100: 5.2 s 
+   IBM X41: 4.3 s */
+
+select count(extract(a))
+from sp a
+where a = sp(gen_array(1,10000));
+
+/* HP 7100: 4.5 s
+   IBM X41: 6.1 s */
+
+/* Multiple SP */
+
+select count(uall(a))
+from vector of sp a
+where a = spv(vectorof(
+select gen_array(1,2500)
+from integer i
+where i=iota(1,4)));
+
+/* HP 7100: 4.9 s 
+   IBM X41: 4.9 s */
+
+select count(merge(a))
+from vector of sp a
+where a = spv(vectorof(
+select gen_array(1,2500)
+from integer i
+where i=iota(1,4)));
+
+/* HP 7100: 5.1 s
+   IBM X41: 6.0 s */

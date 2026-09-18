@@ -1,0 +1,21 @@
+/* Approximate Cost for cwo */
+
+costhint(theresolvent("cwo"),"bbbbf",functionnamed("cwocost"));
+
+lisp;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; cwo cost function
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(foreign-lispfn cwocost ((function f)(vector bpat)(vector args))
+	((integer cost)(integer fanout))
+		(let ((fanout 101))
+		 
+		(cond ((equal (aref args 2) "GetPlacesInside") (setq fanout 102))
+		      ((equal (aref args 2) "GetPlaceDetails") (setq fanout 103)))
+		      
+		(foreign-result 100 fanout)))
+
+:osql

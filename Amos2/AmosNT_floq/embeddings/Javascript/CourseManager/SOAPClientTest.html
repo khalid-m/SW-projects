@@ -1,0 +1,51 @@
+<html>
+    <head>
+        <title></title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <script type="text/javascript" src="scripts/SOAPClient.js"></script>
+        <script  type="text/javascript" language="javascript">
+            var error = "";
+            
+            function btnV_onclick() {
+                var functionName = document.getElementById("func").value;
+                var paramsName = document.getElementById("param").value;
+                var timeout = document.getElementById("timeout").value;
+                if(timeout != "" && timeout != null){
+                    SOAPClient.set_timeout(timeout);
+                }
+                SOAPClient.invoke(functionName, [paramsName],true, btnV_callBack, error_callBack);
+            }
+
+            function btnV_callBack(o, soapResponse)
+            {
+                    document.getElementById("rDiv").innerHTML = "Success callBack:<br>" + o;
+                    document.getElementById("sXmlDiv").innerText = "Soap response:\n" + soapResponse.xml;
+            }
+
+            function error_callBack(e, errorCode){
+                if (e != null){
+                    error = e;
+                    document.getElementById("eDiv").innerHTML = "Error callBack:<br>" + error;
+                    document.getElementById("eCodeDiv").innerHTML = "Error code:<br>" + errorCode;
+                }
+            }
+
+        </script>
+    </head>
+    <body>
+        Set timeout: <input type="text" name ="timeout" size="10" value=""><br>
+        function name: <input type="text" name ="func" size="30" value=""><br>
+        parameters: <input type="text" name ="param" size="50" value=""><br><br>
+        <input type="button" value="invoke" name="btnV" onclick="return btnV_onclick();">
+        <br>
+        <br>
+        <div id="rDiv"></div>
+        <br>
+        <div id="eDiv"></div>
+        <br>
+        <div id="eCodeDiv"></div>
+        <br>
+        <div id="sXmlDiv"></div>
+        <br>
+    </body>
+</html>

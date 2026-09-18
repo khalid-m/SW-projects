@@ -1,0 +1,12 @@
+set :a = jdbc("ibds", getenv("DRIVERDB") );
+set :dburl =  getenv("URLDB");
+connect(:a, :dburl, getenv("USERDB"), getenv("PASSWORDDB"));
+
+sql(:a, "drop table if exists FORM;");
+sql(:a, "drop table if exists eucountry;");
+sql(:a, "drop table if exists SERVICE;");
+sql(:a, "drop table if exists LIFEEVENT;");
+read_sql(:a, "egov.sql");
+
+disconnect(:a);
+quit;

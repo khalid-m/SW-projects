@@ -1,0 +1,117 @@
+/*-*-sql-*-*******************************************************************/
+
+/* QUERIES FROM http://www.w3.org/TR/2013/REC-sparql11-update-20130321/
+*/
+
+/* LOAD 5.before.ttl -> http://example/addresses */
+
+set :u5 = "
+PREFIX foaf:  <http://xmlns.com/foaf/0.1/>
+
+WITH <http://example/addresses>
+DELETE { ?person foaf:givenName 'Bill' }
+INSERT { ?person foaf:givenName 'William' }
+WHERE
+  { ?person foaf:givenName 'Bill'
+  } 
+";
+
+/* LOAD 6x.before.ttl */
+/* changed 1948 to 1975, 'Principles' to 'Fundamentals' for compatibility with 8 */
+
+/* changed 1970 to 1976 */
+set :u6x = '
+PREFIX dc:  <http://purl.org/dc/elements/1.1/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+DELETE
+ { ?book ?p ?v }
+WHERE
+ { ?book dc:date ?date .
+   FILTER ( ?date > "1976-01-01T00:00:00-02:00"^^xsd:dateTime )
+   ?book ?p ?v
+ }
+';
+
+/* LOAD 7.before.ttl -> http://example/addresses */
+
+set :u7 = "
+PREFIX foaf:  <http://xmlns.com/foaf/0.1/>
+
+WITH <http://example/addresses>
+DELETE { ?person ?property ?value } 
+WHERE { ?person ?property ?value ; foaf:givenName 'Fred' } 
+";
+
+/* LOAD 8.bookStore.ttl -> http://example/bookStore */
+/* LOAD 8.bookStore2.before.ttl -> http://example/bookStore2 */
+
+/* changed 1970 to 1976 */
+set :u8x = '
+PREFIX dc:  <http://purl.org/dc/elements/1.1/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+INSERT 
+  { GRAPH <http://example/bookStore2> { ?book ?p ?v } }
+WHERE
+  { GRAPH  <http://example/bookStore>
+       { ?book dc:date ?date .
+         FILTER ( ?date > "1976-01-01T00:00:00-02:00"^^xsd:dateTime ) 
+         ?book ?p ?v
+  } }	
+';
+
+/* LOAD 9.people.ttl -> http://example/people */
+/* LOAD 9.addresses.before.ttl -> http://example/addresses */
+
+set :u9 = '
+PREFIX foaf:  <http://xmlns.com/foaf/0.1/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+INSERT 
+  { GRAPH <http://example/addresses>
+    {
+      ?person  foaf:name  ?name .
+      ?person  foaf:mbox  ?email
+    } }
+WHERE
+  { GRAPH  <http://example/people>
+    {
+      ?person  foaf:name  ?name .
+      OPTIONAL { ?person  foaf:mbox  ?email }
+    } }
+';
+
+/* LOAD 10.bookStore.before.ttl -> http://example/bookStore */
+/* LOAD 10.bookStore2.before.ttl -> http://example/bookStore2 */
+
+/* added semicolon after each PREFIX declaration, so they have session scope 
+   changed 'dc:type' to 'a' to conform with the data */
+
+/* stored in w3c-u10x.sparql */
+
+/* LOAD 7.before.ttl */
+
+set :u11 = "
+PREFIX foaf:  <http://xmlns.com/foaf/0.1/>
+
+DELETE WHERE { ?person foaf:givenName 'Fred';
+                       ?property      ?value }
+";
+
+/* LOAD 12.names.before.ttl -> http://example.com/names */
+/* LOAD 12.addresses.before.ttl -> http://example.com/addresses */
+
+set :u12 = "
+PREFIX foaf:  <http://xmlns.com/foaf/0.1/>
+
+DELETE WHERE {
+  GRAPH <http://example.com/names> {
+    ?person foaf:givenName 'Fred' ;
+            ?property1 ?value1
+  }
+  GRAPH <http://example.com/addresses> {
+    ?person ?property2 ?value2
+  }
+}
+";

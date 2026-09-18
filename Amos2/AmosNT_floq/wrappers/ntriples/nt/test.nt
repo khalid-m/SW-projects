@@ -1,0 +1,11 @@
+# decimal numbers
+<http://example.org/resource1> <http://example.org/property> "+20.0"^^<http://www.w3.org/2001/XMLSchema#decimal> .
+<http://example.org/resource2> <http://example.org/property> "-3"^^<http://www.w3.org/2001/XMLSchema#decimal> .
+
+# float numbers
+<http://dbpedia.org/resource/Abadilah> <http://www.w3.org/2003/01/geo/wgs84_pos#lat> "25.43E2"^^<http://www.w3.org/2001/XMLSchema#float> .
+<http://dbpedia.org/resource/Abadilah> <http://www.w3.org/2003/01/geo/wgs84_pos#long> "56.1913888889"^^<http://www.w3.org/2001/XMLSchema#float> .
+
+# Plain literals with languages
+<http://example.org/resource30> <http://example.org/property> "chat"@fr .
+<http://example.org/resource31> <http://example.org/property> "chat"@en .

@@ -1,0 +1,3 @@
+create function sql_cost(Function f, Vector bpat, Vector args)
+                     -> (integer sqlcost, integer sqlfanout)
+  as foreign 'sql_cost---++';

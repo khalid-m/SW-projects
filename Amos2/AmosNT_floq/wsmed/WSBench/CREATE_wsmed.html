@@ -1,0 +1,148 @@
+<html>
+    <head>
+        <title>Create</title>
+        <SCRIPT LANGUAGE="JavaScript" src="Soap_Client.js"></SCRIPT> 
+         <SCRIPT LANGUAGE="JavaScript" src="functions_wsmed.js"></script>
+        <script type="text/javascript" language="javascript">
+            var error,oname,sqlq,i_opara,userIdV;
+            var userId=window.opener.userId;
+                        
+            function loadoperation() {
+                error = null;
+                var soapParams=[oname,sqlq,userIdV];
+                 SOAPClient.invoke("DEFINE_OPERATION", soapParams, true, loadoperation_callBack, error_callBack);
+            }
+
+            function loadoperation_callBack(o, xmlDoc)
+            {
+               if (o == "true"){
+                    //document.getElementById("inforDiv").style.display='none';
+                    document.getElementById("loadDiv").style.display='none';
+                    document.getElementById("showDiv").style.display='none';
+                    document.getElementById("resultDiv").innerHTML=
+                        "<h>You have create the Function:</h><br><br>" +
+                        "<table>" +
+                        "<tr><td>Function name:</td><td>"+oname+"</td></tr>"+
+                        "<tr><td>SQL Query:     </td><td>"+sqlq+"</td></tr>"+
+                        "</table>";
+                    }
+                else{
+                    //document.getElementById("inforDiv").style.display='none';
+                    document.getElementById("loadDiv").style.display='none';
+                    document.getElementById("showDiv").style.display='none';
+                    document.getElementById("resultDiv").innerHTML = "Please make sure you have input the correct SQL query!";
+                }
+            }
+                         
+            
+
+            function error_callBack(e, errorCode){
+                if (e != null){
+                    error = e;
+                    //document.getElementById("inforDiv").style.display='none';
+                    document.getElementById("loadDiv").style.display='none';
+                    document.getElementById("showDiv").style.display='none';
+                    document.getElementById("resultDiv").innerHTML="Error callBack:<br>" + error + "<br><br>Error code:<br>" + errorCode;
+                }
+            }
+            
+            function btnload_onclick(){
+                oname = document.getElementById("txt_oname").value;
+                sqlq = document.getElementById("txt_sqlq").value; 
+                userIdV=parseInt(userId);  
+
+                
+                var v = loadForm();
+                if (v == true){
+                    loadoperation();
+                }
+            }   
+            
+            function loadForm(){
+                var va = true;
+                
+                document.getElementById("onameDiv").style.display='none';
+                document.getElementById("sqlqDiv").style.display='none';
+
+                
+                if (oname == null||oname == ""){
+                    document.getElementById("onameDiv").style.display='block';
+                    va = (va && false);
+                }
+                
+                
+                if (sqlq.indexOf(" ") == -1||sqlq.indexOf("select") == -1||sqlq.indexOf("from") == -1){
+                    document.getElementById("sqlqDivFont").innerText = "Please input valid SQL Query.";
+                    document.getElementById("sqlqDiv").style.display='block';
+                    va = (va && false);
+                }
+                
+
+                return va;
+            }    
+            
+            function btnReset_onclick(){
+                document.getElementById("txt_oname").value="";
+                document.getElementById("txt_sqlq").value="";
+                
+            }
+            
+           
+                        
+            function btnClose_onclick(){
+                window.close();
+            }
+        </script>
+    </head>
+    
+    <body>
+        <h1>Create Functions </h1><br>
+        <br>
+        <br>
+        <div id="showDiv" style="display:block;">
+        <p> <b>An example:</b></p>
+            <table width="90%" border="1" cellspacing="0"  cellPadding="2">
+
+             <tr>
+                   <td>Name of Function:</td> 
+                   <td>op1</td>
+             </tr>
+             <tr>
+                   <td>Sql Qurey:</td> 
+                   <td>select distinct ps.name,pr.nr from person ps,producer pr where ps.country=pr.country and ps.country=?coun and ps.publisher=?pub
+</td>
+             </tr>
+
+             </table>              
+             <br>
+             <br>
+          </div>         
+        <div id="loadDiv" style="display:block;">
+            <p> <b>Enter the parameters for your own operation.</b></p>
+            <table width="90%" border="1" cellspacing="0">
+                <tr>
+                    <td>Name of Function:</td>
+                    <td><input type="text" value="" id="txt_oname" size="15">
+                        <div id="onameDiv" style="display:none;"><font color="red">Name of Operation should not be empty.</font></div>
+                    </td>
+                </tr>
+                
+                <tr>                    
+                    <td>Sql Qurey:</td>
+                    <td><input type="text" value="" id="txt_sqlq" size="150" >
+                        <div id="sqlqDiv" style="display:none;"><font id="sqlqDivFont" color="red"></font></div>
+                    </td>
+                </tr>
+
+
+            </table><br>
+            
+            <input type="button" value="Create" name="btnload" onclick="return btnload_onclick();">
+            <input type="button" id="reset" value="Reset form" onclick="return btnReset_onclick();">
+            <input type="button" id="close" value="Close" onclick="return btnClose_onclick();">
+         </div>
+        
+        <div align="center" id="resultDiv"></div>
+        
+    </body>
+</html>

@@ -1,0 +1,96 @@
+Amos command-line options:
+
+TODO:
+-M image size in MB
+
+
+*******************************************************************************
+* General format:
+*******************************************************************************
+amos2 [-b dump_file | -i [lsp_dir] | dmp_file]
+      [-n ns_name[:port] | -c cli_name | -s srv_name]
+      [-l lisp] [-o osql] [-L lisp_file] [-O osql_file]
+      [-d] [-h | -?]
+
+
+*******************************************************************************
+Options:
+*******************************************************************************
+
+General
+-------------------------------------------------------------------------------
+-?
+-h   - Print this help screen
+-d   - start with debugging ON
+
+Initialization
+-------------------------------------------------------------------------------
+-b dmp   - boot from the dump file "dmp". Giving the special file name
+           "*INIT*" will have the same effect as the "-i" option with
+	   the default Lisp directory.
+-i [lsp] - initialize Amos from the sources in the lisp directory
+           "lsp". The default value is the current working direcory.
+	   With this option you can boot the system from any set of
+	   Lisp sources, without the need to change directories.
+dmp      - string treated as the name of a dump file. For compatibility.
+
+   Exclusive options. The default is to look for the file "amos2.dmp"
+   in the AmosII startup dir.
+
+
+Client/server
+-------------------------------------------------------------------------------
+-n ns[:p]       - become a nameserver "ns" and start listening on port
+                 "p". The default nameserver port is 35021.
+-c cli[@ns]     - register in NS as client "cli" at nameserver "ns".
+                  If a nameserver is not specified, localhost is assumed.
+-s srv[:p][@ns] - register in NS as server "srv" and start listening on
+                  port "p". If a nameserver is not specified,
+		  localhost is assumed.
+
+   Exclusive options. These are a shorthand for the "-l" and "-o"
+   options with specific parameters.
+   REMARK:
+   Currently all option arguments are treated just as simple names.
+
+
+Execution
+-------------------------------------------------------------------------------
+-l lisp  - evaluate all lisp forms in the string "lisp"
+-o osql  - execute the sql in the string "osql"
+-L lispf - load the file "lispf" as a lisp file
+-O osqlf - load the file "osqlf" as an osql file
+
+   These are the most general options, most of the other options are
+   just a short-hand for lisp or osql commands.
+   Can be specified in any order, which will specify also the
+   execution order.
+
+
+*******************************************************************************
+* Examples:
+*******************************************************************************
+- boot from the file "../bin/amos2.dmp"
+amos2 ../bin/amos2.dmp
+
+- this will create a dump file for AMOS2 (if "AmosNT/bin" is the
+  current dir for example)
+amos2 -i ../lsp -o "save \"./amos2.dmp\"; quit;"
+
+- this will:
+  - boot from the dump file "amos2.dmp"
+  - register as a client named "foo"
+  - execute the form:
+    (remote-eval '(formatl t "HELOOOOO" t) "srv")
+amos2 -b amos2.dmp -o "register('foo');" -l "(remote-eval '(formatl t \"HELOOOOO\" t) \"srv\")"
+
+I hope you get the idea :-) ... more to come later.
+
+
+*******************************************************************************
+* Comments:
+*******************************************************************************
+The options are executed AFTER the Amos boot process has finished.
+Exclusions: "-d", "-i"
+
+In the case of exclusive options, the last one has priority.

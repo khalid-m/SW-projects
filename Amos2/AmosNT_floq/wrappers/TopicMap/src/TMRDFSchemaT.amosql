@@ -1,0 +1,225 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Silvia Stefanova, UDBL
+ * $RCSfile: TMRDFSchemaT.amosql,v $
+ * $Revision: 1.19 $ $Date: 2012/05/17 07:33:45 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Generation of Topic Mapc schema triples
+ *
+ ****************************************************************************
+ * $Log: TMRDFSchemaT.amosql,v $
+ * Revision 1.19  2012/05/17 07:33:45  torer
+ * All warnings removed
+ *
+ * Revision 1.18  2012/01/10 08:18:35  torer
+ * New tuple syntax
+ *
+ * Revision 1.17  2011/02/27 17:58:51  torer
+ * Wrong signature
+ *
+ * Revision 1.16  2010/02/26 15:22:51  torer
+ * Disallowing same declaration in arguments and FROM clause in derived function
+ *
+ * Revision 1.15  2009/11/17 17:31:26  torer
+ * '=' changed to 'in'
+ *
+ * Revision 1.14  2008/12/12 10:26:28  silvias
+ * Correct definition of rdfs:Class
+ *
+ * Revision 1.13  2008/11/10 16:01:50  silvias
+ * *** empty log message ***
+ *
+ * Revision 1.12  2008/09/30 13:40:36  torer
+ * index on materialized schema view
+ *
+ * Revision 1.11  2008/02/28 16:07:15  silvias
+ * Changed the notation ":" with "#"
+ *
+ * Revision 1.10  2008/01/11 14:05:56  silvias
+ * Delete the HashMap data structure from Java and put the checking for cross references in Amos
+ *
+ * Revision 1.9  2007/12/03 10:50:49  silvias
+ * SPARQL queries without FRIM clause
+ *
+ * Revision 1.8  2007/09/10 17:30:11  silvias
+ * *** empty log message ***
+ *
+ * Revision 1.7  2007/06/25 20:40:22  silvias
+ * *** empty log message ***
+ *
+ * Revision 1.6  2007/05/02 12:36:15  silvias
+ * Corrected functiontopicMapFunctions
+ *
+ * Revision 1.5  2007/04/30 14:16:26  torer
+ * Function order dependency fixed
+ *
+ ****************************************************************************/
+
+create function topicMapTypes()->Bag of Type
+  as select subtypes(typenamed("TM_Object"));
+
+create function topicMapFunctions()->Function fn
+  as select distinct fn from function fn where fn=allfunctions(topicMapTypes()) and fn!=theresolvent("theTopic");
+
+create function rdf()->charstring as stored;
+/*set rdf()="rdf";*/
+set rdf()="http://www.w3.org/1999/02/22-rdf-syntax-ns";
+
+create function rdfs()->charstring as stored;
+/*set rdfs()="rdfs";*/
+set rdfs()="http://www.w3.org/2000/01/rdf-schema";
+
+create function rdfsclassdef()->charstring as stored;
+/*set rdfsclassdef()="rdfs:Class";*/
+set rdfsclassdef()=rdfs()+"#Class";
+parteval("rdfsclassdef"); /* never changes */
+
+create function rdfspropertydef()->charstring as stored;
+/*set rdfspropertydef()="rdf:Property";*/
+set rdfspropertydef()=rdf()+"#Property";
+parteval("rdfspropertydef"); /* never changes */
+
+create function rdfsdomaindef()->charstring as stored;
+/*set rdfsdomaindef()="rdfs:domain";*/
+set rdfsdomaindef()=rdfs()+"#domain";
+parteval("rdfsdomaindef"); /* never changes */
+
+create function rdfsrangedef()->charstring as stored;
+set rdfsrangedef()=rdfs()+"#range";
+/*set rdfsrangedef()="rdfs:range";*/
+
+create function rdfsrangedef()->charstring as stored;
+/*set rdfsrangedef()=rdfs:range";*/
+set rdfsrangedef()=rdfs()+"#range";
+parteval("rdfsrangedef"); /* never changes */
+
+create function rdfs_literal()->charstring as stored;
+/*set rdfs_literal()="rdfs:Literal";*/
+set rdfs_literal()=rdfs()+"#Literal";
+parteval("rdfs_literal"); /* never changes */
+
+create function namespace_TM()->charstring 
+  /* Namespace for the RDF view of Topic Maps */
+  as stored;
+set namespace_TM()="http://user.it.uu.se/~udbl/TMRDF";
+
+/*
+create function ontology()->charstring 
+   as stored;
+set ontology()="swatm";
+parteval("ontology");*/
+
+create function rdfschemauri()->charstring as stored;
+/*set rdfschemauri()="rdf:type";*/
+set rdfschemauri()=rdf()+"#type";
+parteval("rdfschemauri"); /* never changes */
+
+/*Returns the URI of a property (a TM function) */
+create function tmpropmap(function f)-> charstring
+  as select ontology()+ "#" + generic_name(f);
+
+/*Returns the URI of a type that is a subtype of TM_Object */
+create function tmclassmap (Type t) -> charstring
+  as select ontology()+ "#" + name(t);
+
+/*Checks if a type is literal */
+create function is_literal(Type t)->Boolean
+  as select true where allsupertypes(t)= typenamed("literal");
+
+create function RDF_schemaclassview(Type t) -> 
+                (Charstring s, Charstring p, Charstring o)
+  as select s, p, o
+  where s = tmclassmap(t) and
+        p = rdfschemauri() and
+	o = rdfsclassdef();
+
+create function rdfschemaclass_triples() ->
+       Bag of (Charstring s, Charstring p, Charstring o)
+  /* Generates the triple (type_name, #type, #Class)
+     for each TM type */
+  as select rdf_schemaclassview(topicMapTypes());
+
+create function rdfschemaproperty_triple(Function fn) 
+       -> (Charstring s, Charstring p, Charstring o)
+  /* Generates the triple (function_name, #type, #Property) 
+     for each TM function */
+  as select s,p,o
+   where s = tmpropmap(fn) and 
+	 p = rdfschemauri() and
+         o = rdfspropertydef(); 
+
+create function rdfschemadomain_triple(Function fn) 
+                -> (Charstring s, Charstring p, Charstring o)
+  /* Generates the triple (function_name, #domain, the_domain) 
+     for each TM function */
+  as select s,p,o
+   where s = tmpropmap(fn) and 
+	 p = rdfsdomaindef() and
+         o = tmclassmap(argument_types(fn)); 
+
+create function generate_rangeobject(Function fn)->Charstring
+  /* Retrieves the range of a TM function */
+  as begin if is_literal(result_types(fn))
+           then return rdfs_literal()
+           else return tmclassmap(result_types(fn));
+     end;
+
+create function rdfschemarange_triple(Function fn) 
+                -> (Charstring s, Charstring p, Charstring o)
+  /* Generates the triple (function_name, #range, the_range) 
+     for each TM function */
+  as select s,p,o
+   where s = tmpropmap(fn) and 
+	 p = rdfsrangedef() and
+         o = generate_rangeobject(fn); 
+
+create function rdfschemapropertyfun_triples(Function f) 
+                -> Bag of (Charstring s, Charstring p, Charstring o)
+  /* Generates all triples for a TM function */
+  as
+     select s, p, o 
+     from charstring s, charstring p, charstring o
+     where rdfschemaproperty_triple(f)=(s,p,o) 
+        or rdfschemadomain_triple(f)=(s,p,o) 
+        or rdfschemarange_triple(f)=(s,p,o);
+
+create function rdfschemaproperty_triples() 
+                -> Bag of (Charstring s, Charstring p, Charstring o)
+  /* Geerates triples for all TM functions */
+  as
+   select rdfschemapropertyfun_triples(topicMapFunctions()); 
+
+create function TM_RDFschema_triples() 
+                -> (Charstring s, Charstring p, Charstring o) 
+  /* Generates all triples for the entire TM schema */
+  as 
+    select s,p,o 
+    from Charstring s, Charstring p, Charstring o 
+    where (s,p,o) in rdfschemaclass_triples() 
+       or (s,p,o) in rdfschemaproperty_triples();
+
+create function TM_RDFschema_triples_mat() 
+                -> Bag of (Charstring s, Charstring p, Charstring o)
+  as stored;
+
+create_index("TM_RDFschema_triples_mat","p","hash","multiple");
+create_index("TM_RDFschema_triples_mat","o","hash","multiple");
+
+parteval("TM_RDFschema_triples_mat"); /* never changes */
+
+create function materialize_TM_RDFschema_triples() -> Boolean
+ as for each Charstring s, Charstring p, Charstring o
+	where TM_RDFschema_triples()= (s,p,o)
+	add TM_RDFschema_triples_mat() = (s,p,o);
+
+/* Functions needed for RDQL queries */
+
+create function URIofUPV(Charstring)->Charstring as stored;
+
+create function UPVofURI(Charstring uri)->Charstring upv
+  as select upv where uriofupv(upv)=uri;
+
+/*Needed in order to write queries without FROM clause*/
+/*set URIofUPV("tm_rdfschema_triples_mat")="";*/

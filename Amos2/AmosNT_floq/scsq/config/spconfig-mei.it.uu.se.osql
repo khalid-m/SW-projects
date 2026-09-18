@@ -1,0 +1,73 @@
+ /*-*-sql-*-*************************************
+ * AMOS2
+ *
+ * Replace this to suit your SP configuration */
+
+set dumpfile() = "scsq.dmp";
+set sprocstart() = "lsproc2";
+
+set preprsh() = "/usr/bin/rsh -n";
+set prepstartcmd("") = getenv("AMOS_HOME") + "/bin/scsq.exe";
+set prepstartcmd("compute-0-0") = getenv("AMOS_HOME") + "/bin/scsq.exe";
+set prepstartcmd("compute-0-1") = getenv("AMOS_HOME") + "/bin/scsq.exe";
+set prepstartcmd("compute-0-2") = getenv("AMOS_HOME") + "/bin/scsq.exe";
+set prepstartcmd("compute-0-3") = getenv("AMOS_HOME") + "/bin/scsq.exe";
+set prepstartcmd("compute-0-4") = getenv("AMOS_HOME") + "/bin/scsq.exe";
+set prepstartcmd("compute-0-5") = getenv("AMOS_HOME") + "/bin/scsq.exe";
+set prepstartcmd("compute-0-6") = getenv("AMOS_HOME") + "/bin/scsq.exe";
+set prepstartcmd("compute-0-7") = getenv("AMOS_HOME") + "/bin/scsq.exe";
+set prepstartcmd("compute-0-8") = getenv("AMOS_HOME") + "/bin/scsq.exe";
+
+set sp_start("") = "cd /scratch/" + getenv("USER") + ";";
+set sp_start("compute-0-0") = "cd /scratch/" + getenv("USER") + ";";
+set sp_start("compute-0-1") = "cd /scratch/" + getenv("USER") + ";";
+set sp_start("compute-0-2") = "cd /scratch/" + getenv("USER") + ";";
+set sp_start("compute-0-3") = "cd /scratch/" + getenv("USER") + ";";
+set sp_start("compute-0-4") = "cd /scratch/" + getenv("USER") + ";";
+set sp_start("compute-0-5") = "cd /scratch/" + getenv("USER") + ";";
+set sp_start("compute-0-6") = "cd /scratch/" + getenv("USER") + ";";
+set sp_start("compute-0-7") = "cd /scratch/" + getenv("USER") + ";";
+set sp_start("compute-0-8") = "cd /scratch/" + getenv("USER") + ";";
+
+
+set sp_username("") = getenv("USER");
+set sp_username("compute-0-0") = getenv("USER");
+set sp_username("compute-0-1") = getenv("USER");
+set sp_username("compute-0-2") = getenv("USER");
+set sp_username("compute-0-3") = getenv("USER");
+set sp_username("compute-0-4") = getenv("USER");
+set sp_username("compute-0-5") = getenv("USER");
+set sp_username("compute-0-6") = getenv("USER");
+set sp_username("compute-0-7") = getenv("USER");
+set sp_username("compute-0-8") = getenv("USER");
+
+set spstdout() = " >> PrepLog";
+set sppostfix() = " 2>&1 &";
+set prephome() = "";
+
+set cpus_per_host() = 1;
+
+set prepcoordhost() = "mei.local";
+set prephosts() = {"compute-0-0", "compute-0-1", "compute-0-2","compute-0-3","compute-0-5", "compute-0-7", "compute-0-8"};
+
+set sp_username("") = getenv("USER");
+set sp_username(in(prephosts())) = getenv("USER");
+
+/* Default config for queue system */
+
+create function gersh() -> Charstring as getenv("TMPDIR") + "/rsh -n";
+create function slrsh() -> Charstring as "srun";
+create function slstdout() -> Charstring as getenv("TMPDIR") + "/PrepLog";
+create function qnodelistfile() -> Charstring 
+  as getenv("TMPDIR") + "/machines";
+create function genodes() -> Charstring
+  as select s + "." + d
+     from Charstring s, Charstring d
+     where s in read_ntuples(qnodelistfile())[0]
+     and d = domainname(gethostname());
+create function distgenodes() -> Charstring as
+select distinct genodes();
+
+create function slnodes() -> Charstring as exec("srun hostname|sort");
+create function distslnodes() -> Charstring as
+select distinct slnodes();

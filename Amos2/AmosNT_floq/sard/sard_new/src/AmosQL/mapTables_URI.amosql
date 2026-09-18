@@ -1,0 +1,369 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Silvia Stefanova UDBL
+ * $RCSfile: mapTables_URI.amosql,v $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Define Mapping tables
+		Assign values for the mapping tables
+ ******************************************************************************/
+
+
+create function typeMap(Charstring tn,Charstring cn,Charstring upv,
+                        Charstring datatype)->Boolean
+  as stored;
+
+create function typeMap(Charstring tn,Charstring cn,Charstring upv)
+                        ->Charstring datatype
+  as select datatype where typeMap(tn,cn,upv,datatype);
+
+
+create function typeMap()->(Charstring tn,Charstring cn,Charstring upv,Charstring datatype)
+as
+ select tn,cn,upv,datatype 
+ where typeMap(tn,cn,upv,datatype);
+
+
+create function xsd_typeMap()->(Charstring rdbtype, Charstring xsdtype,Charstring xsdabb )as stored;
+
+
+create function set_xsd_typeMap()->Boolean
+as
+ begin
+	set xsd_typeMap()=(NIL,NIL,NIL);
+	add xsd_typeMap()=("varchar",'http://www.w3.org/2001/XMLSchema#string', 'xsd:string');
+	add xsd_typeMap()=("nvarchar",'http://www.w3.org/2001/XMLSchema#string', 'xsd:string');
+	add xsd_typeMap()=("char",'http://www.w3.org/2001/XMLSchema#string','xsd:string');
+        add xsd_typeMap()=("float", 'http://www.w3.org/2001/XMLSchema#float','xsd:string');
+	add xsd_typeMap()=("integer", 'http://www.w3.org/2001/XMLSchema#integer', 'xsd:integer');
+	add xsd_typeMap()=("int", 'http://www.w3.org/2001/XMLSchema#int', 'xsd:int');
+	add xsd_typeMap()=("datetime",'http://www.w3.org/2001/XMLSchema#dateTime', 'xsd:dateTime');
+	add xsd_typeMap()=("date",'http://www.w3.org/2001/XMLSchema#date', 'xsd:date');
+	add xsd_typeMap()=("time",'http://www.w3.org/2001/XMLSchema#time', 'xsd:time');
+	add xsd_typeMap()=("decimal",'http://www.w3.org/2001/XMLSchema#decimal', 'xsd:decimal');
+	add xsd_typeMap()=("numeric",'http://www.w3.org/2001/XMLSchema#double', 'xsd:double');
+	add xsd_typeMap()=("double",'http://www.w3.org/2001/XMLSchema#double', 'xsd:double');
+  end;
+
+set_xsd_typeMap();
+
+create function xsd_shortMap()->(Charstring xsdtype key,Charstring xsdabb ) as stored;
+
+create function set_xsd_shortMap()->Boolean
+as
+ begin
+	add xsd_shortMap()=('http://www.w3.org/2001/XMLSchema#string', 'xsd:string');
+        add xsd_shortMap()=('http://www.w3.org/2001/XMLSchema#float','xsd:string');
+	add xsd_shortMap()=('http://www.w3.org/2001/XMLSchema#date','xsd:date');
+	add xsd_shortMap()=('http://www.w3.org/2001/XMLSchema#integer', 'xsd:integer');
+	add xsd_shortMap()=('http://www.w3.org/2001/XMLSchema#int', 'xsd:int');
+	add xsd_shortMap()=('http://www.w3.org/2001/XMLSchema#dateTime', 'xsd:dateTime');
+	add xsd_shortMap()=('http://www.w3.org/2001/XMLSchema#time', 'xsd:time');
+	add xsd_shortMap()=('http://www.w3.org/2001/XMLSchema#decimal', 'xsd:decimal');
+	add xsd_shortMap()=('http://www.w3.org/2001/XMLSchema#double', 'xsd:double');
+  end;
+
+
+set_xsd_shortMap();
+
+create function find_typeMap(Charstring typecol)->Charstring xsdtype
+as
+	select xsd from Charstring xsd, Charstring abb where xsd_typeMap()=(lower(typecol),xsd,abb);
+
+
+create function find_typeCol(Charstring typeMap)->Charstring typeCol
+as
+	select typeCol from Charstring typeCol,Charstring abb where xsd_typeMap()=(typecol,typeMap,abb);
+
+create function find_abbtypeCol(Charstring xsd)->Charstring abb
+as
+	select abb where xsd_shortMap()=(xsd,abb);
+
+create function isStringType(Charstring tn, Charstring cn, Charstring upv)->Boolean
+as
+    select true from Charstring xsd where xsd= typeMap(tn,cn,upv) 
+	and (xsd="http://www.w3.org/2001/XMLSchema#string" or
+	     xsd="http://www.w3.org/2001/XMLSchema#date" or
+	     xsd="http://www.w3.org/2001/XMLSchema#dateTime");
+
+
+
+/* Stored fn rcMap, mapping one-to-many relationships tn->oth, foreign key :cn to an RDF property p
+ */
+create function rcMap(Charstring tn,Charstring otn, Charstring upv,URI property)
+                        ->Boolean as stored;
+
+create function rcMap(Charstring tn,Charstring otn,Charstring upv)
+                        ->URI prop
+  as select prop where rcMap(tn,otn,upv,prop);
+
+create function rcMap()->(Charstring tn,Charstring otn, Charstring upv,URI property)
+  as select tn,otn,upv,property where rcMap(tn,otn,upv,property);
+
+declare_key(theresolvent('CHARSTRING.CHARSTRING.CHARSTRING.URI.RCMAP->BOOLEAN'),
+		{'tn','otn','upv'} );
+
+declare_key(theresolvent('CHARSTRING.CHARSTRING.CHARSTRING.URI.RCMAP->BOOLEAN'),
+		{'tn','property'} );
+
+declare_key(theresolvent('CHARSTRING.CHARSTRING.CHARSTRING.URI.RCMAP->BOOLEAN'),
+		{'upv'} );
+
+/* Stored fn ucMap, mapping a table to string URI
+ */
+
+create function ucMap(Charstring tn,Charstring upv,Charstring class)
+                        ->Boolean
+  as stored;
+
+/* Wrapper for cMap stored fn.
+ */
+create function ucMap(Charstring tn,Charstring upv)->Charstring class
+  as select class where ucMap(tn,upv,class);
+
+/* Get extent of cMap. 
+ */
+create function ucMap()->(Charstring tn,Charstring upv,Charstring classid)
+as
+ select tn,upv,classid 
+ where ucMap(tn,upv,classid);
+
+create function assignUClassID(Charstring tbl,
+                              Charstring upv,
+                              Charstring classid)->Boolean
+as
+ begin
+  set ucMap(tbl,upv)=classid;
+ end;	
+
+
+
+/* Stored fn rmmaMap, mapping many-to-many relationships tn, tno1, tno2 into
+an RDF property p
+ */
+create function rmmMap(Charstring tn,Vector of Charstring cn1,Vector of Charstring cn2,Charstring otn1,Charstring otn2, Charstring upv,URI property)
+                        ->Boolean as stored;
+
+declare_key(theresolvent(
+             'Charstring.Vector-Charstring.Vector-Charstring.Charstring.Charstring.Charstring.URI.rmmMap->Boolean'),
+               {'tn','cn1','cn2','otn1','otn2','upv'});
+declare_key(theresolvent(
+             'Charstring.Vector-Charstring.Vector-Charstring.Charstring.Charstring.Charstring.URI.rmmMap->Boolean'),
+               {'upv','property'});
+
+declare_key(theresolvent(
+             'Charstring.Vector-Charstring.Vector-Charstring.Charstring.Charstring.Charstring.URI.rmmMap->Boolean'),
+               {'upv'});
+
+
+
+/* Wrapper for rmmMap stored fn. 
+ */
+create function rmmMap(Charstring tn,Vector of Charstring cn1,Vector of Charstring cn2,Charstring otn1,Charstring otn2,Charstring upv)
+                        ->URI prop
+  as select prop where rmmMap(tn,cn1,cn2,otn1,otn2,upv,prop);
+
+create function rmmMap()->(Charstring tn,Vector of Charstring cn1,Vector of Charstring cn2,Charstring otn1,Charstring otn2,Charstring upv,URI prop)
+  as select tn,cn1,cn2,otn1,otn2,upv,prop where rmmMap(tn,cn1,cn2,otn1,otn2,upv)=prop;
+
+
+/* Sets fns for rMap. User not allowed to set the foreign property identifier of a column in a table
+ * to a property identifier already existing in pMap for that column. ->Johan
+ */	
+create function assignCRID_old(Charstring tn,
+                           Charstring cn,
+                           Charstring otn,
+		           Charstring upv,
+                           URI crid)->Boolean
+as
+ begin
+  set rMap(tn,cn,otn,upv)=crid
+ end;
+
+
+/* Sets fns for rcMap. User not allowed to set the foreign property identifier of a column in a table
+ * to a property identifier already existing in pMap for that column. 
+ */	
+create function assignCRID(Charstring tn,
+                           Charstring otn,
+		           Charstring upv,
+                           URI crid)->Boolean
+as
+ begin
+  set rcMap(tn,otn,upv)=crid
+ end;
+
+/* Sets fns for rmmMap. 
+ */	
+create function assignMMRID(Charstring tn,
+			   Vector of Charstring cn1,
+			   Vector of Charstring cn2,
+                           Charstring otn1,
+                           Charstring otn2,
+		           Charstring upv,
+                           URI id)->Boolean
+as
+ begin
+  set rmmMap(tn,cn1,cn2,otn1,otn2,upv)=id
+ end;
+
+
+create function MMKeycolumns(Charstring table, Charstring otable)-> Vector of Charstring;
+create function MMKeytables(Charstring table,Charstring otable)-> Vector of Charstring;
+
+
+create function setMMKeys(Charstring upvname, Charstring catalog,Charstring schema)->Boolean
+/*Setting the mappings needed for many-to-many relationships*/
+/*OBS! It works well only in beetween two tables having FKs that reference a third table, tabname */
+as
+   for each Charstring tabname 
+   where (tabname,catalog, schema, "TABLE") in 
+         tables(jdbcOfDS(DSOfUPV(upvname)))	
+    begin
+	declare Charstring reft;
+	/*set MMkeyTables(tabname)={};*/
+	for each Charstring cn,Charstring typ where columns(jdbcOfDS(DSOfUPV(upvname)),tabname)=(typ,cn)  
+	 if ( isPrKOf(jdbcOfDS(DSOfUPV(upvname)),catalog,schema,tabname,cn) and 
+		  isForKOf(jdbcOfDS(DSOfUPV(upvname)),catalog,schema,tabname,cn) ) then
+                    begin
+			select reftable into reft from Charstring reftable,Charstring refcolumn where (reftable,refcolumn,cn) in 
+				imported_keys(jdbcOfDS(DSOfUPV(upvname)),catalog,schema,tabname); 
+			set MMkeyColumns(tabname,reft)={};
+			if ( dim(MMkeycolumns(tabname,reft)) != 0 )  then
+			  begin
+				set MMkeyColumns(tabname,reft)=concat(MMkeyColumns(tabname,reft),{cn});
+				/*set MMkeyTables(tabname)=concat(MMkeyTables(tabname),{reft});*/
+			  end
+			else				 
+			  begin
+				set MMkeyColumns(tabname,reft)= {cn};
+				/*set MMkeyTables(tabname)= {reft};*/
+			  end;
+		    end;
+    end;
+
+create function setMMKeys(Charstring upvname, Charstring catalog,Charstring schema, Charstring tabname)->Boolean
+/*Setting the mappings needed for many-to-many relationships; Makes it per table tabname*/
+/*OBS! It works well only in beetween two tables having FKs that reference a third table, tabname */
+as
+   begin
+	declare Charstring reft;
+	/*set MMkeyColumns(tabname)={};*/
+	/*set MMkeyTables(tabname)={};*/
+	for each Charstring cn,Charstring typ 
+         where (typ,cn) in columns(jdbcOfDS(DSOfUPV(upvname)),tabname)  
+	 if ( isPrKOf(jdbcOfDS(DSOfUPV(upvname)),catalog,schema,tabname,cn) and 
+		  isForKOf(jdbcOfDS(DSOfUPV(upvname)),catalog,schema,tabname,cn) ) then
+                    begin
+			select reftable into reft from Charstring reftable,Charstring refcolumn 
+                        where (reftable,refcolumn,cn) in imported_keys(jdbcOfDS(DSOfUPV(upvname)),catalog,schema,tabname); 
+		
+			if ( dim(MMkeycolumns(tabname,reft)) != 0 )  then
+			  begin				
+				set MMkeyColumns(tabname,reft)=concat(MMkeyColumns(tabname,reft),{cn});
+				/*set MMkeyTables(tabname)=concat(MMkeyTables(tabname),{reft});*/
+			  end
+			else				 
+			  begin
+				set MMkeyColumns(tabname,reft)={};
+				set MMkeyColumns(tabname,reft)= {cn};
+				/*set MMkeyTables(tabname)= {reft};*/
+			  end;
+		    end;
+    end;
+ 
+
+create function table_notClass(Charstring upvname, Charstring catalog,Charstring schema, Charstring tabname)->Boolean
+/*If the table represents many-to-many relationship*/
+as
+	select true from Vector vect,Charstring otn where MMkeyColumns(tabname,otn)=vect;
+
+
+create function assignIDs_old(Charstring upvname, Charstring catalog,Charstring schema)->Boolean
+/*Assigns the necessary mappings by using 'RDB_URI' for setting the URIs*/
+as
+  for each Charstring tabname 
+  where (tabname,catalog, schema, "TABLE")in tables(jdbcOfDS(DSOfUPV(upvname)))
+	begin
+	  declare Vector of Charstring cn1_n, Vector of Charstring cn2_n,Charstring tn1_n,Charstring tn2_n;
+	  setMMKeys(upvname, catalog,schema, tabname);
+          if (notany (table_notClass(upvname,catalog,schema,tabname))) then
+		  set cMap(tabname,upvname)=URI(RDB_URI(ret_tableO(tabname)));          		  
+          for each Charstring typ,Charstring colname where columns(jdbcOfDS(DSOfUPV(upvname)),tabname)=(typ,colname)
+		begin
+		   if( notany(isForKOf(jdbcOfDS(DSOfUPV(upvname)),catalog,schema,tabname,colname))) then
+			set pMap(tabname,colname,upvname)=uri(RDB_URI(ret_columnO(tabname,colname)));
+		  set typeMap(tabname,colname,upvname)=find_typeMap(datatype(ret_columnO(tabname,colname)));
+		end;
+	 if (some (imported_keys(jdbcOfDS(DSOfUPV(upvname)),catalog,schema,tabname))) then
+	  begin 
+	  	for each Charstring reftable, Charstring refcolumn, Charstring localcolumn
+                where (reftable,refcolumn,localcolumn) in
+		      imported_keys(jdbcOfDS(DSOfUPV(upvname)),catalog,schema,
+                                    tabname) 
+			and notany(isPrKOf(jdbcOfDS(DSOfUPV(upvname)),catalog,schema,tabname,localcolumn))
+			  set rMap(tabname,localcolumn,reftable,upvname)=RDB_URI(ret_tableO(tabname))+"_of_"+reftable;		
+		 select cn1,cn2,tn1,tn2 into cn1_n,cn2_n,tn1_n,tn2_n 
+			from Vector cn1, Vector cn2, Charstring tn1,Charstring tn2
+			where MMKeyColumns(tabname,tn1)=cn1 and MMKeyColumns(tabname,tn2)=cn2 and notany(like(tn1,tn2));
+                set rmmMap(tabname,cn1_n,cn2_n,tn1_n,tn2_n,upvname) = uri(RDB_URI(ret_tableO(tn1_n))+"_to_"+tn2_n);
+		set rmmMap(tabname,cn2_n,cn1_n,tn2_n,tn1_n,upvname) = uri(RDB_URI(ret_tableO(tn2_n))+"_to_"+tn1_n);
+           end;
+        end;
+
+
+create function reftables(Charstring upv,Charstring catalog,Charstring schema,Charstring tabname)->Charstring reftable
+	as select distinct otn from Charstring otn,Charstring ocol, Charstring col 
+	where (otn,ocol,col) in imported_keys(jdbcOfDS(DSOfUPV(upv)),catalog,schema,tabname) and
+	notany(isPrKOf(jdbcOfDS(DSOfUPV(upv)),catalog,schema,tabname,col));
+
+create function assignIDs(Charstring upvname, Charstring catalog,Charstring schema)->Boolean
+/*Assigns the necessary mappings*/
+as
+  for each Charstring tabname 
+  where (tabname,catalog, schema, "TABLE") in tables(jdbcOfDS(DSOfUPV(upvname)))
+	begin
+	  declare Vector of Charstring cn1_n, Vector of Charstring cn2_n,Charstring tn1_n,Charstring tn2_n;
+	  setMMKeys(upvname, catalog,schema, tabname);
+          if (notany (table_notClass(upvname,catalog,schema,tabname))) then
+              begin
+		  set cMap(tabname,upvname)=uri(concat(uriOfUPV(upvname), concat('#',tabname)));          		          set ucMap(tabname,upvname)=concat(uriOfUPV(upvname), concat('#',tabname)); 	  
+	      end;
+          for each Charstring typ,Charstring colname where (typ,colname) in columns(jdbcOfDS(DSOfUPV(upvname)),tabname)
+		begin
+		   /*if( notany(isForKOf(jdbcOfDS(DSOfUPV(upvname)),catalog,schema,tabname,colname))) then*/
+		    if notany(select tno from Charstring tno, Vector of Charstring cno where MMKeyColumns(tabname,tno)=cno) then
+			set pMap(tabname,colname,upvname)=uri(concat(uriOfUPV(upvname), concat(concat('#',tabname), concat('/',colname))));
+		  set typeMap(tabname,colname,upvname)=find_typeMap(datatype(ret_columnO(tabname,colname)));
+		end;
+	 if (some (imported_keys(jdbcOfDS(DSOfUPV(upvname)),catalog,schema,tabname))) then
+	  begin 
+		for each Charstring reftable where reftable in reftables(upvname,catalog,schema,tabname) 
+		  set rcMap(tabname,reftable,upvname ) = uri(concat(uriOfUPV(upvname),concat('#',tabname))+"_of_"+reftable);
+	 	/*for each Charstring reftable, Charstring refcolumn, Charstring localcolumn where */
+		  /* imported_keys(jdbcOfDS(DSOfUPV(upvname)),catalog,schema,tabname)=(reftable,refcolumn,localcolumn) */
+			/*and notany(isPrKOf(jdbcOfDS(DSOfUPV(upvname)),catalog,schema,tabname,localcolumn))*/
+			 /* set rMap(tabname,localcolumn,reftable,upvname)=concat(uriOfUPV(upvname),concat('#',tabname))+"_of_"+reftable;	*/	
+		 if some(select tno from Charstring tno, Vector of Charstring cno where MMKeyColumns(tabname,tno)=cno) then
+		   begin
+		        select cn1,cn2,tn1,tn2 into cn1_n,cn2_n,tn1_n,tn2_n from Vector cn1, Vector cn2, Charstring tn1,Charstring tn2
+			where MMKeyColumns(tabname,tn1)=cn1 and MMKeyColumns(tabname,tn2)=cn2 and notany(like(tn1,tn2));
+	 		/*Don't define the inverse m:n mappings by default*/
+			/*set rmmMap(tabname,cn1_n,cn2_n,tn1_n,tn2_n,upvname) = concat(uriOfUPV(upvname),concat('#',tn1_n))+"_to_"+tn2_n;*/
+		
+			set rmmMap(tabname,cn2_n,cn1_n,tn2_n,tn1_n,upvname) = uri(concat(uriOfUPV(upvname),concat('#',tn2_n))+"_to_"+tn1_n);
+		  end;
+           end;
+        end;
+ 
+
+create function assign_typeMap(Charstring upvname, Charstring catalog,Charstring schema)->Boolean
+/*Assigns the necessary type mappings*/
+as
+  for each Charstring tabname 
+  where (tabname,catalog, schema, "TABLE") in 
+        tables(jdbcOfDS(DSOfUPV(upvname)))
+	for each Charstring typ,Charstring colname where columns(jdbcOfDS(DSOfUPV(upvname)),tabname)=(typ,colname)
+	   set typeMap(tabname,colname,upvname)=find_typeMap(datatype(ret_columnO(tabname,colname)));
+

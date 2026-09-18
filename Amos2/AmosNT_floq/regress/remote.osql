@@ -1,0 +1,148 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 1997 Tore Risch, UDBL
+ * $RCSfile: remote.osql,v $
+ * $Revision: 1.30 $ $Date: 2013/12/31 12:47:40 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Testing basic communication protocols
+ *
+ ****************************************************************************
+ * $Log: remote.osql,v $
+ * Revision 1.30  2013/12/31 12:47:40  torer
+ * Testing saving and restoring peer's image
+ *
+ * Revision 1.29  2012/06/18 19:29:14  torer
+ * Removed remote scan tests
+ *
+ * Revision 1.28  2012/06/08 17:02:10  larme597
+ * *** empty log message ***
+ *
+ * Revision 1.27  2012/05/22 20:22:34  torer
+ * (open-port-to 'nameserver) now works too
+ *
+ * Revision 1.26  2011/12/02 14:04:57  larme597
+ * Moved remote scan testing to remote.osql.
+ *
+ * Revision 1.25  2008/10/03 09:52:27  torer
+ * REMOTE-EVAL with remote name NAMESERVER did not handle proxy objects
+ *
+ ****************************************************************************/
+
+lisp;
+
+(let (o)
+  (checkequal "Unnamed clients"
+	      (_amosid_ nil)
+              ((null (setq p (open-port-to 'nameserver))) nil)
+	      ((reval@nameserver '_object_) _object_)
+              ((reval '(+ 1 2) p) 3)
+	      ((null(proxy-p(setq o (reval@nameserver 
+				     '(createobject _function_ 'foo))))) nil)
+	      ((reval@nameserver (list 'oid-name o)) 'foo)
+	      ((setq p(reval@nameserver (list 'deleteobject o))) o)
+	      )
+  )
+
+(checkequal "Remote errors"
+ ((errstring (reval@nameserver 'apa)) "Unbound variable")
+ ((reval@nameserver 1) 1)
+ ((close-port (get-port-named 'nameserver)) nil)
+ ((reval@nameserver 1) 1)
+ ((errstring (run-server)) "This Amos has no name")
+ ((errstring (remote-eval 1 'foo)) "Unnamed Amos cannot access other Amos")
+ ((errstring (nameserver 'fum))"Address already in use")
+ ((errstring (osql "register('fie');"))"Another Amos running is named")
+ ((osql "register('fum');") '(("fum")))
+ ((errstring (remote-eval 'apa 'fie))"Unbound variable")
+ ((errstring (remote-eval 1 'banan))"No Amos named")
+)
+
+(checkequal "Remote evaluation and messages"
+ ((remote-eval 1 'foo) 1)
+ ((remote-eval 1 'fie) 1)
+ ((remote-eval 1 'fum) 1) ; local evaluation!
+ ((remote-eval '_amosid_ 'foo) 'foo)
+ ((remote-eval '_amosid_ 'fie) 'fie)
+ ((remote-eval '(sleep 1) 'foo) 1)
+ ((null (send-form '(setq aaa nil) 'fie)) nil); initialize batch
+ ((null(rptq 100 (send-form '(push t aaa) 'fie))) nil) ; batching!
+ ((remote-eval '(length aaa) 'fie) 100); end of batch
+ ((binary-size(reval@nameserver (make-binary 12))) 12)
+ ((binary-size(reval@nameserver (make-binary 10000))) 10000)
+)
+
+(checkequal "Global remote evaluation"
+ ((sorttuples (global-eval 1 '(foo fie))) '((FIE 1) (FOO 1)))
+ ((sorttuples (global-eval 1)) '((FIE 1) (FOO 1) (FUM 1)))
+)
+
+(let (oo xx)
+  (checkequal "Proxies"
+	      ((null (setq oo (remote-eval '_object_ 'fie))) nil)
+	      ((remote-eval (list 'oid-name oo) 'fie) 'object)
+	      ((remote-eval 
+		(setq xx 
+		      (create-transient-object _function_)) 'foo) xx)
+	      )
+  )
+
+(checkequal "Remote queries"
+ ((osql "ship('fie','create type person;');") nil)
+ ((osql "ship('fie','delete type person;');") nil)
+ ((osql "ship('fie','1+2;');") '((#(3))))
+)
+
+(remote-eval '(setq xo (createobject _function_)) 'fie)
+(let ((oo (remote-eval 'xo 'fie))
+      (mo (createobject _function_)))
+  (checkequal "Indirect proxies"
+	      ((eq oo (remote-eval 'xo 'fie)) t)
+	      ((eq oo (remote-eval '(remote-eval 'xo 'fie) 'foo)) T)
+              ((remote-eval mo 'fie) mo)
+              ((remote-eval mo 'foo) mo)
+              ((remote-eval mo 'nameserver) mo)
+              ((remote-eval (list 'remote-eval mo ''fie) 'foo) mo)
+	      )
+  )
+
+(checkequal "Meta-Amos queries"
+	    ((osql "this_amosid();") '(("FUM")))
+	    ((sorttuples (osql "name(amos_servers());"))
+	     '(("FIE") ("FOO") ("FUM") ("NAMESERVER")))
+	    )
+(defglobal _ns_ (port-socket (port-of-peer 'foo)))
+
+(send-form '(rptq 2 (progn (prin1 "hej" (port-socket *client-port*)) 
+                           (flush (port-socket *client-port*))))
+           'foo)
+
+(defglobal _fie_ (port-socket (port-of-peer 'fie)))
+
+(send-form '(progn (prin1 "haj" (port-socket *client-port*))
+                   (flush (port-socket *client-port*)))
+           'fie)
+(sleep 0.1)
+(checkequal "poll-sockets"
+  ((elt (poll-sockets (vector _ns_ _fie_) 0) 1) _fie_);; Both FOO and FIE
+  ((read _ns_) "hej")
+  ((length(poll-sockets (vector _ns_  _fie_) 0)) 1);; Only FOO!
+  ((elt (poll-sockets (vector _ns_ _fie_) 0) 0) _ns_)
+  ((read _ns_) "hej")
+  ((elt (poll-sockets (vector _ns_  _fie_) 0) 0) _fie_) ;; Only FIE!
+  ((read _fie_) "haj")
+  ((poll-sockets (vector _ns_ _fie_) 0) nil) 
+)
+
+(checkequal
+ "Saving peer's image"
+ ((system "amos2 -o \"register('me'); save 'foo.dmp'; quit;\"") 0)
+ ((system "amos2 foo.dmp -o \"register('me'); quit;\"")0)
+ )
+
+:osql
+
+rollback;
+
+

@@ -1,0 +1,12 @@
+latebinding("OR");
+normalization(TRUE);
+
+set :a = odbc_ds('ds');  /* create a new datasource 
+                                object with logical name 'DS'*/
+connect(:a, 'ODBCTEST');     /* connect it to a ODBC data
+                                source with DSN 'ODBCTEST'*/
+
+import_table('ds', 'IDAEMP');
+
+register('idadb');
+listen();

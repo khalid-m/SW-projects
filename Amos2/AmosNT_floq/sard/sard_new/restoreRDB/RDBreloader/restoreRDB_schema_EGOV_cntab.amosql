@@ -1,0 +1,787 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Ekta Shrestha, 
+ * $RCSfile: restoreRDB_schema_EGOV_cntab.amosql,v $
+ * $Revision: 1.1 $ $Date: 2012/05/16 11:50:13 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Functions for restoring
+	relational schema and data from NT archives
+ *
+ ****************************************************************************
+ * $Log: restoreRDB_schema_EGOV_cntab.amosql,v $
+ * Revision 1.1  2012/05/16 11:50:13  eksh8896
+ * new
+ *
+ * Revision 1.3  2012/04/18 11:23:17  eksh8896
+ * Final: Edited with the minor adjustment.
+ *
+ * Revision 1.2  2012/04/18 08:32:07  eksh8896
+ * Modified Version. Works Fine with row and column order
+ *
+ * Revision 1.1  2012/03/30 14:02:58  eksh8896
+ * *** empty log message ***
+ *
+ * Revision 1.3  2012/03/29 18:39:36  eksh8896
+ * Updates amosql files on 30th March.
+ *
+ * Revision 1.2  2012/03/27 08:51:41  eksh8896
+ * *** empty log message ***
+ *
+ * Revision 1.1  2012/02/28 14:01:25  eksh8896
+ * Restoring RDF data files taking consideration of primary and foreign key.
+ *
+ * Revision 1.1  2011/12/07 13:21:43  eksh8896
+ * Updated functions for parsing 'nt' schema and data files.
+ *
+ *  
+ * 
+ *
+ ****************************************************************************/
+
+
+/**********************************GENERAL FUNCTIONS**************************************************************************/
+
+
+
+/************************************Modified Version******************************************************************/
+lisp;
+(defun str-exp (fno str del res)
+(osql-result str del (second(string-explode str del))))
+
+:osql
+create function str_exp(Charstring str,Charstring del)-> Charstring
+as foreign "str-exp";
+
+lisp;
+(defun str-exp1 (fno str del res)
+(osql-result str del (first(string-explode str del))))
+
+:osql
+create function str_exp1(Charstring str,Charstring del)-> Charstring
+as foreign "str-exp1";
+
+lisp;
+(defun str-exp3 (fno str del res)
+   (osql-result str del (listtoarray (string-explode str del))))
+
+:osql
+create function str_exp3(Charstring str,Charstring del)-> Vector
+as foreign "str-exp3";
+
+lisp;
+(defun str-explast (fno str del res)
+(osql-result str del (last(string-explode str del))))
+
+:osql
+create function str_exp_last(Charstring str,Charstring del)-> Charstring
+as foreign "str-explast";
+
+create function clear(Charstring URI)->Charstring as
+begin 
+declare Charstring ch; 
+set ch=substring(URI,0,char_length(URI)-2);
+if like(ch,'*#*') then 
+result str_exp_last(ch,'#') 
+else 
+result str_exp_last(ch,'/');
+end;
+
+
+/************************************************************************************************************************/
+			/***FUNCTIONS FOR MANIPULATING SCHEMA FILES ***/
+/************************************************************************************************************************/
+
+	
+
+create function readTuples(Charstring filename1)
+->(Charstring,Charstring,Charstring )
+/*Retrieves s,p,v from the given filename*/
+as
+	select v[0],v[1],v[2] from  Vector v 
+		where read_ntuples(filename1)=v;
+
+create function readTuples1(Charstring filename1)
+->(Charstring,Charstring,Charstring,Charstring )
+/*Retrieves s,p,v from the given filename*/
+as
+	select v[0],v[1],v[2],v[3] from  Vector v 
+		where read_ntuples(filename1)=v;
+/************************************************************************************************************************/
+			/***RETRIEVING TABLES FROM GIVEN FILES ***/
+/************************************************************************************************************************/
+create function ret_tableURIs1(Charstring filename)
+->Charstring 
+/*Retrieve URI  of the table in the file*/
+as select s from Charstring s , Charstring p, Charstring v where readTuples(filename)=<s,p,v>
+ and p="<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>" and v="<http://www.w3.org/2000/01/rdf-schema#Class>";
+
+create function ret_fkInNT(Charstring filename,Charstring tableURI)
+->charstring
+/* Retrieves the URI of corresponding foreign key column that is represented only in data file.*/
+as
+select v from Charstring s, Charstring p, Charstring v
+where readTuples(filename)=<s,p,v> and s=tableURI and p="<http://user.it.uu.se/~udbl/sard#FOREIGN_KEY>";
+
+create function ret_tableURIs_CT(Charstring filename)
+->Charstring 
+/*Retrieve all URIs (including connecting table) of the table in the file*/
+as 
+select s from Charstring s,Charstring p, Charstring v, Charstring s1 ,Charstring p1, Charstring v1 
+where readTuples(filename)=<s,p,v> and p="<http://www.w3.org/2000/01/rdf-schema#range>" and v in ret_tableURIs1(filename) 
+and readTuples(filename)=<s1,p1,v1> and s1=s and p1="<http://www.w3.org/2000/01/rdf-schema#domain>" 
+and notany(s in ret_fkinNT(filename,v1));
+
+
+create function ret_tableURIs(Charstring filename)
+->Charstring 
+as
+begin
+	result ret_tableURIs1(filename);
+	result ret_tableURIs_CT(filename);
+end;
+
+create function ret_tableName(Charstring filename)
+->Charstring
+as
+begin
+	declare Integer i;
+	set i=0;
+	for each Charstring ch where ret_tableURIs(filename)=ch
+	begin 
+		set i=i+1;
+		result "Table"+i;
+	end;
+		
+end;
+
+create function ret_tableNameURIs(Charstring filename)
+->(Charstring ,Charstring)
+/*Retrieve URI  of the table in the file*/
+as 
+begin
+	declare Integer i;
+	set i=0;
+	for each Charstring ch where ret_tableURIs(filename)=ch
+	begin 
+		set i=i+1;
+		result (ch,"Table"+i);
+	end;
+		
+end;
+
+/************************************************************************************************************************/
+			/*** RETRIEVING COLUMNS FROM GIVEN FILE***/
+/************************************************************************************************************************/
+
+create function ret_pkURI_woct(Charstring filename,Charstring tableURI)
+->Charstring
+/*Retrieve the URI of the PK of the table represented by tableURI*/
+as select v1 from Charstring s,Charstring p,Charstring v , charstring s1, Charstring p1, Charstring v1 
+where readtuples(filename)=<s,p,v>
+and s=tableURI and p="<http://user.it.uu.se/~udbl/sard#PRIMARY_KEY>" 
+and readtuples(filename)=<s1,p1,v1> and s1=v
+and v1!="<http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq>" and like(p1,"<http://www.w3.org/1999/02/22-rdf-syntax-ns#*");
+
+create function ret_columnURIs_woct1(Charstring filename,Charstring tableURI)
+->Charstring
+/*Retrieve URI of the column or property of given table represented by tabelURI*/
+as select s from Charstring s,Charstring p, Charstring v where readtuples(filename)=<s,p,v>
+and p="<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>" and v="<http://www.w3.org/1999/02/22-rdf-syntax-ns#Property>" 
+and read_ntuples(filename)= {s, "<http://www.w3.org/2000/01/rdf-schema#domain>",tableURI,"."} 
+and notany(read_ntuples(filename)= {tableURI,"<http://user.it.uu.se/~udbl/sard#FOREIGN_KEY>",s,"."})
+and notany(s in ret_tableURIs_CT(filename));
+
+create function ret_columnURIs_woct(Charstring filename,Charstring tableURI)
+->Charstring
+/*Retrieve URI of the column or property of given table represented by tabelURI*/
+as select s from Charstring s,Charstring p, Charstring v where readtuples(filename)=<s,p,v>
+and p="<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>" and v="<http://www.w3.org/1999/02/22-rdf-syntax-ns#Property>" 
+and read_ntuples(filename)= {s, "<http://www.w3.org/2000/01/rdf-schema#domain>",tableURI,"."} 
+and notany(read_ntuples(filename)= {tableURI,"<http://user.it.uu.se/~udbl/sard#FOREIGN_KEY>",s,"."})
+and notany(s in ret_tableURIs_CT(filename));
+
+create function ret_columnURIs_withCT1(Charstring filename,Charstring tableURI)
+->Charstring
+as
+begin	for each Charstring s,Charstring p, Charstring v where readtuples(filename)=<s,p,v> and s=tableURI
+	begin
+		if (p="<http://www.w3.org/2000/01/rdf-schema#range>") then
+			result ret_pkURI_woct(filename,v)
+		else if (p="<http://www.w3.org/2000/01/rdf-schema#domain>") then
+			result ret_pkURI_woct(filename,v);
+	end;
+end;
+
+create function ret_columnURIs_withCT(Charstring filename,Charstring tableURI)
+->Charstring
+as
+begin	for each Charstring s,Charstring p, Charstring v where readtuples(filename)=<s,p,v> and s=tableURI
+	begin
+		if (p="<http://www.w3.org/2000/01/rdf-schema#range>") then
+			result ret_pkURI_woct(filename,v)
+		else if (p="<http://www.w3.org/2000/01/rdf-schema#domain>") then
+			result ret_pkURI_woct(filename,v);
+	end;
+end;
+	
+create function ret_pkURI_withCT(Charstring filename,Charstring tableURI)
+->Charstring
+as
+begin
+	if (tableURI in ret_tableURIs_CT(filename)) then
+		result ret_columnURIs_withCT1(filename,tableURI)
+	else
+		result ret_columnURIs_woCT1(filename,tableURI);
+end;
+
+create function ret_pkURIs(Charstring filename,Charstring tableURI)
+->Charstring
+as
+begin
+	if (tableURI in ret_tableURIs_CT(filename)) then
+		result ret_pkURI_withCT(filename,tableURI)
+	else
+		result ret_pkURI_woCT(filename,tableURI);
+end;
+
+
+create function ret_columnURIs(Charstring filename,Charstring tableURI)
+->Charstring
+as
+begin
+	if (tableURI in ret_tableURIs_CT(filename)) then
+		result ret_columnURIs_withCT(filename,tableURI)
+	else
+		result ret_columnURIs_woCT(filename,tableURI);
+end;
+
+
+create function ret_columnURI(Charstring filename,Charstring tableURI)
+->Charstring
+as
+begin
+	if (tableURI in ret_tableURIs_CT(filename)) then
+		result ret_columnURIs_withCT1(filename,tableURI)
+	else
+		result ret_columnURIs_woCT1(filename,tableURI);
+end;
+
+
+create function ret_columnURIs1(Charstring filename)
+->Charstring
+/*Retrieve URI of the column or property of given table represented by tabelURI*/
+as select s from Charstring s,Charstring p, Charstring v,Charstring s1 where readtuples(filename)=<s,p,v>
+and p="<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>" and v="<http://www.w3.org/1999/02/22-rdf-syntax-ns#Property>" 
+and read_ntuples(filename)= {s, "<http://www.w3.org/2000/01/rdf-schema#domain>",s1,"."} 
+and notany(read_ntuples(filename)= {s1,"<http://user.it.uu.se/~udbl/sard#FOREIGN_KEY>",s,"."});
+
+create function ret_columnURIs2(Charstring filename,Charstring tableURI)
+->Charstring
+/*Retrieve URI of the column or property of given table represented by tabelURI*/
+as select s from Charstring s where read_ntuples(filename)={s,"<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>","<http://www.w3.org/1999/02/22-rdf-syntax-ns#Property>","."}
+and read_ntuples(filename)= {s, "<http://www.w3.org/2000/01/rdf-schema#domain>",tableURI,"."} ;
+
+
+create function ret_references(Charstring filename,Charstring tableURI)
+->Charstring as 
+select s from Charstring s, Charstring p, Charstring v where readTuples(filename)=<s,p,v> and p="<http://user.it.uu.se/~udbl/sard#REFERENCES>" and read_ntuples(filename)={s,"<http://www.w3.org/2000/01/rdf-schema#domain>",tableURI,"."};
+
+
+create function ret_columnNameURIs(Charstring filename,Charstring tableURI,Charstring tname)
+->(Charstring,Charstring)
+as
+begin 
+	declare Integer i;
+	set i=0;
+	for each Charstring ch where ret_columnURIs(filename,tableURI)=ch
+	begin
+     		set i=i+1;
+	     	result (ch,tname+"_Col"+i);
+	end;
+end;
+create function ret_colfk_data(Charstring filename,Charstring tableURI)->
+Charstring
+as
+begin 
+	declare integer z;
+	set z=0;
+	for each Charstring ch where ret_columnURIs(filename,tableURI)=ch
+	begin
+		for each Charstring ch1 where ret_references(filename,tableURI)=ch1
+		begin
+			if (ch1=ch) then 
+				set z=1;
+		end;
+		if z!=1 then 
+			result ch;
+		set z=0;
+	end;
+end;
+/************************************************************************************************************************/
+			/***RETRIEVING PRIMARY KEY FROM GIVEN FILE ***/
+/************************************************************************************************************************/
+
+
+
+create function ret_pkName(Charstring filename,Charstring tableURI)
+->Charstring
+/*Retrieve the name of the PK of the table represented by tableURI*/
+as
+begin 
+	declare Vector v1,Vector v2,Charstring t1,Charstring t2;
+	for each Charstring ch1,Charstring ch2 where ret_tableNameURIs(filename)=<ch1,ch2>
+	begin 
+		for each Charstring ch3,Charstring ch4 where ret_columnNameURIs(filename,ch1,ch2)=<ch3,ch4>
+		begin 
+       			set v1=concat(v1,{ch3});     
+       			set v2=concat(v2,{ch4});
+		end;
+	end;
+
+	for each Charstring ch where ret_pkURIs(filename,tableURI)=ch
+	begin
+		for each Integer i where i in iota(1,dim(v1))
+		begin
+		set t1=v1[i-1];
+		if ch=t1 then 
+			set t2=v2[i-1];
+		end;
+		result t2;
+	end;
+
+end;
+
+create function ret_pkNameURIs(Charstring filename,Charstring tableURI)
+->(Charstring,Charstring)
+/*Retrieve the URI and the name of the PK of the table represented by tableURI*/
+as
+begin 
+	declare Vector v1,Vector v2,Vector v3,Vector v4,Charstring t1,Charstring t2;
+	for each Charstring ch1,Charstring ch2 where ret_tableNameURIs(filename)=<ch1,ch2>
+	begin 
+		for each Charstring ch3,Charstring ch4 where ret_columnNameURIs(filename,ch1,ch2)=<ch3,ch4>
+		begin 
+       			set v1=concat(v1,{ch3});     
+       			set v2=concat(v2,{ch4});
+			set v3=concat(v3,{ch1});
+			set v4=concat(v4,{ch2});
+		end;
+	end;
+
+	for each Charstring ch where ret_pkURIs(filename,tableURI)=ch
+	begin
+		for each Integer i where i in iota(1,dim(v1))
+		begin
+		set t1=v1[i-1];
+		if ch=t1 and tableURI=v3[i-1] then 
+			set t2=v2[i-1];
+		end;
+		result (ch,t2);
+	end;
+
+end;
+
+create function ret_pk(Charstring filename,Charstring tableURI)
+->Charstring
+as
+	result ret_pkname(filename,tableURI);
+
+
+/************************************************************************************************************************/
+			/***RETRIEVING FOREIGN KEY FROM GIVEN FILE ***/
+/************************************************************************************************************************/
+create function ret_fkURI(Charstring filename,Charstring tableURI)->Charstring
+/*Retrieve the URI of the FK of the table represented by tableURI*/
+as select v from Charstring s,Charstring p, Charstring v,Charstring s1,Charstring p1, Charstring v1
+where readtuples(filename)=<s1,p1,v1> and p1="<http://user.it.uu.se/~udbl/sard#FOREIGN_KEY>" and s1=tableURI and
+readtuples(filename)=<s,p,v> and s=v1 and p!="<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>" 
+and like(p,"<http://www.w3.org/1999/02/22-rdf-syntax-ns#*");
+
+create function ret_fkURI11_woct(Charstring filename,Charstring tableURI)->(Charstring,Charstring)
+/*Retrieve the URI of the FK along with its p and v  of the table represented by tableURI*/
+as select s,v from Charstring s,Charstring p, Charstring v,Charstring s1,Charstring p1, Charstring v1
+where readtuples(filename)=<s1,p1,v1> and p1="<http://user.it.uu.se/~udbl/sard#FOREIGN_KEY>" and s1=tableURI and
+readtuples(filename)=<s,p,v> and s=v1 and p!="<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>" 
+and like(p,"<http://www.w3.org/1999/02/22-rdf-syntax-ns#*");
+
+create function ret_fkURI11_withCT(Charstring filename,Charstring tableURI)->(Charstring,Charstring)
+as
+begin
+	for each Charstring s,Charstring p, Charstring v where readtuples(filename)=<s,p,v> and s=tableURI
+	begin
+		if (p="<http://www.w3.org/2000/01/rdf-schema#range>") then
+			result (ret_pkURIs(filename,v),v) 
+		else if (p="<http://www.w3.org/2000/01/rdf-schema#domain>") then
+			result (ret_pkURIs(filename,v),v); 
+	end;
+end;
+
+create function ret_fkURI11(Charstring filename,Charstring tableURI)->(Charstring,Charstring)
+as
+begin
+	if (tableURI in ret_tableURIs_CT(filename)) then
+		result ret_fkURI11_withCT(filename,tableURI)
+	else
+		result ret_fkURI11_woCT(filename,tableURI);
+end;
+
+create function ret_fk(Charstring filename,Charstring tableURI)->Charstring
+/*Retrieve the name of the FK of the table represented by tableURI*/
+as
+begin 
+	declare Vector v1,Vector v2;
+	for each Charstring ch1,Charstring ch2 where ret_tableNameURIs(filename)=<ch1,ch2>
+	begin 
+		for each Charstring ch3,Charstring ch4 where ret_columnNameURIs(filename,ch1,ch2)=<ch3,ch4>
+		begin 
+       			set v1=concat(v1,{ch3});     
+       			set v2=concat(v2,{ch4});
+		end;
+	end;
+
+	for each Charstring ch where ret_fkURI(filename,tableURI)=ch
+	begin
+		for each Integer i where i in iota(1,dim(v1))
+		begin
+		if ch=v1[i-1] then 
+			result v2[i-1];
+		end;
+	end;
+
+end;
+
+create function ret_fkInNT(Charstring filename,Charstring tableURI)
+->charstring
+/* Retrieves the URI of corresponding foreign key column that is represented only in data file.*/
+as
+select v from Charstring s, Charstring p, Charstring v
+where readTuples(filename)=<s,p,v> and s=tableURI and p="<http://user.it.uu.se/~udbl/sard#FOREIGN_KEY>";
+
+create function ret_Name(Charstring filename,Charstring URI)
+->Charstring
+/*Retrieve the name for the given URI*/
+as
+begin 
+	declare Vector v1,Vector v2,Charstring t1,Charstring t2;
+	for each Charstring ch1,Charstring ch2 where ret_tableNameURIs(filename)=<ch1,ch2>
+	begin 
+		for each Charstring ch3,Charstring ch4 where ret_columnNameURIs(filename,ch1,ch2)=<ch3,ch4>
+		begin 
+       			set v1=concat(v1,{ch3});     
+       			set v2=concat(v2,{ch4});
+		end;
+	end;
+
+	for each Integer i where i in iota(1,dim(v1))
+	begin
+		set t1=v1[i-1];
+		if URI=t1 then 
+			set t2=v2[i-1];
+	end;
+	result (t2);
+end;
+
+create function ret_fkRef(Charstring filename,Charstring colURI)
+-> charstring
+/* Retrieves the URI of corresponding column that references to the foreign key.*/
+as
+select v from Charstring s, Charstring p, Charstring v
+where readTuples(filename)=<s,p,v> and p="<http://user.it.uu.se/~udbl/sard#REFERENCES>" and s=colURI;
+
+create function ret_fkMap(Charstring filename,Charstring fkURI)->Charstring
+/*Retrieve the URI of the Mapped Column that is represented by FK in NT file*/
+as select v1 from Charstring s1,Charstring p1, Charstring v1
+where readtuples(filename)=<s1,p1,v1> and s1=fkURI and p1!="<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>" 
+and like(p1,"<http://www.w3.org/1999/02/22-rdf-syntax-ns#*") ;
+
+
+create function ret_fkRef1(Charstring filename1,Charstring tableURI,Charstring tname)
+->(Charstring,Charstring,Charstring,Charstring,Charstring)
+/*Generates INSERT INTO statements to insert column and data into the table while scanning the NT-file (containing only Charstring data) row by row*/
+as
+begin
+	declare Vector v1, Vector v2,Vector v3, Vector v4, Vector tab1, Vector tab2,Charstring t1, charstring t2,Charstring t1a, charstring t2a,charstring t2b,charstring t3,charstring t, charstring tname_ref;
+	set t="";
+	set t1="";
+	set t2="";
+	set t3="";
+	set tname_ref="";
+
+	for each Charstring ch1,Charstring ch2 where ret_tableNameURIs(filename1)=<ch1,ch2>
+	begin 
+		set tab1=concat(tab1,{ch1});   
+		set tab2=concat(tab2,{ch2});   
+		for each Charstring ch3,Charstring ch4 where ret_columnNameURIs(filename1,ch1,ch2)=<ch3,ch4>
+		begin 
+       			set v1=concat(v1,{ch3});     
+       			set v2=concat(v2,{ch4});
+       			set v3=concat(v3,{ch1});     
+       			set v4=concat(v4,{ch2});
+		end;
+	end;
+	if (tableURI in ret_tableURIs_CT(filename1)) then
+	begin
+		for each charstring s,charstring v where ret_fkURI11(filename1,tableURI)=<s,v>
+		begin
+			if(s!=t) then
+	        	begin
+		 		if (t!="")then
+					begin				
+				 	result (t1,tname,t3,t2,tname_ref);	
+			       	 	end;
+					set t1="";
+					set t2="";
+					set t3="";
+					set t=s;
+			end;	
+			if(v!="") then
+			begin
+				for each Integer i where i in iota (1,dim(tab1))
+				begin
+					if v=tab1[i-1] then
+						set tname_ref=tab2[i-1];
+  				end;
+				for each Integer i where i in iota(1, dim(v1))
+				begin
+					if s=v1[i-1] and tableURI=v3[i-1] then 
+					begin
+						set t1a=v2[i-1];
+					end;
+					if s=v1[i-1] and tname_ref=v4[i-1] then 
+					begin
+						set t2a=v2[i-1];
+					end;
+				end;
+	
+				set t2=t2a+","+t2;
+				set t3=t3+"_"+t1a;
+				set t1=t1a+" ,"+t1;
+	
+			end; 
+			set t1=substring(t1,0,char_length(t1)-2);
+	                set t2=substring(t2,0,char_length(t2)-2);
+        	        set t3=substring(t3,1,char_length(t3));
+			
+  		end;
+	end
+        else
+	begin
+		for each charstring s,charstring v where ret_fkURI11(filename1,tableURI)=<s,v>
+		begin
+			if(s!=t) then
+	        	begin
+		 		if (t!="")then
+					begin				
+				 		result (t1,tname,t3,t2,tname_ref);
+			       	 	end;
+					set t1="";
+					set t2="";
+					set t3="";
+					set t=s;
+			end;	
+			if(v!="") then
+			begin
+				set t2b=ret_fkref(filename1,v);
+				set t1a=v;
+		 		for each Integer i where i in iota(1,dim(v1))
+				begin
+					if t2b=v1[i-1] then
+						set t2a=v2[i-1];
+					if t1a=v1[i-1] then
+						set t1a=v2[i-1];
+				end;
+				set t2=t2a+" ,"+t2;
+				set t3=t3+"_"+t1a;
+				set t1=t1a+" ,"+t1;
+	
+			end; 	
+                	set t1=substring(t1,0,char_length(t1)-2);
+	                set t2=substring(t2,0,char_length(t2)-2);
+        	        set t3=substring(t3,1,char_length(t3));
+			for each Integer i where i in iota (1,dim(v1))
+			begin
+				if t2b=v1[i-1] then
+					set tname_ref=v4[i-1]; 
+  			end;
+  		end;
+	end;
+	result (t1,tname,t3,t2,tname_ref);
+
+end;
+
+/************************************************************************************************************************/
+			/***RETRIEVING COLUMN SIZE FROM GIVEN FILE ***/
+/************************************************************************************************************************/
+
+create function ret_ColSize(Charstring filename,Charstring colURI)->Charstring
+/*Retrieve the size  of data Size of column or attribute*/
+as select v from Charstring s, Charstring p, Charstring v  where  readtuples(filename)=<s,p,v>
+and s=colURI and p="<http://user.it.uu.se/~udbl/sard#size>";
+
+
+
+create function ret_ColSize1(Charstring filename,Charstring colURI)->Charstring
+/*Retrieve the URI of datatype of column or attribute*/
+as
+begin
+declare charstring ch1;
+set ch1=ret_fkref(filename,colURI);
+result ret_colsize(filename,ch1);
+end;
+
+
+/************************************************************************************************************************/
+			/*** RETRIEVING COLUMN DATATYPE FROM GIVEN FILE***/
+/************************************************************************************************************************/
+
+
+create function xsd_typeMap()-><Charstring rdbtype, Charstring xsdtype,Charstring xsdabb > as stored;
+
+create function set_xsd_typeMap()->Boolean
+as
+ begin
+	set xsd_typeMap()=(NIL,NIL,NIL);
+	add xsd_typeMap()=<"varchar",'http://www.w3.org/2001/XMLSchema#string', 'xsd:string'>;
+	/*add xsd_typeMap()=<"char",'http://www.w3.org/2001/XMLSchema#string','xsd:string'>;*/
+        add xsd_typeMap()=<"float", 'http://www.w3.org/2001/XMLSchema#float','xsd:string'>;
+	add xsd_typeMap()=<"integer", 'http://www.w3.org/2001/XMLSchema#integer', 'xsd:integer'>;
+	add xsd_typeMap()=<"int", 'http://www.w3.org/2001/XMLSchema#int','xsd:int'>;
+	add xsd_typeMap()=<"datetime",'http://www.w3.org/2001/XMLSchema#dateTime','xsd:dateTime'>;
+	add xsd_typeMap()=<"date",'http://www.w3.org/2001/XMLSchema#date','xsd:date'>;
+	add xsd_typeMap()=<"time",'http://www.w3.org/2001/XMLSchema#time','xsd:time'>;
+	add xsd_typeMap()=<"decimal",'http://www.w3.org/2001/XMLSchema#decimal','xsd:decimal'>;
+	add xsd_typeMap()=<"numeric",'http://www.w3.org/2001/XMLSchema#double','xsd:double'>;
+	/******************************************************************************************************/
+	/*Adding new data types in the give data.*/
+
+	add xsd_typeMap()=<"person",'http://user.it.uu.se/~udbl/sard/person#person','xsd:person'>;
+	add xsd_typeMap()=<"region",'http://user.it.uu.se/~udbl/sard/person#region','xsd:region'>;
+	add xsd_typeMap()=<"tel",'http://user.it.uu.se/~udbl/sard/person#tel','xsd:tel'>;
+	/******************************************************************************************************/
+  end;
+
+set_xsd_typeMap();
+
+create function ret_mappeddatatype(Charstring x)->Charstring 
+/*Retrieves only datatype from URI of datatype*/
+as 
+	select reltype from Charstring relType,Charstring xsd,Charstring short where
+        xsd_typeMap()=(reltype,xsd,short) and xsd=x;
+
+
+
+create function ret_ColDataType(Charstring filename,Charstring colURI)->Charstring
+/*Retrieve the URI of datatype of column or attribute*/
+as select ret_mappeddatatype(substring(v,1,char_length(v)-2)) from Charstring s, Charstring p, Charstring v 
+where readtuples(filename)=<s,p,v> and s=colURI
+and p ="<http://www.w3.org/2000/01/rdf-schema#range>";
+
+
+
+create function ret_ColDataType1(Charstring filename,Charstring colURI)->Charstring
+/*Retrieve the URI of datatype of column or attribute*/
+as
+begin
+declare charstring ch1;
+set ch1=ret_fkref(filename,colURI);
+result ret_coldatatype(filename,ch1);
+end;
+/************************************************************************************************************************/
+	/*Retrieving column informations taking consideration of foreign key*/
+/************************************************************************************************************************/
+
+create function colInfo_mod(Charstring filename,Charstring tableURI,Charstring tname)
+->(Charstring,Charstring,Charstring,Charstring,Charstring)
+as
+begin
+ for each Charstring ch1,Charstring ch2 where ret_columnNameURIs(filename,tableURI,tname)=(ch1,ch2)
+	if(ret_ColSize(filename,ch1)!="") then
+  	  result (clear(tableURI),ch1,ch2,ret_ColdataType(filename,ch1),ret_ColSize(filename,ch1))
+	else
+	  result (clear(tableURI),ch1,ch2,ret_ColdataType(filename,ch1),"")
+
+end;
+/************************************************************************************************************************/
+	/*Retrieving the information of the column taking account of primary key and mapping datatype for foreign key.*/
+/************************************************************************************************************************/
+create function get_infoPk1(Charstring filename1,Charstring tableURI,Charstring tname)
+->Charstring
+as begin 
+declare charstring temp;
+set temp="";
+for each Charstring tabname,Charstring dsize,Charstring colURI, Charstring colname, Charstring dtype 
+ where <tabname,colURI,colname,dtype,dsize> = colInfo_mod(filename1,tableURI,tname)
+	
+	 if dsize=""
+		then set temp = temp + colname + " " + dtype +","
+
+	else 
+		set temp = temp + colname + " " + dtype +"("+ dsize+")"+",";
+	
+	 
+result substring(temp,0,char_length(temp)-2);
+end;
+/************************************************************************************************************************/
+	/*Retrieving CREATE TABLE script for the given file*/
+/************************************************************************************************************************/
+
+create function makeTable(Charstring filename1,Charstring tableURI,Charstring tname)
+->Charstring
+as
+begin
+	declare charstring t1;
+	set t1="";
+	for each Charstring ch1,Charstring ch2 where ret_pkNameURIs(filename1,tableURI)=<ch1,ch2>
+	begin 
+		set t1=t1+","+ch2;
+	end;
+	 result "(" + get_infopk1(filename1,tableURI,tname) +",PRIMARY KEY(" +substring(t1,1,char_length(t1))+"));"
+end;
+
+create function makeAllTable(Charstring filename1)
+->Charstring 
+as 
+	for each Charstring ch1,Charstring ch2 where ret_tableNameURIs(filename1)=<ch1,ch2>
+		result "CREATE TABLE " +ch2+makeTable(filename1,ch1,ch2);
+
+
+create function generateSQLTable(jdbc j,Charstring filename1)->Boolean
+as
+/*Creates all tables with sql*/
+	
+		for each Charstring ch1,Charstring ch2 where ret_tableNameURIs(filename1)=<ch1,ch2>
+			sql(j, makeTable(filename1, ch1,ch2));
+			                 
+          
+
+/************************************************************************************************************************/
+	/*Retrieving Constraints info to produce ALTER TABLE script*/
+/************************************************************************************************************************/
+	
+create function makeConstraint(Charstring filename1,Charstring tableURI,Charstring tname)
+->Charstring
+as 
+for each Charstring ch1,Charstring ch2,Charstring ch3,Charstring ch4,Charstring ch5 where ret_fkRef1(filename1,tableURI,tname)=<ch1,ch2,ch3,ch4,ch5>
+              if(ch1!="") then
+              result "ALTER TABLE " + ch2+ " ADD CONSTRAINT FK_"+ch2+"_"+ch3+" FOREIGN KEY("+ch1+") REFERENCES "+ch5+"("+ch4+");";
+
+	
+create function makeAllConstraint(Charstring filename1)
+->Charstring 
+as 
+for each Charstring ch1, Charstring ch2 where ret_tableNameURIs(filename1)=<ch1,ch2> 
+		result makeConstraint(filename1,ch1,ch2);
+	
+
+create function generateSQLConstraint(jdbc j,Charstring filename1)->Boolean
+as
+/*Creates all tables with sql*/
+
+		for each Charstring ch1,Charstring ch2 where ret_tableNameURIs(filename1)=<ch1,ch2>
+			sql(j, makeConstraint(filename1,ch1,ch2));
+			                 
+/************************************************************************************************************************/
+	/*DROP TABLE script*/
+/************************************************************************************************************************/

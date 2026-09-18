@@ -1,0 +1,104 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2004 Ruslan Fomkin, UDBL
+ * $RCSfile: schema.osql,v $
+ * $Revision: 1.17 $ $Date: 2008/08/18 10:13:58 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Implementation of event data schema describing particles collision events. 
+ *
+ ****************************************************************************
+ * $Log: schema.osql,v $
+ * Revision 1.17  2008/08/18 10:13:58  ruslan
+ * names are corrected according the schema in the thesis
+ *
+ * Revision 1.16  2008/05/13 09:32:31  ruslan
+ * improvement in the schema
+ *
+ * Revision 1.15  2006/09/27 10:35:05  ruslan
+ * moving to doc directory
+ *
+ * Revision 1.14  2006/08/17 07:27:39  ruslan
+ * moving aleh operations file back to schema file
+ *
+ * Revision 1.13  2006/08/17 06:59:16  ruslan
+ * loading parameters schema is moved from schema file to parameters file
+ *
+ * Revision 1.12  2006/04/28 10:04:44  ruslan
+ * operation.lsp is moved from formulas.osql
+ *
+ * Revision 1.11  2006/03/22 09:09:39  ruslan
+ * schema is improved: events are defined over basic type. It gives good improvement in performance for materialized ontology loading entire file
+ *
+ * Revision 1.10  2006/03/21 11:02:30  ruslan
+ * Updated instruction for compiling and running ALEH. Added scripts for compiling ALEH and for testing projects depending on ROOT library
+ *
+ * Revision 1.9  2006/03/03 13:16:40  ruslan
+ * commented code removed
+ *
+ * Revision 1.8  2006/02/16 08:59:04  ruslan
+ * reference to event is stored for each particle instead of bag of particles was stored for each event
+ *
+ ****************************************************************************/
+
+/* Creating entity types */
+create type Event;
+create type Particle;
+create type Lepton under Particle;
+create type JetB under Particle;
+create type Electron under Lepton;
+create type Muon under Lepton;
+
+/* Attributes of Event. Each event uniquely identified by filename and
+   its id number in the file. */
+create function PxMiss(Event) -> real as stored;
+create function PyMiss(Event) -> real as stored;
+create function filename(Event) -> charstring as stored;
+create function EventId(Event) -> integer as stored;
+
+/* Attributes of particles. An id number is assign to each particle to be
+   able to order particles belonging to the same event. */
+create function PID(Particle) -> integer as stored;
+create function Kf(Particle) -> integer as stored;
+create_index("KF","integer","hash","multiple");
+create function Px(Particle) -> real as stored;
+create function Py(Particle) -> real as stored;
+create function Pz(Particle) -> real as stored;
+create function Ee(Particle) -> real as stored;
+create_index("EE","REAL","hash","multiple");
+
+create function event(Particle)-> Event;
+/* Implementation of relationship between an event and its particles. For
+   efficiency each basic particle stores refernce to its event. */
+create function event(Muon)-> Event as stored;
+create function event(Electron)-> Event as stored;
+create function event(Jetb)-> Event as stored;
+create_index("MUON.EVENT->EVENT","EVENT","hash","multiple");
+create_index("ELECTRON.EVENT->EVENT","EVENT","hash","multiple");
+create_index("JETB.EVENT->EVENT","EVENT","hash","multiple");
+
+/* Definition of derived functions for simplifying defenitions of analysis
+   queries. */
+create function electrons(Event ev) -> Electron el as 
+select el
+where event(el)=ev;
+
+create function muons(Event ev) -> Muon mu as
+select mu 
+where event(mu)=ev;
+
+create function jetbs(Event ev) -> JetB jb as
+select jb 
+where event(jb)=ev;
+
+create function leptons(Event ev) -> Lepton l as
+select l
+where event(l)=ev;
+
+create function particles(Event ev) -> Particle p as
+select p 
+where event(p)=ev;
+
+load_lisp("../lsp/operations.lsp");

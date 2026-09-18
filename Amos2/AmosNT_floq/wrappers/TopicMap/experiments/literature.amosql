@@ -1,0 +1,224 @@
+exportTopicMap("ucliterature","http://www.isotopicmaps.org/tmql/uc-literature.xtm");
+
+/* 1)Retrieve all author names, i.e. the name of a topic which plays the role author in an is-author-of association.*/
+
+set :query1= "SELECT DISTINCT ?bnt1 
+      	     FROM <http://www.isotopicmaps.org/tmql/uc-literature.xtm>
+      	     WHERE{ ?ass <http://udbl2.it.uu.se/swatm:INSTANCEOFASSOCIATION> ?t2.
+		    ?t2  <http://udbl2.it.uu.se/swatm:IDTOPIC> 'is-author-of'.
+		    ?ass <http://udbl2.it.uu.se/swatm:MEMBERASSOCIATION> ?mass1.
+		    ?mass1 <http://udbl2.it.uu.se/swatm:ROLESPEC> ?t3.
+		    ?t3 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'author'.
+		    ?mass1 <http://udbl2.it.uu.se/swatm:TOPICMEMBER> ?t1.
+		    ?t1 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bn.
+		    ?bn <http://udbl2.it.uu.se/swatm:BASENAMESTRING> ?bnt1.
+		    ?bn <http://udbl2.it.uu.se/swatm:SCOPEBASENAME> ?t4.
+		    ?t4 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'sort' }
+		ORDER BY DESC(?emp)";
+
+sparql(:query1);
+
+/*My result*/
+{"Pepper, Steve"}
+{"Newcomb, Steve"}
+{"Biezunski, Michel"}
+{"Rath, Holger"}
+
+set :query11= "SELECT DISTINCT ?bnt1 
+      	     FROM <http://www.isotopicmaps.org/tmql/uc-literature.xtm>
+      	     WHERE{ ?ass <http://udbl2.it.uu.se/swatm:INSTANCEOFASSOCIATION> ?t2.
+		    ?t2  <http://udbl2.it.uu.se/swatm:IDTOPIC> 'is-author-of'.
+		    ?ass <http://udbl2.it.uu.se/swatm:MEMBERASSOCIATION> ?mass1.
+		    ?mass1 <http://udbl2.it.uu.se/swatm:ROLESPEC> ?t3.
+		    ?t3 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'author'.
+		    ?mass1 <http://udbl2.it.uu.se/swatm:TOPICMEMBER> ?t1.
+		    ?t1 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bn.
+		    ?bn <http://udbl2.it.uu.se/swatm:BASENAMESTRING> ?bnt1.
+	     	    OPIONAL{?bn <http://udbl2.it.uu.se/swatm:SCOPEBASENAME> ?t}.
+		    FILTER(!bound(?t)) }
+
+select distinct basenamestring(b) from topic t3, basename b, association a, member m where idtopic(instanceofassociation(a))='is-author-of' and memberassociation(a)=m and idtopic(rolespec(m))='author' and topicmember(m)=t3 and basenametopic(t3)=b and notany(scopebasename(b));
+
+/*wanted result*/
+"Holger Rath"
+"Michel Biezunski"
+"Steve Pepper"
+"Steve Newcomb"
+
+/*Needed NIL */
+set :query11= "SELECT DISTINCT ?bnt1 
+      	     FROM <http://www.isotopicmaps.org/tmql/uc-literature.xtm>
+      	     WHERE{ ?ass <http://udbl2.it.uu.se/swatm:INSTANCEOFASSOCIATION> ?t2.
+		    ?t2  <http://udbl2.it.uu.se/swatm:IDTOPIC> 'is-author-of'.
+		    ?ass <http://udbl2.it.uu.se/swatm:MEMBERASSOCIATION> ?mass1.
+		    ?mass1 <http://udbl2.it.uu.se/swatm:ROLESPEC> ?t3.
+		    ?t3 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'author'.
+		    ?mass1 <http://udbl2.it.uu.se/swatm:TOPICMEMBER> ?t1.
+		    ?t1 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bn.
+		    ?bn <http://udbl2.it.uu.se/swatm:BASENAMESTRING> ?bnt1.
+		    ?bn <http://udbl2.it.uu.se/swatm:SCOPEBASENAME> NIL }";
+
+sparql(:query11);
+
+/*2) Retrieve the name of all authors, this time ordered by the sort name provided in person topics. */
+
+set :query2= "SELECT DISTINCT ?bnt1 
+      	     FROM <http://www.isotopicmaps.org/tmql/uc-literature.xtm>
+      	     WHERE{ ?ass <http://udbl2.it.uu.se/swatm:INSTANCEOFASSOCIATION> ?t2.
+		    ?t2  <http://udbl2.it.uu.se/swatm:IDTOPIC> 'is-author-of'.
+		    ?ass <http://udbl2.it.uu.se/swatm:MEMBERASSOCIATION> ?mass1.
+		    ?mass1 <http://udbl2.it.uu.se/swatm:ROLESPEC> ?t3.
+		    ?t3 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'author'.
+		    ?mass1 <http://udbl2.it.uu.se/swatm:TOPICMEMBER> ?t1.
+		    ?t1 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bn.
+		    ?bn <http://udbl2.it.uu.se/swatm:BASENAMESTRING> ?bnt1.
+		    ?bn <http://udbl2.it.uu.se/swatm:SCOPEBASENAME> ?t4.
+		    ?t4 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'sort' }
+	     ORDER BY ?bnt1";
+
+sparql(:query2);
+
+/*My result*/
+{{"Biezunski, Michel","Newcomb, Steve","Pepper, Steve","Rath, Holger"}}
+
+/*wanted*/
+"Michel Biezunski"
+"Steve Newcomb"
+"Steve Pepper"
+"Holger Rath"
+
+/*3)Retrieve the titles of all tutorials. The titles should be preferably those in scope en, de or in the unconstrained scope, in that order.*/
+
+set :query3= "SELECT ?bnt1 
+      	     FROM <http://www.isotopicmaps.org/tmql/uc-literature.xtm>
+	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bn.
+		    ?bn <http://udbl2.it.uu.se/swatm:BASENAMESTRING> ?bnt1.
+		    ?t1 <http://udbl2.it.uu.se/swatm:INSTANCEOFTOPIC> ?t2.
+	            ?t2 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'tutorial'}";		 	
+
+sparql(:query3);
+
+{"Euler, Topic Maps und Revolution"}
+{"Euler, topic maps, and revolution"}
+{"Making topic maps more colourful"}
+
+/*needed */
+set :query3= "SELECT ?bnt1 
+      	     FROM <http://www.isotopicmaps.org/tmql/uc-literature.xtm>
+	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bn.
+		    ?bn <http://udbl2.it.uu.se/swatm:BASENAMESTRING> ?bnt1.
+		    ?t1 <http://udbl2.it.uu.se/swatm:INSTANCEOFTOPIC> ?t2.
+	            ?t2 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'tutorial'.
+		    
+		  { ?bn <http://udbl2.it.uu.se/swatm:SCOPEBASENAME> ?t3.
+		    ?t3 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'en'.}
+		    UNION
+	          { ?bn <http://udbl2.it.uu.se/swatm:SCOPEBASENAME> ?t3.
+		    ?t3 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'den'}
+		    UNION
+		{ ?bn <http://udbl2.it.uu.se/swatm:SCOPEBASENAME> NIL.}	}";	
+
+
+/*4) Retrieve the names of all persons who have not authored anything.*/
+/*?????????????????????????*/
+set :query4= "SELECT DISTINCT ?bnt1
+      	     FROM <http://www.isotopicmaps.org/tmql/uc-literature.xtm>
+	     WHERE{ ?ass <http://udbl2.it.uu.se/swatm:INSTANCEOFASSOCIATION> ?t3.
+		    ?t3 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'is-author-of'.
+		    ?ass <http://udbl2.it.uu.se/swatm:MEMBERASSOCIATION> ?mass1.
+        	    ?mass1 <http://udbl2.it.uu.se/swatm:ROLESPEC> ?t4.
+		    ?t4 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'author'.
+		    ?mass1 <http://udbl2.it.uu.se/swatm:TOPICMEMBER> ?t5.
+		    ?t1 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bn.
+		    ?bn <http://udbl2.it.uu.se/swatm:BASENAMESTRING> ?bnt1.
+         	    ?t1 <http://udbl2.it.uu.se/swatm:INSTANCEOFTOPIC> ?t2.
+		    ?t2 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'person'.
+	     FILTER (?t1 != ?t5) }";
+			
+sparql(:query4);
+
+
+/*5) Retrieve a list of all author names together with the title of their publications.*/
+
+set :query5= "SELECT DISTINCT ?bnt1 ?bnt5
+      	     FROM <http://www.isotopicmaps.org/tmql/uc-literature.xtm>
+      	     WHERE{ ?ass <http://udbl2.it.uu.se/swatm:INSTANCEOFASSOCIATION> ?t2.
+		    ?t2  <http://udbl2.it.uu.se/swatm:IDTOPIC> 'is-author-of'.
+		    ?ass <http://udbl2.it.uu.se/swatm:MEMBERASSOCIATION> ?mass1.
+      		    ?ass <http://udbl2.it.uu.se/swatm:MEMBERASSOCIATION> ?mass2.
+		    ?mass1 <http://udbl2.it.uu.se/swatm:ROLESPEC> ?t3.
+		    ?t3 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'author'.
+		    ?mass1 <http://udbl2.it.uu.se/swatm:TOPICMEMBER> ?t1.
+		    ?t1 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bn.
+		    ?bn <http://udbl2.it.uu.se/swatm:BASENAMESTRING> ?bnt1.
+		    ?bn <http://udbl2.it.uu.se/swatm:SCOPEBASENAME> ?t4.
+		    ?t4 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'sort'.
+         	    ?mass2 <http://udbl2.it.uu.se/swatm:TOPICMEMBER> ?t5.
+		    ?t5 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bn5.			
+         	    ?bn5 <http://udbl2.it.uu.se/swatm:BASENAMESTRING> ?bnt5.
+	     FILTER (?mass1 != ?mass2) }";
+
+sparql(:query5);
+
+/*The result*/
+{"Pepper, Steve","The TAO of Topic Maps"}
+{"Newcomb, Steve","XML topic maps: finding aids for the Web"}
+{"Biezunski, Michel","XML topic maps: finding aids for the Web"}
+{"Pepper, Steve","Euler, Topic Maps und Revolution"}
+{"Pepper, Steve","Euler, topic maps, and revolution"}
+{"Rath, Holger","Making topic maps more colourful"}
+{"Pepper, Steve","Navigating haystacks and discovering needles"}
+
+/*6) Retrieve a list of all titles of documents which are tutorials (i.e. are a direct or indirect instance of class tutorial) sorted by publication date, descending.*/
+
+set :query6= "SELECT ?bnt1 ?dat 
+      	     FROM <http://www.isotopicmaps.org/tmql/uc-literature.xtm>
+	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bn.
+		    ?bn <http://udbl2.it.uu.se/swatm:BASENAMESTRING> ?bnt1.
+		    ?t1 <http://udbl2.it.uu.se/swatm:INSTANCEOFTOPIC> ?t2.
+	            ?t2 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'tutorial'.
+		    ?t1	<http://udbl2.it.uu.se/swatm:OCCURRENCETOPIC> ?ot1.
+		    ?ot1 <http://udbl2.it.uu.se/swatm:INSTANCEOFOCCURRENCE> ?t3.
+		    ?t3 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'publication-date' .	
+		    ?ot1 <http://udbl2.it.uu.se/swatm:DATA> ?dat}
+	     ORDER BY DESC(?dat)";		 	
+
+sparql(:query6);
+
+{{{"Making topic maps more colourful","2000"},{"Euler, topic maps, and revolution","1999"},{"Euler, Topic Maps und Revolution","1999"}}}
+
+/*7) Retrieve a list of documents, sorted by publication date (ascending), only number 3 to 5, inclusive, together with this order number.*/
+
+/*Requires UNION*/
+set :query7= "SELECT ?bnt1 
+      	     FROM <http://www.isotopicmaps.org/tmql/uc-literature.xtm>
+	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bn.
+		    ?bn <http://udbl2.it.uu.se/swatm:BASENAMESTRING> ?bnt1.
+		    ?t1 <http://udbl2.it.uu.se/swatm:INSTANCEOFTOPIC> ?t2.
+		    ?t1	<http://udbl2.it.uu.se/swatm:OCCURRENCETOPIC> ?ot1.
+		    ?ot1 <http://udbl2.it.uu.se/swatm:INSTANCEOFOCCURRENCE> ?t3.
+		    ?t3 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'publication-date' .	
+		    ?ot1 <http://udbl2.it.uu.se/swatm:DATA> ?dat}
+
+	            {
+		    	{?t2 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'tutorial'}
+		     UNION
+			{?t2 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'article'} 
+		    }
+		  }";
+
+sparql(:query7);
+
+select basenamestring(bn), data(o) from topic t, topic t2, basename bn, occurrence o where basenametopic(t2)=bn and instanceoftopic(t2)=t and (idtopic(t)='tutorial' or idtopic(t)='article' or idtopic(t)='conference-article'
+) and notany(scopebasename(bn)) and occurrencetopic(t2)= o and idtopic(instanceofoccurrence(o))='publication-date';
+
+
+/*8) Retrieve all topic identifiers of documents which have a download URL.*/ 		
+
+set :query8= "SELECT ?id 
+      	     FROM <http://www.isotopicmaps.org/tmql/uc-literature.xtm>
+	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm:IDTOPIC> ?id.
+		    ?t1 <http://udbl2.it.uu.se/swatm:SUBJECTIDENTITY> ?si.
+	     FILTER REGEX (?si, '*http*') .}"; 	
+
+sparql(:query8);

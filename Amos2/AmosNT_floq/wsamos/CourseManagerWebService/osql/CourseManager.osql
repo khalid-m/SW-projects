@@ -1,0 +1,536 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Tore Risch, UDBL
+ * $RCSfile: CourseManager.osql,v $
+ * $Revision: 1.1 $ $Date: 2009/12/03 15:57:38 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Database schema for course administration
+ ****************************************************************************/
+
+/******** Exam *******************************/
+create type examProblem
+properties (number integer,
+            name charstring,
+            maxpoints integer);
+
+/******** Assignment *************************/
+create type assignment
+properties (title charstring, deadline date);
+
+create function assNo(assignment a) -> integer an key;
+
+create function assignment(integer num, charstring t, date d)
+  -> assignment a
+as begin
+  create assignment instances a;
+  set assNo(a) = num;
+  set title(a) = t;
+  set deadline(a) = d;
+  result a;
+end;
+
+/************************ User *******************/
+create type user 
+properties (firstName charstring,
+	    lastName charstring,
+            password charstring,
+            email charstring);
+
+create function name(user p) -> charstring un key;
+
+create function user
+(charstring fn, charstring ln, charstring un,
+ charstring pass, charstring em)
+ -> user p
+as begin
+  create user(firstName, lastName, name, password, email)
+         instances p(fn, ln, un, pass, em);
+  result p;
+end;
+
+create function fullName(user p) -> charstring as
+select firstName(p) + " " + lastName(p);
+
+create function userNamed(charstring nm) -> user as
+select u from user u where name(u) = nm;
+
+
+/**************** Assistant **************************/
+create type assistant under user;
+
+create function initials(assistant a) -> charstring
+as select upper(substring(firstName(a), 0, 0) + 
+                substring(lastName(a), 0, 0));
+
+create function assistant
+(charstring fn, charstring ln, charstring un,
+ charstring pass, charstring em)
+ -> assistant p
+as begin
+  declare user p;
+  set p = user(fn,ln,un,pass,em);
+  add type assistant to p;
+  result p;
+end;
+
+create function assistantNamed(charstring aname) -> assistant
+as select a from assistant a where name(a) = aname;
+
+create function allAssistants() -> bag of assistant
+as select a from assistant a;
+
+create function share(assistant a)-> real s as stored;
+
+/**************** Lecturer **************************/
+create type lecturer under user;
+
+create function lecturer
+(charstring fn, charstring ln, charstring un,
+ charstring pass, charstring em)
+ -> lecturer p
+as begin
+  declare user p;
+  set p = user(fn,ln,un,pass,em);
+  add type lecturer to p;
+  result p;
+end;
+
+
+/******** Course ************************/
+create type course properties (name charstring);
+
+create function course(charstring nm) -> course c
+as begin
+  create course(name) instances c(nm);
+  result c;
+end;
+
+create function responsible(course c) -> bag of lecturer;
+create function assistants(course c) -> bag of assistant;
+create function examProblems(course c) -> bag of examProblem;
+create function assignments(course c) -> bag of assignment;
+
+create function courseNamed(charstring cname) -> course
+as select c from course c where name(c) = cname;
+
+create function currCourse() -> course;
+
+
+
+/********************* Student *******************************/
+create type student under user
+properties (group integer, pn charstring, hasDBaccount boolean);
+
+create function worksOn(student s nonkey, assignment a) -> <charstring, timeval t>;
+
+create function respAssistant(student s nonkey, assignment a) -> assistant;
+
+create function examGrades(student s)
+  -> bag of <examProblem, integer, assistant>;
+
+create function student
+(charstring fn, charstring ln, charstring un, charstring pass,
+ charstring em, charstring pnum) -> student s
+as begin
+  declare user s;
+  set s = user(fn,ln,un,pass,em);
+  add type student to s;
+  set pn(s) = pnum;
+  set group(s) = -1;
+  for each assignment a
+    add worksOn(cast(s as student),a) = <"UNKNOWN", now()>;
+  result s;
+end;
+
+create function deleteEmptyStudents() -> integer
+as select delete_objects(select s from student s where notany(name(s)));
+
+create function studentNamed(charstring sname) -> student
+as select s from student s where name(s) = sname;
+
+create function tot_groups(assistant a)-> integer as
+select count(select distinct group(s)
+from student s, assignment ass
+where respAssistant(s, ass)=a);
+
+create function choose_ass(integer grno)-> assistant a
+as begin
+	declare assistant chosen;
+
+	if notany(select ass from assistant ass
+	where tot_groups(ass)< (grno+1)*share(ass))
+	then select ass into chosen
+	     from assistant ass
+	     where share(ass)= maxagg(select share(s) from assistant s)
+
+	else
+	for each assistant ass
+	where tot_groups(ass)< (grno+1)*share(ass)
+	set chosen= ass;
+
+	result chosen;
+end;
+
+create function updateGroup(vector studNames) -> vector 
+/* result: integer group, charstring assist */
+as begin
+  declare integer max_grp,
+          integer curr_grp,
+          assistant curr_assist,
+          integer studCount,
+          integer studMaxIdx,
+          vector students,
+          charstring curr_stud_nm,
+          student curr_stud,
+          charstring atLeastOneStud,
+	  integer curr_assist_no,
+	  vector of assistant assists;
+
+  set studCount = dim(studNames);
+  set studMaxIdx = studCount - 1;
+  set max_grp = maxagg(select group(s) from student s);
+  set curr_grp = max_grp + 1;
+  set atLeastOneStud = 'false';
+  set assists = sort(assistants(currCourse()));
+
+ /* set curr_assist_no = mod(curr_grp, dim(assists));
+  set curr_assist = assists[curr_assist_no]; */
+  set curr_assist = choose_ass(curr_grp);
+
+  for each integer i where i = iota(0, studMaxIdx)
+  begin
+    set curr_stud_nm = studNames[i];
+    if some(studentNamed(curr_stud_nm)) then
+    begin
+      set curr_stud = studentNamed(curr_stud_nm);
+      set group(curr_stud) = curr_grp;
+      for each assignment a
+      begin
+        set respAssistant(curr_stud, a) = curr_assist;
+      end;
+      set atLeastOneStud = 'true';
+    end;
+  end;
+
+  if (atLeastOneStud = 'true') then
+    result vector(curr_grp, fullName(curr_assist));
+end;
+
+
+create function resetGroup(vector studNames, charstring curr_assist_nm) -> vector 
+/* result: integer group, charstring assist */
+as begin
+  declare integer max_grp,
+          integer curr_grp,
+          assistant curr_assist,
+          integer studCount,
+          integer studMaxIdx,
+          vector students,
+          charstring curr_stud_nm,
+          student curr_stud,
+          charstring atLeastOneStud;
+
+  set studCount = dim(studNames);
+  set studMaxIdx = studCount - 1;
+  set max_grp = maxagg(select group(s) from student s);
+  set curr_grp = max_grp + 1;
+  set atLeastOneStud = 'false';
+  set curr_assist = assistantNamed(curr_assist_nm);
+
+  for each integer i where i = iota(0, studMaxIdx)
+  begin
+    set curr_stud_nm = studNames[i];
+    if some(studentNamed(curr_stud_nm)) then
+    begin
+      set curr_stud = studentNamed(curr_stud_nm);
+      set group(curr_stud) = curr_grp;
+      for each assignment a
+      begin
+        set respAssistant(curr_stud, a) = curr_assist;
+      end;
+      set atLeastOneStud = 'true';
+    end;
+  end;
+
+  if (atLeastOneStud = 'true') then
+    result vector(curr_grp, fullName(curr_assist));
+end;
+
+
+create function groupToString(integer g) -> charstring as
+begin
+  if (g = -1) then
+    result 'none'
+  else
+    result itoa(g);
+end;
+
+create function groupMembers(integer gr) -> student as
+select s
+from student s
+where group(s) = gr;
+
+create function groupMembers(Student s) -> student as
+select groupMembers(group(s));
+
+create function latestStatus(student s, assignment a)->charstring as
+select st+", "+itoa(day(d))+"/"+itoa(month(d))
+from vector v, timeval d, charstring st
+where v={worksOn(s,a)} and d=v[1] and st=v[0]
+and v[1] = maxagg({worksOn(s,a)}[1]);
+
+create function studentHistory(student s)->charstring as
+select cast(assNo(a) as charstring) + "# " +
+cast(v[0] as charstring) + " " +
+cast(year(cast(v[1] as timeval)) as charstring) + "-" +
+cast(month(cast(v[1] as timeval)) as charstring) + "-" +
+cast(day(cast(v[1] as timeval)) as charstring) + " " +
+cast(hour(cast(v[1] as timeval)) as charstring) + ":" +
+cast(minute(cast(v[1] as timeval)) as charstring) + ":" +
+cast(second(cast(v[1] as timeval)) as charstring)
+from assignment a, vector v
+where v={worksOn(s,a)}
+and assno(a) = iota(1,maxagg(select assno(a) from assignment a));
+
+create function studentHistory(charstring n)->charstring as
+select studentHistory(studentnamed(n));
+
+create function allHistory()->charstring as
+begin 
+  for each student s 
+begin
+   result firstname(s) + " " + lastname(s) + ":: " + studentHistory(s);
+  end;
+end;
+
+create function courseStatus(student s) -> charstring
+as begin
+  declare integer cnt, integer cntp, charstring stat;
+
+  set cnt = count(select a from assignment a);
+  set cntp = 0;
+  set stat = "UNKNOWN";
+	
+  for each assignment a
+  if latestStatus(s,a) = "FAILED" then
+    set stat = "FAILED"
+  else if latestStatus(s,a)= "PASSED" then
+    set cntp = cntp + 1;
+
+  if cntp = cnt
+  then
+    result "PASSED"
+  else
+    result stat;
+end;
+
+/*
+create function courseStatus(student s) -> charstring
+as begin
+  declare integer cnt, integer cntp, charstring stat;
+
+  set cnt = count(select a from assignment a);
+  set cntp = 0;
+  set stat = "UNKNOWN";
+	
+  for each assignment a
+  if worksOn(s,a) = "FAILED" then
+    set stat = "FAILED"
+  else if worksOn(s,a)= "PASSED" then
+    set cntp = cntp + 1;
+
+  if cntp = cnt
+  then
+    result "PASSED"
+  else
+    result stat;
+end;
+*/
+
+/******* broadcast mailer **********************/
+
+create function mailall(charstring sender, charstring subject, charstring message)->charstring as 
+select smtp_sendmail("smtp.uu.se", sender, x, subject, message)
+from charstring x 
+where x in (select email(a) from assistant a) 
+or x in (select email(a) from lecturer a)
+or x in (select email(a) from student a);
+
+/******* registration of grades ****************/
+
+create function notifyStudent(student s, assignment a, charstring stat, assistant assist)->charstring as
+  select smtp_sendmail("smtp.uu.se", email(assist), 
+                              email(s), "DBT: Updated assignment status", 
+  "This is an automated message.
+
+--------
+
+" +
+  firstName(assist) + " " + lastName(assist) + 
+  " has updated the status of assignment " + 
+  stringify(assNo(a)) +
+  " (" + title(a) + "). New status is " + stat + "." +
+  "
+
+--------
+
+Assignments that must be completed and resubmitted, can be collected from the
+outbox in the bookshelf outside 1345.
+
+Good luck!
+
+--------
+");
+
+create function updateStudentAssignment
+(student s, assignment a, charstring stat, assistant assist)
+ -> boolean
+as begin
+  add worksOn(s,a) = <stat,now()>;
+  set respAssistant(s,a) = assist;
+  notifyStudent(s, a, stat, assist);
+  result TRUE;
+end;
+
+create function updateStudentAssignment
+(charstring sname, integer an, charstring stat, charstring aname)
+ -> boolean
+as select updateStudentAssignment(studentNamed(sname),
+                                  a,
+                                  stat,
+                                  assistantNamed(aname))
+   from assignment a
+   where assNo(a) = an;
+
+create function updateGroupAssignment
+(integer gr, integer an, charstring stat, assistant assist)
+ -> boolean
+as select updateStudentAssignment(s,a,stat,assist)
+from student s, assignment a
+where groupMembers(gr) = s and
+      assNo(a) = an;
+
+create function updateGroupAssignment
+(charstring sname, integer an, charstring stat, charstring aname)
+ -> boolean
+as select updateGroupAssignment(group(studentNamed(sname)),
+                                an,
+                                stat,
+                                assistantNamed(aname));
+
+
+/************ student info ********/
+
+create function assignmentStatus(student s)
+ -> <integer, charstring, charstring>
+as select assNo(a), latestStatus(s,a), fullName(respAssistant(s,a))
+from assignment a;
+
+create function assignmentStatus(charstring sname)
+ -> <integer, charstring, charstring>
+as select assignmentStatus(studentNamed(sname));
+
+create function studentInfoPublic(student s)
+ -> <charstring, charstring, charstring>
+as select fullName(s), "", groupToString(group(s));
+
+create function studentInfoPublic(charstring sname)
+ -> <charstring, charstring, charstring>
+as select studentInfoPublic(studentNamed(sname));
+
+create function studentInfoFull(student s)
+ -> <charstring, charstring, charstring, charstring, charstring>
+as select fullName(s),
+          email(s),
+          name(s),
+          pn(s),
+          groupToString(group(s));
+
+create function studentInfoFull(charstring sname)
+ -> <charstring, charstring, charstring, charstring, charstring>
+as select studentInfoFull(studentNamed(sname));
+
+create function studentInfoFullAss(student s)
+ -> <charstring, charstring, charstring, charstring, charstring, vector>
+as select fullName(s),
+          email(s),
+          name(s),
+          pn(s),
+          groupToString(group(s)),
+          sortbagby(assignmentStatus(s), 1, 'inc');
+
+create function studentInfoFullAss(charstring sname)
+ -> <charstring, charstring, charstring, charstring, charstring, vector>
+as select studentInfoFullAss(studentNamed(sname));
+
+
+
+/******* REPORTS called from JSP **********************************/
+
+create function listStudents(integer col, charstring order) -> vector
+as select
+   sortbagby((select studentInfoPublic(s) from student s),
+             col,
+             order);
+
+create function listStudentsFull(integer col, charstring order) -> vector
+as select
+   sortbagby((select studentInfoFull(s) from student s),
+             col,
+             order);
+
+create function listStudentsFullAss(integer col, charstring order) -> vector
+as select
+   sortbagby((select studentInfoFullAss(s) from student s),
+             col,
+             order);
+
+create function listLonelyStudents(integer col, charstring order) -> vector
+as select
+   sortbagby((select studentInfoPublic(s)
+              from student s
+              where (count(groupMembers(group(s))) = 1 and 
+                    (group(s) != -1)) or
+                    group(s) = -1),
+            col,
+            order);
+
+create function listGroupMembers(charstring sname)
+ -> <charstring, charstring, charstring>
+as select studentInfoPublic(groupMembers(group(studentNamed(sname))));
+
+create function studentAssignmentStatus(charstring sname) -> vector
+as select
+   sortbagby(assignmentStatus(sname),
+             1,
+             'inc');
+
+create function assignmentInfo() -> vector
+as select
+   sortbagby((select assNo(a), title(a)
+              from assignment a),
+             1,
+             'inc');
+
+
+/*load_amosql("CM_printer.osql");*/
+
+/******* Java interface generation ****************/
+/*
+enablejava();
+
+create function generate_interfaces(vector t, vector f)->integer
+as foreign "JAVA:amosclassexporter.AmosClassExporter/classExporterMain";
+
+create function user_types() -> type;
+add user_types() = allsubtypes(typenamed('userobject'));
+
+create function user_functions() -> function;
+create function user_methods() -> function;
+add user_functions() = allfunctions(user_types());
+add user_methods() = methods(user_types());
+
+generate_interfaces(vectorof(user_types()), vectorof(user_functions()));
+*/

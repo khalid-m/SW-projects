@@ -1,0 +1,197 @@
+Dec 27, 2013 9:41:03 AM org.AmosSoapServer.AmosSoapHandler gotConnected
+FINE: Connection opened : 130.238.14.133
+Dec 27, 2013 9:41:03 AM org.AmosSoapServer.AmosServlet log
+FINE: 
+
+
+Dec 27, 2013 9:41:03 AM org.AmosSoapServer.AmosServlet log
+FINE: New Transition begin :2013.12.27 09:41:03
+Dec 27, 2013 9:41:03 AM org.AmosSoapServer.AmosServlet log
+FINE: Received the SOAP message:
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><SOAP-ENV:Body SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><tns:INTPLUS xmlns:tns="urn:WSAmos"><NUM1 xsi:type="xsd:int">1</NUM1><NUM2 xsi:type="xsd:int">2</NUM2></tns:INTPLUS></SOAP-ENV:Body></SOAP-ENV:Envelope>
+Dec 27, 2013 9:41:04 AM org.AmosSoapServer.AmosServlet log
+FINE: funName:INTPLUS
+Dec 27, 2013 9:41:04 AM org.AmosSoapServer.AmosII execute
+FINE: FunctionName =INTPLUSarg = INTEGER.INTEGER
+Dec 27, 2013 9:41:04 AM org.AmosSoapServer.AmosII execute
+FINE: fullName : INTEGER.INTEGER.INTPLUS->INTEGER
+Dec 27, 2013 9:41:04 AM org.AmosSoapServer.AmosII execute
+FINE: funName: INTPLUS
+Dec 27, 2013 9:41:04 AM org.AmosSoapServer.AmosII execute
+FINE: Arguments: [1, 2]
+Dec 27, 2013 9:41:04 AM org.AmosSoapServer.AmosII execute
+FINE: Result: [[3]]
+Dec 27, 2013 9:41:04 AM org.AmosSoapServer.AmosServlet log
+FINE: Sending SOAP message:
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><SOAP-ENV:Body xmlns:tns="urn:WSAmos"><tns:VWSMOS1 xsi:type="xsd:int">3</tns:VWSMOS1></SOAP-ENV:Body></SOAP-ENV:Envelope>
+Dec 27, 2013 9:41:04 AM org.AmosSoapServer.AmosServlet log
+FINE: Whole transition finish at 2013.12.27 09:41:04
+
+Dec 27, 2013 9:41:04 AM org.AmosSoapServer.AmosServlet log
+FINE: 
+
+
+Dec 27, 2013 9:41:04 AM org.AmosSoapServer.AmosServlet log
+FINE: New Transition begin :2013.12.27 09:41:04
+Dec 27, 2013 9:41:04 AM org.AmosSoapServer.AmosServlet log
+FINE: Received the SOAP message:
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><SOAP-ENV:Body SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><tns:INTBAG xmlns:tns="urn:WSAmos"/></SOAP-ENV:Body></SOAP-ENV:Envelope>
+Dec 27, 2013 9:41:04 AM org.AmosSoapServer.AmosServlet log
+FINE: funName:INTBAG
+Dec 27, 2013 9:41:04 AM org.AmosSoapServer.AmosII execute
+FINE: FunctionName =INTBAGarg = 
+Dec 27, 2013 9:41:04 AM org.AmosSoapServer.AmosII execute
+FINE: fullName : INTBAG->INTEGER
+Dec 27, 2013 9:41:04 AM org.AmosSoapServer.AmosII execute
+FINE: funName: INTBAG
+Dec 27, 2013 9:41:04 AM org.AmosSoapServer.AmosII execute
+FINE: Arguments: [null]
+Dec 27, 2013 9:41:04 AM org.AmosSoapServer.AmosII execute
+FINE: Result: [[1], [2], [3], [4]]
+Dec 27, 2013 9:41:04 AM org.AmosSoapServer.AmosServlet log
+FINE: Sending SOAP message:
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><SOAP-ENV:Body xmlns:tns="urn:WSAmos"><tns:results><tns:row><OUT0 xsi:type="xsd:int">1</OUT0></tns:row><tns:row><OUT0 xsi:type="xsd:int">2</OUT0></tns:row><tns:row><OUT0 xsi:type="xsd:int">3</OUT0></tns:row><tns:row><OUT0 xsi:type="xsd:int">4</OUT0></tns:row></tns:results></SOAP-ENV:Body></SOAP-ENV:Envelope>
+Dec 27, 2013 9:41:04 AM org.AmosSoapServer.AmosServlet log
+FINE: Whole transition finish at 2013.12.27 09:41:04
+
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosServlet log
+FINE: 
+
+
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosServlet log
+FINE: New Transition begin :2013.12.27 09:41:08
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosServlet log
+FINE: Received the SOAP message:
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><SOAP-ENV:Body SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><tns:INTBAG xmlns:tns="urn:WSAmos"/></SOAP-ENV:Body></SOAP-ENV:Envelope>
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosServlet log
+FINE: funName:INTBAG
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosII execute
+FINE: FunctionName =INTBAGarg = 
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosII execute
+FINE: fullName : INTBAG->INTEGER
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosII execute
+FINE: funName: INTBAG
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosII execute
+FINE: Arguments: [null]
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosII execute
+FINE: Result: [[1], [2], [3], [4]]
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosServlet log
+FINE: Sending SOAP message:
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><SOAP-ENV:Body xmlns:tns="urn:WSAmos"><tns:results><tns:row><OUT0 xsi:type="xsd:int">1</OUT0></tns:row><tns:row><OUT0 xsi:type="xsd:int">2</OUT0></tns:row><tns:row><OUT0 xsi:type="xsd:int">3</OUT0></tns:row><tns:row><OUT0 xsi:type="xsd:int">4</OUT0></tns:row></tns:results></SOAP-ENV:Body></SOAP-ENV:Envelope>
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosServlet log
+FINE: Whole transition finish at 2013.12.27 09:41:08
+
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosServlet log
+FINE: 
+
+
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosServlet log
+FINE: New Transition begin :2013.12.27 09:41:08
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosServlet log
+FINE: Received the SOAP message:
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><SOAP-ENV:Body SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><tns:INTPLUS xmlns:tns="urn:WSAmos"><NUM1 xsi:type="xsd:int">2</NUM1><NUM2 xsi:type="xsd:int">10</NUM2></tns:INTPLUS></SOAP-ENV:Body></SOAP-ENV:Envelope>
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosSoapHandler gotConnected
+FINE: Connection opened : 130.238.14.133
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosServlet log
+FINE: funName:INTPLUS
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosII execute
+FINE: FunctionName =INTPLUSarg = INTEGER.INTEGER
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosII execute
+FINE: fullName : INTEGER.INTEGER.INTPLUS->INTEGER
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosII execute
+FINE: funName: INTPLUS
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosII execute
+FINE: Arguments: [2, 10]
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosII execute
+FINE: Result: [[12]]
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosServlet log
+FINE: Sending SOAP message:
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><SOAP-ENV:Body xmlns:tns="urn:WSAmos"><tns:VWSMOS1 xsi:type="xsd:int">12</tns:VWSMOS1></SOAP-ENV:Body></SOAP-ENV:Envelope>
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosServlet log
+FINE: Whole transition finish at 2013.12.27 09:41:08
+
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosServlet log
+FINE: 
+
+
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosServlet log
+FINE: New Transition begin :2013.12.27 09:41:08
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosServlet log
+FINE: Received the SOAP message:
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><SOAP-ENV:Body SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><tns:INTPLUS xmlns:tns="urn:WSAmos"><NUM1 xsi:type="xsd:int">3</NUM1><NUM2 xsi:type="xsd:int">10</NUM2></tns:INTPLUS></SOAP-ENV:Body></SOAP-ENV:Envelope>
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosServlet log
+FINE: funName:INTPLUS
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosII execute
+FINE: FunctionName =INTPLUSarg = INTEGER.INTEGER
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosII execute
+FINE: fullName : INTEGER.INTEGER.INTPLUS->INTEGER
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosII execute
+FINE: funName: INTPLUS
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosII execute
+FINE: Arguments: [3, 10]
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosII execute
+FINE: Result: [[13]]
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosServlet log
+FINE: Sending SOAP message:
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><SOAP-ENV:Body xmlns:tns="urn:WSAmos"><tns:VWSMOS1 xsi:type="xsd:int">13</tns:VWSMOS1></SOAP-ENV:Body></SOAP-ENV:Envelope>
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosServlet log
+FINE: Whole transition finish at 2013.12.27 09:41:08
+
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosServlet log
+FINE: 
+
+
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosServlet log
+FINE: New Transition begin :2013.12.27 09:41:08
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosServlet log
+FINE: Received the SOAP message:
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><SOAP-ENV:Body SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><tns:INTPLUS xmlns:tns="urn:WSAmos"><NUM1 xsi:type="xsd:int">4</NUM1><NUM2 xsi:type="xsd:int">10</NUM2></tns:INTPLUS></SOAP-ENV:Body></SOAP-ENV:Envelope>
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosServlet log
+FINE: funName:INTPLUS
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosII execute
+FINE: FunctionName =INTPLUSarg = INTEGER.INTEGER
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosII execute
+FINE: fullName : INTEGER.INTEGER.INTPLUS->INTEGER
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosII execute
+FINE: funName: INTPLUS
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosII execute
+FINE: Arguments: [4, 10]
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosII execute
+FINE: Result: [[14]]
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosServlet log
+FINE: Sending SOAP message:
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><SOAP-ENV:Body xmlns:tns="urn:WSAmos"><tns:VWSMOS1 xsi:type="xsd:int">14</tns:VWSMOS1></SOAP-ENV:Body></SOAP-ENV:Envelope>
+Dec 27, 2013 9:41:08 AM org.AmosSoapServer.AmosServlet log
+FINE: Whole transition finish at 2013.12.27 09:41:08
+
+Dec 27, 2013 9:41:09 AM org.AmosSoapServer.AmosServlet log
+FINE: 
+
+
+Dec 27, 2013 9:41:09 AM org.AmosSoapServer.AmosServlet log
+FINE: New Transition begin :2013.12.27 09:41:09
+Dec 27, 2013 9:41:09 AM org.AmosSoapServer.AmosServlet log
+FINE: Received the SOAP message:
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><SOAP-ENV:Body SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><tns:INTPLUS xmlns:tns="urn:WSAmos"><NUM1 xsi:type="xsd:int">1</NUM1><NUM2 xsi:type="xsd:int">10</NUM2></tns:INTPLUS></SOAP-ENV:Body></SOAP-ENV:Envelope>
+Dec 27, 2013 9:41:09 AM org.AmosSoapServer.AmosServlet log
+FINE: funName:INTPLUS
+Dec 27, 2013 9:41:09 AM org.AmosSoapServer.AmosII execute
+FINE: FunctionName =INTPLUSarg = INTEGER.INTEGER
+Dec 27, 2013 9:41:09 AM org.AmosSoapServer.AmosII execute
+FINE: fullName : INTEGER.INTEGER.INTPLUS->INTEGER
+Dec 27, 2013 9:41:09 AM org.AmosSoapServer.AmosII execute
+FINE: funName: INTPLUS
+Dec 27, 2013 9:41:09 AM org.AmosSoapServer.AmosII execute
+FINE: Arguments: [1, 10]
+Dec 27, 2013 9:41:09 AM org.AmosSoapServer.AmosII execute
+FINE: Result: [[11]]
+Dec 27, 2013 9:41:09 AM org.AmosSoapServer.AmosServlet log
+FINE: Sending SOAP message:
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><SOAP-ENV:Body xmlns:tns="urn:WSAmos"><tns:VWSMOS1 xsi:type="xsd:int">11</tns:VWSMOS1></SOAP-ENV:Body></SOAP-ENV:Envelope>
+Dec 27, 2013 9:41:09 AM org.AmosSoapServer.AmosServlet log
+FINE: Whole transition finish at 2013.12.27 09:41:09
+
+Dec 27, 2013 9:41:09 AM org.AmosSoapServer.AmosSoapHandler lostConnection
+FINE: Connection lost : 130.238.14.133
+Dec 27, 2013 9:41:09 AM org.AmosSoapServer.AmosSoapHandler lostConnection
+FINE: Connection lost : 130.238.14.133

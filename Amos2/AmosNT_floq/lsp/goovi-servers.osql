@@ -1,0 +1,10 @@
+/*
+The function server_names is used in when opening new connection 
+to get a choice among the named servers but not the nameserver 
+since this one also has got another name in the list.
+*/
+create function server_names()->AMOS
+/* Get all Amos II servers known to the nameserver except nameserver */ 
+    as select a 
+       from Amos a 
+       where a=amos_servers() and name(a) != 'NAMESERVER';

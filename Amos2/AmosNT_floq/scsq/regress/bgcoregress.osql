@@ -1,0 +1,227 @@
+/*-*-sql-*-*******************************************************************/
+
+
+lisp;
+;"
+
+
+(defglobal start-time (rnow))
+
+;;(checkequal "basic bgextract"
+;; ((osql "bgextract(newsp(siota(1, 10)));")
+;;  '((1) (2) (3) (4) (5) (6) (7) (8) (9) (10))))
+
+'(checkequal "bgextract of numarrays"
+ ((osql "count(bgextract(newsp(gen_array(1, 4))));")
+  '((4))))
+
+(checkequal "lzip of numarrays"
+ ((osql "count(lzip(spv({gen_array(1, 4),gen_array(1, 4)})));")
+  '((4))))
+
+(checkequal "lzipm of numarrays"
+ ((osql "count(lzipmulti(spvflex(vselect streamof(
+darray({0.0, real(iota(1, 20)), 0.0, 0.0, 0.0, 0.0}))
+from integer i where i in iota(1,2), 
+make_record({'na2m', {'ma-size': 5}})), 6));")
+  '((20))))
+
+(checkequal "lzip of numarrays, number mismatch"
+ ((osql "count(lzip(spv({gen_array(1, 4),gen_array(1, 40)})));")
+  '((4))))
+
+(checkequal "bguall of numarrays"
+ ((osql "count(bguall(spv(vselect gen_array(1, 100)
+   from integer i where i in iota(1, 5))));")
+ '((500))))
+
+;; lread of integers (and symbols) is not implemented
+;;(checkequal "bguall"
+;; ((osql "count(bguall(spv(vselect streamof(iota(1,40+i))
+;;   from integer i where i in iota(1,3))));")
+;; '((126))))
+;;(checkequal "bgmerge"
+;; ((osql "select sort(in(bgmerge(src, 1.0))) from vector of stream src
+;;where src = ilayer(4, 10);")
+;;'((#(1 1 1 1 2 2 2 2 3 3 3 3 4 4 4 4 5 5 5 5 6 6 6 6 7 7 7 7 8 8 8 8 9 9 9 9
+;;     10 10 10 10))))
+;; ((osql "select count(in(bgmerge(src, 1.0)))
+;;from vector of stream src
+;;where src = ilayer(10, 9);")
+;;'((90))))
+
+(let ((res (caar (osql "select tcount(bgmerge(src, 1.0))
+from vector of stream src
+where src = nalayer(2, 9, make_record({}));"))))
+(checkequal "bgmerge of numarrays" ((elt res 3) 18)))
+
+(let ((res (caar 
+(osql "tcount(streamof(select multi2na(na, 6)
+from vector of stream src, numarray na
+where src = nalayer(2, 9, make_record({'na2m', {'ma-size': 10}}))
+and na in bgmerge(src, 1.0)));"))))
+(checkequal "multiarray bgmerge" ((elt res 3) 18)))
+
+(checkequal "error propagation in bgmerge"
+ ((errcond-msg (catch-error
+  (osql "bguall({newsp(streamof(readfile('non-existing-file')))}, 1.0);")))
+  '"Cannot open file"))
+
+(checkequal "couall"
+ ((osql "count(couall(spv(vselect streamof(iota(1,40+i))
+   from integer i where i in iota(1,3)), 1.0));")
+ '((126))))
+
+(checkequal "comerge"
+ ((osql "select sort(in(comerge(src, 1.0)))
+from vector of stream src
+where src = ilayer(4, 10);")
+'((#(1 1 1 1 2 2 2 2 3 3 3 3 4 4 4 4 5 5 5 5 6 6 6 6 7 7 7 7 8 8 8 8 9 9 9 9
+     10 10 10 10))))
+ ((osql "select count(in(comerge(src, 1.0)))
+from vector of stream src
+where src = ilayer(10, 9);")
+'((90))))
+
+(let ((res (caar (osql "select tcount(comerge(src, 1.0))
+from vector of stream src
+where src = nalayer(2, 9, make_record({}));"))))
+(checkequal "comerge of numarrays" ((elt res 3) 18)))
+
+(checkequal "splitstream(sfn=bcast) - lzipmmaplayer(mapfn=id)"
+((osql "select in(s) 
+from vector of stream src, stream s
+where s = lzipmmaplayer(src, 1, 2, #'sids')[0]
+and src = splitflex(streamof(select
+darray({real(iota(1, 2)), real(iota(101, 102))})),
+3, #'bcast', {'na2m':{'ma-size':4}});")
+(osql "select {d,d,d} from darray d
+where d = darray({real(iota(1, 2)), real(iota(101, 102))});")))
+
+(checkequal "2 level lzipmmapm tree: lzipmmaplayerm - lzipmmaplayer"
+((osql "select in(s)
+from vector of stream src, vector of stream z1, stream s
+where src = splitflex(streamof(select
+darray({real(iota(1, 2)), real(iota(101, 102))})),
+6, #'bcast', {'na2m':{'ma-size':4}})
+and z1 = lzipmmaplayerm(src, 3, 2, #'vdsum', 3)
+and s = lzipmmaplayer(z1, 1, 2, #'vdsum')[0];")
+(osql "darray({real(6*iota(1, 2)), real(6*iota(101, 102))});")))
+
+
+          ;;;; micro benchmark tests below ;;;;
+
+(formatl t " (compare merge numarray throughput)" t)
+
+(let ((res (caar 
+ (osql "select tcount(comerge(src, 1.0))
+from vector of stream src
+where src = nalayer(10, 2000, make_record({}));"))))
+(checkequal " co-routine merge" ((formatl t "["
+ (round (/ 20 (elt res 2))) " ktpl/s] ") nil) ((elt res 3) 20000)))
+
+(let ((res (caar 
+ (osql "select tcount(mergestreams(src))
+from vector of stream src
+where src = nalayer(10, 9000, make_record({}));"))))
+(checkequal "       conv merge" ((formatl t "["
+ (round (/ 90 (elt res 2))) " ktpl/s] ") nil) ((elt res 3) 90000)))
+
+(let ((res (caar 
+ (osql "select tcount(bgmerge(src, 1.0))
+from vector of stream src
+where src = nalayer(10, 20000, make_record({}));"))))
+(checkequal "      lread merge" ((formatl t "["
+ (round (/ 200 (elt res 2))) " ktpl/s] ") nil) ((elt res 3) 200000)))
+
+(let ((res (caar 
+ (osql "tcount(streamof(select multi2na(na, 6)
+from vector of stream src, numarray na
+where src = nalayer(10, 50000, make_record({'na2m', {'ma-size': 20}}))
+and na in mergestreams(src)));"))))
+(checkequal " conv multi merge" ((formatl t "["
+ (round (/ 500 (elt res 2))) " ktpl/s] ") nil) ((elt res 3) 500000)))
+
+(let ((res (caar 
+ (osql "tcount(streamof(select multi2na(na, 6)
+from vector of stream src, numarray na
+where src = nalayer(10, 50000, make_record({'na2m', {'ma-size': 20}}))
+and na in bgmerge(src, 1.0)));"))))
+(checkequal "lread multi merge" ((formatl t "["
+ (round (/ 500 (elt res 2))) " ktpl/s] ") nil) ((elt res 3) 500000)))
+
+(formatl t " (compare extract numarray throughput)" t)
+
+(let ((res (caar 
+ (osql "select tcount(src)
+from stream src
+where src = nalayer(1, 90000, make_record({}))[0];"))))
+(checkequal "     conv extract" ((formatl t "["
+ (round (/ 90 (elt res 2))) " ktpl/s] ") nil) ((elt res 3) 90000)))
+
+(let ((res (caar 
+ (osql "select tcount(streamof(bgextract(newsp(streamof(
+darray({0.0, real(iota(1, 90000)), 0.0, 0.0, 0.0, 0.0}))))));"))))
+(checkequal "    lread extract" ((formatl t "["
+ (round (/ 90 (elt res 2))) " ktpl/s] ") nil) ((elt res 3) 90000)))
+
+(formatl t " (compare zip numarray throughput)" t)
+
+(stop-profile)(start-profile)
+'(let ((res (caar 
+(osql "tcount(zipstreams(nalayer(10, 30000, make_record({}))));"))))
+
+'(checkequal "         conv zip" ((formatl t "["
+ (round (/ 300 (elt res 2))) " ktpl/s] ") nil) ((elt res 3) 30000)))
+'(formatl t "profile " (cdr (profile 5)) t)
+
+(stop-profile)(start-profile)
+'(let ((res (caar 
+(osql "tcount(lzipstreams(nalayer(10, 30000, make_record({}))));"))))
+'(checkequal "        lread zip" ((formatl t "["
+ (round (/ 300 (elt res 2))) " ktpl/s] ") nil) ((elt res 3) 30000)))
+'(formatl t "profile " (cdr (profile 5)) t)
+
+(stop-profile)(start-profile)
+'(let ((res (caar 
+(osql "tcount(zipstreamsm(nalayer(10, 60000, 
+make_record({'na2m', {'ma-size': 20}})), 6));"))))
+(checkequal "   conv multi zip" ((formatl t "["
+ (round (/ 600 (elt res 2))) " ktpl/s] ") nil) ((elt res 3) 60000)))
+'(formatl t "profile " (cdr (profile 5)) t)
+
+(stop-profile)(start-profile)
+(let ((res (caar 
+(osql "tcount(lzipstreamsm(nalayer(10, 90000, 
+make_record({'na2m', {'ma-size': 20}})), 6));"))))
+(checkequal "  lread multi zip" ((formatl t "["
+ (round (/ 900 (elt res 2))) " ktpl/s] ") nil) ((elt res 3) 90000)))
+'(formatl t "profile " (cdr (profile 5)) t)
+
+(formatl t " (compare ziptree numarray throughput)" t)
+
+(stop-profile)(start-profile)
+(let ((res (caar (osql "select in(zl2)
+from vector of stream src, vector of stream zl1, stream zl2
+where src = nalayer(10, 18000, make_record({'na2m', {'ma-size': 20}}))
+and zl1 = zipmmaplayerm(src, 3, 6, #'vdsum', 20)
+and zl2 = zipmmaplayer(zl1, 1, 6, #'stcount')[0];"))))
+(checkequal " 2L zipmmapm tree" ((formatl t "["
+ (round (/ 180 (elt res 2))) " ktpl/s] ") nil) ((elt res 3) 18000)))
+'(formatl t "profile " (cdr (profile 5)) t)
+
+(stop-profile)(start-profile)
+(let ((res (caar (osql "select in(zl2)
+from vector of stream src, vector of stream zl1, stream zl2
+where src = nalayer(10, 30000, make_record({'na2m', {'ma-size': 20}}))
+and zl1 = lzipmmaplayerm(src, 3, 6, #'vdsum', 20)
+and zl2 = lzipmmaplayer(zl1, 1, 6, #'stcount')[0];"))))
+(checkequal "2L lzipmmapm tree" ((formatl t "["
+ (round (/ 300 (elt res 2))) " ktpl/s] ") nil) ((elt res 3) 30000)))
+'(formatl t "profile " (cdr (profile 5)) t)
+
+(formatl t " (bgcoregress duration " (round (- (rnow) start-time)) " s)" t)
+
+(sleep 1)
+:osql
+q();

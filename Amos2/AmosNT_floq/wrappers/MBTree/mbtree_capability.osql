@@ -1,0 +1,31 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2002 Martin Hansson, UDBL
+ * $RCSfile: mbtree_capability.osql,v $
+ * $Revision: 1.5 $ $Date: 2003/07/14 07:11:44 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: MBTrees' capabilities to translate queries over indexed fns.
+ *
+ ****************************************************************************/
+begin 
+  declare type mbtds;
+  set mbtds = typenamed('MBTREE');
+  create_capability(mbtds, 
+		    functionnamed('OBJECT.OBJECT.<->BOOLEAN'),
+	            'bb',
+		    'mbtree-rewrite-inequality');
+  create_capability(mbtds, 
+		    functionnamed('OBJECT.OBJECT.>->BOOLEAN'),
+	            'bb',
+		    'mbtree-rewrite-inequality');
+  create_capability(mbtds, 
+		    functionnamed('OBJECT.OBJECT.>=->BOOLEAN'),
+	            'bb',
+		    'mbtree-rewrite-inequality');
+  create_capability(mbtds, 
+		    functionnamed('OBJECT.OBJECT.<=->BOOLEAN'),
+	            'bb',
+		    'mbtree-rewrite-inequality');
+end;

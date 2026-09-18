@@ -1,0 +1,253 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Ruslan Fomkin, UDBL
+ * $RCSfile: stream.structs.osql,v $
+ * $Revision: 1.38 $ $Date: 2008/09/03 11:24:24 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Regression test for ALEH project for streamed approach with 
+ * ontology implemented with use of structs, which represent objects in
+ * transient way. Wrapper streams events as structs. For each event particles
+ * are materialized as structs and added to event structs.
+ ****************************************************************************
+ * $Log: stream.structs.osql,v $
+ * Revision 1.38  2008/09/03 11:24:24  ruslan
+ * Implementations of the both analyses are moved in one file and function names correspond to the thesis
+ *
+ * Revision 1.37  2008/08/18 11:59:48  ruslan
+ * names are corrected according the schema in the thesis
+ *
+ * Revision 1.36  2008/05/28 13:09:19  ruslan
+ * bug is fixed
+ *
+ * Revision 1.35  2008/05/25 15:08:02  ruslan
+ * cost hint for wrapper functions
+ *
+ * Revision 1.34  2008/05/20 07:25:04  ruslan
+ * using multidirectional
+ *
+ * Revision 1.33  2008/05/19 15:02:02  ruslan
+ * removing type check affects costs
+ *
+ * Revision 1.32  2008/05/15 15:27:19  ruslan
+ * multidirection particle-event relationship. interface of root_scan_project_addslots is improved
+ *
+ * Revision 1.31  2008/05/12 15:42:36  ruslan
+ * cost model of closednf is improved
+ *
+ * Revision 1.30  2008/05/10 13:17:16  ruslan
+ * wrapper returns only sobject without the key vector, names of wrapper functions in correspondance with the Thesis, aleh_stream is used to stream events instead of filename
+ *
+ * Revision 1.29  2008/05/09 06:52:28  ruslan
+ * more unnecessary attributes are projected away
+ *
+ * Revision 1.28  2008/05/06 12:26:14  ruslan
+ * files should be given
+ *
+ * Revision 1.27  2008/05/06 08:21:09  ruslan
+ * new definition of the view
+ *
+ * Revision 1.26  2008/05/05 08:01:27  ruslan
+ * corresponds to the new view definition
+ *
+ * Revision 1.25  2008/04/10 12:55:42  ruslan
+ * test of interval execution
+ *
+ * Revision 1.24  2008/03/14 13:56:57  ruslan
+ * cost for operators is 1 by default
+ *
+ * Revision 1.23  2008/03/10 15:59:03  ruslan
+ * type containers defined. this removes some type check, but not all of them, while they still can be removed somehow. missing cost models
+ *
+ * Revision 1.22  2008/03/06 15:40:00  ruslan
+ * cost model for vector is done in more natural way. only fanout is passed from get_slot to vrefbff
+ *
+ * Revision 1.21  2008/03/05 14:22:20  ruslan
+ * cost model for vref is implemented as cost function with using bindings for vector varibles, which are set to statistics collected for sobject slots containing vectors
+ *
+ * Revision 1.20  2008/03/01 15:59:45  ruslan
+ * collecting cardinality statistics on slots and using in query optimization
+ *
+ * Revision 1.19  2008/02/28 13:14:37  ruslan
+ * using sobjects
+ *
+ * Revision 1.18  2008/02/18 14:32:04  ruslan
+ * tuples in misseecuts
+ *
+ * Revision 1.17  2008/02/17 08:58:14  ruslan
+ * using not in over tuple instead of multiple !=
+ *
+ * Revision 1.16  2008/02/13 14:23:29  ruslan
+ * cost models for somec, notanyc, and minagg4 were missing.
+ *
+ * Revision 1.15  2008/02/12 10:59:19  ruslan
+ * caching ok jets
+ *
+ * Revision 1.14  2008/02/11 12:58:47  ruslan
+ * key declarations
+ *
+ * Revision 1.13  2008/02/08 13:32:21  ruslan
+ * removing symetric pairs of opposite leptons
+ *
+ * Revision 1.12  2008/02/07 15:21:26  ruslan
+ * removing symetric cases in wpairs
+ *
+ * Revision 1.11  2008/02/07 11:00:33  ruslan
+ * tuple implementation in leftjets
+ *
+ * Revision 1.10  2008/02/06 12:50:12  ruslan
+ * undo caching of isolated leptons
+ *
+ * Revision 1.9  2008/02/05 15:01:45  ruslan
+ * caching isolated leptons
+ *
+ * Revision 1.8  2008/02/05 11:28:19  ruslan
+ * with declared keys
+ *
+ * Revision 1.7  2008/02/02 10:15:29  ruslan
+ * invmass over tuples of particles
+ *
+ * Revision 1.6  2008/02/01 13:53:40  ruslan
+ * invmass over vector has own implementation
+ *
+ * Revision 1.5  2008/01/23 13:00:49  ruslan
+ * improvement in miss ee cuts.
+ *
+ * Revision 1.4  2008/01/10 10:51:52  ruslan
+ * messages are corrected
+ *
+ * Revision 1.3  2008/01/07 09:21:24  ruslan
+ * testing paper cuts on PC, i.e. cutsin order of first paper
+ *
+ * Revision 1.2  2007/12/20 16:50:21  ruslan
+ * paper cuts in regression test with no cost model (default) and with hagrid simple cost model. should be added to windows regression test later
+ *
+ * Revision 1.1  2007/12/14 08:53:03  ruslan
+ * regression test for current working version
+ *
+ ****************************************************************************/
+
+cd('regress');
+
+create function idExpCuts() -> integer as
+select eventid(ev) from event ev where 
+	ev=sixcuts("../../wrappers/ROOTWrap/t.root");
+
+create function idExpCutsInterval() -> integer as
+select eventid(ev) from event ev where 
+	ev=sixcuts("../../wrappers/ROOTWrap/t.root",19000,19100);
+
+lisp;
+(checkequal "Checking sixcuts with simple ranksort optimization without 
+collected statistics"
+	    ((lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'idexpcuts->integer)) '(2 10))
+	     '(4014140 1969075))
+	    ((osql "idExpCuts();")
+	     '((19015) (24455))))
+(princ "Time to execute sixcuts with simple cost model ")
+(print (timer2 (osql "idExpCuts();")))
+:osql
+
+lisp;
+(checkequal "Checking sixcuts on interval with simple ranksort 
+optimization without collected statistics"
+	    ((lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'idexpcutsinterval->integer))
+	      '(2 10))
+	     '(401414 196907))
+	    ((osql "idExpCutsInterval();")
+	     '((19015))))
+:osql
+
+tocollectstatNaive("idexpcuts->integer");
+lisp;
+(checkequal "Collecting statisitcs on slots"
+	    ((lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'idexpcuts->integer)) 
+	      '(2 10))
+	     '(8572346 1969075))
+	    ((osql "idExpCuts();")
+	     '((19015) (24455)))
+	    ((osql "select name(t),i,sobject_stat(t,i) from type t, 
+integer i where i=iota(0,23);")
+	     '(("EVENT" 2 430 136 174) ("EVENT" 3 430 136 174) 
+	       ("EVENT" 4 430 136 174) ("EVENT" 5 430 136 174) 
+	       ("EVENT" 6 430 136 174) ("EVENT" 7 430 127 169) 
+	       ("EVENT" 8 430 127 169) ("EVENT" 9 430 127 169) 
+	       ("EVENT" 10 430 127 169) ("EVENT" 11 430 127 169) 
+	       ("EVENT" 12 430 3439 29837) ("EVENT" 13 430 3439 29837) 
+	       ("EVENT" 14 430 3439 29837) ("EVENT" 15 430 3439 29837) 
+	       ("EVENT" 16 430 3439 29837) ("EVENT" 17 430 136 174) 
+	       ("EVENT" 18 430 127 169) ("EVENT" 19 430 3439 29837)
+	       ("EVENT" 20 225 1485 10691)))
+	    ((lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 
+				'EVENT.NEW_ELECTRONS->ELECTRON) t) 
+	      '(2 8))
+	     '(629 31627906)))
+:osql
+drop_sobjectstat();
+tocollectstat("idexpcuts->integer");
+lisp;
+(checkequal "Collecting statisitcs on cached slots"
+	    ((lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'idexpcuts->integer)) 
+	      '(2 10))
+	     '(1479014 96449))
+	    ((osql "idExpCuts();")
+	     '((19015) (24455)))
+	    ((osql "select name(t),i,sobject_stat(t,i) from type t, 
+integer i where i=iota(0,23);")
+	     '(("EVENT" 17 430 136 174) ("EVENT" 18 430 127 169) 
+	       ("EVENT" 19 430 3439 29837) ("EVENT" 20 5 26 138))))
+(reoptimize (getfunctionnamed 'idexpcuts->integer) t)
+(checkequal "Checking sixcuts with simple ranksort optimization with 
+collected statistics on cardinalities on cached slots"
+	    ((lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'idexpcuts->integer)) 
+	      '(2 10))
+	     '(1939397 96449))
+	    ((osql "idExpCuts();")
+	     '((19015) (24455))))
+(princ "Time to execute sixcuts with collected statistics on cached slots ")
+(print (timer2 (osql "idExpCuts();")))
+:osql
+
+grouping(true);
+reoptimize0("idexpcuts->integer");
+profiling(true);
+lisp;
+(checkequal "Doing dynamic profiling of groups"
+	    ((osql "idExpCuts();")
+	     '((19015) (24455))))
+(princ "Time to execute sixcuts after profiling ")
+(print (timer2 (osql "idExpCuts();")))
+(checkequal "Checking that profiled result is correct"
+	    ((second (lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'idexpcuts->integer)) 
+	      '(2 10)))
+	     '96449)
+	    ((osql "idExpCuts();")
+	     '((19015) (24455))))
+:osql
+
+
+create function idPaperCuts() -> integer as
+select eventid(ev) from event ev where
+        ev=papersixcuts("../../wrappers/ROOTWrap/t.root");
+
+lisp;
+(checkequal "Checking paper sixcuts with default ranksort optimization with
+simple ALEH cost model and collected statistics on cached slots"
+            ((lr2i10nl
+              (exec-cost-of-fn (getfunctionnamed 'idpapercuts->integer))
+              '(2 10))
+             '(1648506 96449))
+            ((osql "idPaperCuts();")
+             '((19015) (24455))))
+(princ "Time to execute papersixcuts with simple ALEH cost model and collected 
+statistics on cached slots")
+(print (timer2 (osql "idPaperCuts();")))
+:osql

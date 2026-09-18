@@ -1,0 +1,103 @@
+
+/*  The example from the JIIS paper: DTs over types in two mediators
+    One difference is that the function ssn is explicitly resolved in the
+    definition of sportyemp */
+
+
+enable_dt(true);
+
+lisp;
+
+(setq _USE_DNF_ T)
+(setq _USE_DTR_ nil)
+
+(checkequal
+"MDB test: DT and proxy  definitions"
+((oid-p (osql "
+
+register('client');
+create type person properties
+(  ssn integer key,
+   status charstring,
+   age integer,
+   name charstring);
+create person(ssn,status,age,name) instances
+ (1,'Working',35,'Tore'),
+ (2,'Student',30,'Kalle'),
+ (3,'Working',45,'Ulla'),
+ (4,'Working',20,'Bill'),
+ (5,'Student',21,'Bull'),
+ (6,'Working',19,'Adam');
+create type payrec properties
+(  ssn integer key,
+   salary integer,
+   position charstring);
+create payrec(ssn,salary,position) instances
+ (1,40000,'Clerk'),
+ (2,30000,'Jerk'),
+ (3,10000,'Boss'),
+ (4,50000,'Gofer'),
+ (5,500,'Jerk'),
+ (6,50,'Sucker');
+
+create derived type emp under person p, payrec pr
+  where ssn(p)=ssn(pr)
+  validate status(p)='Working';
+create function room(emp)->charstring as stored;
+
+/* Does not work: DTs are not supported in procedures
+create function setroom(charstring r,charstring nm)->boolean
+  as begin set room(e)=r from emp e where name(e)=nm; end;
+setroom('E1','Tore');
+setroom('E2','Kalle');
+setroom('B1','Bull');
+*/
+
+set room(e)='E1' from emp e where name(e)='Tore';
+set room(e)='E2' from emp e where name(e)='Kalle'; /* Kalle is not an emp */
+set room(e)='B1' from emp e where name(e)='Bill';
+set room(e)='B2' from emp e where name(e)='Adam';
+
+select room(e) from emp e;
+select name(e), room(e) from emp e;
+select e, name(e), room(e) from emp e;
+
+import_type('person','foo');
+create derived type sportyemp under emp e, person@foo p
+  where person.ssn->integer(e)=id(p);
+create function bonus(sportyemp)->integer;
+create derived type junior under sportyemp se
+  validate age(se)<26;"))  
+
+T))
+
+
+(checkequal "Querying the junior and sportyemp DTs"
+
+((osql "set bonus(j)=134 from junior j where name(j)='Bill';") nil)
+
+((osql "select age(j), salary (j) from Junior j 
+        where hobby(j) = 'Golf' and bonus(j)>100;") '((20 50000)))
+
+((osql "select name(j),age(j), salary (j) from Junior j
+        where hobby(j) = 'Golf';") '(("Bill" 20 50000)))
+
+((osql "select e into :e from sportyemp e where name(e)='Adam';") nil)
+
+((osql "select j into :j from junior j where name(j) = 'Adam';") nil)
+
+((length (osql "select j,name(j),bonus(j) from junior j;"))  1)
+
+((length (osql "select e,j,name(j),bonus(j) from sportyemp e, junior j where e=j;")) 1)
+
+((osql "set bonus(:j)=200; ") nil)
+
+((osql "select e into :e1 from sportyemp e where bonus(e) = 200;") nil)
+
+(amos_e amos_e1)
+
+((length (osql "select bonus(j) from junior j;")) 2))
+
+:osql
+rollback;
+

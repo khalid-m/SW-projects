@@ -1,0 +1,62 @@
+/*-*-sql-*-*******************************************************************/
+
+create type SVDataSource;
+
+create type DataStream under SVDataSource
+       properties (streamID Charstring);
+
+create type DerivedStream under DataStream
+       properties (definingCQ Charstring);
+
+create type SimulationStream under DerivedStream;
+
+create type ValidationStream under DerivedStream
+       properties (alerts Charstring);
+
+create type RawDataStream under DataStream;
+
+create type StoredStream under DataStream;
+
+create type Machine
+       properties (id Integer,
+                   name Charstring,
+                   manufacturer Charstring);
+
+create type Location
+       properties (id Integer,
+                   climateZone Charstring,
+                   continent Charstring,
+                   country Charstring,
+                   geoCoords Charstring,
+                   locationID Charstring,
+                   locationKind Charstring,
+                   locationRegion Charstring,
+                   locationTemperature Charstring);
+
+create type MachineInstallation
+        properties (id Integer,
+                    locatedAt Location,
+                    locatedAtID Integer,
+                    machineType Machine,
+                    machineTypeID Integer);
+
+create type Sensor
+       properties (id Integer,
+                   name Charstring,
+                   manufacturer Charstring,
+                   version Charstring,
+                   hystereses Real,
+                   sensorprecision Real);
+
+create type SensorInstallation
+       properties (id Integer,
+                   calibrationTime Charstring,
+                   name Charstring,
+                   onMachine MachineInstallation,
+                   onMachineID Integer,
+                   producesRawDataStream RawDataStream,
+                   sampleFrequency Real,
+                   sensorPlace Charstring,
+                   sensorType Sensor,
+                   sensorTypeID Integer,
+                   serialNumber Charstring);

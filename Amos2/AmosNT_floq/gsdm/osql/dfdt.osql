@@ -1,0 +1,670 @@
+/*****************************************************************************
+ * AMOS2 - GSDM
+ *
+ * Author: (c) 2005 Milena Ivanova, UDBL
+ * $RCSfile: dfdt.osql,v $
+ * $Revision: 1.19 $ $Date: 2006/01/20 17:53:55 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Meta data at coordinator about data flows, nodes, streams.
+ *	 	Data flow distribution templates library
+ ***************************************************************************/
+
+/* Global parameter for the current avalable resources */
+create function resources() -> charstring as stored;
+
+load_lisp(getenv("AMOS_HOME")+'/gsdm/lsp/dfdt.lsp');
+
+/* Meta data about the logical sites - GSDM WNs */
+
+create type site;
+create function id(site s) -> charstring ids as stored;
+
+/* execution node */
+create function location(site s) -> charstring loc as stored;
+
+create function site_named(charstring nm) -> site s
+as select s where id(s) = nm;
+
+create function next_site_id()->charstring as foreign 'next_site_id';
+
+/* constructor for the site objects */
+create function site() -> site as
+begin
+	declare site s;
+	create site(id) instances s(next_site_id());
+	result s;
+end;
+
+
+/*************************************************/
+/* Meta data about dataflows */
+create type dataflow;
+
+create function id(dataflow d)-> charstring as stored;
+create function arity(dataflow d)-> integer as stored;
+create function width(dataflow d)-> integer as stored;
+
+create function resources(dataflow d) -> charstring as stored;
+create function max_cnt(dataflow d)-> integer as stored;
+create function image_size(dataflow d)-> integer as stored;
+create function turn_around(dataflow d)-> real as stored;
+create function data_size(dataflow d)-> integer as stored;
+create function registered(dataflow d)-> integer as stored;
+create function compiled(dataflow d)-> integer as stored;
+create function installed(dataflow d)-> integer as stored;
+
+create function dataflow(integer a, integer w)-> dataflow
+as begin
+	declare dataflow d;
+	create dataflow(arity,width) instances d(a,w);
+	set registered(d)=0;
+	set compiled(d)=0;
+	set installed(d)=0;
+	result d;
+end;
+
+/*************************************************/
+/* Meta data about the nodes */
+
+create type node;
+create function id(node nd)-> charstring as stored;
+create function next_node_id()->charstring as foreign 'next_node_id';
+create function fn(node nd)-> charstring as stored;
+create function params(node nd)-> vector as stored;
+
+create function str_args(node nd)-> vector of charstring as stored;
+
+/* where the node is installed */
+create function assigned_to(node nd) -> site s as stored;
+create function flow(node nd) -> dataflow d as stored;
+
+create function inputs(node nd)-> vector v as stored;
+create function outputs(node nd)-> vector v as stored;
+
+create function level(node nd) -> integer as stored;
+create function input_streams(node nd)-> vector v as stored;
+
+/* constructor */
+create function node(charstring fun, vector params,
+                     vector ins, vector outs,
+	             dataflow d, site s)-> node
+as begin 
+	declare node nd;
+	create node(id,fn,params,inputs,outputs) 
+	   instances nd(next_node_id(),fun,params,ins,outs);
+	set assigned_to(nd)=s;
+	set flow(nd)=d;
+	result nd;
+end;
+
+create function nodes(dataflow d)-> node nd as
+select nd 
+where flow(nd)=d;
+
+create function getnode(charstring nid) ->node nd
+as select nd where id(nd) = nid;
+
+create function maxlevel(dataflow d) -> integer
+as select maxagg(select level(q) 
+  from node q
+  where q=nodes(d));
+
+create function producers(node nd)-> node nd1
+as select nd1
+where nd1 = in(inputs(nd));
+
+
+create function numeric(object x)->integer
+as begin
+	if typeof(x) = typenamed("NUMBER")
+	then result 1
+	else if supertypes(typeof(x)) = typenamed("NUMBER")
+	then result 1
+	else result 0;
+end;
+
+create function numeric(vector v)->integer
+as begin
+	declare integer k, integer s;
+	set k=count(v)-1;
+
+	set s= sum(select numeric(v[i])
+		from integer i where i=iota(0,k));
+ 	if s=count(v) then result 1
+	else result 0;
+end;
+
+create function input_points(dataflow d)-> node nd
+as select nd
+   where nd=nodes(d) and
+   notany (select nd1 from node nd1
+	where nd1=nodes(d) and
+	nd1 = producers(nd));
+
+create function output_points(dataflow d)-> node nd
+as select nd
+   where nd=nodes(d) and
+      notany (select nd1 from node nd1
+		where nd1=nodes(d) and
+		nd=producers(nd1));
+
+
+create function output_points1(dataflow d)-> node nd
+as select nd
+   where nd=nodes(d) and numeric(outputs(nd))=1;
+
+
+create function consumer_sites(node q)-> site s
+as select distinct s 
+from node nd, site s
+where q=producers(nd) and s=assigned_to(nd);
+
+create function nodeinfo(dataflow d)-> <node n,charstring id,charstring f,
+	vector p,vector in,vector out>
+as  select nd,id(nd),fn(nd),params(nd),inputs(nd),outputs(nd)
+from node nd where nd=nodes(d);
+
+
+create function arcinfo(dataflow d)-> <charstring id1,charstring fn1,
+charstring id2,charstring fn2>
+as select id(nd1),fn(nd1),id(nd2),fn(nd2)
+from node nd1, node nd2 
+where nd1=nodes(d) and nd2=nodes(d) and nd1=producers(nd2);
+
+create function sites(dataflow d)-> site s
+as select distinct assigned_to(nodes(d));
+
+create function get_first_site(dataflow d) -> site
+as select n from site n, node nd
+where nd= nodes(d) and n=assigned_to(nd) and level(nd)=0;
+
+create function get_last_site(dataflow d) -> site
+as select n from site n, node nd
+where nd= nodes(d) and n=assigned_to(nd) and level(nd)=maxlevel(d);
+
+/*************************************************/
+/*  Library of predefined templates*/
+create function range(integer a1,number a2) -> vector of integer as
+select vectorof(select iota(a1,cast (a2 as integer)));
+
+create function range(integer a1,integer a2) -> vector of integer as
+select vectorof(select iota(a1,a2));
+
+/* Central template : dataflow graph of 1 node */
+create function central(charstring fun,
+		   vector params, integer n) -> dataflow d
+as begin
+	declare dataflow d, site s, node nd;
+	set d=dataflow(n,1);
+	set s=site();
+	set nd=node(fun,params,range(0,n-1),{0},d,s);
+	result d;
+end;
+
+create function central(charstring fun,
+	vector args) -> dataflow d 
+as select central(fun,args,1);
+
+/*************************************************/
+/* Template application */
+
+create function template(charstring fnname)->integer
+as begin
+	declare type t;
+	set t=result_type(resolvents(functionnamed(upper(fnname))));
+	if t = typenamed("DATAFLOW")
+	then result 1
+	else if supertypes(t) = typenamed("DATAFLOW")
+	then result 1
+	else result 0;
+end;
+
+
+
+create function vector_of(bag of <integer,object>)->vector of object
+	 as foreign 'vector_of-+';
+
+/* If the parameter x is integer, return the vector inp element with index x. Otherwise return x*/
+create function subst(object x, vector inp) -> object res
+as select y 
+from object y, integer j
+where (numeric(x)=1 and j=x and y=inp[j]) or
+      (numeric(x)=0 and y=x);
+
+
+create function substv(vector v, vector inp) -> vector
+as select 
+vector_of(select i,subst(x,inp) 
+	from object x,integer i
+	where x=v[i]); 
+
+/* Chech inp: vector or vector of integer*/
+create function bind_inputs(dataflow d, vector inp)-> boolean
+as begin
+	for each node nd
+	where nd = nodes(d)
+	   set inputs(nd)= substv(inputs(nd),inp);
+end;
+
+create function bind_outputs(dataflow d, vector outp)-> boolean
+as begin
+	for each node nd
+	where nd = nodes(d)
+	   set outputs(nd)= substv(outputs(nd),outp);
+end;
+
+
+
+/* creates a dataflow with fun(tmpl), params, inputs and outputs, that is a component of another dataflow d. Nodes are assigned to the site s*/
+create function apply_template(charstring tmpl, vector params,
+	vector inputs, vector outputs, dataflow d, site s) 
+	-> boolean
+as begin
+	declare dataflow cd;
+
+	if template(tmpl)=1 then
+	   set cd= call_function(upper(tmpl),params)[0]
+	else 
+	   set cd= central(tmpl,params,count(inputs));
+
+	bind_inputs(cd, inputs);
+	bind_outputs(cd, outputs);
+	for each node nd
+	   where nd = nodes(cd)
+	   begin
+	      set flow(nd)=d;
+     	      set assigned_to(nd)=s;
+  	   end	
+end;
+
+/* no site re-assignment*/
+create function apply_template(charstring tmpl, vector params,
+	vector inputs, vector outputs, dataflow d) 
+	-> boolean
+as begin
+	declare dataflow cd;
+
+	if template(tmpl)=1 then
+	   set cd= call_function(upper(tmpl),params)[0]
+	else 
+	   set cd= central(tmpl,params,count(inputs));
+
+	bind_inputs(cd, inputs);
+	bind_outputs(cd, outputs);
+	for each node nd
+	   where nd = nodes(cd)
+           set flow(nd)=d;
+end;
+
+/******** Partitioning **************************************/
+create function partition(integer n, charstring partfun,vector params)->
+	dataflow d
+as begin 
+	declare site s, dataflow d;
+
+	set d=dataflow(1,n);
+	set s = site();
+
+	for each integer i
+	where i=iota(0,cast(n-1 as integer))
+	apply_template(partfun, concat({n},concat({i},params)),{0},{i},d,s); 
+
+	result d;
+end;
+
+/******** Parallel **************************************/
+
+create function map_param(object arg, integer p) -> object res
+as select x 
+from object x,integer i
+where (x=arg and arg!="#") or
+	(x=p and arg="#");
+
+create function map_params(vector params, integer p) -> vector res
+as select(
+vector_of(select i,map_param(x,p) 
+	from object x,integer i
+	where x=params[i])); 
+
+
+create function parallel(integer n, 
+	charstring tmpl, vector params)-> dataflow d
+as begin 
+	
+	declare dataflow d;
+
+	set d=dataflow(n,n);
+
+	for each integer i
+	where i=iota(0,cast(n-1 as integer))
+	apply_template(tmpl, map_params(params,i),{i},{i},d); 
+
+	result d;
+end;
+
+/******** Pipe **************************************/
+
+
+create function copy_node(node nd)-> node nd1
+as begin
+    set nd1=node(fn(nd), params(nd), inputs(nd),
+                 outputs(nd), flow(nd), assigned_to(nd));
+    updatemap(nd,nd1);
+    result nd1;
+end; 
+
+create function copy_site(site s)-> site s1
+as begin
+    set s1=site();
+    updatemap(s,s1);
+    result s1;
+end; 
+
+
+	
+create function copy_nodes(dataflow d)-> node nd1
+as begin
+	for each site s
+	where s=sites(d)
+	   copy_site(s);
+	for each node nd
+	where nd = nodes(d)
+	begin 
+	  set nd1 = copy_node(nd);
+	  set assigned_to(nd1)=cast (getmap(assigned_to(nd)) as site);
+	  result nd1;
+        end;
+end; 
+
+create function substvel_ind(vector v, integer p, object newel) -> vector res
+as select(
+vector_of(select i,x 
+	from object x,integer i
+	where (i!=p and x=v[i]) or (i=p and x=newel))); 
+
+create function substvel(vector v, object oldel, object newel) -> vector res
+as select(
+vector_of(select i,x 
+	from object x,integer i
+	where (oldel=v[i] and x=newel) or (oldel!=v[i] and x=v[i]))); 
+
+create function copy_arcs(node nd)-> boolean
+as begin
+	declare vector v, integer k, node nd1, node cnd1;
+
+	set v= inputs(nd);
+	set k = count(v) -1;
+	for each integer i where i=iota(0,k)
+	begin
+		if  typeof(v[i]) = typenamed("NODE") then
+		begin
+		set nd1	=v[i];
+		set cnd1 =getmap(nd1);
+		set inputs(nd)=substvel_ind(inputs(nd),i,cnd1);
+		end;
+	end;
+	set v= outputs(nd);
+	set k = count(v) -1;
+	for each integer i where i=iota(0,k)
+	begin
+		if  typeof(v[i]) = typenamed("NODE") then
+		begin
+		set nd1	=v[i];
+		set cnd1 =getmap(nd1);
+		set outputs(nd)=substvel_ind(outputs(nd),i,cnd1);
+		end;
+	end;
+end;
+
+
+
+/* return output point of dataflow with number i */ 
+
+create function get_output(dataflow d, integer i)-> node nd
+as select nd
+   from node nd
+   where nd=nodes(d) and outputs(nd)=vector(i);
+
+create function pipe(dataflow d1, dataflow d2)-> dataflow d
+as begin
+	declare dataflow d, vector v, integer k, node nd1,
+	 node cnd1, node cnd2;
+	set d= dataflow(arity(d1),width(d2));
+	initmap();
+
+	for each node nd
+	where nd = copy_nodes(d1)
+	   set flow(nd)=d;
+
+	for each node nd
+	where nd = copy_nodes(d2)
+	   set flow(nd)=d;
+
+	for each node nd
+	where nd = nodes(d)
+	   copy_arcs(nd);
+	
+	for each node nd2
+	   where nd2 = input_points(d2)
+	   begin		
+		set v= inputs(nd2);
+		set k = count(v) -1;
+		for each integer i where i=iota(0,k)
+		begin
+			set nd1	=get_output(d1,cast (v[i] as integer));
+			set cnd1 =getmap(nd1);
+			set cnd2 =getmap(nd2);
+			set inputs(cnd2)=substvel_ind(inputs(cnd2),i,cnd1);
+			set outputs(cnd1)= concat(outputs(cnd1),{cnd2});
+		end;
+	   end;
+	result d;
+end; 
+
+/* TO DO Currently outputs(nd) is concatenation of all nodes consumers + the initial number of the output, e.g. 0, that can be dropped in advance */
+
+create function pipe(charstring fun1, vector params1, 
+		dataflow d2) -> dataflow d
+as select pipe(central(fun1,params1),d2);
+
+create function pipe(charstring fun1, vector params1, integer n1,
+		dataflow d2) -> dataflow d
+as select pipe(central(fun1,params1,n1),d2);
+
+create function pipe(dataflow d1, 
+		charstring fun2, vector params2,integer n2) -> dataflow d
+as select pipe(d1,central(fun2,params2,n2));
+
+create function pipe(dataflow d1, 
+		charstring fun2, vector params2) -> dataflow d
+as select pipe(d1,central(fun2,params2,count(output_points(d1))));
+
+/* local pipe  on 1 site */
+create function lpipe(dataflow d1, dataflow d2) -> dataflow d
+as begin
+	declare site s;
+	set s= site();
+	set d= pipe(d1,d2);
+	for each node nd
+	where nd = nodes(d)
+	  set assigned_to(nd)=s;
+	result d;
+end;
+
+create function PCC(integer n, charstring partfun, vector partparams, 
+		charstring fun, vector params,
+		charstring combfun, vector combparams) -> dataflow d
+as select pipe(pipe(partition(n,partfun,partparams),
+                    parallel(n,fun,params)),
+	       central(combfun,combparams,n));
+
+create function PCC(integer n, charstring partfun,
+		charstring fun, vector params,
+		charstring combfun, vector combparams) -> dataflow d
+as select pipe(pipe(partition(n,partfun,{}),
+                    parallel(n,fun,params)),
+	       central(combfun,combparams,n));
+
+
+/*************************************************/
+/* Meta data about the streams in the coordinator.
+ Different from stream objects at working nodes */
+
+create type mstream;
+
+create function name(mstream s) -> charstring as stored;
+create function stype(mstream s)-> charstring as stored;
+create function source(mstream s)->charstring as stored;
+create function dest(mstream s) -> charstring as stored; 
+create function kind(mstream s)->  charstring as stored;
+
+create function assigned_to(mstream s nonkey) -> site as stored;
+create function installed(mstream s) -> integer as stored;
+create function next_sid()->charstring as foreign 'next_sid';
+
+/*constructor of metastream object */
+
+create function mstream(charstring nm, 
+                  charstring src,
+                  charstring dst,
+                  charstring kind)-> mstream
+as begin
+	declare mstream s;
+	create mstream instances s;
+	set name(s)= nm;
+	set source(s)=src;
+	set dest(s)=dst;
+	set kind(s)=kind;
+	set installed(s)=0;
+	result s;	
+end;
+
+create function mstream(charstring nm, 
+                  charstring src,
+                  charstring dst,
+                  charstring kind, charstring stp)-> mstream
+as begin
+	declare mstream s;
+	create mstream instances s;
+	set name(s)= nm;
+	set source(s)=src;
+	set dest(s)=dst;
+	set kind(s)=kind;
+	set installed(s)=0;
+	set stype(s)=stp;
+	result s;	
+end;
+
+create function mm_stream(charstring nm, 
+                  charstring stp,
+                  site st)-> mstream
+as begin
+	declare mstream s;
+	create mstream instances s;
+	set name(s)= nm;
+/*	set source(s)=src;
+	set dest(s)=dst; */
+	set kind(s)="MATR";
+	set stype(s)=stp;
+	set installed(s)=0;
+	set assigned_to(s)=st;
+	result s;	
+end;
+
+create function outGSDM_stream(charstring nm, 
+                  charstring stp,
+                  site st, charstring dst)-> mstream
+as begin
+	declare mstream s;
+	create mstream instances s;
+	set name(s)= nm;
+	set dest(s)=dst;
+	set kind(s)="TCP";
+	set stype(s)=stp;
+	set installed(s)=0;
+	set assigned_to(s)=st;
+
+	result s;	
+end;
+
+create function inGSDM_stream(charstring nm, 
+                  charstring stp,
+                  site st, charstring src)-> mstream
+as begin
+	declare mstream s;
+	create mstream instances s;
+	set name(s)= nm;
+	set kind(s)="TCP";
+	set stype(s)=stp;
+	set source(s)=src;
+	set installed(s)=0;
+	set assigned_to(s)=st;
+	set dest(s)=id(st); 
+	result s;	
+end;
+
+create function register_input_stream(
+		 charstring stp, 
+                 charstring src,
+		 charstring kind)-> mstream s
+as begin
+	declare mstream s;
+
+	set s= mstream(next_sid(),src,"",kind);
+	set stype(s)= stp;
+	result s;
+end;
+
+create function register_result_stream(
+		 charstring dest,
+		 charstring kind)-> mstream s
+as select mstream(next_sid(),"",dest,kind);
+
+
+
+create function stream_named(charstring nm) -> mstream str
+as select str
+where name(str) = nm;
+
+
+create function result_streams(node op nonkey)-> 
+			 mstream s as stored;
+
+create function streams(dataflow d)-> mstream s
+as select s
+   from mstream s, node nd
+   where nd=nodes(d) and
+      (s=in(input_streams(nd)) or s=result_streams(nd));
+
+
+
+
+create function sites(mstream s,dataflow d)-> site
+as select distinct st
+   from node nd, site st
+   where nd=nodes(d) and assigned_to(nd)=st
+        and s=in(input_streams(nd));
+
+
+/** Info functions **/
+
+create function nodeinfoc(dataflow d)-> <node n,charstring id,charstring f,
+	vector p,vector in, vector out,charstring ass>
+as  select nd,id(nd),fn(nd),params(nd),input_streams(nd),vectorof(result_streams(nd)),
+id(assigned_to(nd))
+from node nd where nd=nodes(d);
+
+
+create function siteinfo(dataflow d) -> <site s,charstring n,charstring mn>
+as select g, id(g), location(g)
+   from site g
+   where  g=sites(d);
+
+create function streaminfo(dataflow d)->
+		<mstream s,charstring n,charstring ss,charstring de,charstring k>
+as select distinct s,name(s),source(s),dest(s),kind(s)
+  from mstream s, node nd
+  where nd=nodes(d) and
+  (s=in(input_streams(nd)) or s=result_streams(nd));
+

@@ -1,0 +1,44 @@
+/*-*-sql-*-*******************************************************************/
+
+/* Benchmark p2p communication */
+
+create function file_p2p(integer mszexp, integer recvhost)
+-> vector of number as
+select in(zipstreams(mapflex(maps, #'stcount', 
+make_record({'hostnum', recvhost, 'rem','extract'}))))
+from stream src, vector of stream maps
+where maps = mapflex({src}, #'sids', {'hostnum':0, 'rem':'rsplit'})
+and src = ostream(newspflex(streamof(
+readfile(getenv("HOME") + "/glob/c64-5M-m" + stringify(mszexp) + ".bin")
+), {'hostnum':0, 'rem':'src'}), 0);
+
+create function x_file_p2p(integer mszexp, integer recvhost) ->
+vector of number as begin
+set res() = file_p2p(mszexp, recvhost);
+print(res());
+return {mszexp, exectime(res()), countsum(res()), psum(remcpu('src')),
+psum(remcpu('rsplit')), psum(remcpu('extract'))};
+end;
+
+create function p2p_res() -> vector of number;
+
+create function ub_file_p2p(vector of integer mszs, vector of integer recvnums)
+-> object as begin
+for each integer msz where msz in mszs begin
+for each integer recvhostnum where recvhostnum in recvnums begin
+declare charstring outputfilename;
+set outputfilename = "p2p-" + "msz" + stringify(msz) + "_" + 
+stringify(recvhostnum);
+add p2p_res() = x_file_p2p(msz, recvhostnum);
+print(p2p_res());
+writefile("dp-" + outputfilename, {dprofile()});
+end;
+end;
+write_ntuples(p2p_res(), "p2p_" + timestamp());
+end;
+
+/* 
+
+ub_file_p2p({8},1);
+
+*/

@@ -1,0 +1,115 @@
+lisp;
+
+(defvar _rdfresource_
+  (createliteraltype 'RDFResource '(Object) 'rdfr nil 'rdfr-typefn))
+
+(defvar _uri_ (createtype 'uri '(rdfresource)))
+(defvar _rdf-literal_ (createtype 'RDFLiteral '(rdfresource)))
+(defvar _rdf-blank_ (createtype 'RDFBlank '(rdfresource)))
+(defvar _rdf-number_ (createtype 'RDFNumber '(rdfliteral)))
+(defvar _rdf-date_ (createtype 'RDFDate '(rdfliteral)))
+(defvar _rdf-time_ (createtype 'RDFTime '(rdfliteral)))
+
+(defun rdfr-typefn (r)
+  (selectq (rdfr-kind r)
+    (0 _uri_)
+    (1 _rdf-literal_)
+    (2 _rdf-blank_)
+    (3 _rdf-number_)
+    (4 _rdf-date_)
+    (5 _rdf-time_)
+    (error "Unknown RDFR kind" (rdfr-kind r))))
+
+(defun ntriples (file)
+    (let ((filestream (openstream file "r")) triples)
+        (setq triples (ntriplesfn filestream))
+        (closestream filestream)
+        triples))
+
+(defun rdf-print-triple-to-stream (s p o stream)
+    (rdfr-print s stream)
+    (princ " " stream)
+    (rdfr-print p stream)
+    (princ " " stream)
+    (rdfr-print o stream)
+    (princ " ." stream)
+    (terpri stream))
+
+(defun rdf-print-triples-to-stream (tr stream)
+    (when (not (null tr))
+        (rdf-print-triple-to-stream (nth 0 (first tr)) (nth 1 (first tr)) (nth 2 (first tr)) stream)
+        (rdf-print-triples-to-stream (rest tr) stream)))
+
+(defun rdf-print (tr file)
+    (let ((filestream (openstream file "w")))
+        (rdf-print-triples-to-stream (reverse tr) filestream)
+        (closestream filestream)))
+
+:osql
+
+create function ntriples(Charstring filename)->
+        Bag of <RDFResource s, RDFResource p, RDFResource o>
+    /* Emits all tuples from the file as bag of vectors */
+    as foreign "ntriples";
+
+create function vntriples(Charstring filename)->
+        Vector of vector of RDFResource
+    /* Emits all tuples from the file as vector of vectors */
+    as select v from Vector v
+        where v in ntriples(filename);
+
+create function ntriple(RDFResource s, RDFResource p, RDFResource o)->
+        Vector of RDFResource
+    /* Returns vector from three RDFResources */
+    as {s, p, o};
+
+create function rdfr(Integer kind, Object data, Charstring lang, Object datatype)->
+	RDFResource as multidirectional
+	("bbbbf" foreign "rdfrbbbbf")
+	("ffffb" foreign "rdfrffffb");
+
+create function URI(Charstring url)->RDFresource
+  as rdfr(0, url, "", "");
+
+create function rdf_lit(Charstring lit)->RDFresource
+  as rdfr(1, lit, "", "");
+
+create function rdf_lit(Charstring lit, Charstring lang)->RDFresource
+  as rdfr(1, lit, lang, "");
+
+create function rdf_lit(Charstring lit, RDFresource dt)->RDFresource
+  as rdfr(1, lit, "", dt);
+
+create function rdf_lit(Charstring lit, Charstring lang, RDFresource dt)->RDFresource
+  as rdfr(1, lit, lang, dt);
+
+create function rdf_blank(Charstring name)->RDFresource
+  as rdfr(2, name, "", "");
+
+create function rdfr_kind(RDFResource n)->Integer as foreign "rdfr-kind";
+create function rdfr_data(RDFResource n)->Object as foreign "rdfr-data";
+create function rdfr_datatype(RDFResource n)->RDFResource as foreign "rdfr-datatype";
+create function rdfr_lang(RDFResource n)->Bag of Charstring as foreign "rdfr-lang";
+
+/*
+    RDFNumber functions
+*/
+create function rdf_number(Charstring num)->RDFNumber
+  as rdfr(3, num, "", "");
+
+create function rdf_number(Number num)->RDFNumber
+  as rdfr(3, num, "", "");
+
+create function rdfr_data(RDFNumber n)->Number as foreign "rdfr-data";
+
+create function plus(RDFNumber num1, RDFNumber num2)->RDFNumber
+  as rdf_number(rdfr_data(num1) + rdfr_data(num2));
+
+create function minus(RDFNumber num1, RDFNumber num2)->RDFNumber
+  as rdf_number(rdfr_data(num1) - rdfr_data(num2));
+
+create function times(RDFNumber num1, RDFNumber num2)->RDFNumber
+  as rdf_number(rdfr_data(num1) * rdfr_data(num2));
+
+create function div(RDFNumber num1, RDFNumber num2)->RDFNumber
+  as rdf_number(rdfr_data(num1) / rdfr_data(num2));

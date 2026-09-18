@@ -1,0 +1,42 @@
+/****************************************************/
+/* Global Schema */
+/****************************************************/
+create type Webservice properties (name charstring);
+create type Operator properties(name charstring, soapactionuri charstring, 
+                                style charstring, encodingstyle charstring, 
+                                targetobjecturi charstring, 
+                                namespaceuri charstring, 
+                                targeturl charstring, opcomment charstring);
+
+create function port(Webservice)-> bag of Operator;
+
+create type Message properties(name charstring,  msgcomment charstring);
+
+create function input( Operator)-> Message;
+create function output( Operator)-> Message;
+
+create type Element properties(name charstring,mappedtype charstring);
+create type Parameter properties(position Integer,minoccurs Integer, maxoccurs Integer);
+create function collectionpar(Parameter)->vector of Parameter;
+
+create function despar(Message)->vector of Parameter;
+create function valuedes(Parameter)-> Element;
+
+
+/****************************************************/
+/* Generic Functions*/
+/****************************************************/
+create function generate_wsdl_metadata(charstring wsdlurl)-> boolean  as foreign  "JAVA:intiateSchema/initoperation"; 
+
+create function importwsdl(charstring wsdlurl) -> boolean as
+begin
+  generate_wsdl_metadata(wsdlurl);
+  load_amosql("populatewsdl.amosql");
+  /*load_amosql("../src/amosql/save.amosql");*/
+  result true;
+end;
+create function addcollectionpar(Parameter p,Parameter s)->boolean 
+					       as
+						 begin
+						     add collectionpar(s)=collectionpar(p);	
+						  end;	

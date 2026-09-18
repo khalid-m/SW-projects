@@ -1,0 +1,139 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 T.Risch, Cheng Xu, UDBL
+ * $RCSfile: streams.osql,v $
+ * $Revision: 1.21 $ $Date: 2013/06/29 16:09:25 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Stream algebra
+ *
+ ****************************************************************************
+ * $Log: streams.osql,v $
+ * Revision 1.21  2013/06/29 16:09:25  torer
+ * New file for CSV file access: lsp/CSV.osql
+ *
+ * Revision 1.20  2013/06/29 15:33:45  torer
+ * New function
+ * diota(Number freq, Number l, Number u) -> Stream of Number
+ * for delayed iota()
+ *
+ * Revision 1.19  2013/06/26 17:45:26  torer
+ * Reverting (CO-SLEEP)
+ *
+ * Revision 1.17  2013/03/27 16:18:36  torer
+ * CSV reader now in C and following EXCEL's format
+ * 2.63 times faster
+ *
+ * Revision 1.16  2013/03/25 21:57:36  torer
+ * Wrong width in tuples(Stream)
+ *
+ * Revision 1.15  2013/03/24 18:19:47  torer
+ * extract(Stream) renamed to tuples(Stream s) -> Bag of Vector
+ * because of SCSQ overloading problems.
+ *
+ * Revision 1.14  2013/03/24 17:55:09  torer
+ * 1. Wrong first timestamp in heartbeat()
+ * 2. New function tupleSchema()
+ *
+ * Revision 1.13  2013/03/24 16:14:50  torer
+ * Wrong result types of stream tuple extractors
+ *
+ * Revision 1.12  2013/03/24 14:25:12  torer
+ * Restored original tick method to decrease 'clock drift'.
+ * playback(heartbeat(0.1)); still does not work as expected though.
+ *
+ * Revision 1.11  2013/03/23 16:38:40  torer
+ * Changed name run(Stream)->Bag of Object
+ *   into       extract(Stream) -> Bag of Object
+ *
+ * Revision 1.10  2013/03/23 16:15:55  torer
+ * 1. Made timestamps in heartbeat() wall time based
+ * 2. New function
+ *     run(stream)->Bag
+ *
+ * Revision 1.9  2013/03/23 14:44:06  torer
+ * playback() hanged when timestamp decreased
+ *
+ * Revision 1.8  2013/03/23 12:04:04  torer
+ * randStream() using frand()
+ *
+ * Revision 1.7  2013/01/04 13:48:54  chexu484
+ * lisp function ts, returns time stamp for stream tuple
+ *
+ * Revision 1.6  2012/11/12 11:00:22  torer
+ * playback() on non-numeric stream ok
+ *
+ * Revision 1.4  2012/11/08 12:01:21  chexu484
+ * playback on streams
+ * note:
+ * only works on stream of tuples, with time stamps
+ *
+ * Revision 1.3  2012/10/25 06:09:42  torer
+ * Roundoff error in heartbeat()
+ *
+ * Revision 1.2  2012/10/17 21:31:38  chexu484
+ * stream operator replay
+ *
+ * Revision 1.1  2012/10/12 12:59:38  torer
+ * Basic stream algebra
+ *
+ ****************************************************************************/
+
+create function heartbeat0(Number freq)->Bag of Number
+  as foreign 'heartbeat0-+';
+
+create function heartbeat(Number frequency)->Stream of Number
+  /* Emit time from start in seconds at given frequency */
+  as streamof(heartbeat0(frequency));
+
+create function randStream0(Number l, Number u) -> Bag of Number
+  as loop
+      return frand(l, u);
+     end loop;
+
+create function randStream(Number l, Number u) -> Stream of Number
+  as streamof(randStream0(l, u));
+
+create function heartbeat0(Stream s, Number freq) -> Bag of (Real ts, Object r)
+  as foreign 'heartbeat0--++';
+
+create function heartbeat(Stream s, Number freq) -> Stream of (Real, Object)
+  as streamof(heartbeat0(s, freq));
+
+create function diota0(Number delay, Number l, Number u) -> Bag  of Number
+  as foreign "diota---+";
+
+create function diota(Number freq, Number l, Number u) -> Stream of Number
+  /* Make a stream of iota(l, u) with frew delayed tuples */
+  as streamof(diota0(freq, l, u));
+
+create function replay(Stream s, Function ts) -> Bag of Vector
+  as foreign 'replay0--+';
+
+create function playback(Stream s) -> Bag of Vector
+  /* Playback time stamped stream of tuples where first element is timestamp */
+  as foreign 'playback0-+';
+
+create function tuples(Stream s) -> Bag of Vector
+  /* Extract all tuples from stream s */
+  as foreign 'stream.tuples-+';
+
+create function first(Stream s) -> Vector
+  /* Extract the first tuple from stream s */
+  as foreign 'first-+';
+
+create function tupleSchema(Charstring name,
+                            Vector of Vector of Charstring attributes)
+                          -> Bag of Function
+  /* Generate access functions for a tuple.
+     name: The name of the tuple
+     attributes: A vector of pairs declaring attributes {{A1, TP1},...{An,TPn}}
+                 Ai: name of attribute
+                 TPi: name of data type of attribute
+     The access functions are named name_A1,...,name_An */
+  as for each Integer i, Charstring attr, Charstring tp 
+         where attributes[i]={attr,tp}
+     return(eval("create function "+name+"_"+attr+"(Vector e) -> "+tp+
+                 " as e["+i+"];"));
+

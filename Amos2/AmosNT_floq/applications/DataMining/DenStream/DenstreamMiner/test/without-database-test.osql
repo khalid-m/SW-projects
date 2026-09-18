@@ -1,0 +1,39 @@
+
+print("Display number of the macroClusters at window 12:");
+print(">numOfclusters('data/initializing.txt','data/synthetic_data.txt',0.5,10,16,0.25,2,1,0,1, 12)");
+/*At stream x, how many clusters at window n*/
+numOfclusters('data/initializing.txt','data/synthetic_data.txt',0.5,10,16,0.25,2,1,0,1, 12);
+
+print("Display number of the microClusters at window 12:");
+print(">numOfMicroclusters('data/initializing.txt','data/synthetic_data.txt',0.5,10,16,0.25,2,1,0,1, 12)");
+/*At stream x, how many microclusters at window n*/		
+numOfMicroclusters('data/initializing.txt','data/synthetic_data.txt',0.5,10,16,0.25,2,1,0,1,12);
+
+print("Display windows which have more than 5 macroClusters:");
+print(">largerNumMacroclus('data/initializing.txt','data/synthetic_data.txt',0.5,10,16,0.25,2,1,0,1, 5)");
+ /*At stream x, which windows have more than n macroclusters*/
+largerNumMacroclus('data/initializing.txt','data/synthetic_data.txt',0.5,10,16,0.25,2,1,0,1, 5);
+
+print("Display windows which have point {320, 500}:");
+print(">locateDatapoint('data/initializing.txt','data/synthetic_data.txt',0.5,10,16,0.25,2,1,0,1, {320,500})");
+/*At stream x which windows point{x1,x2,...} is in*/
+locateDatapoint('data/initializing.txt','data/synthetic_data.txt',0.5,10,16,0.25,2,1,0,1, {320,500});
+
+print("Display windows which have point {320, 500} and more than 5 macroClusters:");
+print(">locDatapointFindWindows('data/initializing.txt','data/synthetic_data.txt',0.5,10,16,0.25,2,1,0,1, 5, {320,500})");		
+/*At stream x which windows point{x1,x2,...} is in and number of macroclusters in these windows is larger than n*/
+locDatapointFindWindows('data/initializing.txt','data/synthetic_data.txt',0.5,10,16,0.25,2,1,0,1, 5, {320,500});
+
+print("Display windows which have max number of windows:");
+print(">maxNumCluwindow('data/initializing.txt','data/synthetic_data.txt',0.5,10,16,0.25,2,1,0,1)");		
+/*At stream x, which windows have maximum number of macro clusters*/		
+maxNumCluwindow('data/initializing.txt','data/synthetic_data.txt',0.5,10,16,0.25,2,1,0,1);
+
+print("Display windows which have points distant from point {300, 500} within 20:");
+print(">numOfMicroclusters('data/initializing.txt','data/synthetic_data.txt',0.5,10,16,0.25,2,1,0,1, 12)");
+/*At stream x,  In which widows are there some macrocluster within distance d from point p?*/
+findMacroClu('data/initializing.txt','data/synthetic_data.txt',0.5,10,16,0.25,2,1,0,1,{300, 500},20);
+
+
+
+/*loadMicroClusters('data/initializing.txt','data/synthetic_data.txt',0.5,10,16,0.25,2,1,0,1);*/

@@ -1,0 +1,8 @@
+# Graph: http://example/bookStore2
+@prefix dc: <http://purl.org/dc/elements/1.1/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<http://example/book1> dc:title "Fundamentals of Compiler Design" .
+<http://example/book1> dc:date "1977-01-01T00:00:00-02:00"^^xsd:dateTime .
+
+<http://example/book4> dc:title "SPARQL 1.0 Tutorial" .

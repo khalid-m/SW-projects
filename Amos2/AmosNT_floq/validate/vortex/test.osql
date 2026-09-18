@@ -1,0 +1,173 @@
+
+
+/* not using python foreign function any more
+extlang("python");
+create function json_stream(Charstring host, Integer port) -> Record r
+  as foreign "py:pysslfun.json_client";
+********************************************************/               
+
+load_lisp(getenv("amos_home")+"/lsp/json.lsp");
+load_lisp("wrapper.lsp");                         
+
+/* testing for multiple sources
+set :s1 = stream_wrapper("corenet_streamer.py", "localhost", 1337);
+set :s2 = stream_wrapper("corenet_streamer.py", "localhost", 1338);  
+extract({:s1,:s2}); 
+*/                  
+
+/************************************ the schema ****************************************/                        
+
+create function v_ap(Vector v) -> Number
+  as select v[4];                                 
+
+create function r_ap(Record r) -> Number
+  as select unstringify(cast(v[5]["value"] as Charstring))
+  from Vector of Record v
+  where v = r["data"];                               
+
+create function v_ae(Vector v) -> Number
+  as select v[21];                           
+
+create function r_ae(Record r) -> Number
+  as select unstringify(cast(v[22]["value"] as Charstring))
+  from Vector of Record v
+  where V = r["data"];                                 
+
+create function v_fz(Vector v) -> Number
+  as select v[22];                               
+
+create function r_fz(Record r) -> Number
+  as select unstringify(cast(v[23]["value"] as Charstring))
+  from Vector of Record v
+  where V = r["data"];                              
+
+create function v_hex(Vector v) -> Number
+  as select v[23];                       
+
+create function r_hex(Record r) -> Number
+  as select unstringify(cast(v[24]["value"] as Charstring))
+  from Vector of Record v
+  where V = r["data"];                                
+
+create function v_vc(Vector v) -> Number
+  as select v[24];                                
+
+create function r_vc(Record r) -> Number
+  as select unstringify(cast(v[25]["value"] as Charstring))
+  from Vector of Record v
+  where V = r["data"];                             
+
+create function v_kc(Vector v) -> Number
+  as select sqrt(4727.9);                       
+
+create function v_zt(Vector v) -> Number
+  as 4;                             
+
+create function r_zt(Record r) -> Number
+  as 4;                           
+
+create function v_dcap(Vector v) -> Number
+  as select v[5];                             
+
+create function r_dcap(Record r) -> Number
+  as select unstringify(cast(v[6]["value"] as Charstring))
+  from Vector of Record v
+  where V = r["data"];                          
+
+create function v_power(Vector v) -> Number
+  as select v[13];                          
+
+create function r_power(Record r) -> Number
+  as select unstringify(cast(v[14]["value"] as Charstring))
+  from Vector of Record v
+  where V = r["data"];                            
+
+create function r_expected_power(Record r) -> Number
+  as (r_ap(r)*r_ae(r)*r_fz(r)*r_vc(r)*r_zt(r)*r_kc(r))/(pi()*r_dcap(r)*60000);    
+
+create function r_hm(Record r) -> Number
+  as (2*pi()*sin(90*pi()/180)*r_ae(r)*r_fz(r))/(pi()*r_dcap(r)*acos(1-2*r_ae(r)/r_dcap(r)));
+
+create function r_kc(Record r) -> Number
+  as 1950*power(r_hm(r), -0.25)*(1-2.5/100);               
+
+create function v_timestamp(Vector v) -> Number
+  as v[0];      
+
+create function r_timestamp(Record r) -> Number
+  as select unstringify(cast(v[1]["value"] as Charstring))
+  from Vector of Record v
+  where V = r["data"];      
+
+/****************************************************************************************/                          
+
+
+
+/* the computation */                         
+
+create function invalid_v(Vector v, Number interval) -> (Number ts, Number measured, Number expected, Number invalid)
+  as
+    begin
+       set expected = (v_ap(v)*v_ae(v)*v_fz(v)*v_vc(v)*v_zt(v)*v_kc(v))/(pi()*v_dcap(v)*60000);
+       set measured = v_power(v);
+       set ts = v_timestamp(v);
+       if abs(measured-expected) > interval then return (ts, measured, expected, 1)
+       else return (ts, measured, expected, 0);
+    end;                   
+
+create function invalid_r(Record r, Number interval) -> (Number ts, Number measured, Number expected, Number invalid)
+  as
+    begin
+       set expected = r_expected_power(r);
+       set measured = r_power(r);
+       set ts = r_timestamp(r);
+       if abs(measured-expected) > interval then return (ts, measured, expected, 1)
+       else return (ts, measured, expected, 0);
+    end;                    
+
+/*
+       print(r_ap(r));
+       print(r_ae(r));
+       print(r_fz(r));
+       print(r_vc(r));
+       print(r_zt(r));
+       print(r_kc(r));
+       print(r_dcap(r));
+*/           
+
+/*
+create function invalid_r(Record r, Number interval) -> (Number measured, Number expected, Number invalid)
+  as (select measured, expected, 1
+  where expected = (r_ap(r)*r_ae(r)*r_fz(r)*r_vc(r)*r_zc(r)*r_kc(r))/(pi()*r_dcap(r)*60000)
+  and measured = r_power(r) and abs(measured-expected) > interval)
+  and (select measured, expected, 0
+  where expected = (r_ap(r)*r_ae(r)*r_fz(r)*r_vc(r)*r_zc(r)*r_kc(r))/(pi()*r_dcap(r)*60000)
+  and measured = r_power(r) and abs(measured-expected) <= interval);
+*/             
+
+create function r_validate0(Stream s, Function invalidf, Number interval)
+       				      	     -> Bag of (Number ts, Number measured, Number expected, Number invalid)
+  as select ts, measured, expected, invalid
+  from Object o
+  where o in s and {ts, measured, expected, invalid} = apply(invalidf, {o, interval});                    
+
+create function r_replay(Charstring logfile, Function invalidf, Number interval)
+       				    	     -> Bag of (Number ts, Number measured, Number expected, Number invalid)
+  as r_validate0(streamof(readfile(logfile)), invalidf, interval);                   
+
+create function r_validate(Stream s, Function invalidf, Number interval, Charstring logfile, Charstring mode)
+       -> Bag of (Number ts, Number measured, Number expected, Number invalid)
+  as begin
+	openlog(logfile, mode);
+       	for each Object o, Number ts, Number measured, Number expected, Number invalid
+     	    where o in s and {ts, measured, expected, invalid} = apply(invalidf, {o, interval})
+	 begin
+		if invalid = 1 then write2log(o, logfile);
+    	 	return (ts, measured, expected, invalid);
+	 end;
+	closelog(logfile);
+  end;    
+
+r_validate(json_stream_wrapper("python corenet_streamer.py", "localhost", 1337), #'invalid_r', 0, "wrong.log", "w");                                       
+
+r_replay("wrong.log", #'invalid_r', 0);

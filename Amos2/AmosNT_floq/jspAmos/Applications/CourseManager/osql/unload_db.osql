@@ -1,0 +1,40 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2003 Timour Katchaounov, UDBL
+ * $RCSfile: unload_db.osql,v $
+ * $Revision: 1.1 $ $Date: 2006/10/06 15:38:24 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Backup - unload all application data into an OSQL file
+ *
+ ****************************************************************************/
+
+
+create function user_types() -> type;
+/* add user_types() = allsubtypes(typenamed('USEROBJECT')); */
+add user_types() = typenamed("EXAMPROBLEM");
+add user_types() = typenamed("ASSIGNMENT");
+add user_types() = typenamed("USER");
+add user_types() = typenamed("ASSISTANT");
+add user_types() = typenamed("LECTURER");
+add user_types() = typenamed("COURSE");
+add user_types() = typenamed("STUDENT");
+
+create function user_functions() -> function;
+add user_functions() = allfunctions(user_types());
+
+add excluded_fns() = in(
+  select f
+  from function f
+  where notany(select f1 from
+               function f1
+               where f1 = f and
+               f1 = user_functions()));
+
+declare timeval :tnow;
+declare charstring :tnows;
+set :tnow = now();
+set :tnows = concat(concat(concat(concat(concat(concat(concat(concat(itoa(year(:tnow)), '-'), itoa(month(:tnow))), '-'), itoa(day(:tnow))), '-'), itoa(hour(:tnow))), '-'), itoa(minute(:tnow)));
+
+unload(concat(concat(concat(name(currcourse()),'-'), :tnows), '.osql'));

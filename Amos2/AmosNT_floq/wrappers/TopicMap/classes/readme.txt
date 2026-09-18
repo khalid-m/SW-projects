@@ -1,0 +1,1 @@
+Compiled Java code for Topic Map wrapper

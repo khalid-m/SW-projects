@@ -1,0 +1,9 @@
+propagate_delays(true);
+scsqprofile("logs");
+load_lisp("src/basictest.lsp");
+<'src/test_Q1.osql';
+<'src/test_Q2.osql';
+<'src/test_Q3.osql';
+<'src/test_Q4.osql';
+<'src/delays.osql';
+q();

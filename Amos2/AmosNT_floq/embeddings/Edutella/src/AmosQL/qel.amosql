@@ -1,0 +1,447 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2005 Johan Petrini, UDBL
+ * $RCSfile: qel.amosql,v $
+ * $Revision: 1.5 $ $Date: 2012/05/15 20:43:11 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Code to translate QEL v.2 to AmosQL.
+ ****************************************************************************
+ * $Log: qel.amosql,v $
+ * Revision 1.5  2012/05/15 20:43:11  torer
+ * result -> return
+ *
+ * Revision 1.4  2009/11/17 17:31:22  torer
+ * '=' changed to 'in'
+ *
+ * Revision 1.3  2006/04/29 10:11:11  torer
+ * Check for duplicated or conflicting declarations in FROM clause
+ *
+ ****************************************************************************/
+
+/* Load RDF spec. of QEL and migrate to PSELO RDFS representation*/ 
+/*loadRDFSchema("file:/" + getenv("AMOS_HOME") + "/PSELO/src/xml/schema/qel_schema.xml");*/
+
+/* Function that maps an AmosQL function to an RDF query literal */
+create function map_to_fn(charstring qelfn, RDF_queryliteral ql)->charstring fn as foreign 'map-to-fn';
+
+/* Function that returns the string representation of an OID. */
+create function oid_string(Object o)->charstring as foreign 'oid-string';
+create function oid_symbol(Object o)->rdf_resource as foreign 'oid-symbol';
+
+ /***************************************	
+ *	Utility functions.		
+ ***************************************/ 
+
+/*	Type coersion functions.
+ */	
+
+	create function a_string(object o)->charstring 
+            as select cast(o as charstring);
+	create function a_vector(object o)->vector 
+            as select cast(o as vector);
+	create function a_resource(object o)->rdf_resource 
+            as select cast(o as rdf_resource);
+	create function an_int(number n)->integer 
+            as select cast(n as integer);
+
+/*	Append 'rdf_' to string. Check for redundancy in 'rdfamos.amosql'.
+ */
+	create function rdf_append(charstring c)->charstring
+	as
+		select "rdf_" + c;
+
+/*	Print sourcecode of function called n.
+ */
+	create function sc(charstring n)->charstring c 
+	as
+		select sourcecode(functionnamed(n));
+
+	create function alikestr(charstring c)->charstring
+	as
+		select "*" + c + "*";
+
+	create function unreg()->object o
+	as
+		select eval('quit;');
+
+
+	/************************************************	
+ 	 *	Implemented QEL builtin predicates.
+ 	 ***********************************************/
+
+	create function qnodetype(object x, object y)->boolean
+	as
+		select true; 
+
+	create function qmember(object x, object y)-> boolean
+	as
+		select where x = y;
+
+
+   	/*Titta på like. Skall denna som default använda sig av encodes??*/
+	/*
+	create function qlike(object x, object y)-> boolean
+	as
+		select from charstring c where the_transient(c)= a_resource(x) and like(c, a_string(y));
+	*/
+	/*
+	create function qlike(object x, object y)-> boolean
+	as
+		select from charstring c where c = id(a_resource(x)) and like(c, a_string(y));	
+	*/
+
+	/* qlike() ovan ersatt med qlike() nedan. Förstår ej varför jag skapat transient istället för att använda id()? */
+	/*create function qlike(object x, object y)-> boolean
+	as
+		select from vector v, charstring pre, charstring nick where v = encodes(a_resource(x)) and nick=v[1] and like(nick, a_string(y));*/
+
+	create function qlike(object x, object y)-> boolean
+	as
+		select from charstring pre, charstring nick where {pre,nick}=encodes(a_resource(x)) and like(nick, a_string(y));
+
+	/*****************************************************
+	 *	Table mapping QEL builtin fn to AmosQL fn 
+	 ****************************************************/
+
+	create function QELMap(charstring qelfn)->boolean as stored;
+
+	set QELMap("member")=true;
+	set QELMap("nodeType")=true;
+	set QELMap("like")=true;
+
+	/**************************************************
+ 	*	Functions			
+ 	**************************************************/
+
+
+/*	Return true if property c of r is of type 'RDF_VARIABLE'.
+ */
+  	create function is_rdfvariable(rdf_resource rr)->boolean 
+   	as
+        	select where name(typeof(rr)) = 'RDF_VARIABLE';
+
+/* 	Find out if property c of r is a RDF_VARIABLE or a RDF_RESOURCE and return 
+ *	string representation of property. 
+ */
+   	create function rdf_type(rdf_resource rr)->charstring 
+   	as
+		begin
+			if is_rdfvariable(rr)
+			then return nickname(rr)
+			else return oid_string(rr)
+		end; 
+
+/*	Return all literals (both statementliterals and queryliterals) from QEL query.
+	A statementliteral can always be reformulated as a queryliteral.  
+ */
+	create function query_statements(rdf_query q)-> rdf_queryliteral
+   	as 
+		select rdf_literal(q);
+
+	create function query_statementsoj(rdf_query q)-> rdf_queryliteral
+   	as 
+		select rdf_outerjoinliteral(q);
+
+
+
+/*	Return queryliterals from QEL query.
+ */
+	create function extract_ql(rdf_query q)->rdf_queryliteral ql
+	as
+	select ql from rdf_queryliteral ql where ql = in(query_statements(q)) and typeof(ql) = typenamed("rdf_queryliteral");
+
+	create function extract_sl(rdf_query q)->rdf_statementliteral
+	as
+	select sl from rdf_statementliteral sl;
+
+	create function isQLbound(rdf_resource r, rdf_queryliteral ql)->Boolean as 
+	select true where r = in(a_vector(rdf_arguments(ql)));
+	
+	create function anyQLbound(rdf_resource r, rdf_query q)->Boolean as
+	select distinct true where isQLbound(r, extract_ql(q));
+
+	create function isSLbound(rdf_resource r, rdf_statementliteral sl)->Boolean as
+	select true where r = getprop(sl,"subject") or r = getprop(sl,"predicate") or r = getprop(sl,"object");
+
+	create function anySLbound(rdf_resource r, rdf_query q)->Boolean as
+	select distinct true where isSLbound(r, extract_sl(q));
+
+	create function inQueryBody(rdf_resource r, rdf_query q)->Boolean as
+	select true where anyQLbound(r,q) or anySLbound(r,q);
+
+
+/*	Return result variables from QEL query.
+ */
+	
+   	create function result_variables1(rdf_query q) -> <integer, charstring> 
+   	as
+    	select i, nickname(v[i])
+     	from rdf_resource r, vector of rdf_resource v, integer i
+     	where
+        r = rdf_resultvariables(q) and
+        v = r and
+	inQueryBody(v[i],q);
+
+	create function result_variables(rdf_query q)->charstring	
+	as
+	select t[1] from integer i, vector r, vector t where r = sort(result_variables1(q)) and t = r[i];
+
+
+/* 	Return distinct result variables from QEL query. 
+ */
+  	create function query_variable(rdf_query q)->charstring
+   	as 
+		select distinct result_variables(q);
+
+
+/*	Uggly hack returning all query variables from QEL query.
+ */
+	create function query_variables(rdf_query q)->charstring
+   	as 
+		select distinct nickname(r) from rdf_variable r where inQueryBody(r,q);
+
+
+/*	Extract predicate as string from queryliteral.
+ */
+	create function extract_pred(rdf_queryliteral ql)->charstring 
+	as
+		select nickname(rdf_predicate(ql));
+
+
+/*	Concat arguments for QEL builtin fn c as string.
+ */	
+
+	create function builtin_arg(rdf_queryliteral ql)->charstring
+	as	
+		select concatagg(c) from bag of charstring c where
+                       c = inject(rdf_type(a_resource(in(a_vector(rdf_arguments(ql))))), ',');
+
+
+/*	Build call to implemented QEL builtin fn's as string. 
+ */
+	create function build_nodetype(rdf_queryliteral ql)->charstring
+	as	
+		select "qnodetype(" + rdf_type(a_resource(v[0])) + "," + rdf_type(a_resource(v[1])) + ")" 
+		from vector v
+		where v = a_vector(rdf_arguments(ql));
+
+	
+	create function build_member(rdf_queryliteral ql)->charstring
+	as	
+		select "qmember(" + rdf_type(a_resource(v[0])) + "," + rdf_type(a_resource(v[1])) + ")" 
+		from vector v
+		where v = a_vector(rdf_arguments(ql));
+	
+	create function build_like(rdf_queryliteral ql)->charstring
+	as	
+		select "qlike(" + rdf_type(a_resource(v[0])) + ",'" + alikestr(nickname(a_resource(v[1]))) + "')" 
+		from vector v
+		where v = a_vector(rdf_arguments(ql));
+	
+
+	create function build_dummy(rdf_queryliteral ql, charstring message)->charstring
+	as
+		select "builtin_dummy('" + message + "')";
+
+	create function builtin_dummy(charstring message)->Boolean as select FALSE;
+
+/*	Builds the query clause from a queryliteral ql as a builtin predicate.
+ */
+
+/*
+	create function query_clause(rdf_queryliteral ql)->charstring 
+   	as	
+		begin
+		declare charstring qelfn;
+		set qelfn = extract_pred(ql);
+		if qelMap(qelfn)
+		then result map_to_fn(concatagg("build_" + qelfn), ql)                     
+		else result error("Unknown builtin predicate: " + qelfn + ".")
+		end;
+*/
+
+create function query_clause(rdf_queryliteral ql)->charstring 
+   	as	
+		begin
+		declare charstring qelfn;
+		set qelfn = extract_pred(ql);
+		if qelMap(qelfn)
+		then return map_to_fn(concatagg("build_" + qelfn), ql)                     
+		else return build_dummy(ql, "Unknown builtin predicate: " + qelfn + ".")
+		end;
+
+
+/* 	Overloaded fn on argument. Builds the query clause from a statementliteral 
+ *	c as a reified stmt. 
+ */
+	/*
+	create function query_clause(rdf_statementliteral c)->charstring 
+   	as
+		select "stmt(" +
+		rdf_type(getprop(c,"subject")) +
+        "," + rdf_type(getprop(c,"predicate")) +
+        "," + rdf_type(getprop(c,"object")) + ")";
+	*/
+
+	/*!!!!!! Vi frågar endast mot tripelvy över relations db!!!!!!!!*/
+   	create function query_clause(rdf_statementliteral c)->charstring 
+   	as
+		select "stmt(" +
+		rdf_type(getprop(c,"subject")) +
+        "," + rdf_type(getprop(c,"predicate")) +
+        "," + rdf_type(getprop(c,"object")) + ")";
+
+/*************TESTBED****************************************************
+create function isQLbound(rdf_resource r, rdf_queryliteral ql)->Boolean as 
+select true where r = in(a_vector(rdf_arguments(ql)));
+
+create function anyQLbound(rdf_resource r, rdf_query q)->Boolean as
+select distinct true where isQLbound(r, extract_ql(q));
+
+create function isSLbound(rdf_resource r, rdf_statementliteral sl)->Boolean as
+select true where r = getprop(sl,"subject") or r = getprop(sl,"predicate") or r = getprop(sl,"object");
+
+create function anySLbound(rdf_resource r, rdf_query q)->Boolean as
+select distinct true where isSLbound(r, extract_sl(q));
+
+create function inQueryBody(rdf_resource r, rdf_query q)->Boolean as
+select true where anyQLbound(r,q) or anyQSbound(r,q);
+
+****************************************************************************/
+
+create function query_clauseoj(rdf_queryliteral c)->charstring 
+   	as
+		select "oj_dummy()";
+
+create function oj_dummy()->Boolean as select FALSE;
+
+create function query_clauserule(rdf_rule r)->charstring
+	as
+	select "rule_dummy()";
+
+create function rule_dummy()->Boolean as select FALSE;
+
+	/*****************************************/
+
+/* 	Returning where-clause, from-clause and select-clause of an QEL query 
+ *	translated to AmosQL. 
+ */
+
+
+   	/*
+		create function query_whereclause(rdf_query q)->charstring 
+   	as 
+		select concatagg(c) from bag of charstring c where
+                       c = inject(query_clause(query_statements(q))," and ");
+
+*/
+		
+		create function query_clauses(rdf_query q)->charstring c 
+		as
+		select c where c = query_clause(cast(rdf_literal(q) as rdf_queryliteral)) or c = query_clauseoj(cast(rdf_outerjoinliteral(q) as rdf_queryliteral)) or c = query_clauserule(cast(rdf_rule(q) as rdf_rule));
+
+		
+		create function query_whereclause(rdf_query q)->charstring 
+   	as 
+		select concatagg(c) from bag of charstring c where
+                       c = inject(query_clauses(q)," and ");
+
+		
+     	create function query_fromclause(rdf_query q)->charstring
+   	as 
+		select concat("rdf_resource ",concatagg(b)) from bag of charstring b where
+                b = inject(query_variables(q),", rdf_resource ");
+
+
+
+/*	Modified select-clause as select id of RDF resource. Results in sending back 
+ *	vectors of charstrings to Java.
+ */
+	create function query_selectclause(rdf_query q)->charstring
+   	as 
+		select concat(concat("id(",concatagg(b  )),")") from bag of charstring b where
+                b = inject(query_variable(q),"), id(");
+               
+	
+/*	Builds the AmosQL query string with result as id() of RDF resources. 
+ */
+/*
+	create function query_string(rdf_query q)->charstring 
+   	as 
+		select "select {
+			" + query_selectclause(q) +  
+			"} from 
+			" + query_fromclause(q) +
+			" where 
+			" + query_whereclause(q)+
+			";";
+*/
+	create function query_string(rdf_query q)->charstring 
+   	as 
+		select "select {
+			" + query_selectclause(q) +  
+			"} from 
+			" + query_fromclause(q) +
+			" where 
+			" + query_whereclause(q) +
+			";";
+
+
+/* 	Evaluates AmosQL representation of QEL query as query string. 
+ */
+
+   	create function eval_query(rdf_query q)->vector
+   	as 
+	
+		select eval(query_string(q)); 
+
+
+/*
+   	create function eval_query(rdf_query q)->vector
+   	as 
+			begin
+				declare charstring dbdir, jdbc a, charstring qs;
+				set dbdir = "jdbc:microsoft:sqlserver://193.10.40.63:1433";
+	   		set a = jdbc("msqlds", "com.microsoft.jdbc.sqlserver.SQLServerDriver");
+				set MSQLDS()= a;
+				connect(MSQLDS(),dbdir, "uu", "uppsala");
+            set qs = query_string(q);
+            print("***QUERY***"); print(date()); print(time()); print(qs);
+            print("***********");
+				result eval(qs);
+				disconnect(MSQLDS());				
+			end;
+		trace("CONNECT");
+      trace("EVAL_QUERY");
+		trace("DISCONNECT");
+		trace("SQL");
+
+
+*/					
+/* 	query_handler(..)börjar med att sätta en commitpunkt.
+ * 	Sedan läggs QEL tripler in i tripelrymd, skapas QEL fråga, 
+ * 	översätts denna till AmosQL samt exekveras denna. 
+ * 	Slutligen skickas resultat tillbaka som scan av vektorer populerade med strängar.
+ * 	Till sista rullas samtliga operationer under procedur tillbaka. På så vis slipper 
+ * 	vi problem med herrelösa variabler.
+ */
+	create function query_handler(vector st)->vector
+	as
+	begin
+		declare vector v1, vector v2, vector res, rdf_query q1, 
+                        charstring dbdir, jdbc a;
+		eval("commit;");
+		for each integer i 
+                    where i in iota(0,an_int(minus(count(st),1)))
+		begin
+	   		set v1 = st[i];
+	   		new_RDF_statement(a_string(v1[0]),a_string(v1[1]),
+                                          a_string(v1[2]));
+	   	end;
+		migrate_all();
+		select q into q1 from rdf_query q;
+		return eval_query(q1);
+		eval("rollback;");
+	end;

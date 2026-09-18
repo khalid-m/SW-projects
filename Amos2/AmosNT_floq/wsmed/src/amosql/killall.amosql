@@ -1,0 +1,10 @@
+
+register("dummy2");
+/*
+lisp;
+;; wait until "ME" peer finished
+(while (osql "select 'DUMMY1' in other_peers();")  nil)
+:osql*/
+
+kill_the_federation();
+quit;

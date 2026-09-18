@@ -1,0 +1,25 @@
+/*-*-sql-*-*********************************************
+ * AMOS2
+ *
+ * historical data ************************************/
+
+create function history() -> <Integer v, Integer d, Integer x, Integer t> 
+  as stored;
+
+create_index("history", "v", "hash", "multiple");
+
+create function add_history(Integer v, Integer d, Integer x, Integer t)
+                            -> Boolean 
+  as add history() = <v, d, x, t>; 
+
+create function loadhistory(Vector of Integer x) -> Boolean
+  as select add_history(x[0],x[1],x[2],x[3]); 
+
+/* returns the toll given a specific vid,day and xway*/
+create function hist_toll(Integer vid, Integer day, Integer xway) -> Integer 
+  as select t 
+     from  Integer v, Integer d, Integer x, Integer t 
+     where history()=<v,d,x,t> 
+       and v=vid 
+       and d=day  
+       and x=xway;

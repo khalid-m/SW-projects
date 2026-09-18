@@ -1,0 +1,39 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2006 Ruslan Fomkin, UDBL
+ * $RCSfile: materialized.load.cost.populated.osql,v $
+ * $Revision: 1.1 $ $Date: 2006/05/03 07:29:42 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Regression test for ALEH project for materialized ontology 
+ * loading entire file for aggregation cost model with populated database. 
+ * Tests that some cut queries over entire file t.root located in ROOT wrapper
+ * home directory.
+ ****************************************************************************
+ * $Log: materialized.load.cost.populated.osql,v $
+ * Revision 1.1  2006/05/03 07:29:42  ruslan
+ * regression test for materialized apporach with new cost model for aggregates, which applicable when database is populated
+ *
+ ****************************************************************************/
+
+lisp;
+(checkequal "Loading t.root file"
+	    ((osql "load_root_file(\"../wrappers/ROOTWrap/t.root\");")
+	     '((25000))))
+:osql
+
+cd("osql");
+<"cuts.osql";
+
+lisp;
+(checkequal "3 lepton cut"
+	    ((osql "count(select e from event e, parameters g 
+where e=threeleptoncut(e,g));")
+	     '((475))))
+
+(checkequal "Opt all cuts"
+	    ((osql "sort(select id(e) from event e, parameters g
+where e=optallcuts(e,g));")
+	     '((#(19015 24455)))))
+:osql

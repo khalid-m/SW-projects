@@ -1,0 +1,222 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) Manivasakan Sabesan, UDBL
+ * $RCSfile: wsdlschema.amosql,v $
+ * $Revision: 1.14 $ $Date: 2012/05/15 19:48:55 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Global Schema
+ *
+ ****************************************************************************
+ * $Log: wsdlschema.amosql,v $
+ * Revision 1.14  2012/05/15 19:48:55  torer
+ * result -> return
+ *
+ * Revision 1.13  2012/02/04 17:14:21  torer
+ * Namespaces for functions and types introduced as name prefixes, e.g.
+ *
+ * create function sql:person(Integer ssn) -> (Charstring name, Integer salary) as stored;
+ *
+ * The prefix sql: makes amos functions queryables with sql, e.g.:
+ *
+ * SELECT * FROM PERSON;
+ *
+ ****************************************************************************/
+
+create type Service properties (name charstring, 
+                                namespaceuri charstring, wsdluri charstring);
+create type Operation properties(name charstring, soapactionuri charstring, 
+                                style charstring, encodingstyle charstring, 
+                                targeturl charstring, authenticationstr charstring, tablename charstring);
+
+create function port(Service)-> bag of Operation;
+
+create type Element properties(name charstring,wsdltype charstring,wsmedtype charstring,minoccurs charstring, maxoccurs charstring, value vector);
+
+create function input( Operation)-> vector;
+create function output( Operation)-> vector;
+create function authentication( Operation)-> vector;
+
+create function tablename(charstring tname)->charstring as foreign "tablename";
+
+create function availableTables()-><charstring ta, charstring au, charstring se, charstring tin, charstring tout>  as select tablename(op), authenticationstr(op),name(s),tableinput_v(theresolvent(concat("sql:",tablename(op)))),tableoutput_v(theresolvent(concat("sql:",tablename(op)))) from Service s,Operation op where op in port(s);
+
+create function tableInfo(charstring tname)-><charstring au, charstring se, charstring tin, charstring tout>  as select authenticationstr(op),name(s),tableinput_v(theresolvent(concat("sql:",tablename(op)))),tableoutput_v(theresolvent(concat("sql:",tablename(op)))) from Service s,Operation op where op in port(s) and tablename(op)=tname;
+
+create function availableTables(charstring wsdlurl)-><charstring ta,  charstring au, charstring se>  as select tablename(op),authenticationstr(op), name(s) from Service s,Operation op where op in port(s) and wsdluri(s)=wsdlurl;
+
+
+create function subelements(Element)->vector;
+
+
+
+/* supporting functions */
+
+create type sigvec properties(name charstring,value vector);
+create sigvec instances :sigvec1;
+set value(:sigvec1)={};
+set name(:sigvec1)='sig';
+create type sigvec2 properties(name charstring,value vector);
+create sigvec2 instances :sigvec2;
+set value(:sigvec2)={};
+set name(:sigvec2)='sig2';
+
+/*
+create type Vecele11 properties(name charstring,value vector);
+create Vecele11 instances :vecele11;
+set value(:vecele11)={};
+set name(:vecele11)="ele1";*/
+
+
+create function findresult_insig()
+                ->vector e as select value(ve)from sigvec ve where name(ve)="sig";
+
+
+
+
+/* find input-output elements of a given operation */
+
+
+
+
+
+
+create function find_signature(vector  ele)-> vector rs 
+		as 
+		begin
+	
+		  for each  Element e,sigvec sv where e=in(ele)and name(sv)="sig"
+		   begin
+		    if subelements(e)then 
+		     begin
+			if value(sv)={} then
+			 set value(sv)=find_signature(subelements(e))
+		       else
+		         set value(sv)=concat(value(sv),find_signature(subelements(e)));
+		     end
+		    else
+		     begin
+		      if value(sv)={} then
+			begin
+			 if (maxoccurs(e)='-1')then
+			   set value(sv)={name(e),'VECTOR-'+wsmedtype(e)}
+		         else
+			    set value(sv)={name(e),wsmedtype(e)};
+		       end
+		      else
+			begin
+			 if (maxoccurs(e)='-1')then
+			   set value(sv)=concat(value(sv),{name(e),'VECTOR-'+wsmedtype(e)})
+		         else
+			   set value(sv)=concat(value(sv),{name(e),wsmedtype(e)});
+			end
+			 
+		     end;
+		
+		   end;
+		  set rs=findresult_insig();	
+		  return rs;
+		  set value(ve)={} from sigvec ve where name(ve)="sig";
+	       end;
+
+
+/* get the input info for given wsdluri, wsname, opname */
+create function find_input(charstring wsdluri,charstring wsname, charstring opname)-> vector  as
+                                                           select  find_signature(el)from Operation op,Service ws, vector el  where name(op)=opname and name(ws)=wsname  and wsdluri(ws)=wsdluri and op in port(ws) and el=input(op) ;
+
+/* get the input info for given operation */
+create function find_input(Operation op)-> vector 
+  as select  find_signature(el)
+     from vector el  
+     where el=input(op) ;
+
+                                                          
+create function find_output(charstring wsdluri,charstring wsname, charstring opname)-> vector  as
+                                                           select  find_signature(el)from Operation op,Service ws, vector el  where name(op)=opname and name(ws)=wsname  and wsdluri(ws)=wsdluri and op in port(ws) and el=output(op) ;
+
+
+
+create function find_type(vector  ele, vector s)-> vector rs 
+		as 
+		begin
+	         set rs=s;
+	         for each  Element e where e=in(ele)
+		   begin
+	            if subelements(e)then 
+		     begin
+			if rs={} then
+			 set rs=find_type(subelements(e),rs)
+		       else
+		         set rs=find_type(subelements(e),rs);
+		     end
+		    else
+		     begin
+		      if rs={} then
+			begin
+			 if (maxoccurs(e)='-1')then
+			   set rs={'VECTOR-'+wsmedtype(e)}
+		         else
+			    set rs={wsmedtype(e)};
+		       end
+		      else
+			begin
+			 if (maxoccurs(e)='-1')then
+			   set rs=concat(rs,{'VECTOR-'+wsmedtype(e)})
+		         else
+			   set rs=concat(rs,{wsmedtype(e)});
+			end
+			 
+		     end;
+		
+		   end;
+		
+			
+		  return rs;
+		  
+	       end;
+
+
+
+/*** SOAPHeader *****************/
+create type SHValue properties(oper Operation, value vector);
+
+create function putsoaphvalue(Operation op,vector sv)->SHValue s as 
+							begin
+							   create SHValue instances s;
+							   set oper(s)=op;
+							   set value(s)=sv;
+							end;
+
+create function putsoaphvalue(charstring tablename, charstring austr)->charstring res as 
+                                                    begin
+                                                     for each Operation op, Service s where tablename(op)=tablename and op in port(s)
+                                                      begin
+					               set authenticationstr(op)='entered';
+                                                       set res=setauinfo(wsdluri(s),name(s),name(op),vector_to_str(find_input(op)),austr);
+                                                      end;
+                                                      return res;
+                                                     end; 
+
+create function putsoaphvalue(charstring wsdlurl, charstring wsname, charstring opname, charstring inputsig, charstring austr)->charstring as select setauinfo(wsdlurl,wsname,opname,inputsig,austr); 
+
+
+
+create function findService(Operation op)->Service as select s from Service s where op in port(s);
+
+create function getsoaphvalue(Operation op)->vector sv as 
+                        begin
+                         for each Service rs where rs=findService(op)
+			   set  sv= {getauinfo(wsdluri(rs),name(rs),name(op),vector_to_str(find_input(op)))};
+                     
+                         return sv;
+                        end;
+
+
+
+
+
+
+
+
+

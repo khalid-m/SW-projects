@@ -1,0 +1,1 @@
+..\run.cmd "test.lsp" -o "quit;"

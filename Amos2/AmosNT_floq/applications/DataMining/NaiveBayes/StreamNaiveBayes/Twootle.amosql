@@ -1,0 +1,250 @@
+<'StreamNaiveBayes.amosql';
+
+/* Useful functions */
+                         
+create function trackstream(Integer i, Record parameters, Integer stop)-> Stream of Record 
+  as section(jsonstream(i,parameters),0,stop);
+  
+create function escapeQuotes(Charstring text)-> Charstring
+  as begin
+     declare Charstring text2;
+     set text2=text;
+     for each original Integer i, Charstring c 
+         where i in iota(0,char_length(text)-1)
+           and c=substring(text,i,i)
+           and c in {"{","}"}
+          begin
+          
+          if i>0 and i<char_length(text)-1 then
+          set text2=substring(text2,0,i-1)+" "+substring(text2,i+1,char_length(text)-1);
+          
+          if i=0 then
+          set text2=substring(text2,i+1,char_length(text)-1);
+          
+          if i=char_length(text)-1 then
+          set text2=substring(text2,0,i-1);
+          
+          end;
+     result text2;
+     end;     
+
+create function generateTweet(Charstring text, Charstring clas)-> Record
+ as unstringify("{'text' : '" + text + "', 'class' : '"+ clas +"'}");
+ 
+create function generateJSONQuery(Vector of Charstring query)-> Charstring
+  as concatagg(select query[i]+","
+               from Integer i
+               where i in iota(0, dim(query)-2))
+      +query[dim(query)-1];
+    
+/* Keywords and parameters */
+
+create function weightParameter()-> integer as stored;
+set weightParameter()=3;
+
+create function separators()-> Vector of Charstring as stored;
+set separators()={" ", ",",":",".","?","/","(",")","!","*","&","'","
+"};
+
+create function specialExpressions()-> Vector of Charstring as stored;
+set specialExpressions()={"*:-)*","*:-(*","*:(*",":)","*http*","*:\*","*:-\*",":-p","*=)*"};
+
+create function escapedWords()-> Vector of Charstring as stored;
+set escapedWords()={"@*","http*","a","able","about","across","after","ain","all","almost","also","am",
+                    "among","an","and","any","are","aren","as","at","be","because","been","but","bit",
+                    "by","can","cannot","can","could","couldn","t","could","ve","dear","did","didn",
+                    "do","does","doesn","don","either","else","ever","every","for","from","get",
+                    "got","had","has","hasn","have","he","her","hers","him","his","how","however",
+                    "i","if","in","into","is","it","its","just","least","let","like","likely","ly","may",
+                    "me","might","most","my","neither","no","nornot","of","off","out","rt","re","often","on","only","or",
+                    "other","our","own","rather","s","said","say","says","she","should","since","so","some",
+                    "than","that","the","their","them","then","there","these","they","this","tis","'tis",
+                    "to","too","twas","'twas","us","wants","was","we","were","what","when","where","which",
+                    "while","who","whom","why","will","with","would","yet","you","your","ur","com","org","www"
+                    ,"*1*","*2*","*3*","*4*","*5*","*6*","*7*","*8*","*9*","#*"};
+
+create function zipfParameters()-> Vector of Real as stored;
+set zipfParameters()={0.18539, 1.028969};
+
+create function bayesModel()-> NB_Model as stored;
+
+/* Filters and annotation */
+
+create function containsWord(Charstring text, Charstring expression)
+     -> Integer
+  as select 1
+     where like(lower(text),"*"+lower(expression)+"*");
+     
+create function countCoveredWords(Charstring text, Vector of Charstring expressions)
+    -> Integer
+  as sum(
+          select containsWord(text,expr)
+          from Charstring expr
+          where expr in expressions
+     );
+     
+create function recordWeight(Integer nbWords, Integer weightParameter)
+       -> Integer
+  as integer(power(weightParameter,nbWords-2));
+     
+
+create function annotateTweets(Stream stream,
+                               Vector of Charstring query,
+                               Integer weightParameter) 
+                               -> Record
+  as begin
+     declare Integer i, Integer j, Integer countCoveredWords,
+             Integer positive, Integer negative,Integer total,
+             Vector of Record buffer, Integer maxBufferSize;
+     set positive=0;
+     set negative=0;
+     set total=0;
+     
+     set maxBufferSize=1500;
+     set buffer={};
+     
+     set i=0;
+
+     for each original Record tweet where tweet in stream or tweet in buffer         
+          begin
+          declare Charstring text, Record testTweet, Object obj;
+          set total=total+1;
+          set obj=tweet["text"];
+          if obj!=NIL then
+               begin
+               set text=escapeQuotes(cast (obj as Charstring));
+
+               if text!=" " and text!=0 and text!="" then 
+                    begin
+                    set countCoveredWords=countCoveredWords(text, query);
+
+                    if countCoveredWords>1 and i>=0 then
+                         for each original integer nb 
+                                   where nb in iota(1, recordWeight(countCoveredWords, weightParameter))
+                              begin
+                              set buffer=vectorof(
+                                          (select tw
+                                           from Record tw
+                                           where tw in buffer and tw!=tweet)
+                                          );
+                              result generateTweet(text, "positive");
+                              set i=i-1;
+                              set positive=positive+1;
+                              end;
+                              
+                    if countCoveredWords>1 and i<0 and dim(buffer)<maxBufferSize then
+                         for each original integer nb 
+                                   where nb in iota(1, recordWeight(countCoveredWords, weightParameter))
+                              begin
+                              set buffer=vectorof(
+                                          (select tw
+                                           from Record tw
+                                           where tw in buffer or tw=tweet)
+                                          );
+                              
+                              end;
+                    
+                    if countCoveredWords<=1 and i<0 then
+                         begin
+                         set buffer=vectorof(
+                           (select tw
+                            from Record tw
+                            where tw in buffer and tw!=tweet)
+                           );
+                         result generateTweet(text, "negative");
+                         set i=i+1;
+                         set negative=negative+1;
+                         end;
+                         
+                    if countCoveredWords<=1 and i>=0 and dim(buffer)<maxBufferSize then
+                         begin
+                         set buffer=vectorof(
+                                     (select tw
+                                      from Record tw
+                                      where tw in buffer or tw=tweet)
+                                     );
+                         end;
+                         
+                    end;
+                    
+               end;
+
+               if mod(total,50)=0 then
+                    print(stringify(total)+" tweets scanned with "+
+                          stringify(positive)+" positive example(s) and "+
+                          stringify(negative)+" negative example(s)");
+          
+          end;
+          
+
+          
+
+     end;
+     
+     
+     
+/* Model generation and query engine */
+
+create function updateFromStream(NB_Model model, Stream of Record inStream)-> Boolean
+  as begin
+     for each original Record tweet 
+          where tweet in inStream
+          B_UPDATE_MODEL_ATOM(model, tweet);
+     end;
+     
+create function twootle(Vector of Charstring query, 
+                        Integer nbLearningTweets,
+                        Charstring login, Charstring password)
+       -> Charstring
+  as begin
+     declare TextDistribGenerator TextDistribGenerator, ZipfGenerator wrapped,
+              integer connectionNb, integer minTrainingTweet,
+              Vector of Charstring escape;
+        
+     set escape=vectorof(
+          (select lower(word)
+           from Charstring word
+           where word in query
+              or word in escapedWords())
+     );
+     
+     set minTrainingTweet=recordWeight(dim(query)-1,weightParameter())*2;
+     if nbLearningTweets <= minTrainingTweet then
+          print("Warning : at least "+stringify(minTrainingTweet)+" training tweets are recommended for some minimum accuracy..."+skipline());
+     
+     create TextDistribGenerator instances TextDistribGenerator;
+     create ZipfGenerator instances wrapped;
+     set parameters(wrapped)=zipfParameters();
+     set wordsClassifier(TextDistribGenerator)=wrapped;
+     set parsingOptions(TextDistribGenerator)={separators(),escape,specialExpressions()};
+     
+     set bayesModel()=B_INITIALIZE_MODEL({{'text',TextDistribGenerator}}, 
+                                       'class',
+                                       {"negative","positive"});
+     
+     print("Feeding model"+skipline());      
+     set connectionNb=init("http://stream.twitter.com/1/statuses/filter.json",login,password);
+     updateFromStream(bayesModel(), 
+          streamof(
+               annotateTweets(trackstream(connectionNb,generateJSONQuery(query),nbLearningTweets),
+                              query,
+                              weightParameter())
+          )
+     );
+     logout(0);
+   
+     print(skipline());
+     print(outputDetail(bayesModel()));
+
+     print("Results :"+skipline());
+     set connectionNb=init("http://stream.twitter.com/1/statuses/filter.json",login,password);
+     
+     for each original Record tweet where tweet in trackstream(connectionNb,{'track' : generateJSONQuery(query)},1000000)
+          begin
+          result (select stringify(record["text"])+"----"+stringify(class)
+                  from Object class, Real proba,Record record
+                  where <record, class, proba> in B_CLASSIFY_BINARY(bayesModel(), {tweet}));
+          end;
+     logout(0);
+
+     end;

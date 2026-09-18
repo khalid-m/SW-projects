@@ -1,0 +1,781 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2008 Ruslan Fomkin, UDBL
+ * $RCSfile: Thesis.tuning.osql,v $
+ * $Revision: 1.30 $ $Date: 2008/06/12 15:13:13 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Scripts of experiments to tune for the Thesis.
+ ****************************************************************************
+ * $Log: Thesis.tuning.osql,v $
+ * Revision 1.30  2008/06/12 15:13:13  ruslan
+ * two phase best opt
+ *
+ * Revision 1.29  2008/06/12 14:35:13  ruslan
+ * less events to stop
+ *
+ * Revision 1.28  2008/06/12 08:25:05  ruslan
+ * more points for first stat than profiled grouping
+ *
+ * Revision 1.27  2008/06/03 13:46:21  ruslan
+ * bug in result file name fixed
+ *
+ * Revision 1.26  2008/06/03 13:03:06  ruslan
+ * first collect than profile
+ *
+ * Revision 1.25  2008/06/02 15:35:39  ruslan
+ * bug in comment
+ *
+ * Revision 1.24  2008/06/02 15:34:45  ruslan
+ * more profiling
+ *
+ * Revision 1.23  2008/06/02 15:15:00  ruslan
+ * bug in name
+ *
+ * Revision 1.22  2008/06/02 15:13:05  ruslan
+ * profiling, full QP, no stat
+ *
+ * Revision 1.21  2008/06/02 13:38:23  ruslan
+ * *** empty log message ***
+ *
+ * Revision 1.20  2008/06/02 13:36:48  ruslan
+ * *** empty log message ***
+ *
+ * Revision 1.18  2008/05/30 15:48:34  ruslan
+ * tuning profiling
+ *
+ * Revision 1.17  2008/05/29 09:26:29  ruslan
+ * factorial experiment on tuning SH for top and nested
+ *
+ * Revision 1.16  2008/05/28 16:05:00  ruslan
+ * more strategies
+ *
+ * Revision 1.15  2008/05/28 15:46:41  ruslan
+ * comments are corrected
+ *
+ * Revision 1.14  2008/05/28 14:58:40  ruslan
+ * better numbers
+ *
+ * Revision 1.13  2008/05/28 14:49:30  ruslan
+ * for best
+ *
+ * Revision 1.12  2008/05/27 13:23:46  ruslan
+ * more test for best. bug in file name
+ *
+ * Revision 1.11  2008/05/27 12:29:37  ruslan
+ * tune top for Best when nested is best, fast stat full QP
+ *
+ * Revision 1.10  2008/05/26 11:03:48  ruslan
+ * back to a signle experiment
+ *
+ * Revision 1.8  2008/05/25 11:24:57  ruslan
+ * dynamic qp strategy should be run by loading master for Hagrid, i.e. for Mei
+ *
+ * Revision 1.7  2008/05/24 12:32:53  ruslan
+ * bugs are fixed
+ *
+ * Revision 1.6  2008/05/23 09:23:40  ruslan
+ * comparing with ranksort
+ *
+ * Revision 1.5  2008/05/22 14:37:16  ruslan
+ * More tuning experiments: when stat is collected on entire set; only dynamic query processing (not only full).
+ *
+ * Revision 1.4  2008/05/22 09:31:27  ruslan
+ * tuning II and SH for advanced optimization with fast and full stat
+ *
+ * Revision 1.3  2008/05/20 08:11:21  ruslan
+ * filename in file schema
+ *
+ * Revision 1.2  2008/05/17 13:53:54  ruslan
+ * warming was missing
+ *
+ * Revision 1.1  2008/05/16 14:46:39  ruslan
+ * tuning experiments are moved in separate file
+ *
+ ****************************************************************************/
+
+<'Thesis.experiments.osql';
+
+/* Tuning alpha and delta for statistics on particles cardinality.
+	Run with run.current.sh */
+create function tuneCardStat() -> boolean as
+begin
+	declare eventfile f;
+	openwritefile("tuneCardStat.T.2003.txt");
+	select file into f
+	from eventfile file
+	where name(experiment(file))="bkg2" and id(file)=0;
+	expcuts(); /* warming up */
+	/* no stat */
+	noCardStat(f,5);
+	/* Alpha = 98%, 95%, 90% */
+	factorial({2.33,1.96,1.65},{0.025,0.05,0.1,0.15},
+		functionnamed("eventfile.real.real.integer.tuneCardStat->real")
+				,f,5);
+	/* entire file */
+	cardStatFullFile(f,5);
+	closewritefile();
+	sendmessage("Tuning cardinality statistics is done");
+end;
+
+/* Demonstrates behaviour of choosen points for cardinality statistics on
+	all bkg files.
+	Run with run.current.sh */
+create function checkCardStat() -> boolean as
+begin
+	openwritefile("tuneCardStat.All.2003.txt");
+	for each eventfile f
+	begin
+		expcuts(filename(f)); /* warming */
+		tuneCardStat(f,1.65,0.15,5);
+		tuneCardStat(f,1.96,0.1,5);
+		cardStatFullFile(f,5);
+	end;
+	closewritefile();
+	sendmessage("Checking cardinality statistics is done");
+end;
+
+
+/******************************************************************
+ ******* Tuning II and SH on top
+ *****************************************************************/
+
+/* Factorial experiment to tune choise of II and SH iterations for randomopt.
+	It is run on t.root file. It is compared with ranksort.
+	Run with run.current.sh */
+create function II_SHfactorial() -> boolean as
+begin
+	declare eventfile f, charstring fpath;
+	openwritefile("II_SHfactorial.T.2003.txt");
+	select file, filename(file) into f, fpath
+		from eventfile file
+		where name(experiment(file))="bkg2" and id(file)=0;
+	drop_sobjectstat();
+	tocollectstat("charstring.expcuts->event",1.65,0.15);
+	expcuts(fpath); /*collecting stat for better optimization. 
+					warming*/
+	factorial({0,10,20,40,60,80},{0,10,100,200,300,500,1000,1500, 5000},
+	functionnamed("eventfile.integer.integer.integer.tuneII_SH->real")
+				,f,5);
+	closewritefile();
+	sendmessage("Factorial experiment of II and SH is done.");
+end;
+
+/* More precise factorial experiment to tune choise of II and SH 
+	iterations for randomopt.
+	It is run on t.root file.
+	Run with run.current.sh */
+create function II_SHfactorial2() -> boolean as
+begin
+	declare eventfile f, charstring fpath;
+	openwritefile("II_SHfactorial2.T.2003.txt");
+	select file, filename(file) into f, fpath
+		from eventfile file
+		where name(experiment(file))="bkg2" and id(file)=0;
+	drop_sobjectstat();
+	tocollectstat("charstring.expcuts->event",1.65,0.15);
+	expcuts(fpath); /*collecting stat for better optimization. 
+					warming*/
+	factorial({1,5,9,13,17,21,25,23},
+		{0,10,20,30,50,100,200,500,600,650,700,750,800},
+	functionnamed("eventfile.integer.integer.integer.tuneII_SH->real")
+				,f,5);
+	closewritefile();
+	sendmessage("Factorial experiment 2 on II and SH is done.");
+end;
+
+/* Factorial experiment to tune choise of II and SH iterations for randomopt.
+	Using Full query processing and statistics collected on entire file.
+	It is run on t.root file.
+	Run with run.current.sh */
+create function II_SHfactorialFullStat() -> boolean as
+begin
+	declare eventfile f, charstring fpath;
+	openwritefile("II_SHfactorial.FullQP.FullStat.T.2003.txt");
+	select file, filename(file) into f, fpath
+		from eventfile file
+		where name(experiment(file))="bkg2" and id(file)=0;
+	drop_sobjectstat();
+	grouping(true);
+	ungroup(true);
+	reoptimize0("charstring.expcuts->event");
+	grouping(false);
+	sobjectstat();
+	expcuts(fpath); /*collecting stat for better optimization. 
+					warming*/
+	sobjectstat(false);
+	factorial({1,5,9,13,17,21,25,23},
+		{0,10,20,30,50,100,200,500,600,650,700,750,800,5000},
+	functionnamed("eventfile.integer.integer.integer.tuneII_SH->real")
+				,f,5);
+	closewritefile();
+	sendmessage("Factorial on II and SH with full QP and Full stat");
+end;
+
+/* Factorial experiment to tune choise of II and SH iterations for randomopt.
+	It is run on t.root file.
+	Dynamic query processing only. Fast collecting statistics.
+	Run with run.root.sh and load master.current.aucm.hagrid.osql 
+	from osql */
+create function II_SHfactorialAUcm() -> boolean as
+begin
+	declare eventfile f, charstring fpath;
+	openwritefile("II_SHfactorial.aucm.FastStat.T.2003.txt");
+	select file, filename(file) into f, fpath
+		from eventfile file
+		where name(experiment(file))="bkg2" and id(file)=0;
+	drop_sobjectstat();
+	tocollectstatnaive("charstring.expcuts->event",1.65,0.15);
+	expcuts(fpath); /*collecting stat for better optimization. 
+					warming*/
+	tuneII_SH(f,0,0,5);
+	factorial({1,5,9,13,17,21,25,23},
+		{0,10,20,30,50,100,200,500,600,650,700,750,800,5000},
+	functionnamed("eventfile.integer.integer.integer.tuneII_SH->real")
+				,f,5);
+	closewritefile();
+	sendmessage("Factorial on II and SH for advanced CM with fast stat");
+end;
+
+/* Factorial experiment to tune choise of II and SH iterations for randomopt.
+	It is run on t.root file.
+	Dynamic query processing only. Collecting stat on entire data set.
+	Run with run.root.sh and load master.current.aucm.hagrid.osql from 
+	osql */
+create function II_SHfactorialAUcmFullStat() -> boolean as
+begin
+	declare eventfile f, charstring fpath;
+	openwritefile("II_SHfactorial.aucm.FullStat.T.2003.txt");
+	select file, filename(file) into f, fpath
+		from eventfile file
+		where name(experiment(file))="bkg2" and id(file)=0;
+	drop_sobjectstat();
+	grouping(true);
+	ungroup(true);
+	reoptimize0("charstring.expcuts->event");
+	grouping(false);
+	sobjectstat();
+	slotstat(true);
+	expcuts(fpath); /*collecting stat for better optimization. 
+					warming*/
+	sobjectstat(false);
+	slotstat(false);
+	tuneII_SH(f,0,0,5);
+	factorial({1,5,9,13,17,21,25,23},
+		{0,10,20,30,50,100,200,500,600,650,700,750,800,5000},
+	functionnamed("eventfile.integer.integer.integer.tuneII_SH->real")
+				,f,5);
+	closewritefile();
+	sendmessage("Factorial on II and SH for advanced CM with full stat.");
+end;
+
+/* Factorial experiment to tune choise of II and SH 
+	iterations for randomopt on top, while nested are set to best.
+	It is run on t.root file.
+	Run with run.current.sh */
+create function II_SHfactorialTopFaststatBestopt() -> boolean as
+begin
+	declare eventfile f, charstring fpath;
+	openwritefile("II_SHfactorial.FullQP.top.Faststat.forBest.T.2003.txt");
+	select file, filename(file) into f, fpath
+		from eventfile file
+		where name(experiment(file))="bkg2" and id(file)=0;
+	drop_sobjectstat();
+	tocollectstat("charstring.expcuts->event",1.65,0.15);
+	expcuts(fpath); /*collecting stat for better optimization. 
+					warming*/
+	factorial({1,5,9,13,17,21,25,23},
+		{0,10,20,30,50,100,200,500,600,650,700,750,800},
+functionnamed("eventfile.integer.integer.integer.tuneII_SHtopForBest->real")
+				,f,5);
+	closewritefile();
+	sendmessage("Factorial on II and SH Full QP top fast stat best opt");
+end;
+
+/* Factorial experiment to tune choise of II and SH iterations for randomopt
+	on top where nested is Best.
+	Using Full query processing and statistics collected on entire file.
+	It is run on t.root file.
+	Run with run.current.sh */
+create function II_SHfactorialtopForBestFullStat() -> boolean as
+begin
+	declare eventfile f, charstring fpath;
+	openwritefile("II_SHfactorial.FullQP.top.FullStat.forBest.T.2003.txt");
+	select file, filename(file) into f, fpath
+		from eventfile file
+		where name(experiment(file))="bkg2" and id(file)=0;
+	drop_sobjectstat();
+	grouping(true);
+	ungroup(true);
+	reoptimize0("charstring.expcuts->event");
+	grouping(false);
+	sobjectstat();
+	expcuts(fpath); /*collecting stat for better optimization. 
+					warming*/
+	sobjectstat(false);
+	factorial({1,5,9,13,17,21,25,23},
+		{0,10,20,30,50,100,200,500,600,650,700,750,800,5000},
+functionnamed("eventfile.integer.integer.integer.tuneII_SHtopForBest->real")
+				,f,5);
+	closewritefile();
+	sendmessage("Factorial on II and SH with full QP and Full stat");
+end;
+
+/* Factorial experiment to tune choise of II and SH iterations for randomopt
+	on top where nested is Better.
+	Using Dynamic query processing and fast stat collecting.
+	It is run on t.root file.
+	Run with run.root.sh and load master.current.aucm.hagrid.osql 
+	from osql */
+create function II_SHfactorialTopAUcmForBestFastStat() -> boolean as
+begin
+	declare eventfile f, charstring fpath;
+	openwritefile("II_SHfactorial.DynQP.top.FastStat.forBest.T.2003.txt");
+	select file, filename(file) into f, fpath
+		from eventfile file
+		where name(experiment(file))="bkg2" and id(file)=0;
+	drop_sobjectstat();
+	grouping(true);
+	ungroup(true);
+	reoptimize0("charstring.expcuts->event");
+	grouping(false);
+	sobjectstat();
+	expcuts(fpath); /*collecting stat for better optimization. 
+					warming*/
+	sobjectstat(false);
+	factorial({1,9,13,25},
+		{0,10,50,100,500,650,700,1000,2500,5000},
+functionnamed("eventfile.integer.integer.integer.tuneII_SHtopForBest->real")
+				,f,5);
+	closewritefile();
+	sendmessage("Factorial on II and SH with full QP and Full stat");
+end;
+
+/**************************************************************************
+ ************ Tuning optimization of nested subqueries
+ *************************************************************************/
+
+/* Factorial experiment to tune choise of II and SH iterations for randomopt
+	for top level and nested subqueries.
+	It is run on t.root file. It is compared with ranksort.
+	Run with run.current.sh */
+create function tuning2levelQO() -> boolean as
+begin
+	declare eventfile f, charstring fpath;
+	openwritefile("twoLevelFactorial.T.2003.txt");
+	select file, filename(file) into f, fpath
+		from eventfile file
+		where name(experiment(file))="bkg2" and id(file)=0;
+	drop_sobjectstat();
+	tocollectstat("charstring.expcuts->event",1.65,0.15);
+	expcuts(fpath); /*collecting stat for better optimization. 
+					warming*/
+	factorial({{0,0},{1,30},{23,650}},
+		{{0,0},{10,10},{10,50},{50,50},{100,100},{100,1000},
+			{100,10000}},
+		functionnamed("eventfile.vector.vector.integer.qo2level->real")
+		,f,5);
+	closewritefile();
+	sendmessage("Two level factorial is done.");
+end;
+
+/* Factorial experiment to tune choise of II and SH iterations for randomopt
+	for nested subqueries.
+	It is run on t.root file.
+	Run with run.current.sh */
+create function II_SHfactorialNested() -> boolean as
+begin
+	declare eventfile f, charstring fpath;
+	openwritefile("II_SHfactorial.nested.T.2003.txt");
+	select file, filename(file) into f, fpath
+		from eventfile file
+		where name(experiment(file))="bkg2" and id(file)=0;
+	drop_sobjectstat();
+	tocollectstat("charstring.expcuts->event",1.65,0.15);
+	expcuts(fpath); /*collecting stat for better optimization. 
+					warming*/
+	tuneII_SHnestedForBest(f,0,0,5);
+	factorial({1,10,20,40,60,80,100,150},
+		{0,10,50,100,200,300,500,600,700,800,900,1000},
+		functionnamed(
+	"eventfile.integer.integer.integer.tuneII_SHnestedForBest->real")
+				,f,5);
+	closewritefile();
+	sendmessage("Factorial experiment of II and SH for nested subqueries");
+end;
+
+/* Factorial experiment to tune choise of II and SH iterations for randomopt
+	for nested subqueries. Full query processing.
+	Statistics for entire set is collected.
+	It is run on t.root file.
+	Run with run.current.sh */
+create function II_SHfactorialNestedFullStat() -> boolean as
+begin
+	declare eventfile f, charstring fpath;
+	openwritefile("II_SHfactorial.nested.FullStat.T.2003.txt");
+	select file, filename(file) into f, fpath
+		from eventfile file
+		where name(experiment(file))="bkg2" and id(file)=0;
+	drop_sobjectstat();
+	grouping(true);
+	ungroup(true);
+	reoptimize0("charstring.expcuts->event");
+	grouping(false);
+	sobjectstat();
+	expcuts(fpath); /*collecting stat for better optimization. 
+					warming*/
+	sobjectstat(false);
+	tuneII_SHnestedForBest(f,0,0,5);
+	factorial({10,20,40,60,80,100,150},
+		{0,10,50,100,200,300,500,600,700,800,900,1000},
+		functionnamed(
+	"eventfile.integer.integer.integer.tuneII_SHnestedForBest->real")
+				,f,5);
+	closewritefile();
+	sendmessage("Factorial of II and SH for nested subqueries, full stat");
+end;
+
+/* Factorial experiment to tune choise of II and SH iterations for randomopt
+	for nested subqueries. Dynamic query processing.
+	Fast stat collecting.
+	It is run on t.root file.
+	Run with run.root.sh and load master.current.aucm.hagrid.osql 
+	from osql */
+create function II_SHfactorialNestedAucmFastStat() -> boolean as
+begin
+	declare eventfile f, charstring fpath;
+	openwritefile("II_SHfactorial.nested.aucm.FastStat.T.2003.txt");
+	select file, filename(file) into f, fpath
+		from eventfile file
+		where name(experiment(file))="bkg2" and id(file)=0;
+	drop_sobjectstat();
+	tocollectstatnaive("charstring.expcuts->event",1.65,0.15);
+	expcuts(fpath); /*collecting stat for better optimization. 
+					warming*/
+	tuneII_SHnestedForBest(f,0,0,5);
+	factorial({10,20,40,60,80,100,150},
+		{0,10,50,100,200,300,500,600,700,800,900,1000},
+		functionnamed(
+	"eventfile.integer.integer.integer.tuneII_SHnestedForBest->real")
+				,f,5);
+	closewritefile();
+	sendmessage("Factorial of II and SH for nested advanced CM fast stat");
+end;
+
+/* Factorial experiment to tune choise of II and SH iterations for randomopt
+	for nested subqueries. Dynamic query processing.
+	Statistics for entire set is collected.
+	It is run on t.root file.
+	Run with run.root.sh and load master.current.aucm.hagrid.osql 
+	from osql */
+create function II_SHfactorialNestedAucmFullStat() -> boolean as
+begin
+	declare eventfile f, charstring fpath;
+	openwritefile("II_SHfactorial.nested.aucm.FullStat.T.2003.txt");
+	select file, filename(file) into f, fpath
+		from eventfile file
+		where name(experiment(file))="bkg2" and id(file)=0;
+	drop_sobjectstat();
+	grouping(true);
+	ungroup(true);
+	reoptimize0("charstring.expcuts->event");
+	grouping(false);
+	sobjectstat();
+	slotstat(true);
+	expcuts(fpath); /*collecting stat for better optimization. 
+					warming*/
+	sobjectstat(false);
+	slotstat(false);
+	tuneII_SHnestedForBest(f,0,0,5);
+	factorial({10,20,40,60,80,100,150},
+		{0,10,50,100,200,300,500,600,700,800,900,1000},
+		functionnamed(
+	"eventfile.integer.integer.integer.tuneII_SHnestedForBest->real")
+				,f,5);
+	closewritefile();
+	sendmessage("Factorial of II and SH for nested advanced CM full stat");
+end;
+
+/* Factorial experiment to tune choise of II and SH iterations for randomopt
+	for nested subqueries. Dynamic query processing.
+	Fast stat collecting.
+	It is run on t.root file.
+	Run with run.root.sh and load master.current.aucm.hagrid.osql 
+	from osql */
+create function II_SHfactorialNestedAucmFastStatForVeryBest() -> boolean as
+begin
+	declare eventfile f, charstring fpath;
+	openwritefile("II_SHfactorial.nested.aucm.FastStat.Verybest.T.2003.txt");
+	select file, filename(file) into f, fpath
+		from eventfile file
+		where name(experiment(file))="bkg2" and id(file)=0;
+	drop_sobjectstat();
+	tocollectstatnaive("charstring.expcuts->event",1.65,0.15);
+	expcuts(fpath); /*collecting stat for better optimization. 
+					warming*/
+	tuneII_SHnestedForBest(f,0,0,5);
+	factorial({10,20,40,60},
+		{0,10,50,100,500,600,800,1000,2000,5000},
+		functionnamed(
+	"eventfile.integer.integer.integer.tuneII_SHnestedForVeryBest->real")
+				,f,5);
+	closewritefile();
+	sendmessage("Factorial of II and SH for nested advanced CM fast stat for very best");
+end;
+
+/**************************
+ ** Tuning SH on top and nested.
+ *******************************/
+/* Factorial experiment to tune choise of SH iterations randomopt
+	for top query and nested subqueries. Dynamic query processing.
+	Fast stat collecting.
+	It is run on t.root file.
+	Run with run.root.sh and load master.current.aucm.hagrid.osql 
+	from osql */
+create function factorialTopNestedAucmFastStat() -> boolean as
+begin
+	declare eventfile f, charstring fpath;
+	openwritefile("topNested.aucm.Faststat.T.2003.txt");
+	select file, filename(file) into f, fpath
+		from eventfile file
+		where name(experiment(file))="bkg2" and id(file)=0;
+	drop_sobjectstat();
+	tocollectstatnaive("charstring.expcuts->event",1.65,0.15);
+	expcuts(fpath); /*collecting stat for better optimization. 
+					warming*/
+	tuneII_SHnestedForBest(f,0,0,5);
+	factorial({800,1000,1500,5000,10000},
+		{500,1000,1500,5000,10000,15000},
+		functionnamed(
+	"eventfile.integer.integer.integer.tuneTopNestedSH->real")
+				,f,5);
+	closewritefile();
+	sendmessage("Factorial of top and nested SH for auCM fast stat");
+end;
+
+
+/************************************************************************
+ ********* Measuring profile-controler overhead.
+ ***********************************************************************/
+
+/* Measuring overhead of profile-controller operator.
+	Run with run.current.sh */
+create function controller_overhead() -> boolean as
+begin
+	openwritefile("overhead.bkgs.2003.txt");
+	measure_overhead(41,5);
+	closewritefile();
+	sendmessage("Measuring overhead of profile controller");
+end;
+
+/* Run with run.current.2005.sh */
+create function controller_overhead2005() -> boolean as
+begin
+	openwritefile("overhead.bkgs.2005.txt");
+	measure_overhead(41,5);
+	closewritefile();
+	sendmessage("Measuring overhead of profile controller");
+end;
+
+/************************************************************************
+ ******** Impact of initial optimization and optimization of grouping
+ ***********************************************************************/
+
+/* Impact of initial optimization on total time of dynamic query execution.
+  It is compared with possibility to find a plan during query reoptimization.
+  The grouping is performed with ranksort only.
+	Run with run.current.sh */
+create function initialOptimization() -> boolean as
+begin
+	declare eventfile f, charstring fpath;
+	openwritefile("initOpt.T.2003.txt");
+	select file, filename(file) into f,fpath from eventfile file 
+		where name(experiment(file))="bkg2" and id(file)=0;
+	expcuts(fpath); /* warming up */
+	factorial({{0,0,0,0},{1,30,0,0},{23,650,60,300}},
+		{{0,0,0,0},{1,30,0,0},{23,650,60,300}},
+		functionnamed("eventfile.vector.vector.integer.initOpt->real")
+		,f,5);
+	closewritefile();
+	sendmessage("Initial optimization");
+end;
+
+/* Impact of initial optimization and grouping optimization on total time 
+	of dynamic query execution. Dynamic reoptimization is done by randomopt
+	in fast way.
+	Run with run.current.sh */
+create function initialOptimization2() -> boolean as
+begin
+	declare eventfile f, charstring fpath;
+	openwritefile("initOpt2.T.2003.txt");
+	select file,filename(file) into f,fpath from eventfile file 
+		where name(experiment(file))="bkg2" and id(file)=0;
+	expcuts(fpath); /* warming up */
+	factorial({{0,0,0,0},{1,30,0,0},{23,650,60,300}},
+		{{0,0,0,0},{1,30,0,0},{23,650,60,300}},
+		functionnamed("eventfile.vector.vector.integer.initOpt2->real")
+		,f,5);
+	closewritefile();
+	sendmessage("Initial optimization 2");
+end;
+
+/***********************************************************************
+ ******** Measuring performance of foreign operators
+ **********************************************************************/
+
+/* Measuring performance of foreign operators */
+create function udf_exectime() -> boolean as
+begin
+	exectime_udfs("udfs_exectime.mei.txt");
+	sendmessage("Exectime for UDFs");
+end;
+
+
+/********************************************************************
+			PROFILED GROUPING TUNING
+ *******************************************************************/
+
+/* Dynamic query processing.
+	Fast stat collecting.
+	It is run on t.root file.
+	Run with run.root.sh and load master.current.aucm.hagrid.osql 
+	from osql */
+create function profilingAUcmFaststatGreedyGreedy() -> boolean as
+begin
+	declare eventfile f;
+	openwritefile("profileTune.aucm.stat.greedy.greedy.txt");
+	select file into f from eventfile file 
+		where name(experiment(file))="bkg2" and id(file)=0;
+	for each integer i where i in {1,2,3,4,5,7,10}
+		runTuneProfiling(f,"NaiveStat","GreedyOpt","GreedyOrder",i,5);
+	runTuneProfiling(f,"NaiveStat","GreedyOpt","GreedyOrder",0,5);
+	closewritefile();
+	sendmessage("Profiling, AUcm Fast stat Greedy opt, greedy order");
+end;
+
+/* Dynamic query processing.
+	Fast stat collecting.
+	Eager materialization
+	It is run on t.root file.
+	Run with run.root.sh and load master.current.aucm.eager.hagrid.osql 
+	from osql */
+create function profilingAUcmEagerFaststatGreedyGreedy() -> boolean as
+begin
+	declare eventfile f;
+	openwritefile("profileTune.aucm.eager.stat.greedy.greedy.txt");
+	select file into f from eventfile file 
+		where name(experiment(file))="bkg2" and id(file)=0;
+	for each integer i where i in {1,2,3,4,5,7,10}
+		runTuneProfiling(f,"NaiveStat","GreedyOpt","GreedyOrder",i,5);
+	runTuneProfiling(f,"NaiveStat","GreedyOpt","GreedyOrder",0,5);
+	closewritefile();
+	sendmessage("Profiling, AUcm Eager Fast stat Greedy opt, greedy order");
+end;
+
+/* Dynamic query processing.
+	Fast stat collecting.
+	Eager materialization with rewriting.
+	It is run on t.root file.
+	Run with run.root.sh and load master.current.aucm.rewrite.hagrid.osql 
+	from osql */
+create function profilingAUcmRewriteFaststatGreedyGreedy() -> boolean as
+begin
+	declare eventfile f;
+	openwritefile("profileTune.aucm.rewrite.stat.greedy.greedy.txt");
+	select file into f from eventfile file 
+		where name(experiment(file))="bkg2" and id(file)=0;
+	for each integer i where i in {1,2,3,4,5,7,10}
+		runTuneProfiling(f,"NaiveStat","GreedyOpt","GreedyOrder",i,5);
+	runTuneProfiling(f,"NaiveStat","GreedyOpt","GreedyOrder",0,5);
+	closewritefile();
+	sendmessage("Profiling, AUcm Rewrite Fast stat Greedy opt, greedy order");
+end;
+
+/* Dynamic query processing.
+	Fast stat collecting.
+	Eager materialization with rewriting and caching.
+	It is run on t.root file.
+	Run with run.root.sh and load master.current.aucm.cache.hagrid.osql 
+	from osql */
+create function profilingAUcmCacheFaststatGreedyGreedy() -> boolean as
+begin
+	declare eventfile f;
+	openwritefile("profileTune.aucm.cache.stat.greedy.greedy.txt");
+	select file into f from eventfile file 
+		where name(experiment(file))="bkg2" and id(file)=0;
+	for each integer i where i in {1,2,3,4,5,7,10}
+		runTuneProfiling(f,"NaiveStat","GreedyOpt","GreedyOrder",i,5);
+	runTuneProfiling(f,"NaiveStat","GreedyOpt","GreedyOrder",0,5);
+	closewritefile();
+	sendmessage("Profiling, AUcm Cache Fast stat Greedy opt, greedy order");
+end;
+
+/* Full query processing.
+	Fast stat collecting.
+	It is run on t.root file.
+	Run with run.current.sh */
+create function profilingFullQPFaststatGreedyGreedy() -> boolean as
+begin
+	declare eventfile f;
+	openwritefile("profileTune.full.stat.greedy.greedy.txt");
+	select file into f from eventfile file 
+		where name(experiment(file))="bkg2" and id(file)=0;
+	for each integer i where i in {1,2,3,4,5,7,10}
+		runTuneProfiling(f,"NaiveStat","GreedyOpt","GreedyOrder",i,5);
+	runTuneProfiling(f,"NaiveStat","GreedyOpt","GreedyOrder",0,5);
+	closewritefile();
+	sendmessage("Profiling, Full QP Fast stat Greedy opt, greedy order");
+end;
+
+/* Full query processing.
+	No stat collecting.
+	It is run on t.root file.
+	Run with run.current.sh */
+create function profilingFullQPNostatGreedyGreedy() -> boolean as
+begin
+	declare eventfile f;
+	openwritefile("profileTune.full.Nostat.greedy.greedy.txt");
+	select file into f from eventfile file 
+		where name(experiment(file))="bkg2" and id(file)=0;
+	for each integer i where i in {1,2,3,4,5,7,10}
+		runTuneProfiling(f,"NoStat","GreedyOpt","GreedyOrder",i,5);
+	runTuneProfiling(f,"NoStat","GreedyOpt","GreedyOrder",0,5);
+	closewritefile();
+	sendmessage("Profiling, Full QP No stat Greedy opt, greedy order");
+end;
+
+/* Full query processing.
+	First stat collect then profile.
+	It is run on t.root file.
+	Run with run.current.sh */
+create function profilingFullQPFirststatGreedyoptGreedygroup() -> boolean as
+begin
+	declare eventfile f;
+	openwritefile("profileTune.full.firstStat.greedy.greedy.txt");
+	select file into f from eventfile file 
+		where name(experiment(file))="bkg2" and id(file)=0;
+	for each integer i where i in {1,2,3,4,5,7,10,20}
+		runTuneProfiling(f,"FirstMatStat","GreedyOpt","GreedyOrder",i,
+					5);
+	closewritefile();
+	sendmessage("Profiling, Full QP First stat Greedy opt, greedy order");
+end;
+
+/* Full query processing.
+	First stat collect then profile.
+	It is run on t.root file.
+	Run with run.current.sh */
+create function profilingFullQPFirststatBestoptRandomgroup() -> boolean as
+begin
+	declare eventfile f;
+	openwritefile("profileTune.full.firstStat.best.random.txt");
+	select file into f from eventfile file 
+		where name(experiment(file))="bkg2" and id(file)=0;
+	for each integer i where i in {1,2,3,4,5,7,10,20}
+		runTuneProfiling(f,"FirstMatStat","BestOpt","RandomOrder",i,
+					5);
+	closewritefile();
+	sendmessage("Profiling, Full QP First stat best opt, random order");
+end;

@@ -1,0 +1,130 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Ruslan Fomkin, UDBL
+ * $RCSfile: materialized.load.dyngroups.osql,v $
+ * $Revision: 1.2 $ $Date: 2007/03/05 12:38:06 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Regression test for ALEH project for materialized ontology 
+ * loading entire file and profiled grouping method from the paper. 
+ * Tests that some cut queries over entire file t.root located in ROOT wrapper
+ * home directory.
+ ****************************************************************************
+ * $Log: materialized.load.dyngroups.osql,v $
+ * Revision 1.2  2007/03/05 12:38:06  ruslan
+ * add test different optimization methods on top and inside groups
+ *
+ * Revision 1.1  2007/02/09 10:01:22  ruslan
+ * regression test of dyngroups with aleh
+ *
+ ****************************************************************************/
+
+lisp;
+(checkequal "Loading t.root file"
+	    ((osql "load_root_file(\"../wrappers/ROOTWrap/t.root\");")
+	     '((25000))))
+:osql
+
+cd("osql");
+<"cuts.const.osql";
+grouping(true);
+create function ct()-> integer as
+	select count(select e from event e where threeleptoncut(e));
+
+grouping(false);
+lisp;
+(checkequal "collected statistics"
+	    ((osql "count(select print_aggstat());")
+	     '((3))))
+(checkequal "3 lepton cut"
+	    ((osql "ct();")
+	     '((475))))
+:osql
+grouping(true);
+lisp;
+(checkequal "Opt all cuts"
+	    ((osql "count(select expcuts());")
+	     '((2))))
+:osql
+grouping(false);
+lisp;
+(checkequal "collected statistics"
+	    ((osql "count(select print_aggstat());")
+	     '((11))))
+:osql
+
+grouping(true);
+group_optmethods('ranksort','randomopt');
+group_optlevels(100,10,100,100);
+
+create function countexpcuts()->integer as
+select count(select expcuts());
+
+lisp;
+(checkequal "Greedy optimization on top and randomize optimization inside
+groups with profiled group cost model, exp cuts"
+	    ((osql "count(select print_aggstat());")
+	     '((19)))
+	    ((osql "countexpcuts();")
+	     '((2))))
+:osql
+
+group_optmethods('randomopt','randomopt');
+delete function countexpcuts;
+
+create function countexpcuts()->integer as
+select count(select expcuts());
+
+lisp;
+(checkequal "Randomize optimization with profiled group cost model, exp cuts"
+	    ((osql "count(select print_aggstat());")
+	     '((27)))
+	    ((osql "countexpcuts();")
+	     '((2))))
+:osql
+
+group_optmethods('randomopt','ranksort');
+delete function countexpcuts;
+
+create function countexpcuts()->integer as
+select count(select expcuts());
+
+lisp;
+(checkequal "Randomize optimization on top and greedy optimization inside
+groups with profiled group cost model, exp cuts"
+	    ((osql "count(select print_aggstat());")
+	     '((35)))
+	    ((osql "countexpcuts();")
+	     '((2))))
+:osql
+
+group_optmethods('exhaustive','ranksort');
+delete function countexpcuts;
+
+create function countexpcuts()->integer as
+select count(select expcuts());
+
+lisp;
+(checkequal "Dynamic programming on top and greedy optimization inside
+groups with profiled group cost model, exp cuts"
+	    ((osql "count(select print_aggstat());")
+	     '((43)))
+	    ((osql "countexpcuts();")
+	     '((2))))
+:osql
+
+group_optmethods('exhaustive','randomopt');
+delete function countexpcuts;
+
+create function countexpcuts()->integer as
+select count(select expcuts());
+
+lisp;
+(checkequal "Dynamic programming on top and randomize optimization inside
+groups with profiled group cost model, exp cuts"
+	    ((osql "count(select print_aggstat());")
+	     '((51)))
+	    ((osql "countexpcuts();")
+	     '((2))))
+:osql

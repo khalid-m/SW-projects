@@ -1,0 +1,85 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2013 Sobhan
+ * $RCSfile: response_time.osql,v $
+ * $Revision: 1.5 $ $Date: 2013/05/22 12:50:17 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: response time calculations for DEBSGC
+ *
+ ****************************************************************************
+ * $Log: response_time.osql,v $
+ * Revision 1.5  2013/05/22 12:50:17  torer
+ * Delay computations added to delivered system
+ * ul.cmd make zip and uploads everything to udblserver1
+ *
+ * Revision 1.4  2013/05/20 10:15:11  sobso953
+ * min/max added to stats
+ *
+ * Revision 1.3  2013/05/20 09:22:13  sobso953
+ * Detailed response time calculations added.
+ *
+ * Revision 1.2  2013/05/17 19:24:12  sobso953
+ * commenting
+ *
+ * Revision 1.1  2013/05/17 19:20:29  sobso953
+ * adding response time calculations source code
+ *
+ *
+ ****************************************************************************/
+
+create function response_time(Charstring filename) 
+                            -> (Number avg, Number stdev)
+as avgstdev(select v[1]-v[0] 
+            from Vector of Number v 
+            where v in csv_file_tuples(filename));
+
+create function str_name(charstring filename)->charstring str_name as stored;
+
+add str_name("q1a.csv")="Q1a";
+add str_name("q1b60.csv")="Q1b1Min";
+add str_name("q1b300.csv")="Q1b5Min";
+add str_name("q1b1200.csv")="Q1b20Min";
+add str_name("q1b4200.csv")="Q1bWG";
+add str_name("q2playerpossession.csv")="Q2PP";
+add str_name("q2teampossession_1min.csv")="Q2TP1Min";
+add str_name("q2teampossession_5min.csv")="Q2TP5Min";
+add str_name("q2teampossession_20min.csv")="Q2TP20Min";
+add str_name("q2teampossession_69min.csv")="Q2TPWG";
+add str_name("q4.csv")="Q4";
+add str_name("q3r60.csv")="Q31Min";
+add str_name("q3r300.csv")="Q35Min";
+add str_name("q3r600.csv")="Q310Min";
+add str_name("q3r4200.csv")="Q3WG";
+
+create function report_response_times() -> Bag of Vector
+  as select {str_name(filename),response_time(filename)}
+     from Charstring filename
+     where filename in dir("output","*.csv");
+
+/*detalied delay*/
+
+create function delay_stream(charstring filename)-> stream
+as
+  streamof(select v[1]-v[0] from vector of number v where v in csv_file_tuples(filename));
+
+create function epoch_size()->number as 100000;
+
+create function win_stats(window w)->(number avg,number stdev,number min, number max)
+as stats(in(select n from number n where n in w));
+
+create function detailed_delay()-> boolean
+as
+	select writecsvfile("response_time/"+str_name(filename)+"_delay.csv",
+		{win_stats(in(cwindowize(delay_stream(filename),epoch_size(),epoch_size())))}
+		)
+	from Charstring filename
+	where filename in ("q1a.csv","q1b60.csv","q1b300.csv","q1b1200.csv","q1b4200.csv",
+			"q2playerpossession.csv","q2teampossession_1min.csv","q2teampossession_5min.csv","q2teampossession_20min.csv","q2teampossession_69min.csv",
+			"q4.csv",
+			"q3r60.csv","q3r300.csv","q3r600.csv","q3r4200.csv");
+
+detailed_delay();
+
+writecsvfile("response_time/response_time.csv",report_response_time());

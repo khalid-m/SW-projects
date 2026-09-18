@@ -1,0 +1,6 @@
+Name: amosgsl (Uninstalled)
+Description: The Amos II GSL Library, uninstalled
+Requires: amos2-uninstalled, gsl >= 1.9
+Version: @VERSION@
+Libs: ${pc_top_builddir}/${pcfiledir}/amosgsl/libamosgsl.la 
+Cflags: -I${pc_top_builddir}/${pcfiledir}/@srcdir@ -I${pc_top_builddir}/${pcfiledir}

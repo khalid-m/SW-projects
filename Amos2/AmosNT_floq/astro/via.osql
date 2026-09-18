@@ -1,0 +1,19 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Erik Zeitler, UDBL
+ * $RCSfile: via.osql,v $
+ * $Revision: 1.1 $ $Date: 2007/02/21 12:37:44 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Load BG configuration and save VIA dump file.
+ * via.dmp is used by the via binary.
+ *
+ ****************************************************************************/
+
+< 'viaconfig.osql';
+< 'scsq.osql';
+< 'scsql.osql';
+load_lisp("bg.lsp");
+save "via.dmp";
+quit;

@@ -1,0 +1,107 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 Erik Zeitler, UDBL
+ * $RCSfile: lpa_s.osql,v $
+ * $Revision: 1.1 $ $Date: 2010/12/30 21:07:08 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Background receiver test
+ *
+ ****************************************************************************
+ * $Log: lpa_s.osql,v $
+ * Revision 1.1  2010/12/30 21:07:08  zeitler
+ * testing lprint of symbol
+ *
+ * Revision 1.2  2010/12/30 19:03:16  zeitler
+ * testing inbuffsize on inequality
+ *
+ * Revision 1.1  2010/12/16 14:31:14  zeitler
+ * lprint + lread tests
+ *
+ ****************************************************************************/
+
+logging off;
+register("bgsrv");
+
+lisp;
+(debugging t)
+(setq _batch_ t)
+
+(defun pause () (sleep 0.4))
+
+(defglobal _asocket_ (open-socket nil 0 1 t))
+(foreign-lispfn asocketport () ((integer))
+	(foreign-result (socket-portno _asocket_)))
+
+:osql
+
+ship("s", "add bglisteners() = <'" + this_amosid() +  "', 'localhost', " 
+          + stringify(asocketport()) + ">;");
+
+lisp;
+
+(defglobal _busy_ (mksymbol "*busy*"))
+
+(checkequal "default bg bufsize" ((> (get-bgbufsize) (* 2 16384)) t))
+
+(checkequal "bglistener (only) is registered"
+((osql "count(ship('s', 'bglisteners(\"BGSRV\");'));")
+ '((1)))
+((osql "count(ship('s', 'bglisteners(\"foo\");'));")
+ '((0))))
+
+;; establish sync channel
+(defglobal _sync_)
+(let (connectto)
+	(while (null (setq connectto 
+		(osql "ship('s', 'bglisteners(\"BGC1\");');")))
+		(sleep 0.2))
+	(setq _sync_ (open-socket (elt (caar connectto) 0) 
+		(elt (caar connectto) 1))))
+
+
+(checkequal "re-set bgbufsize" ((set-bgbufsize 30) 30))
+
+(defglobal _lreadsock_)
+(checkequal "open bg socket to c1" 
+((socket-closed (setq _lreadsock_ (accept-socket _asocket_))) nil))
+
+(formatl t "buffer before read \"hej\":" t)
+(socket-printcont _lreadsock_)
+
+(pf t _sync_) (read _sync_)
+(let (r)
+(checkequal "read \"hej\" from c1" 
+((progn 
+  (while (eq _busy_ (setq r (lread _lreadsock_))) 
+   (sleep 1)
+   (formatl t t)
+   (formatl t " (lread busy) inbuffer content:" t)
+   (socket-printcont _lreadsock_))
+  r) "hej")))
+
+(formatl t "buffer after read \"hej\":" t)
+(socket-printcont _lreadsock_)
+
+(pf t _sync_) (read _sync_)
+(let (r)
+(checkequal "read 'HEJ from c1" 
+((progn 
+  (while (eq _busy_ (setq r (lread _lreadsock_)))
+   (sleep 1)
+   (formatl t t)
+   (formatl t " (lread busy) inbuffer content:" t)
+   (socket-printcont _lreadsock_))
+  r) 'HEJ)))
+;'
+
+(formatl t "buffer after read 'HEJ:" t)
+(socket-printcont _lreadsock_)
+
+
+;; final sync before quit
+(formatl t " (final peer sync) ...")
+(pf t _sync_) (read _sync_)
+(formatl t " (c synced)")
+(osql "kill_the_federation();")

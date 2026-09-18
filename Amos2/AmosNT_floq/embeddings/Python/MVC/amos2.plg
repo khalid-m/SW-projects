@@ -1,0 +1,50 @@
+<html>
+<body>
+<pre>
+<h1>Build Log</h1>
+<h3>
+--------------------Configuration: amos2 - Win32 Release With Debug--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "C:\Users\Silvia\AppData\Local\Temp\RSP5887.tmp" with contents
+[
+/nologo /MD /W3 /GX /ZI /Od /I "C:\Python27\Include" /I "C:\Python27\Lib\site-packages\numpy\core\include\numpy" /I "C:\AmosNT\C" /I "C:\AmosNT\system\include" /I "C:\AmosNT\embeddings\Python\include" /D "WIN32" /D "DEBUG" /D "_CONSOLE" /D "_MBCS" /D "_USRDLL" /D "PYTHONDLL_EXPORTS" /FR"amos2___Win32_Release_With_Debug/" /Fp"amos2___Win32_Release_With_Debug/amos2.pch" /YX /Fo"amos2___Win32_Release_With_Debug/" /Fd"amos2___Win32_Release_With_Debug/" /FD /c 
+"C:\AmosNT\embeddings\Python\C\amosmodule.c"
+"C:\AmosNT\embeddings\Python\C\pycallout.c"
+"C:\AmosNT\embeddings\Python\C\pymodule.c"
+"C:\AmosNT\embeddings\Python\C\pyobj.c"
+]
+Creating command line "cl.exe @C:\Users\Silvia\AppData\Local\Temp\RSP5887.tmp" 
+Creating temporary file "C:\Users\Silvia\AppData\Local\Temp\RSP5888.tmp" with contents
+[
+kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib Ws2_32.lib amos2.lib /nologo /dll /incremental:yes /pdb:"amos2___Win32_Release_With_Debug/amos2.pdb" /debug /machine:I386 /out:"../../../bin/amos2.pyd" /implib:"amos2___Win32_Release_With_Debug/amos2.lib" /libpath:"C:\Python27\libs" /libpath:"C:\AmosNT\bin" /libpath:"C:\AmosNT\embeddings\Python\libs" /libpath:""..\..\..\C"" 
+.\amos2___Win32_Release_With_Debug\amosmodule.obj
+.\amos2___Win32_Release_With_Debug\pycallout.obj
+.\amos2___Win32_Release_With_Debug\pymodule.obj
+.\amos2___Win32_Release_With_Debug\pyobj.obj
+..\..\..\bin\amos2.lib
+]
+Creating command line "link.exe @C:\Users\Silvia\AppData\Local\Temp\RSP5888.tmp"
+<h3>Output Window</h3>
+Compiling...
+amosmodule.c
+pycallout.c
+pymodule.c
+pyobj.c
+Linking...
+   Creating library amos2___Win32_Release_With_Debug/amos2.lib and object amos2___Win32_Release_With_Debug/amos2.exp
+Creating temporary file "C:\Users\Silvia\AppData\Local\Temp\RSP5C7F.bat" with contents
+[
+@echo off
+set pythonpath=C:\AmosNT\bin
+]
+Creating command line "C:\Users\Silvia\AppData\Local\Temp\RSP5C7F.bat"
+
+
+
+
+<h3>Results</h3>
+amos2.pyd - 0 error(s), 0 warning(s)
+</pre>
+</body>
+</html>

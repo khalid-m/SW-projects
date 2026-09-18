@@ -1,0 +1,11 @@
+load_lisp("src/Lisp/qplan.lsp");
+
+< 'src/amosql/wsdlschema.amosql';
+< 'src/amosql/wrapperfunctions.amosql';
+< 'src/amosql/input_signature.amosql';
+< 'src/amosql/inputformat.amosql';
+< 'src/amosql/soaphformat.amosql';
+< 'src/amosql/callws.amosql';
+
+save 'wsmed.dmp';
+quit;

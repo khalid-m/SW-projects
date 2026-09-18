@@ -1,0 +1,35 @@
+create function loadSQLdataRowOrder1(Jdbc a,Charstring datafile,
+                            Charstring baseURL) ->Boolean
+  as 
+
+begin
+        ProcedureRowOrder(a,baseURL);
+	makeAllTable(a,baseURL);
+	makeAllConstraint(a,baseURL);
+	CallProc_RowOrder(a,datafile,baseURL);
+
+end;
+
+
+create function loadSQLdataColOrder1(Jdbc a,Charstring datafile,Charstring baseURL)
+->Boolean
+  as 
+begin
+	ProcedureColOrder(a,baseURL);
+	makeAllTable(a,baseURL);
+	CallProc_ColOrder(a,datafile,baseURL);
+	makeAllConstraint(a,baseURL);
+end;
+
+create function loadSQLdataRowOrder(Jdbc a,Charstring datafile,
+                            Charstring baseURL) ->Charstring
+as
+	if (loadSQLdataRowOrder1(a,datafile,baseURL)=true) then result "Database Recreated Successfully.";
+	
+
+create function loadSQLdataColOrder(Jdbc a,Charstring datafile,
+                            Charstring baseURL) ->Charstring
+as
+	if (loadSQLdataColOrder1(a,datafile,baseURL)=true) then result "Database Recreated Successfully.";
+		
+

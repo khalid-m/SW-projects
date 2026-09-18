@@ -1,0 +1,117 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Tore Risch, UDBL
+ * $RCSfile: download.amosql,v $
+ * $Revision: 1.6 $ $Date: 2007/03/10 16:00:17 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Database to download via e-mail
+ *
+ ****************************************************************************
+ * $Log: download.amosql,v $
+ * Revision 1.6  2007/03/10 16:00:17  torer
+ * Sorting tables on timestamt
+ *
+ * Revision 1.5  2007/03/04 21:42:47  torer
+ * Added name field
+ *
+ * Revision 1.3  2007/03/03 15:32:11  torer
+ * More meta-information about systems to download
+ *
+ * Revision 1.2  2007/02/21 10:00:38  udbl
+ * Schema to handle mailed session IDs
+ *
+ ****************************************************************************/
+
+create type System;
+create function name(System)->Charstring key as stored;
+create function responsible(System)->Charstring email as stored;
+create function fullname(System)->Charstring as stored;
+create function location(System)->Charstring as stored;
+create function file(System)->Charstring as stored;
+create function reserve_time(System what)->real as stored;
+
+create function booked(Timeval tm)
+                -> <Charstring id key, System what, Charstring email, 
+                    Charstring host, Charstring name>
+  as stored;
+create_index("booked","tm","mbtree","unique");
+
+create function downloaded(Timeval tm)
+                -> <Charstring tid key, System what, Charstring host, 
+                    Charstring email, Charstring name>
+  as stored;
+create_index("downloaded","tm","mbtree","unique");
+
+create function bookings()->
+                <Charstring tid, Charstring what, Charstring email, 
+                 Charstring host, Charstring name, Timeval tm>
+  as select tid, name(s), email, host, name, tm 
+     from System s
+     where <tid, s, email, host, name> = booked(tm);
+
+create function downloads()->
+                <Charstring tid, Charstring what, Charstring host, 
+                 Charstring em, Charstring name, Timeval tm>
+  as select tid, name(s), host, em, name, tm
+     from System s
+     where downloaded(tm)= <tid,s,host,em,name>;
+
+create function systemNamed(Charstring what)->System s
+  as select s where name(s)=what;
+
+create function fullName(Charstring what)->Charstring
+  as select fullname(systemnamed(what));
+
+create function responsible(Charstring what)->Charstring
+  as select responsible(systemnamed(what));
+
+create function downloadable(Charstring what)->Boolean 
+  as select true from Real tm
+     where reserve_time(systemNamed(what)) = tm;
+
+create function dropbookings()-> <Charstring,Charstring,Charstring,
+                                  Charstring,Timeval>
+  as for each Charstring tid, System what, Charstring em, 
+              Charstring host, Charstring name,Timeval tm
+      where booked(tm)= <tid,what,em,host,name>
+     begin remove booked(tm)= <tid,what,em,host,name>;
+           result <tid, name(what), em, name, tm>;
+     end;
+
+create function dropdownloads()-> <charstring, charstring, charstring, timeval>
+  as for each charstring tid, System what, charstring host, charstring em,
+              charstring name, timeval tm
+       where downloaded(tm)= <tid,what, host, em, name>
+      begin remove downloaded(tm) = <tid, what, host, em, name>;
+            result <name(what), host, em, name, tm>;
+      end;
+
+create function reserve(Charstring tid, Charstring what, 
+                        Charstring host, Charstring name, Charstring email)
+                ->Boolean
+  as if downloadable(what) then
+        begin set booked(now()) = <tid,systemnamed(what), email, host, name>;
+           commit;
+           result true;
+        end;
+
+create function legal_booking(Charstring tid) -> Boolean
+  as select true
+     from Timeval tm, System what, Charstring email, Charstring name,
+          Charstring host
+     where booked(tm)= <tid,what,email,host,name>
+       and real(now())-real(tm) < reserve_time(what);
+
+create function download(Charstring tid,Charstring host)-> 
+                         <Charstring loc, Charstring file>
+  as for each System what, Charstring em, Charstring dhost, 
+              Charstring name, Timeval tm
+         where <tid, what, em, dhost, name> = booked(tm) and legal_booking(tid)
+             begin
+               set downloaded(now())=<tid,what,host,em,name>;
+               remove booked(tm)= <tid, what, em, dhost, name>;
+               commit;
+               result <location(what),file(what)>;
+             end;

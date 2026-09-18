@@ -1,0 +1,120 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2007 Ruslan Fomkin, UDBL
+ * $RCSfile: misc.osql,v $
+ * $Revision: 1.4 $ $Date: 2009/04/10 15:20:10 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  
+ ****************************************************************************
+ * $Log: misc.osql,v $
+ * Revision 1.4  2009/04/10 15:20:10  torer
+ * *** empty log message ***
+ *
+ * Revision 1.3  2007/10/28 10:56:23  ruslan
+ * new execute and cost of creating transient objects
+ *
+ * Revision 1.2  2007/10/10 07:37:44  ruslan
+ * impact of projection on expcuts is removed. reading file is enough for paper
+ *
+ * Revision 1.1  2007/10/09 12:45:15  ruslan
+ * impact of projection
+ *
+ ****************************************************************************/
+
+load_lisp('../experiments/stream.lsp');
+
+create function electrons_up(vector props)-> Electron as
+select new_electron(cast(cast(props[1] as vector)[i] as integer),
+	cast(cast(props[2] as vector)[i] as real),
+	cast(cast(props[3] as vector)[i] as real),
+	cast(cast(props[4] as vector)[i] as real),
+	cast(cast(props[5] as vector)[i] as real))
+from integer i
+where i < props[0];
+
+/* Creating muon structs for a given event and streaming them. */
+create function muons_up(vector props)-> Muon as
+select new_muon(cast(cast(props[7] as vector)[i] as integer),
+	cast(cast(props[8] as vector)[i] as real),
+	cast(cast(props[9] as vector)[i] as real),
+	cast(cast(props[10] as vector)[i] as real),
+	cast(cast(props[11] as vector)[i] as real))
+from integer i
+where i < props[6];
+
+/* Creating jetb structs for a given event and streaming them. */
+create function jetbs_up(vector props)-> JetB as
+select new_jetb(cast(cast(props[34] as vector)[i] as integer),
+	cast(cast(props[35] as vector)[i] as real),
+	cast(cast(props[36] as vector)[i] as real),
+	cast(cast(props[37] as vector)[i] as real),
+	cast(cast(props[38] as vector)[i] as real))
+from integer i
+where i < props[33];
+
+create function aleh_stream_nopr(charstring filename)-> bag of Event ev as
+select ev
+from integer id, vector v
+where <{filename,"/ATLFAST","h51;1",id},v> = 
+		root_access(filename,"/ATLFAST","h51;1")
+	and ev=new_event(id,filename,cast(v[53] as real),cast(v[54] as real),
+		vectorof(electrons_up(v)),vectorof(muons_up(v)),
+		vectorof(jetbs_up(v)));
+
+create function aleh_stream_noobj(charstring filename)-> bag of vector v as
+select v
+from integer id
+where <{filename,"/ATLFAST","h51;1",id,{"Pxmiss","Pymiss","Nele","Kfele",
+	"Pxele","Pyele","Pzele","Eeele","Nmuo","Kfmuo","Pxmuo","Pymuo","Pzmuo",
+	"Eemuo","Njetb","Kfjetb","Pxjetb","Pyjetb","Pzjetb","Eejetb"}},v> 
+	= 
+	root_access_project(filename,"/ATLFAST","h51;1",{"Pxmiss","Pymiss",
+	"Nele","Kfele","Pxele","Pyele","Pzele","Eeele","Nmuo","Kfmuo","Pxmuo",
+	"Pymuo","Pzmuo","Eemuo","Njetb","Kfjetb","Pxjetb","Pyjetb","Pzjetb",
+	"Eejetb"});
+
+create function myprint(charstring nf, real extn, real sqsn, real stdn, 
+	real resn, real extp, real sqsp, real stdp, real resp) -> boolean 
+	as foreign 'myprint';
+
+create function projection_events () -> boolean as
+begin
+	declare real extn, real sqsn, real stdn, real resn, real extp, 
+		real sqsp, real stdp, real resp;
+	for each file f, charstring nf, charstring lf where nf=name(f) and 
+		lf = location(f)
+	begin
+		select e,s,d,r into extn, sqsn, stdn, resn
+		from real e, real s, real d, integer r
+		where <e,s,d,r> = execute("CHARSTRING.ALEH_STREAM_NOPR->EVENT",
+					lf,1,5);
+		select e,s,d, r into extp, sqsp, stdp, resp
+		from real e, real s, real d, integer r
+		where <e,s,d,r> = execute("CHARSTRING.ALEH_STREAM->EVENT",
+					lf,1,5);
+		myprint(nf,extn,sqsn,stdn,resn,extp,sqsp,stdp,resp);
+	end;
+end;
+
+create function object_impact () -> boolean as
+begin
+	declare real extn, real sqsn, real stdn, real resn, real exto, 
+		real sqso, real stdo, real reso;
+	for each file f, charstring nf, charstring lf where nf=name(f) and 
+		lf = location(f) and nf="bkg2Events_ruslan_000.root"
+	begin
+		select e,s,d,r into extn, sqsn, stdn, resn
+		from real e, real s, real d, integer r
+		where <e,s,d,r> = 
+			execute("CHARSTRING.ALEH_STREAM_NOOBJ->VECTOR",
+					lf,1,5);
+		select e,s,d,r into exto, sqso, stdo, reso
+		from real e, real s, real d, integer r
+		where <e,s,d, r> = execute("CHARSTRING.ALEH_STREAM->EVENT",
+					lf,1,5);
+		myprint(nf,extn,sqsn, stdn,resn,exto,sqso,stdo,reso);
+	end;
+end;

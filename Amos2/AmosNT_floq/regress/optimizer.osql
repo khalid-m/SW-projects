@@ -1,0 +1,128 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2006 Tore Risch, UDBL
+ * $RCSfile: optimizer.osql,v $
+ * $Revision: 1.7 $ $Date: 2011/01/27 11:26:15 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Testing query optimizer
+ *
+ ****************************************************************************
+ * $Log: optimizer.osql,v $
+ * Revision 1.7  2011/01/27 11:26:15  torer
+ * Changed from <...> to SQL's (...) notation for tuples (much nicer)
+ *
+ * Revision 1.6  2010/04/30 17:11:36  torer
+ * PLAN-TRAIL handles predicate functions
+ *
+ * Revision 1.5  2010/04/20 19:17:02  torer
+ * fanout of non-key table close to 1 => _default-key-fanout_
+ *
+ * Revision 1.4  2010/03/13 16:29:02  torer
+ * _default-foreign-fanout_ set to 0.99
+ *
+ * Revision 1.3  2009/11/16 21:54:56  torer
+ * Strict use of in over bag (not =)
+ *
+ * Revision 1.2  2009/10/03 11:18:05  torer
+ * Regression test of default cost model
+ *
+ * Revision 1.1  2006/07/28 11:09:55  torer
+ * Added regression test of optimizer
+ *
+ ****************************************************************************/
+
+create function f1(Integer) -> Bag of Integer;
+create function f2(Integer) -> Bag of Integer;
+set f1(1)=2;
+set f2(1)=3;
+
+create function f3(Integer i) -> (Integer j, Integer k) 
+  as select j,k where j in f1(i) and k in f2(i);
+
+create function f4(Vector x, Vector y) -> Vector as x+y-x;
+
+create function f5(Integer) -> Integer as stored;
+
+create function f6(Integer) -> Boolean as stored;
+
+create function f7(Bag b, Vector v) -> Bag of (Integer,Object)
+  as select dim(v),r from Object r where r in b;
+ 
+lisp;
+
+(defun plan-trail (fno)
+  "Returns list of predicated in optimized plan"
+  (let (trail)
+    (mappred (selectbody-optpred (getselectbody (getuniqueresolvent fno)))
+	     (f/l (p)(push (externalize (un_pred_fn (car (predify-tbr p))))
+			   trail)))
+    (nreverse trail)))
+
+(defun roundint (x n)
+  (cond ((floatp x)(round (* x (expt 10 n))))
+	((atom x) x)
+	(t (cons (roundint (car x) n)
+		 (roundint (cdr x) n)))))
+(checkequal 
+ "Reoptimization"
+ ((plan-trail 'f3) '(INTEGER.F1->INTEGER INTEGER.F2->INTEGER))
+ ((osql "plan_cost('f3');") '((3.98 0.9801)))
+ ((externalize (osql "costhint('f1','bf',{5,5});")) '((INTEGER.F1->INTEGER)))
+ ((externalize (osql "costhint('f2','bf',{100,1});"))
+  '((INTEGER.F2->INTEGER))) 
+ ((externalize (osql "reoptimize('f3');")) '((INTEGER.F3->INTEGER.INTEGER)))
+ ((plan-trail 'f3) '(INTEGER.F2->INTEGER INTEGER.F1->INTEGER))
+ ((osql "plan_cost('f3');") '((105 5)))
+ )
+
+;;; This will change is constants in optimizer.lsp changed:
+
+(checkequal "Default cost model"
+	    ((osql "plan_cost('number.number.plus->number');")
+	     '((0.5 0.99)))
+	    ((osql "plan_cost('sum');")
+	     '((100.0 0.99)))
+	    ((osql "plan_cost('bag.in->object');")
+	     '((1000.0 100)))
+	    ((osql "plan_cost('iota');")
+	     '((100 100)))
+            ((osql "plan_cost('vector.vector.plus->vector-number');")
+             '((5 1)))
+            ((plan-trail 'f4) 
+             '(OBJECT.OBJECT.=->BOOLEAN VECTOR.VECTOR.PLUS->VECTOR-NUMBER))
+            ((osql "plan_cost('f4');")
+             '((5.45 0.99)))
+            ((roundint (osql "plan_cost('f5');")2)
+             '((198 99)))
+            ((roundint (osql "plan_cost('f6');")2)
+             '((198 99)))
+            ((osql "plan_cost('some');")
+             '((100.0 0.4)))
+            ((plan-trail 'f7)
+             '(VECTOR.DIM->INTEGER BAG.IN->OBJECT))
+	    )
+:osql
+
+create function foo1(Integer)->Integer as stored;
+add foo1(1)=1;
+
+create function foo2(Bag of Integer)->Bag of Integer as foreign 'foo2';
+
+create function q1()->Bag of Integer 
+  as select x from integer x where foo1(x)=10 and x in foo2(iota(1,3));
+
+lisp;
+
+(checkequal 
+ "Cost model for combiners"
+ ((plan-trail 'q1)
+  '(FUNCTION.MAKEBAG->BAG INTEGER.FOO1->INTEGER BAG-INTEGER.FOO2->INTEGER))
+ )
+
+:osql
+
+rollback;
+ 
+

@@ -1,0 +1,84 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Tore Risch, UDBL
+ * $RCSfile: nov2012.osql,v $
+ * $Revision: 1.16 $ $Date: 2013/11/16 17:02:40 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Demo script for Nov 2012 
+ ****************************************************************************/
+/*
+cd Vortex\bin
+svali
+*/
+
+cd("../Sandvik");
+
+< '../schema/SmartVortexSchema.osql'; /* The generic Smart Vortex schema 
+                                         based on D3.1 */
+
+< 'CorenetWrapper.osql'; /* The general Corenet stream wrapper that handles 
+                            any equipment stream from Sandvik */
+
+< 'MillWrapper.osql'; /* The milling wrapper in terms of CORENET */
+
+< 'MillingModel.osql'; /* The math model for milling */
+
+< 'MillingValidator.osql'; /* model'n'validate for milling power consumption 
+                              produces 'validation stream' of tuples
+                              (ts, measured, expected, invalid)
+                              See D3.1 sec 2.3, D5.1 sec 3.2 */
+
+< 'OtherWrapper.osql'; /* The other Sandvik wrapper in terms of CORENET */
+
+< 'LearningModel.osql'; /* The learning model */
+
+< 'LearningValidator.osql'; /* The learning validator */
+
+< 'SandvikMetaData.osql'; /* Populate the Smart Vortex database with 
+                             meta-data */
+
+/* Start two Corenet servers A on port 1337 and B on port 1338 
+
+Start corenet server for recorded milling CSV stream:
+
+server mill.csv 1337
+
+Start corenet server for recorded machinery CSV stream:
+
+server other.csv 1338
+  Stop the server and do a reload to get the correct header.
+*/
+
+/* Run CQs for milling in FDSMS top loop */
+
+playback2(millPower("A")); /* Return stream of current power consumption */
+
+CTRL-C
+
+playback2(validateMill("A")); /* Play validation stream for mill */
+
+CTRL-C
+
+in(millAlerts("A")); /* Play alert stream for mills */
+
+CTRL-C
+
+playback2(touchingPower("B")); /* Play power consumtion when other machine 
+                                 is touching material */
+
+CTRL-C
+
+playback2(validateOther("B"));
+
+CTRL-C
+
+in(otherStreamAlerts("B"));
+
+quit;
+
+/* Demo with visualization */
+
+register("corenet");
+listen(); /* Start Corenet FDMS server */

@@ -1,0 +1,86 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Tore Risch, UDBL
+ * $RCSfile: groupby.osql,v $
+ * $Revision: 1.4 $ $Date: 2013/11/07 16:15:40 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Testing group-by aggregate functions
+ *
+ ****************************************************************************
+ * $Log: groupby.osql,v $
+ * Revision 1.4  2013/11/07 16:15:40  torer
+ * Testing generalized groupby()
+ *
+ * Revision 1.3  2011/01/27 11:26:15  torer
+ * Changed from <...> to SQL's (...) notation for tuples (much nicer)
+ *
+ * Revision 1.2  2008/11/25 17:13:38  torer
+ * Result type inference
+ *
+ * Revision 1.1  2008/11/25 16:38:08  torer
+ * Aggregate function
+ *   groupby(Bag of <Object gr, Object gv>, function aggop) -> Bag of <Object gr, Object agg>
+ *
+ ****************************************************************************/
+
+create type Person;
+create type Dept;
+create function name(Person)->Charstring as stored;
+create function income(Person)->Number as stored;
+create function dept(Person)->Dept as stored;
+create function name(Dept)->Charstring as stored;
+
+create function incomeByDept()-> Bag of (Charstring nm, Number inc)
+  as select name(d), i
+     from Dept d, Number i
+     where (d, i) = groupby((select dept(p), income(p) from Person p),
+                             #'sum');
+
+create Dept (name) instances :d1 ("D1"), :d2 ("D2"), :d3 ("D3");
+
+create Person(name, income, dept) instances
+  ("P1", 100, :d1),
+  ("P2", 200, :d2),
+  ("P3", 300, :d3),
+  ("P4", 400, :d1),
+  ("P5", 500, :d2),
+  ("p6", 500, :d1);
+
+set :bag1 = (select {floor(i/2),1},i,2
+             from Number i
+             where i in iota(1,10));
+
+lisp;
+
+(checkequal 
+ "groupBy" 
+ ((osql "sort(incomebydept());")
+  '((#(#("D1" 1000) #("D2" 700) #("D3" 300)))))
+ ((osql "groupby((select name(dept(p)), income(p) from Person p), #'sum');")
+  '(("D1" 1000) ("D2" 700) ("D3" 300)))
+ ((osql "groupby(iota(1,3),#'count');")
+  '((1 1) (2 1) (3 1)))
+ ((osql "groupby(iota(1,3),{#'count',#'sum'});")
+  '((1 1 1) (2 1 2) (3 1 3)))
+ ((osql "groupby(:bag1,{#'count',#'sum'});")
+  '((#(0 1) 1 2) (#(1 1) 2 4) (#(2 1) 2 4) (#(3 1) 2 4) (#(4 1) 2 4) 
+    (#(5 1) 1 2)))
+ ((osql "select k from object k, object y, object z 
+         where (k,y,z) in groupby(:bag1, {#'count',#'sum'});")
+   '((#(0 1)) (#(1 1)) (#(2 1)) (#(3 1)) (#(4 1)) (#(5 1))))
+ ((errstring (osql "groupby(1,2);")) "Cannot resolve function call")
+ ((errstring (osql "groupby(:bag1,#'iota');"))
+   "Second argument of group_by() must be aggregate function(s)")
+ ((errstring (osql "select x,y from Vector of Integer x, Number y 
+                    where (x, y) in groupby(:bag1, {#'sum',#'count'});"))
+  "Cannot resolve function call")
+ ((errstring (osql "select groupby(:bag1, fn) from Vector of Function fn
+                    where fn = {#'sum',#'count'};"))
+  "Width does not match aggregate functions in group_by()")
+ )
+:osql
+
+
+rollback;

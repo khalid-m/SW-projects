@@ -1,0 +1,78 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2005 Tore Risch, UDBL
+ * $RCSfile: uppsala.amosql,v $
+ * $Revision: 1.3 $ $Date: 2005/01/04 16:27:13 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Stand-alone Amos II database server
+ *
+ ****************************************************************************/
+
+   create type Person;   
+   create type Employee under Person;
+   create type Teacher under Employee;   
+   create type Student under Person;  
+   create type Course;
+   create type Attendance;
+
+   create function ssn(Person) -> Integer;    /* Stored default kind */
+   create function name(Person) -> Character; 
+   create function pay(Employee) -> Integer;
+   create function title(Course) -> Character;
+   create function teacher(Course) -> Teacher;
+   create function student(Attendance) -> Student;
+   create function course(Attendance) -> Course;
+   create function score(Attendance) -> Integer; 
+   create function courses(Student s) -> bag of Course c /* derived */
+     as select c 
+        from Attendance a
+        where student(a) = s and
+              course(a) = c; 
+   create function score(Student s, Course c) -> Integer sc
+     as select score(a)
+        from Attendance a
+        where student(a) = s and
+              course(a) = c;
+   create function teaches(Teacher t) -> Bag of Course c
+                                /* Inverse of teacher */
+     as select c
+        where teacher(c) = t;
+ 
+create Course(title) instances
+   :c1 ("Math"), :c2 ("Algorithms"), 
+   :c3 ("Programming"), :c4 ("Philosophy");
+
+create Student(ssn) instances
+   :s1(1001), :s2(1002), :s3(1004), :s4(1005), :s5(1007), :s6(1008);
+
+create function add_score(Student s, Course c, Integer sc)->Attendance r
+as begin 
+    create Attendance(student, course, score) 
+           instances r (s,c,sc);
+    result r;
+   end;
+
+add_score(:s1,:c1,3);
+add_score(:s1,:c3,2);
+add_score(:s2,:c3,3);
+add_score(:s2,:c4,1);
+add_score(:s3,:c1,3);
+add_score(:s4,:c2,2);
+add_score(:s5,:c3,3);
+add_score(:s6,:c1,1);
+
+create Teacher(ssn) instances
+  :t1 (1000), :t2 (1003), :t3(1006);
+
+set teacher(:c1) = :t1;
+set teacher(:c2) = :t2;
+set teacher(:c3) = :t3;
+set teacher(:c4) = :t3;
+
+commit;
+
+nameserver("uppsala");
+
+listen();

@@ -1,0 +1,44 @@
+/****-*-sql-*-*****************************************************************/
+
+lisp;
+
+(defun readc (stream)
+  "Read a character"
+  (int-char (read-charcode stream)))
+
+(defun ! (s) 
+  "Rewind text stream s"
+  (textstreampos s 0))
+
+(defun eol (stream)
+  "Read CR"
+  (equal (readc stream) _cr_))
+
+(defglobal _s_)
+(setq _s_ (opentextstream))
+
+(checkequal 
+ "Nonblocking I/O primitives"
+ ((progn (! _s_) (nb-print 123 _s_) (! _s_) (nb-read _s_)) 
+  123)
+ ((progn (! _s_) (nb-print '(a b c) _s_) (! _s_) (nb-read _s_)) 
+  '(a b c))
+ ((progn (! _s_) (princ "a" _s_)(nb-print 123 _s_)(princ "b" _s_)
+	 (! _s_) (list (readc _s_)(nb-read _s_)(readc _s_))) 
+  '("a" 123 "b"))
+ ((progn (! _s_) (princ "a" _s_)(nb-print '(123) _s_)(princ "b" _s_)
+	 (! _s_) (list (readc _s_)(nb-read _s_)(readc _s_))) 
+  '("a" (123) "b"))
+ ((progn (! _s_) (princ "a" _s_)(nb-print 123 _s_)(princ "b" _s_)
+         (princ "c" _s_)(nb-print 123 _s_)(princ "d" _s_)
+         (! _s_ ) (list (readc _s_)(nb-read _s_)(readc _s_)
+			(readc _s_)(nb-read _s_)(readc _s_)))
+  '("a" 123 "b" "c" 123 "d"))
+ ((progn (! _s_)(princ "a" _s_)(nb-print (vector 1 3) _s_)(princ "b" _s_) 
+	 (! _s_)(list (readc _s_)(nb-read _s_)(readc _s_)))
+  ;; Datatype array
+  ;; Notice since nonblocking print and read absorbing the delimiter
+  '("a" #(1 3) "b"))
+ )
+
+:osql

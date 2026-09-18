@@ -1,0 +1,23 @@
+
+create function genCCfnAndRWAndMPT(Charstring dsn)->Object
+  as 
+    begin
+	 for each Charstring tbn where tbn in bigTables(dsn)
+	 begin
+	     for each Function fno 
+                 where {fno} =  evalv(generateBigtableCC(dsn, tbn))
+                  begin
+	            declare_key(fno, vectorof(bigTableKeyAttribute(dsn, tbn)));
+                  end;
+	     for each  Charstring fnd2 
+                where fnd2 in genCCfnMappedtype(dsn, tbn)
+	     return evalv(fnd2);
+	 end;
+   end;	
+
+create function accessBigTable(Charstring dsn, Charstring url)->Boolean
+	as 
+	  begin 
+		accessBigTable0(dsn, url);
+	   	genCCfnAndRWAndMPT(dsn);	
+     	  end;

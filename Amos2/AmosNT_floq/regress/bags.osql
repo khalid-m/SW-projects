@@ -1,0 +1,166 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Tore Risch, UDBL
+ * $RCSfile: bags.osql,v $
+ * $Revision: 1.10 $ $Date: 2012/03/19 18:37:29 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Testing bag assignments
+ *
+ ****************************************************************************
+ * $Log: bags.osql,v $
+ * Revision 1.10  2012/03/19 18:37:29  torer
+ * Could not assign materialized bag to bag variable
+ *
+ * Revision 1.9  2011/12/29 07:37:15  torer
+ * Introduced tuple types
+ *
+ * Revision 1.8  2011/01/20 18:29:02  torer
+ * 1. bag variables can be bound to values of bag valued functions
+ * 2. The 'set f(..)=... ' now updates correctly
+ *
+ * Revision 1.7  2009/11/16 21:54:55  torer
+ * Strict use of in over bag (not =)
+ *
+ * Revision 1.6  2009/11/03 19:57:14  torer
+ * Inferring types of materialized bags
+ *
+ * Revision 1.5  2009/10/30 16:52:53  torer
+ * bug in script
+ *
+ * Revision 1.4  2009/10/30 16:49:27  torer
+ * Validating materialized bags
+ *
+ * Revision 1.3  2008/11/18 21:13:25  torer
+ * Testing flattened IN
+ *
+ * Revision 1.2  2008/08/20 09:54:35  torer
+ * More tests
+ *
+ * Revision 1.1  2008/08/18 14:23:35  torer
+ * Setting bag values allowed
+ *
+ ****************************************************************************/
+
+set :a = iota(1,3);  /* sets :a to bag of 3 integers */
+
+set :b = (select iota(1,3)); /* sets :b to bag of 3 integers */
+
+set :c = bag(1,2,3); /* Materialized bag constant */
+
+set :d = bag(1,2,"a");
+
+set :e = bag((1,2),(1,"a"));
+
+set :f = 1;
+
+set :g = bag((1,2),(2,:f));
+
+lisp;
+
+(checkequal "Bag variables"
+	    ((osql "in(:a);") '((1)(2)(3)))
+	    ((osql "in(:b);") '((1)(2)(3)))
+	    ((osql "in(:c);") '((1)(2)(3)))
+            ((osql "in(:d);") '((1)(2)("a")))
+            ((osql "in(:e);") '((1 2) (1 "a")))
+            ((osql "in(:g);") '((1 2) (2 1)))
+            ((osql "name(typeof(:a));") '(("BAG-INTEGER")))
+            ((osql "name(typeof(:b));") '(("BAG-INTEGER")))
+            ((osql "name(typeof(:c));") '(("BAG-INTEGER")))
+            ((osql "name(typeof(:d));") '(("BAG-LITERAL")))
+            ((osql "name(typeof(:e));")'(("BAG-(INTEGER,LITERAL)")))
+	    )
+
+(checkequal 
+ "Bag construction"
+ ((osql "select x from Integer x,Integer y where x in bag(1,y) and y=2;") 
+  '((1)(2)))
+ )
+
+:osql
+
+
+create function bag1fn(Integer)->Bag of Integer;
+
+set bag1fn(1) = :b; 
+
+set bag1fn(2) = bag(3,4,5); /* Assigned entire bag */
+
+set bag1fn(3) = iota(4,7); /* Assigned entire bag */
+
+set bag1fn(3) = iota(5,8); /* Replaced old bag */
+
+set bag1fn(4) = (select iota(8,10)); /* Assigned entire bag */
+
+add bag1fn(5) = bag(4,7); /* Entire bag */
+add bag1fn(5) = bagof(iota(7,9)); /* Entire bag */
+
+add bag1fn(6) = bag(4,7); /* Entire bag */
+add bag1fn(6) = iota(7,9); /* Entire bag replaced */
+remove bag1fn(6) = iota(5,6); /* Bag elements deleted*/
+remove bag1fn(6) = bag(8,9);  /* More bag elements deleted */
+
+set bag1fn(7) = bag(1,2,3); 
+set bag1fn(7) = bag(3,4,5);
+
+set bag1fn(8) = bag(1,2,3);
+
+set bag1fn(8) = x from integer x where x in iota(3,6);
+
+create function bag2fn(Integer)->Bag of (Integer, Integer);
+
+set bag2fn(1) = (i, 10*i) from integer i where i in iota(1,2);
+
+set bag2fn(2) = (i, 20*i) from integer i where i in iota(1,2);
+set bag2fn(2) = (i, 30*i) from integer i where i in iota(2,3);
+
+set bag2fn(i+1) = (i-1, 30*i) from integer i where i in iota(2,3);
+set bag2fn(i+2) = (i-1, 30*i) from integer i where i in iota(2,3);
+add bag2fn(i+2) = (i-1, 31*i) from integer i where i in iota(2,4);
+
+create function f() -> Integer as
+begin
+  declare Bag of Integer bi;
+  set bi = materialize(iota(1,10));
+  return count(bi);
+end;
+
+lisp;
+
+(defglobal amos_bt '(aggr_bag (1 2)(1.1 "a")))
+
+(checkequal "Bag function assignments"
+	    ((osql "bag1fn(1);") '((3)(2)(1)))
+	    ((osql "bag1fn(2);") '((5)(4)(3)))
+            ((osql "bag1fn(3);") '((5) (6) (7) (8)))
+            ((osql "bag1fn(4);") '((10)(9)(8)))
+            ((osql "bag1fn(5);") '((9) (8) (7) (7) (4)))
+            ((osql "bag1fn(6);") '((7)(7)(4)))
+            ((osql "bag1fn(7);") '((5)(4)(3)))
+            ((osql "bag1fn(8);") '((3) (4) (5) (6)))
+            ((osql "bag2fn(1);") '((1 10) (2 20)))
+            ((osql "bag2fn(2);") '((2 60) (3 90)))
+            ((osql "bag2fn(3);") '((1 60)))
+            ((osql "bag2fn(4);") '((1 62) (1 60)))
+            ((osql "bag2fn(5);") '((2 93) (2 90)))
+            ((osql "bag2fn(6);") '((3 124)))
+            ((osql "select o from object o where o in 2;") '((2)))
+            ((osql "select o from object o where o in bagof(2);") '((2)))
+            ((osql "select o from object o where o in (select 2);") '((2)))
+	    )
+
+;;; materialized bags 
+
+
+(checkequal 
+ "Materialized bags"
+ ((osql "count(materialize(iota(1,100)));") '((100)))
+ ((osql "sum(select i from integer i where i in materialize(iota(1,100)));")
+  '((5050)))
+ ((osql "f();") '((10)))
+ )
+:osql
+
+rollback;

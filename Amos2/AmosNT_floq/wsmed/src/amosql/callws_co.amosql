@@ -1,0 +1,18 @@
+
+create function cwo(charstring wsdluri,charstring wsname,charstring opname, 
+                               vector ip)->object r as foreign "cocwo";
+
+costhint(theresolvent("cwo"),"bbbbf",{100,101});
+
+create function get_profile_per_level()-> boolean as foreign "get-maxcall-per-level";
+
+create function get_profile_per_tree()-> boolean as foreign "get-maxcall-per-tree";
+create function get_profile_per_tree_parallel()-> boolean as foreign "get-maxcall-per-tree-parallel";
+create function profile_level()-> boolean as foreign "get-per-level-stat";
+create function profile_ws()-> boolean as foreign "get-per-wsoperation";
+create function profile_static_process()-> boolean as foreign "profile-static-processes";
+create function refresh()-> boolean as foreign "refresh";
+
+create function getall_wstime()-> boolean as foreign "getall-wstime";
+
+

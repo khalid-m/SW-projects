@@ -1,0 +1,7 @@
+ship("wsmos","create function intPlus(integer num1, integer num2)->integer as select num1+num2;");
+ship("wsmos","exportable('intPlus');");
+ship("wsmos","set deploy_dir()= getenv('AMOS_HOME')+'/wsmed/wsdl/';");
+ship("wsmos","deploy_wsdl({'intPlus'},'sum.wsdl');");
+quit;
+
+

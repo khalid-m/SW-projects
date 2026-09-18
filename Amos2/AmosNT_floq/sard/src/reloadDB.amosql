@@ -1,0 +1,200 @@
+/* FOR GETTING TABLE NAMES */
+
+create function get_tables(charstring fname, charstring ont) -> charstring table 
+as 	
+	select substring(s,char_length(ont)+char_length(db_name())+1,char_length(s)) 
+	from charstring s, charstring p,charstring v, integer i 
+	where parseRDF(fname)=<s,p,v,i> and like(v, "*Class");
+
+
+
+create function get_tableURIs(charstring fname, charstring ont) -> charstring table 
+as 	
+	select s
+	from charstring s, charstring p,charstring v, integer i 
+	where parseRDF(fname)=<s,p,v,i> and like(v, "*Class");
+
+
+/* FOR GETTING COLUMN URI'S */
+
+create function table_name(Charstring ont,Charstring tableURI)->Charstring 
+/*Extract the table name from the table URI*/
+as
+select substring(tableURI,char_length(ont+ db_name())+1,char_length(tableURI));
+
+ 
+create function get_columnURIs(charstring fname, charstring ont) -> charstring
+as 	
+	select s  
+	from charstring s, charstring p,charstring v, integer i 
+	where parseRDF(fname)=<s,p,v,i> and like(p, "*domain");
+
+
+create function get_classURIs(charstring fname, charstring ont) -> charstring
+as 	
+	select s  
+	from charstring s, charstring p,charstring v, integer i 
+	where parseRDF(fname)=<s,p,v,i> and like(p, "*type");
+
+create function get_valueforclassuri(charstring fname,charstring ont,charstring classuri)-> <charstring col, charstring val>
+as
+ select substring(pred,char_length(ont)+1+char_length(db_name()),char_length(pred)),obj 
+ from charstring sub, charstring pred,charstring obj,integer i where 
+ parseRDF(fname) = <sub,pred,obj,i> and like(sub,classuri) and like(pred,"*"+ont+"*");
+
+
+create function extract_tablepkey(Charstring file, Charstring ont, Charstring table)->Charstring 
+/*Extract the primary key for a table*/
+as
+select k from Charstring k, Charstring value, Charstring classURI where classURI=get_classURIs(file,ont) and get_valueforClassuri(file,ont,classURI)=<k, value> and value=substring(classURI,char_length(ont+db_name()+table)+2, char_length(classURI));
+
+
+/* FOR GETTING COLUMNS OF ALL TABLES */
+
+create function get_colntable(charstring fname,charstring ont) -> <charstring col,charstring table>
+as 
+	select substring(s,char_length(ont)+1+char_length(db_name()),char_length(s)), substring(v,char_length(ont)+1+char_length(db_name()),char_length(v))
+	from charstring s, charstring p,charstring v, integer i 
+	where parseRDF(fname)=<s,p,v,i> and like(p, "*domain") ;
+
+/* FOR GETTING TYPES OF ALL COLUMNS */
+
+create function get_coltyp(charstring fname,charstring ont) -> <charstring typ, charstring col>
+as
+   select substring(v,4,char_length(v)),substring(s,char_length(ont)+1+char_length(db_name()),char_length(s))
+   from charstring s, charstring p,charstring v, integer i  
+	where parseRDF(fname)=<s,p,v,i> and like(p, "*#range");
+
+
+/* FOR GETTING TABLE INFO WITH COLUMNS,TYPES AND TABLE NAME */
+
+create function col_info(charstring fname,charstring ont) -> <charstring typ, charstring col,charstring table>
+as
+  select typ,col,table
+   from charstring typ, charstring col,charstring table
+   where <typ,col> = get_coltyp(fname,ont) and <col,table> = get_colntable(fname,ont); 
+
+
+
+
+create function get_colinfo(charstring fname,charstring ont,charstring t_name) -> <charstring typ, charstring col>
+as
+select typ,col from charstring typ, charstring col
+where <typ,col,t_name> = unique(col_info(fname,ont));
+
+/*
+create function get_p1key(charstring fname1,charstring fname2,charstring ont, charstring table)->charstring col
+as
+  select col 
+	from charstring sub, charstring pred,charstring obj, integer i, charstring col,charstring table
+	where parserdf(fname1)=<sub,pred,obj,i> and <col,table> = get_colntable(fname2,ont) and like(sub,"*"+table+"*"+"*"+col+"*") and like(pred,"*type");
+*/
+
+/*
+create function get_pkey(charstring fname1,charstring fname2,charstring ont, charstring table)->charstring col
+as
+  select col 
+  from  charstring col
+  where <col,table> = get_colntable(fname2,ont) and like(get_classURIs(fname1,ont),"*"+table+"*"+"*"+col+"*");
+*/
+
+create function printxmll(bag x)->boolean
+as begin 
+     for each object o where o in x print(o);
+ end; 
+
+create function updt(charstring str)-> charstring as stored;
+
+
+/* GENERATING QUERY TO CREATE TABLE */
+create function string_tablecolumns(charstring t_name) -> charstring as stored;
+create function generate_string_tablecolumns(charstring fname1,charstring fname2,charstring ont, charstring t_name) -> charstring
+as begin
+declare charstring temp ;	
+ set temp ="";
+
+for each charstring col_name, charstring typ,charstring primary_key where <typ,col_name> =get_colinfo(fname2,ont,t_name) and primary_key = unique(extract_tablepkey(fname1,ont,t_name))
+    if primary_key = col_name then set temp = "primary key (" + primary_key + ")" + ","+ temp;    
+for each charstring col_name, charstring typ,charstring primary_key where <typ,col_name> =get_colinfo(fname2,ont,t_name) and primary_key = unique(extract_tablepkey(fname1,ont,t_name))
+   begin
+      if typ = "string" and col_name != primary_key then set temp = col_name + " " +  "VARCHAR(200)" + "," + temp
+	else if typ = "integer" and col_name != primary_key  then set temp = col_name + " " +  "INTEGER" + "," + temp
+      else if typ = "string" and col_name = primary_key then set temp = col_name + " " +  "VARCHAR(200) not null" + "," + temp
+	else if typ = "integer" and col_name = primary_key  then set temp = col_name + " " +  "INTEGER not null" + "," + temp
+      else if typ = "date" and col_name != primary_key then set temp = col_name + " " +  "DATE" + "," + temp
+	else if typ = "float" and col_name != primary_key  then set temp = col_name + " " +  "FLOAT" + "," + temp
+      else if typ = "date" and col_name = primary_key then set temp = col_name + " " +  "DATE not null" + "," + temp
+	else if typ = "float" and col_name = primary_key  then set temp = col_name + " " +  "FLOAT not null" + "," + temp;
+      
+end;
+  set  string_tablecolumns(t_name) = substring(temp, 0 , char_length(temp)-2);
+end;
+
+/* CREATING  TABLE*/
+create function table_query(Charstring t_name)->Charstring as stored;
+create function create_table_query(Charstring t_name)->Charstring
+as begin 
+  
+  set table_query(t_name)= "create table " + t_name + "(" + string_tablecolumns(t_name)+ ")"+ ";";  
+ end;
+
+
+/* GENERATING QUERY'S TO CREATE ALL TABLES */
+
+create function generate_create_table_query(jdbc jd,charstring fname1,charstring fname2,charstring t_name, charstring ont) -> charstring
+as begin
+	
+		generate_string_tablecolumns(fname1,fname2,ont,t_name); 
+ 		create_table_query(t_name);
+		sqlu(jd,table_query(t_name));
+		
+  	
+end;	
+ /*
+create function table_fromclass_URIs(Charstring ont,Charstring classURI)->Charstring table
+as
+select substring(classURI,char_length(ont+db_name())+1);
+*/
+
+create function string_updatetable(charstring t_name) -> charstring as stored;
+create function update_string_updatetable(charstring t_name) -> charstring as begin		
+set string_updatetable(t_name)="";
+end;
+
+create function generate_string_updatetable(charstring fname1, charstring fname2, charstring ont, charstring t_name,charstring classuri) -> charstring
+as begin
+declare charstring insert1,charstring insert2,charstring insert3,charstring insert4,charstring val1,charstring val2,charstring val3;
+set insert1 ="insert into " + t_name + "(" ;
+set insert2 = "";
+set insert3 = "";
+set insert4 = "";
+set val1 = "values (";
+set val2 = "";
+set val3 = "";
+for each charstring col_name, charstring typ,charstring value where  <typ,col_name> = get_colinfo(fname2,ont,t_name) and <col_name,value> = get_valueforclassuri(fname1,ont,classuri)
+  begin
+   set insert2 = col_name + ","+ insert2;
+   if typ = "integer" then set val2 = value + ","+ val2 
+   else if typ = "float" then set val2 = value + ","+ val2 	
+   else if typ = "string" then set val2 = "'" + value + "'" + ","+val2 
+   else if typ = "date" then set val2 = "'"+ value + "'"+","+ val2; 
+  end;
+set insert2 = substring(insert2,0,char_length(insert2)-2) + ") ";
+set val2 = substring(val2,0,char_length(val2)-2) + ");";
+set insert3 = insert1+insert2;
+set val3 = val1+val2;
+set string_updatetable(t_name) = insert3+val3+string_updatetable(t_name) ;
+end;
+
+
+create function updatetable(jdbc jd,charstring fname1,charstring fname2,charstring t_name,charstring ont) -> charstring
+as begin
+	for each charstring classuri where classuri = get_classURIs(fname1,ont) and like(classuri,"*"+t_name+"*")
+		begin
+			update_string_updatetable(t_name);
+	  		generate_string_updatetable(fname1,fname2,ont,t_name,classuri);
+		       sqlu(jd,string_updatetable(t_name));
+	  	end;	
+    end;
+
+

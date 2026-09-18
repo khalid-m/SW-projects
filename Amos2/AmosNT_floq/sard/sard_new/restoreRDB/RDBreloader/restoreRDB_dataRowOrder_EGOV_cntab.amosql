@@ -1,0 +1,495 @@
+create function dropProceduresRowOrder(Charstring filename1)
+->Charstring
+/*Generates DROP PROCEDURE Statements to drop all the procedure in database*/
+as
+begin
+	declare Charstring proc_name1,Charstring proc_name2;
+	for each Charstring ch where ret_tableName(filename1)=ch
+	begin
+		set proc_name1="SP_"+ch;
+		set proc_name2="SP_FK_"+ch;
+		result "DROP PROCEDURE IF EXISTS "+ proc_name1+";";
+		result "DROP PROCEDURE IF EXISTS "+ proc_name2+";";
+	end;
+end;
+
+create function procedureRowOrder1_MOD(Charstring filename1)
+->Charstring
+as
+begin
+	declare Charstring a,Charstring b,Charstring c,Vector pkname,Charstring t1, Charstring t2,Charstring t3,Charstring t4,Charstring pk1,Integer z,Vector cn,Vector ct,Vector cs;
+	set t1="";
+	set t2="";
+	set t3="";
+	set t4="";
+	set cn={};
+	set ct={};
+	set cs={};
+	set pkname={};
+	set pk1="";
+	set z=0;
+	for each Charstring tableURI,Charstring tname where ret_tableNameURIs(filename1)=<tableURI,tname>
+	begin
+		for each Charstring ch1,Charstring ch2 where ret_pkNameURIs(filename1,tableURI)=<ch1,ch2> 
+		begin 
+			set pkname=concat(pkname,{ch2});
+			set pk1=pk1+" and "+ch2+"=C_"+ch2;
+		end;
+		set pk1=substring(pk1,4,char_length(pk1));
+		for each Charstring col,Charstring colURI where ret_columnNameURIs(filename1,tableURI,tname)=<colURI,col>
+		begin
+			set cn=concat(cn,{col});
+			set ct=concat(ct,{ret_Coldatatype(filename1,colURI)});
+			if(ret_ColSize(filename1,colURI)!="") then
+				set cs=concat(cs,{ret_ColSize(filename1,colURI)})
+			else
+				set cs=concat(cs,{""});
+		end;				
+			
+			for each integer i where i in iota(1,dim(cn))
+		begin 
+			set a=cn[i-1];
+			set b=ct[i-1];
+			set c=cs[i-1];
+			if (c!="") then
+				set t1=t1+",IN C_"+a+" "+b+"("+c+")"
+			else
+				set t1=t1+",IN C_"+a+" "+b;
+			set t2=t2+","+a;
+			set t3=t3+","+"C_"+a;
+			if(cn[i-1] in pkname) then 
+				set z=1
+			else 
+				set t4=t4+"UPDATE "+tname+" SET "+a+"=C_"+a+" WHERE "+pk1+";";
+		end;
+		set t1=substring(t1,1,char_length(t1));
+		set t2=substring(t2,1,char_length(t2));
+		set t3=substring(t3,1,char_length(t3));
+		set t4=substring(t4,0,char_length(t4));
+	
+		if(t4!="") then
+			result "CREATE PROCEDURE SP_"+tname+"("+t1+")
+				IF EXISTS(SELECT * FROM "+tname+" WHERE "+pk1+") THEN
+					"+t4+"
+				ELSE 
+					INSERT INTO "+tname+"("+t2+") VALUES ("+t3+");
+				END IF;"
+		else
+			result "CREATE PROCEDURE SP_"+tname+"("+t1+")
+				IF NOT EXISTS(SELECT * FROM "+tname+" WHERE "+pk1+") THEN
+					INSERT INTO "+tname+"("+t2+") VALUES ("+t3+");
+				END IF;";
+	
+		set cn={};
+		set cs={};
+		set ct={};
+		set pkname={};
+		set t1="";
+		set t2="";
+		set t3="";
+		set t4="";
+		set pk1="";
+	end;
+end;
+
+
+
+create function procedureRowOrder2(Charstring filename1)
+->Charstring
+as
+/* Also Generates CREATE PROCEDURE statements for the table corresponding to the foreign key.*/
+begin
+	declare Charstring tname,Vector pkname,Vector pktype,Vector pksize,Charstring pk1,Charstring pk2,Charstring pk3,Charstring pk4,Charstring a,Charstring b,Charstring c;
+	set pk1="";
+	set pk2="";
+	set pk3="";
+	set pk4="";
+	set pkname={};
+	set pktype={};
+	set pksize={};
+	for each Charstring tableURI,Charstring tname where ret_tableNameURIs(filename1)=<tableURI,tname>
+	begin
+		for each Charstring pkURI,Charstring pk where ret_pknameURIs(filename1,tableURI)=<pkURI,pk> 
+		begin 
+			set pkname=concat(pkname,{pk});
+			set pktype=concat(pktype,{ret_Coldatatype(filename1,pkURI)});
+			if(ret_ColSize(filename1,pkURI)!="") then
+				set pksize=concat(pksize,{ret_ColSize(filename1,pkURI)})
+			else
+				set pksize=concat(pksize,{""});
+		end;
+		
+		for each Integer i where i in iota(1,dim(pkname))
+		begin
+			set a=pkname[i-1];
+			set b=pktype[i-1];
+			set c=pksize[i-1];
+			set pk1=pk1+" and "+a+"=C_"+a;
+			if c!="" then 
+				set pk2=pk2+","+"IN C_"+a+" "+b+"("+c+")"
+			else
+				set pk2=pk2+","+"IN C_"+a+" "+b;
+
+			set pk3=pk3+","+a;
+			set pk4=pk4+",C_"+a;
+		end;
+		set pk1=substring(pk1,4,char_length(pk1));
+		set pk2=substring(pk2,1,char_length(pk2));
+		set pk3=substring(pk3,1,char_length(pk3));
+		set pk4=substring(pk4,1,char_length(pk4));
+	
+	
+		result "CREATE PROCEDURE SP_FK_"+tname+"("+pk2+")
+			IF NOT EXISTS(SELECT * FROM "+tname+" WHERE "+pk1+") THEN
+				INSERT INTO "+tname+"("+pk3+") VALUES ("+pk4+");
+			END IF;";
+	
+		set pkname={};
+		set pktype={};
+		set pksize={};
+		set pk1="";
+		set pk2="";
+		set pk3="";
+		set pk4="";
+	end;
+end;
+
+
+create function procedureRowOrder(Charstring filename1)
+->Charstring
+as
+begin
+	result procedureRowOrder1_MOD(filename1);
+	result procedureRowOrder2(filename1);
+end;
+/********************NEWEST*********************************************/
+
+create function get_pkValRow(Charstring filename1,Vector v1,Vector v2,Charstring t)
+->(Vector,Vector)
+as
+/*Retreives respective vector of primary key name and its corresponding values.*/
+begin
+	declare Vector pkname,Vector pktype,Vector pkVal,Vector t3,Vector t4,
+		Charstring a,Charstring b,Charstring pk;
+	set pkname={};
+	set pktype={};
+	set pkVal={};
+	set t3={};
+	set t4={};
+	for each Charstring ch where ret_pkNamefromRowID(filename1,t)=ch 
+	begin 
+		for each Integer j where j in iota(1,dim(v1)) 
+    		begin   
+			if(ch=v1[j-1]) then
+			begin	
+     				set pkname=concat(pkname,{ch});
+     				set pktype=concat(pktype,{v2[j-1]});
+			end; 
+   		end;	
+	end;
+	/*set pk=substring(str_exp(clearURI(t,baseURI),"/"),1,char_length(str_exp(clearURI(t,baseURI),"/")));*/
+	set pk=ret_pkVal(filename1,t);
+	set pkVal=str_exp3(pk,"_");
+	/*set pkVal=ret_pkVal(filename1,t);*/
+	for each integer i where i in iota(1,dim(pkname))
+	begin
+		set a=pkname[i-1];	
+		set t3=concat(t3,{a});
+		set b=pkVal[i-1];
+		if(pktype[i-1]='varchar') then  				
+			set t4=concat(t4,{"'"+b+"'"})
+		else if(pktype[i-1]='datetime') then  				
+			set t4=concat(t4,{"'"+b+"'"})
+		else 
+			set t4=concat(t4,{b});
+	end;	
+	result (t3,t4);
+end;
+
+create function get_fkValRow(Charstring filename1,Charstring v,Charstring p,Vector v2,Vector v4,Vector v1)
+->(Vector,Vector,Charstring)
+as
+/*Retrieves respective vector of foreign key name and its corresponding values.*/
+begin
+	declare Vector fkname,Vector fktype,Vector fkVal,Vector f1,Vector f2,
+		Charstring a,Charstring b,Charstring c1,Charstring c2,Charstring fk1,Charstring fk2,Charstring fkV,Charstring fkN;
+	set fkN="";
+	set fkV="";
+	set fkName={};
+	set fkType={};	
+	set fkType={};	
+	set f1={};	
+	set f2={};	
+	set fk1=ret_pkVal(filename1,v);
+	set fk2=substring(fk1,0,char_length(fk1));
+	set fkVal=str_exp3(fk2,"_");
+	for each Charstring ch where ret_fkMap(filename1,p)=ch
+	begin
+		for each Integer i where i in iota(1,dim(v4))
+		begin	
+			if(ch=v4[i-1]) then
+			begin
+				set c1=v1[i-1];
+				set c2=v2[i-1];
+			end;
+		end;
+		set fkname=concat(fkname,{c1});
+		set fktype=concat(fktype,{c2});
+	end;
+	for each integer i where i in iota(1,dim(fkname))
+	begin 
+		set a=fkname[i-1];
+		set f1=concat(f1,{a});
+                set fkN=a+","+fkN;
+		set b=fkVal[dim(fkname)-i];
+		if(fktype[i-1]='varchar') then
+		begin 
+			set fkV=fkV+","+"'"+b+"'";
+			set f2=concat(f2,{"'"+b+"'"});
+		end
+		else if(fktype[i-1]='datetime') then
+		begin 
+			set fkV="'"+b+"'"+","+fkV;
+			set f2=concat(f2,{"'"+b+"'"});
+		end
+		else
+		begin 
+			set fkV=b+","+fkV;
+	                set f2=concat(f2,{b});
+		end;
+	end;
+	result (f1,f2,fkV);
+end;	
+
+
+create function sorting(Vector cn,Vector t3,Vector t4)
+->Charstring
+as
+/*Sorting the values in the vector according to the original column order.*/
+begin
+	declare Charstring col1,Charstring c;
+	set col1="";
+	for each integer i where i in iota(1,dim(cn))
+	begin
+		if(cn[i-1] in t3) then 
+		begin 
+			for each integer j where j in iota(1,dim(t3))
+			begin
+				if cn[i-1]=t3[j-1] then 
+				begin
+					set c=t4[j-1];
+					set col1=col1+","+c;
+					/*set cv=concat(cv,{t4[j-1]});*/
+				end;
+			end;
+		end
+		else 
+		begin
+			set col1=col1+","+"NULL";
+			/*set cv=concat(cv,{""});*/
+		end;
+	end;
+	result col1;
+end;
+
+
+
+create function CallProc_RowOrder(Charstring filename1,Charstring filename2)
+->Charstring
+/*Generates CALL PROCEDURE statements to call the corresponding procedures to insert data ,given in Row order in NT, into the table.*/
+
+as
+begin
+	declare Charstring tname1,Charstring tURI,Charstring cp1,Integer flg,Charstring pp1,Charstring c,Charstring d, Charstring dtype,Charstring col1,Vector cn,Vector cv,Vector ct,Vector cnt,Vector cnt1,Vector cnt2,Vector cdt1,Vector cdt2,
+		Vector v1,Vector tab1,Vector tab2, Vector v2,Vector v3,Vector v4,Vector t3,Vector t4,Vector fk,
+		Charstring z,Charstring tname,Charstring t,Charstring fkV,Charstring c1,Charstring c2;
+	set t="";
+	set c1="";
+	set c2="";
+	set col1="";
+	set t3={};
+	set t4={};
+	set v1={};
+	set v2={};
+	set v3={};
+	set v4={};
+	set cnt={};
+	set cnt1={};
+	set cnt2={};
+	set cdt1={};
+	set cdt2={};
+	set cv={};
+	set cn={};
+	set ct={};
+	set fk={};
+	set flg=0;
+	set tname="";
+	for each Charstring ch1,Charstring ch2 where ret_tableNameURIs(filename1)=<ch1,ch2>
+	begin 
+		set tab1=concat(tab1,{ch1});
+		set tab2=concat(tab2,{ch2});
+		for each Charstring ch where ret_fkInNt(filename1,ch1)=ch
+		begin
+			set fk=concat(fk,{ch});
+		end;
+		for each Charstring colURI,Charstring col where ret_columnNameURIs(filename1,ch1,ch2)=<colURI,col>
+		begin 
+      			set v1=concat(v1,{col});
+			set dtype=ret_colDatatype(filename1,colURI);
+			set v2=concat(v2,{dtype});
+			if (ret_colSize(filename1,colURI)!="") then
+				set v3=concat(v3,{ret_colSize(filename1,colURI)})
+			else
+				set v3=concat(v3,{""});
+			set v4=concat(v4,{colURI}); 
+		end;
+	end;
+	
+	for each charstring ch where ret_tableURIs_CT(filename1)=ch
+	/*Retrieves all connecting tables from the NT file and stores in a vector.*/
+	begin
+		set cnt=concat(cnt,{ch});
+	end;
+
+	for each charstring s, charstring p,charstring v, Charstring i1 where readtuples1(filename2)=<s,p,v,i1>
+	begin
+		if (p in cnt) then
+		/* Generatig CALL Procedure statements for connecting tables.*/
+		begin
+			for each Charstring pkURI where ret_pkURIfromRowID(filename1,v)=pkURI
+			begin
+				for each integer i where i in iota(1,dim(v4))
+				begin 
+					if v4[i-1]=pkURI then
+						set cdt1=v2[i-1];
+				end;
+			end;
+			for each Charstring pkURI where ret_pkURIfromRowID(filename1,s)=pkURI
+			begin
+				for each integer i where i in iota(1,dim(v4))
+				begin 
+					if v4[i-1]=pkURI then
+						set cdt2=v2[i-1];
+				end;
+			end;
+			set cnt1=str_exp3(ret_pkVal(filename1,v),'_');
+			set cnt2=str_exp3(ret_pkVal(filename1,s),'_');
+			for each integer i where i in iota(1,dim(cnt1))
+			begin
+				if (cnt1[i-1]!="" and cdt1[i-1]="int" ) then
+					set c1=c1+","+cnt1[i-1]
+				else
+					set c1=c1+","+"'"+cnt1[i-1]+"'";
+
+			end;
+			for each integer i where i in iota(1,dim(cnt2))
+			begin
+				if (cnt2[i-1]!="" and cdt2[i-1]="int" ) then
+					set c2=c2+","+cnt2[i-1]
+				else
+					set c2=c2+","+"'"+cnt2[i-1]+"'";
+			end;
+			for each Integer i where i in iota(1,dim(tab1))
+			begin
+				if tab1[i-1]=p then
+					set pp1=tab2[i-1];   
+			end;
+			result "CALL SP_FK_"+ret_tableNamefromRowID(filename1,v)+"("+substring(c1,1,char_length(c1))+");";
+			result "CALL SP_FK_"+ret_tableNamefromRowID(filename1,s)+"("+substring(c2,1,char_length(c2))+");";
+			result "CALL SP_"+pp1+"("+substring(c1,1,char_length(c1))+","+substring(c2,1,char_length(c2))+");";	
+			set cnt1={};
+			set cnt2={};
+			set c1="";
+			set c2="";
+		end
+		else
+		/* Generatig CALL Procedure statements for regular tables.*/
+		begin
+			if(s!=t) then
+	    		begin 		
+				if (t!="")then
+				begin 	
+					for each Vector ch1, Vector ch2 where get_pkValRow(filename1,v1,v2,t)=<ch1,ch2>
+					begin
+						set t3=concat(t3,ch1);
+						set t4=concat(t4,ch2);
+					end;		
+					set col1=sorting(cn,t3,t4);
+					result "CALL SP_"+tname+"("+substring(col1,1,char_length(col1))+");";	
+				end;
+				set t3={};
+				set t4={};
+				set t=s;
+				set tname1=ret_tableNamefromRowID(filename1,t);
+				set tURI=ret_tableURIfromRowID(filename1,t);
+				if(tname!=tname1) then 
+				begin 
+					set cn={};
+					set ct={};
+					for each Charstring col,Charstring colURI where ret_columnNameURIs(filename1,tURI,tname1)=<colURI,col>
+					begin
+						set cn=concat(cn,{col});
+						for each Integer i where i in iota(1,dim(v4))
+						begin
+							if(colURI=v4[i-1]) then
+								set d=v2[i-1];
+						end;
+						set ct=concat(ct,{d});
+					end;
+				end; 	
+	 			set tname=tname1;
+			end;		
+			if(v!="" and p!="<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>") then
+			begin 
+				for each Integer i where i in iota(1,dim(fk))
+				begin
+					if fk[i-1]=p then 
+						set flg=1;
+				end;
+				for each Integer i where i in iota(1,dim(v4))
+				begin
+					if v4[i-1]=p then
+						set cp1=v1[i-1];   
+				end;
+				if flg!=1 then
+				begin 
+					set t3=concat(t3,{cp1});	
+					if(ret_colDatatype(filename1,p)='varchar')then 
+					begin
+						set v="'"+v+"'";
+                                        	set t4=concat(t4,{v});
+					end
+					else if(ret_colDatatype(filename1,p)='datetime')then
+					begin
+						set v="'"+v+"'";
+                                       		set t4=concat(t4,{v});
+					end
+					else
+                                        	set t4=concat(t4,{v});
+					end
+				else
+				begin	
+					for each Vector ch1, Vector ch2,Charstring ch3 where get_fkValRow(filename1,v,p,v2,v4,v1)=<ch1,ch2,ch3>
+					begin	
+						set fkV=ch3;
+						set t3=concat(t3,ch1);
+						set t4=concat(t4,ch2);
+					end;
+					result "CALL SP_FK_"+ret_tableNamefromRowID(filename1,v)+"("+substring(fkV,1,char_length(fkV))+");";
+				end;set flg=0;
+			end;
+		end;
+	end;
+	
+	for each Vector ch1, Vector ch2 where get_pkValRow(filename1,v1,v2,t)=<ch1,ch2>
+	begin
+		set t3=concat(t3,ch1);
+		set t4=concat(t4,ch2);
+	end;
+	set col1=sorting(cn,t3,t4);
+	result "CALL SP_"+tname+"("+substring(col1,1,char_length(col1))+");";	
+end;
+
+
+
+

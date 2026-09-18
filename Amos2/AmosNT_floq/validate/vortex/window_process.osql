@@ -1,0 +1,84 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Cheng Xu, UDBL
+ * $RCSfile: window_process.osql,v $
+ *
+ * Description: window based processing
+ *
+ ****************************************************************************
+ * $Log: window_process.osql,v $
+ * Revision 1.1  2011/11/30 21:27:02  chexu484
+ * operators on window and drilling model
+ *
+ *
+ ****************************************************************************/
+
+
+/* agv over the window where accessor function takes other args such as index */
+create function window_average(Window w, Function accessor, Vector arg) -> Number
+  as avg(select value
+     	 from Object v, Number value
+	 where {value} = apply(accessor, concat({v}, arg))
+	 and v in w); 
+
+/* agv over the window */
+create function window_average(Window w, Function accessor) -> Number
+  as avg(select value
+     	 from Object v, Number value
+	 where {value} = apply(accessor, {v})
+	 and v in w); 
+
+
+/* the following are vector oriented ordinary least squares algorithm */
+
+create function sum_of_squares(Bag of Number bn) -> Number
+  as sum(select power(n - navg, 2)
+     	 from Number n, Number navg
+	 where n in bn and navg = avg(bn)); 
+
+create function sum_of_cross_products(Bag of Vector xy) -> Number
+  as sum(select (x - xavg) * (y - yavg)
+     	 from Number x, Number y, Number xavg, Number yavg
+	 where {x, y} in xy
+	 and xavg = avg(select xx from Number xx, Number yy where {xx, yy} in xy)
+	 and yavg = avg(select yy from Number xx, Number yy where {xx, yy} in xy));
+
+
+/* ifsome execution order */
+create function ols_a(Bag of Vector xy) -> Number
+  as begin
+       declare Number sxy, Number sxx, Bag of Number bx;
+       set bx = (select xx from Number xx, Number yy where {xx, yy} in xy);
+       set sxy = sum_of_cross_products(xy);
+       set sxx = sum_of_squares(bx);
+       if sxx = 0 then return 0
+       else return sxy / sxx;
+     end;
+/*
+  as select ifsome(sum_of_squares(by) > 0,
+     	    	   sum_of_cross_products(xy) / sum_of_squares(by),
+		   0)
+     from Bag of Number by
+     where by = (select yy from Number xx, Number yy where (xx, yy) in xy);       
+*/    
+
+create function ols_b(Bag of Vector xy) -> Number
+  as select yavg - ols_a(xy) * xavg
+     from Number xavg, Number yavg
+     where xavg = avg(select xx from Number xx, Number yy where {xx, yy} in xy)
+     and yavg = avg(select yy from Number xx, Number yy where {xx, yy} in xy);        
+
+create function ols_a_of_window_v(Window w) -> Number a
+  as select a
+  from Bag of Vector xy
+  where xy in w
+  and a = ols_a(xy);  
+
+create function ols_line_of_window(Window w) -> Bag of Vector
+  as select {i, a * i + b}
+  from Bag of Vector xy, Number a, Number b, Number i
+  where xy in w
+  and a = ols_a(xy)
+  and b = ols_b(xy)
+  and i in (select v[0] from Vector v where v in xy);

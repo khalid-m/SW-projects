@@ -1,0 +1,143 @@
+create function parsubst(Charstring str, Vector par)->Charstring
+as foreign 'parsubst--+';
+
+
+
+lisp;
+
+(defun parsubst--+ (fno str par r)
+  (let ((i 0)
+	(newStr "")
+	(strCopy str)
+	pos
+	)  
+    (while (< i (length par)) 
+      (setq pos (string-pos strCopy '?))
+      (cond ((stringp (aref par i)) 
+	     (setq newStr (concat newStr (substring 0 (- pos 1) strCopy) "'" (aref par i) "'")))
+	    (t
+	     (setq newStr (concat newStr (substring 0 (- pos 1) strCopy) (aref par i)))
+	     ) 
+	    )
+      (setq strCopy (substring (+ pos 1) (- (length strCopy) 1) strCopy))
+      (1++ i))  
+    (osql-result str par newStr))
+  )
+
+
+
+
+:osql
+
+
+create function gql_results_cache(Charstring queryString)
+       ->Bag of Vector as stored;
+
+
+
+create function gql2(Charstring dsn, Charstring query, Vector params) ->
+                 Bag of Vector v as
+  begin
+	declare Charstring queryString, Vector of Vector queryResults;
+	set queryString = parsubst(query, params);
+        if notany(gql_results_cache(queryString)) 
+	then 
+	begin      
+	   set queryResults = vectorof(gql(dsn,query,params));
+	    /* while gql function return nothing, add {} for query result */	
+	    if dim(queryResults)=0 then	     
+		begin
+             	add gql_results_cache(queryString) = {};
+		end
+	    /* while gql function return something */
+	    else	     
+		begin
+		for each Vector v
+                where v in queryResults
+	     	add gql_results_cache(queryString) = v;
+		end
+	end;   
+	begin
+        for each Vector v
+              where v in gql_results_cache(queryString)
+             return v;
+	end;
+   end;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+create function gql2(Charstring dsn, Charstring query, Vector params) ->
+                 Bag of Vector v as
+  begin
+	declare Charstring queryString;
+	set queryString = parsubst(query, params);
+        if notany(gql_results_cache(queryString)) 
+	then 
+	begin      
+           for each original Vector v
+               where v in gql(dsn,query,params)
+	    begin
+	    if notany(v) then	     
+		begin
+             	add gql_results_cache(queryString) = {};
+		end
+	    else	     
+		begin
+	     	add gql_results_cache(queryString) = v;
+		end
+	    end	
+	end;   
+	begin
+        for each Vector v
+              where v in gql_results_cache(queryString)
+             result v;
+	end;
+   end;
+*/
+
+
+
+/*
+create function gql_results_cache(Charstring dsn, Charstring query, Vector params)
+       ->Bag of Vector as stored;
+
+
+create function gql2(Charstring dsn, Charstring query, Vector params)->
+    Bag of Vector as
+  foreign "JAVA:bigtable.BigTableInterface/gql";
+
+create function gql_results(Charstring dsn, Charstring query, Vector params) ->
+                 Bag of Vector v as
+  begin
+        if notany(gql_results_cache(dsn,query,params)) then        
+           for each original Vector v
+               where v in gql2(dsn,query,params)
+             add gql_results_cache(dsn,query,params) = v;
+        for each Vector v
+              where v in gql_results_cache(dsn,query,params)
+             result v;
+   end;
+
+
+create function checkNil(object)->boolean
+as foreign 'checkNil-';
+
+
+(defun checkNil- (fno x)
+	(if (equal (mkstring x) "nil")   (help)
+	    (osql-result x)))	
+
+*/

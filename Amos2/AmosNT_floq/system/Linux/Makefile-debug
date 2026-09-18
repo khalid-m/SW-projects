@@ -1,0 +1,40 @@
+# If no IP communication is desired:
+# (i) set env variable NOCOMM to 1.
+# (ii) define NOCOMM to C preprocessor
+AMOSHOME=../..
+SRC= aggops.c amosfns.c winagg.c cinterf.c init.c event_manager.c text_fns.c \
+   text_match.c comm.c math_fns.c compl_fns.c \
+   commands.c getopt.c os_fns.c SQLParse.c sql_parser_tab.c sql_lexyy.c uri.c \
+   lispfns.c filefns.c
+
+BINS=eval.o extfns.o print.o read.o storage.o \
+   misc.o olog.o rel.o hist.o parser_tab.o lexyy.o linh.o htbl.o \
+   oid.o files.o systemfns.o typecheck.o top.o \
+   fncall.o index.o btree.o libyywrap.o unix_socket.o a_time.o
+OBJDIR=./$(HOSTTYPE)
+CFLAGS =  -I$(AMOSHOME)/C -I$(AMOSHOME)/system/include -I$(AMOSHOME)/system/C \
+          -p -g -DUNIX=1 -DLINUX=1
+
+BINDIR=$(AMOSHOME)/bin
+CC = gcc
+OBJS = $(SRC:%.c=$(OBJDIR)/%.o)
+
+all: $(BINDIR)/amos2 $(BINDIR)/amos2.dmp
+
+../C/sql_parser_tab.c: ../C/sql_parser.y
+	cd ../C && bison -d -osql_parser_tab.c -p SQL sql_parser.y
+	cd ../C && flex -osql_lexyy.c  -PSQL -i sql_lexer.l
+
+
+$(BINDIR)/libamos.a: ../C/sql_parser_tab.c $(HOSTTYPE)/*.o ../C/*.c
+	cd ../C && $(CC) $(CFLAGS) -c $(SRC)
+	cp ../C/*.o $(OBJDIR)
+	cd $(OBJDIR) && ar rc ../$(BINDIR)/libamos.a *.o
+
+$(BINDIR)/amos2: $(BINDIR)/libamos.a $(AMOSHOME)/C/main.o 
+	$(CC) -p -g -o $(BINDIR)/amos2 $(AMOSHOME)/C/main.c $(BINDIR)/libamos.a -lm -lnsl  
+
+$(BINDIR)/amos2.dmp: $(BINDIR)/amos2 
+	$(BINDIR)/amos2 -i../../lsp -o "save '$(BINDIR)/amos2.dmp';quit;"
+
+

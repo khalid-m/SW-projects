@@ -1,0 +1,88 @@
+/* The script below is going to use a function written in java as a foreign function for amos II. This function is used to cluster on the data 
+ * stream based on Denstream algorithm. The result including snapshot number(or "windowID"), the cluster label(integer), the time(real), 
+ *the coordinators of micro cluster centers and average radius.
+ */
+create function AmosDenstream(charstring initialData, charstring inputData, real beta , real u, real epsilon, real lamda, integer dim, 
+real timeInterval,integer initialOrNot, integer overlapping)->bag of <integer windowID, real time, integer macroID, vector microCluster> 
+as foreign "JAVA:DenstreamMiner/javaDenstream";
+
+/*stored the information of the microClusters, including the spatial position, time and cluster label*/
+create function microCluster(integer windowID,integer macroID,charstring streamName)->bag of vector as stored;
+
+/*stored the information of time nd cluster label*/
+create function window(integer windowID, charstring streamName)->real time as stored;
+
+/*put each micro-cluster into database*/
+create function addMicroClusters(bag of <integer,real,integer, vector> microClusters, charstring streamName)->boolean
+as
+    for each original Integer windowID, Vector mC,real time, integer macroID
+     where <windowID, time,macroID, mC> in microClusters
+	begin
+     add microCluster(windowID,macroID,streamName) =  mC; 
+	 if (count(select time
+	      where
+		    time in window(windowID,streamName))=0) 
+	 then
+	   add window(windowID,streamName) = time
+    end;
+/*create index for each micro-cluster*/
+/*create_index('microCluster', 'windowID', 'mbtree', 'multiple');*/
+/*create_index('window', 'windowID', 'mbtree', 'unique');*/	 
+
+/*load the micro-clusters into database*/
+create function loadMicroClusters(charstring initialFile, charstring dataFile, real beta, real u, real epsilon, real lamda, integer dim, real timeInterval,integer initialOrNot, integer overlapping)->boolean 
+as addMicroClusters(AmosDenstream(initialFile,dataFile, beta, u, epsilon, lamda, dim, timeInterval, initialOrNot,overlapping),dataFile);
+
+
+
+
+/************************application part********************************/
+/*At stream x, how many clusters at window n*/
+create function numOfclusters(integer windowID,charstring streamName)->integer num
+as
+   count(select distinct macroID
+   from integer macroID, Vector pos
+   where 
+        pos in microCluster(windowID,macroID,streamName));
+		
+/*At stream x, how many microclusters at window n*/		
+create function numOfMicroclusters(integer windowID,charstring streamName)->integer num
+as 
+    count(select macroID
+    from integer macroID, Vector pos
+    where 
+        pos in microCluster(windowID,macroID,streamName));
+
+/*At stream x which windows point{x1,x2,...} is in*/
+create function locateDatapoint(Vector of number datapoint,charstring streamName)->bag of <integer windowID, integer macroID>
+as
+    select windowID, macroID
+    from  vector of number pos, real radius
+     where	
+		 {pos,radius} in microCluster(windowID,macroID,streamName)
+		and euclid(pos, datapoint)<=radius;
+
+/*At stream x, which windows have maximum number of macro clusters*/		
+create function maxNumCluWindow(charstring streamName)->bag of vector
+as
+  select distinct{windowID, time}
+  from integer windowID, real time
+  where 
+      time=window(windowID,streamName)
+      and numOfclusters(windowID,streamName) = maxagg(select numOfclusters(wID,streamName)
+	  from integer wID,real t
+	  where 
+	   t=window(wID,streamName));
+/*At stream x, which windows in a time range (x1,x2)*/
+create function numCluAtRange(real startTime, real endTime,charstring streamName)-> bag of <vector, integer>
+as
+    groupby((select {windowID, t}
+       from  integer windowID, real t
+       where
+          t>=startTime
+	      and t<=endTime
+	      and t in window(windowID,streamName))
+	      ,#'count');
+
+
+/*loadMicroClusters('initializing.txt','systhesis_data.txt',0.5,10,16,0.25,2,1,0,1);*/		   

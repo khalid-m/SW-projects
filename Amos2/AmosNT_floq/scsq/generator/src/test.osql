@@ -1,0 +1,242 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Erik Zeitler, UDBL
+ * $RCSfile: test.osql,v $
+ * $Revision: 1.23 $ $Date: 2010/10/27 15:24:48 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Generate input for multiple Linear Road xways
+ *
+ ****************************************************************************
+ * $Log: test.osql,v $
+ * Revision 1.23  2010/10/27 15:24:48  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.22  2010/06/13 14:14:53  zeitler
+ * enabled search in stored function opbin()->numarray
+ *
+ * Revision 1.21  2010/05/26 16:58:01  zeitler
+ * ezgen test is independent of RNG
+ *
+ * Revision 1.20  2010/02/11 17:42:26  zeitler
+ * initgen()
+ *
+ * Revision 1.19  2010/02/11 14:02:42  zeitler
+ * simplifications
+ *
+ * Revision 1.18  2009/12/16 12:53:31  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.17  2009/07/23 16:00:09  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.16  2009/05/12 17:49:27  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.15  2009/05/08 15:44:45  zeitler
+ * no need for trailing "/" in AMOS_HOME
+ *
+ * Revision 1.14  2009/02/26 20:50:01  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.13  2009/02/26 09:31:06  zeitler
+ * Bug fixed?
+ *
+ * Revision 1.12  2009/02/25 21:50:59  zeitler
+ * Numarray used in ezgen
+ *
+ * Revision 1.11  2009/02/09 13:08:18  zeitler
+ * index on vids_out
+ *
+ * Revision 1.10  2008/12/22 16:40:06  zeitler
+ * Removed cast.
+ * New routing function.
+ *
+ * Revision 1.9  2008/10/03 21:32:53  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.8  2008/09/01 12:38:43  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.7  2008/08/29 15:02:21  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.6  2008/08/13 09:28:41  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.5  2008/07/22 12:54:27  zeitler
+ * Scalable LR input data generator
+ *
+ * Revision 1.4  2008/07/21 23:20:15  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.3  2008/07/21 16:52:45  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.2  2008/07/21 12:07:11  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.1  2008/07/20 22:53:31  zeitler
+ * Re-use vids that left an xway
+ *
+ * Revision 1.1  2008/07/19 17:13:44  zeitler
+ * LR input stream generator
+ *
+ *
+ ****************************************************************************/
+
+create function op()->vector;
+create function opbin()->iarray;
+create function op0()->vector;
+create function op1()->vector;
+create function last_clock() -> real;
+create function duration(real start)->real as
+roundto(rnow() - start, 2);
+create function reset_xway(vector v, integer x)->vector as
+concat(vectorize(select i, v[i] from integer i where i < 4), 
+       concat({x}, vectorize(
+         select integer(i - 5), v[i] from integer i where i > 4)));
+
+sp_report_freq(10.0);
+sp_ts_freq(1.0);
+
+lisp;
+;"
+
+(debugging nil)
+
+(checkequal "vid alias count"
+ ((osql "add op() = traceenterleave(in(
+  select v from vector v where v in(xstream(1, 1))), 10);
+count(select vidalias(i) from integer i);") '((25))))
+
+(checkequal "vids still outside xway system"
+ ((osql "count(select vids_out(i) from integer i);") 
+   '((5)))
+ ((osql "sort(select vids_out(i), i from integer i);") 
+   '((#(#(204 1784) #(205 464) #(205 1787) #(205 1788) #(208 487))))))
+
+(checkequal "number of cars leaving road 0"
+((osql "count(select v from vector v where just_left(v)
+and v in readfile(getenv('AMOS_HOME') + '/scsq/generator/data/c10k-0'));")
+'((38))))
+
+(checkequal "number of cars entering road 0"
+((osql "count(select v from vector v where just_entered(v)
+and v in readfile(getenv('AMOS_HOME') + '/scsq/generator/data/c10k-0'));")
+'((2368))))
+
+(checkequal "#cars leaving road 0 and 1, distributed exec"
+((osql "count(select v
+from vector v where 
+v = uall(spv({xstream(0, 2), xstream(1, 2)}))
+and just_left(v));")
+'((68))))
+
+(checkequal "offset_vidqidfilter count" 
+((osql "set :spv = tinyxslayer(2);
+add op0() = extract(:spv[0]);
+add op1() = extract(:spv[1]);
+count(op1());")
+ '((100))))
+(checkequal "qid offset"
+((osql "select qid(v) from vector v where v=op1() and v[0]=2;")
+ '((125001))))
+(checkequal "vid offset"
+((osql "select v from vector v where v=op1() and v[0]=0 
+        and vid(v)=140106;")
+ '((#(0 0 140106 32 1 0 1 55 295137 -1 -1 -1 -1 -1 -1)))))
+
+; Invoke EZGen like this: all(nxways, time_out, vector of sp inp)
+
+(checkequal "event count after aliasing"
+((osql "initgen();
+clear_function('op');
+set last_clock() = real(now());
+add op() = all(2, 10, xslayer(2));
+print({'duration conventional:', duration(last_clock())});
+count(op());") '((20000)))
+((osql "count(posrep(op()));") '((19808)))
+((osql "count(accbal(op()));") '((107)))
+((osql "count(dexp(op()));") '((21)))
+((osql "count(tte(op()));") '((64))))
+
+(checkequal "vids from xway 1 on xway 0"
+ ((osql "select count(select v from vector v where vid(v)<137258 
+         and xway(v)=1 and v=op()) > 0;")
+   '((TRUE))))
+
+(checkequal "vids from xway 0 on xway 1"
+ ((osql "select count(select v from vector v where vid(v)>137257
+         and xway(v)=0 and v=op()) > 0;")
+   '((TRUE))))
+
+;; Missing test:
+;; v in readfile('data/expected-2')
+;; EZ/2010-10-27
+
+(checkequal "full comparison (expected type 0|2 removed. Only type 3 left)"
+((osql "remove op() = v from vector v 
+where eventtype(v) != 3;
+count(op());") '((21))))
+
+(checkequal "type 3 queries"
+((osql "create function type3e()->vector;
+add type3e() = v from vector v 
+where v in readfile('data/expected-2')
+and dexp(v);
+remove op() = reset_xway(type3e(), 0);
+select where count(op()) < 21;")
+'((TRUE)))
+((osql "remove op() = reset_xway(type3e(), 1);
+count(op());")
+'((0))))
+
+; BINARY
+
+(checkequal "event count after binary aliasing"
+((osql "initgen();
+clear_function('op');
+clear_function('opbin');
+set last_clock() = real(now());
+add opbin() = iarray(all(2, 10, xslayer(2)));
+print({'duration binary:', duration(last_clock())});
+count(opbin());") 
+'((20000))))
+
+(checkequal "details, binary"
+((osql "count(posrep(opbin()));") '((19808)))
+((osql "count(accbal(opbin()));") '((107)))
+((osql "count(dexp(opbin()));") '((21)))
+((osql "count(tte(opbin()));") '((64))))
+
+(checkequal "vids from xway 1 on xway 0"
+ ((osql "select count(select v from iarray v where vid(v)<137258 
+         and xway(v)=1 and v=opbin()) > 0;")
+   '((TRUE))))
+
+(checkequal "vids from xway 0 on xway 1"
+ ((osql "select count(select v from iarray v where vid(v)>137257
+         and xway(v)=0 and v=opbin()) > 0;")
+   '((TRUE))))
+
+(checkequal "binary, full comparison (all expected removed except type 3)"
+((osql "remove opbin() = v
+from iarray v
+where eventtype(v) != 3;
+count(opbin());") '((21))))
+
+(sleep 1)
+(send-form '(quit) (open-nameserver-port))
+:osql
+rollback;
+
+/* comment!  "
+
+(See also 'full.sh')
+
+writefiles('/scratch/erikz/ezgen/30/cdp', 
+10000000, all(30, 300, bigxslayer(30)));
+
+*/

@@ -1,0 +1,376 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 1999 Vanja Josifovski, EDSLAB
+ * $RCSfile: mdb.osql,v $
+ * $Revision: 1.17 $ $Date: 2013/12/30 20:07:29 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: <description>
+ *
+ ****************************************************************************
+ * $Log: mdb.osql,v $
+ * Revision 1.17  2013/12/30 20:07:29  torer
+ * requires dt
+ *
+ * Revision 1.16  2009/11/16 20:01:21  torer
+ * Optimizing message turned off since mdb-optimizer does massive reoptimization
+ *
+ * Revision 1.15  2006/04/14 10:06:55  torer
+ * Header added
+ *
+ ****************************************************************************/
+
+/*cleardebug();*/
+enable_dt(true);
+enable_mdb();
+commit;
+lisp;
+
+(debugging t)
+(setq *DSVE-STRATEGY* 'dsve-full) ; test with distributed view expansion
+(setq _tree-distribution_ t) ; test with tree rebalancing
+(formatl t  "MDB test: begining of the query compilation tests block" t)
+(checkequal
+ "MDB test: connecting to the servers and importing types and functions"
+ ((let ((result_list 
+	 (list 
+	  (osql "register('client');")
+	  (osql "import_db('foo');")
+	  (osql "import_db('fie');")
+	  (osql "import_type('emp', 'foo');")
+	  (osql "import_type('EE_emp', 'fie');")
+	  (osql "import_func('CHARSTRING.ID_TO_SSN->INTEGER', 'fie');"))))
+    (cons (length result_list)
+	  (mapcar (f/l (e) (if (oid-p (caar e)) 
+			       (list (list (mkstring (oid-name (caar e))))) 
+			     e)) 
+		  result_list)))
+  '(6 (("client")) (("FOO")) (("FIE")) 
+      (("EMP_FOO")) (("EE_EMP_FIE")) (("CHARSTRING.ID_TO_SSN->INTEGER")))
+  ))
+
+(global-eval '(setq *optimizing-message* nil)) ; tooloud otherwise
+
+(checkequal
+ "MDB test: definition of derived types over imported types"
+
+;MODELING OF THE INTEGRATION SCHEMA
+ ((oid-p
+   (osql "
+create derived type eds_emp under emp@foo e
+        where lab(e) = 'edslab';")
+   ) T)
+
+ ((oid-p
+   (osql "
+create derived type eds_ee_emp under ee_emp@fie e
+        where wplace(e) = 1;")
+   ) T))
+
+(checkequal
+ "MDB test: Integration type definition"
+ ((oid-p
+   (osql "
+create derived type int_emp
+ key integer issn
+ supertype of 
+   eds_emp e = ssn(e),
+   eds_ee_emp ee = id_to_ssn(id(ee))
+ functions (issn integer, real_salary integer, real_name charstring)
+   case e:
+    real_salary = salary(e);
+    real_name = name(e);
+    issn = ssn(e);
+   case ee:
+    real_salary = pay(ee);
+    real_name = name(ee);
+    issn  = id_to_ssn(id(ee));
+   case e, ee:
+    real_salary = salary(e) + pay(ee);
+    real_name = ee_emp_fie.name->charstring(ee);
+    issn = ssn(e);
+ end functions
+ properties (bonus integer);"))
+  T))
+
+
+;Some performance testing examples
+(defun dqns0 (fn) 
+  (eval 
+   (parse 
+    (concat "create function " fn  "()-><charstring, integer> as
+	           select nm, rs
+		     from int_emp ie,charstring nm,integer rs
+		     where real_name(ie)=nm and rs=real_salary(ie);"))))
+
+(defun dqns1 (fn) 
+  (let ((fnstring 
+	 (concat "create function " fn
+		 "(integer a)-><charstring nn, integer> as
+	     		 select nm, rs
+	     		 from int_emp ie,charstring nm,integer rs
+	     		 where real_name(ie)=nm and rs=real_salary(ie) and
+	           	 rs = a ;")))
+    (eval (parse fnstring)))) 
+
+
+;This flag on to skip the removal of multiple typechecks
+;should not be used in the regression testing
+
+;(defun op () (setq _skip_rmt_ (if _skip_rmt_ nil t)))
+
+(defvar oqdns1) ; set below
+(defvar oqdns0)
+
+(checkequal
+ "MDB test: compilation of queries over integration derived types (IT) 
+  and late binding over DTs"
+
+ ((oid-p
+   (setq oqdns1 (dqns1 'optqns1))
+   ) T)
+
+;(op)
+;(setq noqdns1 (dqns1 'noptqdns1))
+
+;(op)
+
+ ((oid-p
+   (setq oqdns0 (dqns0 'optqns0))
+   ) T)
+
+;(op)
+;(setq noqdns0 (dqns0 'noptqdns0))
+;(op)
+ )
+
+
+(checkequal
+ "MDB test: compilation of mdb functions taking parameters"
+
+ ((oid-p
+   (osql
+    "create function gs(integer i)-> emp_foo e 
+	as select e from emp_foo e where salary(e) = i;")
+
+   ) T)
+
+ ((oid-p
+
+   (osql
+    "create function fn1(charstring nm)->integer as
+ select pay(ee)+salary(e) from emp@foo e, ee_emp@fie ee
+ where nm=name(e) and id_to_ssn(id(ee))=ssn(e);")
+
+   ) T))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;Execution part
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(formatl  t "MDB test: begining of the execution tests block" t)
+
+;DIFFERENT QUERIES
+
+(defun qb1 () (osql "select name(eeo) from only_eds_ee_emp eeo;"))
+(defun qb2 () (osql "select name(eo) from only_eds_emp eo;"))
+(defun qb3 () (osql "select real_name(je) from join_int_emp je;"))
+(defun qb4 () (osql "select pay(je)  from join_int_emp je;"))
+(defun qb5 () (osql "select ee from eds_ee_emp ee
+	          where rkeyf_eds_emp(id_to_ssn(id(ee)));"))
+
+(defun qm1 () (osql "select je from join_int_emp je;"))
+(defun qm2 () (osql "select e  from only_eds_emp e;"))
+(defun qm3 () (osql "select ee from only_eds_ee_emp ee;"))
+
+
+(defun qs  ()  (osql "select real_salary(ie) from int_emp ie;"))
+(defun qs1 ()  (osql "select rs  from int_emp ie, integer rs where 
+	              rs=real_salary(ie) and rs> 40 and rs < 50;"))
+(defun qs2 ()  (osql "select rs  from int_emp ie, integer rs where 
+		      rs=real_salary(ie) and rs = 54;"))
+(defun qn   () (osql "select real_name(ie) from int_emp ie;"))
+(defun qn1  () (osql "select nm from int_emp ie,charstring nm
+	              where nm='ee_emp30' and real_name(ie)=nm;"))
+(defun qns  () (osql "
+	              select nm, rs
+		      from int_emp ie,charstring nm,integer rs
+		      where real_name(ie)=nm and rs=real_salary(ie);")) 
+(defun qns1 () (osql "
+		      select nm, rs
+		      from int_emp ie,charstring nm,integer rs
+		      where real_name(ie)=nm and rs=real_salary(ie) and
+		            rs < 20 ;")) 
+(defun qns2 () (osql "
+		      select nm, rs
+		      from int_emp ie,charstring nm,integer rs
+		      where real_name(ie)=nm and rs=real_salary(ie) and
+		            rs = 16  ;")) 
+
+;This has to be extended when fixed
+(defun qi1 () (osql "select ie from int_emp ie;"))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;parametrized mdb functions execution
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defun qa1 () 
+  (osql "select je into :je  from join_int_emp je where pay(je)=22;"))
+
+(checkequal
+ "MDB test: parametrized mdb functions"
+ ((osql "gs(1);") nil) 
+ ((let ((r (osql "gs(25);"))) (and (eq 1 (length r)) (oid-p (caar r)))) T) 
+ ((osql "fn1('emp22');") '((44)))
+ ((qa1) nil)
+ ((oid-p amos_je) T)
+ ((osql "select real_salary(:je);") '((44))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;first level DTs queries
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(checkequal 
+ "MDB test: querying first level DT subtypes of imported types"
+ ((sorttuples (qb1))
+  '(("ee_emp11") ("ee_emp12") ("ee_emp13") 
+    ("ee_emp14") ("ee_emp15") ("ee_emp16")
+    ("ee_emp17") ("ee_emp18") ("ee_emp19")))
+ 
+
+ ((length (qb2)) 80)
+
+ ((sorttuples (qb3))
+  '(("ee_emp20") ("ee_emp21") ("ee_emp22") 
+    ("ee_emp23") ("ee_emp24") ("ee_emp25")
+    ("ee_emp26") ("ee_emp27") ("ee_emp28") ("ee_emp29") ("ee_emp30")))
+
+ ((sorttuples (qb4))
+  '((20) (21) (22) (23) (24) (25) (26) (27) (28) (29) (30)))
+
+ ((length (qb5)) 9))
+ 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;first level DTs queries
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(checkequal 
+ "MDB test: materialization of  first level instances"
+ ((length (qm1)) 11)
+ ((length (qm2)) 80)
+ ((length (qm3))  9))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;queries with a single UT function
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(checkequal 
+ "MDB test: queries with a single UT function" 
+ ((mapcar (function car) (sorttuples (qs)))
+  '(11 12 13 14 15 16 17 18 19 31 32 33 34 35 36 37 38 39 40 40 41 42 42 43 
+    44 44 45 46 46 47 48 48 49 50 50 51 52 52 53 54 54 55 56 56 57 58 58 59 
+    60 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 
+    83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 
+    105 106 107 108 109 110))
+
+ ((mapcar (function car) (sorttuples (qs1)))
+  '(41 42 42 43 44 44 45 46 46 47 48 48 49))
+
+ ((qs2) '((54) (54)))
+
+ ((length (qn)) 100)
+
+ ((qn1) '(("ee_emp30"))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;queries with  multiple  UT functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(checkequal 
+ "MDB test: queries with multiple UT functions" 
+ ((length (qns)) 100)
+
+ ((sorttuples (qns1))
+  '(("ee_emp11" 11) ("ee_emp12" 12) ("ee_emp13" 13) ("ee_emp14" 14)
+    ("ee_emp15" 15) ("ee_emp16" 16) ("ee_emp17" 17) ("ee_emp18" 18)
+    ("ee_emp19" 19)))
+
+ ((qns2) '(("ee_emp16" 16))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;UT materialzation tests
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(checkequal
+ "MDB test: Materialization of IT instances and type change"
+;select an object in the intersection part of the integration type
+;:e1 and :je1 should be the same object and not nil
+ ((osql "select e into :e1  from int_emp e where issn(e) = 25;") nil)
+ ((osql "select e into :je1 from join_int_emp e where issn(e) = 25;") nil)
+ ((osql "select e into :eeo1 from only_eds_ee_emp e where issn(e) = 25;") nil)
+ ((osql "real_salary(:e1);") '((50)))
+ (amos_e1 amos_je1)
+ ((arg-type amos_e1) (gettypenamed 'join_int_emp))
+
+;get the corresponding proxy towards foo
+ ((osql "select ef into :ef from emp@foo  ef where ef = :e1;") nil)
+ ((oid-p  amos_ef) T)
+
+;delete the corresponding instance in foo
+ ((remote-eval (list 'deleteobject amos_ef) 'FOO) amos_ef)
+;((remote-eval (list 'deleteobject amos_ef) 'FOO) nil)
+
+;the same selects as before, now it should be in int_emp and only_eds_ee_emp
+ ((osql "select e into :e2  from int_emp e where issn(e) = 25;") nil)
+ ((osql "select e  from join_int_emp e where issn(e) = 25;") nil)
+ ((osql "select e into :eeo2 from only_eds_ee_emp e where issn(e) = 25;") nil)
+ ((arg-type amos_e2) (gettypenamed 'only_eds_ee_emp))
+ (amos_e2 amos_e1)
+ (amos_e2 amos_eeo2)
+ ((length (osql "select ei from int_emp ei;")) 100)
+ ((osql "select real_salary(ie) from int_emp ie where issn(ie) = 25;") '((25)))
+
+;create a instance in FOO which comes in the view
+ ((remote-eval '(create-userobjects 
+		 Emp (ssn age name salary lab) 
+		 ((200 200 "new_emp" 200  "edslab"))) 'FOO) nil)
+
+ ((length (qm1)) 10)
+ ((length (qm2)) 81)
+ ((length (qm3)) 10)
+ ((osql "select ie into :e3 from int_emp ie where issn(ie) = 200;") nil)
+ ((osql "real_salary(:e3);") '((200)))
+ ((osql "real_name(:e3);") '(("new_emp")))
+
+;create instance in FIE corresponding to :e3
+ ((remote-eval '(create-userobjects ee_Emp (id  name pay  wplace) 
+				    (("200"  "new_empA" 150 1))) 'FIE) nil)
+
+;here there is a bug: real_name(:e3) won't work now after the chabge!!!!
+
+
+ ((osql "select real_name(ie), real_salary(ie) 
+	from int_emp ie 
+        where issn(ie) =200;") 
+  '(("new_empA" 350)))
+
+;another bug:
+;((osql "select real_name(ie), real_salary(ie) 
+;        from int_emp ie where ie = :e3;")
+; '(("new_empA" 350)))
+
+ ((length (qm1)) 11)
+ ((length (qm2)) 80)
+ ((length (qm3)) 10)
+ )
+
+
+:osql
+rollback;
+
+

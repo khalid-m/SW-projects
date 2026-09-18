@@ -1,0 +1,1 @@
+SCSQ_trie.exe historylr.dmp -O "src/mkdmp.osql"

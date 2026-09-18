@@ -1,0 +1,520 @@
+/*****************************************************************************
+ * AMOS2 - GSDM
+ *
+ * Author: (c) 2004 Milena Ivanova, UDBL
+ * $RCSfile: statsrv.osql,v $
+ * $Revision: 1.17 $ $Date: 2005/12/09 16:23:16 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Statistics collector.
+ *	Statistical metadata about the GSDM servers.
+ * 	
+ ****************************************************************************/
+
+create type site;
+create function name(site s) -> charstring nm as stored;
+
+create function state(site s)-> charstring as stored;
+create function cqstate(site s)-> charstring as stored;
+
+create function site_named(charstring nm) -> site g
+as select g where name(g) = nm;
+
+create type node;
+create function id(node op)-> charstring as stored;
+create function fn(node op)-> charstring as stored;
+create function assigned_to(node op) -> site as stored;
+create function latency(node op) -> real as stored;
+
+create function op(charstring qid) ->node op
+as select op where id(op) = qid;
+
+/* constructor */
+create function node(charstring id, charstring fun)-> node
+as begin 
+	declare node op;
+	create node instances op;
+	set id(op)=id;
+	set fn(op)=fun;
+	result op;
+end;
+
+create function set_latency(charstring nm, real tm) -> boolean
+as begin
+	set latency(op(nm))=tm;
+end;
+
+create type mstream;
+create function name(mstream s) -> charstring as stored;
+create function cnt(mstream s)-> integer as stored;
+create function time(mstream s)-> real as stored;
+create function rate(mstream s) -> real as stored; 
+create function lat(mstream s)->  real as stored;
+
+create function assigned_to(mstream s) -> site as stored;
+
+create function mstream_named(charstring nm) -> mstream s
+as select s where name(s) = nm;
+
+/* constructor */
+create function mstream(charstring nm, charstring g)-> node
+as begin 
+	declare mstream s;
+	create mstream instances s;
+	set name(s)=nm;
+	set assigned_to(s)=site_named(g);
+	result s;
+end;
+
+create function set_mstream_data(charstring nm, integer cn,
+	real tm, real rt, real lt) -> boolean
+as begin
+	declare mstream s;
+	set s=mstream_named(nm);
+	set cnt(s)=cn;
+	set time(s)=tm;
+	set rate(s)=rt;
+	set lat(s)=lt;
+end;
+
+
+create type dataflow;
+create function name(dataflow d)-> charstring as stored;
+create function nodes(dataflow d nonkey) -> node as stored;
+create function out(dataflow d nonkey)-> node as stored;
+create function params(dataflow d)-> charstring as stored;
+create function streams(dataflow d nonkey) -> mstream as stored;
+
+create function register_dataflow(charstring nm) -> dataflow as
+begin
+	declare dataflow d;
+	create dataflow instances d;
+	set name(d) = nm;
+	result d;
+end;
+
+create function register_dataflow(charstring nm, charstring par) -> dataflow as
+begin
+	declare dataflow d;
+	create dataflow instances d;
+	set name(d) = nm;
+	set params(d) = par;
+	result d;
+end;
+
+
+create function dataflow_named(charstring nm) -> dataflow d
+as select d where name(d) = nm;
+
+create function register_node(charstring dfname, charstring gname,
+	charstring id, charstring fun)-> node
+as begin 
+	declare node op;
+	set op = node(id,fun);
+	add nodes(dataflow_named(dfname)) = op;
+	set assigned_to(op)= site_named(gname);
+	result op;
+end;
+
+create function register_mstream(charstring dfname, charstring gname,
+	charstring snm)-> mstream
+as begin 
+	declare mstream s;
+	set s = mstream(snm,gname);
+	add streams(dataflow_named(dfname)) = s;
+	result s;
+end;
+
+create function register_out(charstring dfname, charstring id)-> boolean
+as begin 
+	add out(dataflow_named(dfname)) = op(id);
+end;
+
+/* OBS! nodes should be registered after sites */
+
+create function total_time(site s) -> real as stored;
+create function set_time(charstring nm, real tm) -> boolean
+as begin
+	set total_time(site_named(nm))=tm;
+end;
+
+create function register_site(charstring nm) -> site as
+begin
+	declare site g;
+	create site instances g;
+	set name(g) = nm;
+	set state(g)="not started";
+	set cqstate(g)="not started";
+	result g;
+end;
+
+create function get_wn(dataflow d) ->  site
+as select distinct n from site n, node op
+where op= nodes(d) and n=assigned_to(op);
+
+
+create function gsdm_listening(charstring nm)-> boolean
+as begin
+	declare site g;
+	set g= site_named(nm);
+	set state(g)="started";
+	set cqstate(g)="started";
+end;
+
+create function gsdm_completing(charstring nm)-> boolean
+as begin
+	declare site g;
+	set g= site_named(nm);
+	set cqstate(g)="completed";
+end;
+
+create function all_listening(charstring dfname)->integer
+as begin
+	declare integer cnt;
+	set cnt=1;
+	for each site g
+	where g= get_wn(dataflow_named(dfname))
+	  and state(g)="not started"
+	set cnt=0;
+	result cnt;
+end;
+
+
+/* C logic: 0 false, 1 true */
+
+create function all_completed(charstring dfname)->integer
+as begin
+	declare integer cnt;
+	set cnt=1;
+	for each site g
+	where g= get_wn(dataflow_named(dfname))
+	   and cqstate(g) != "completed"
+	set cnt=0; 
+	result cnt;
+end;
+
+/********************************************/
+
+create type period_stat properties(pn integer, ts timeval, 
+	len real, sys_time real, comm_in real, comm_out real);
+create function at_site(period_stat ps) -> site g as stored;
+
+create type stat;
+create function qid(stat s)-> charstring as stored;
+create function cnt(stat s)-> integer as stored;
+create function time(stat s)-> real as stored;
+create function in_period(stat s) -> period_stat ps as stored;
+
+
+
+create function proc_time(period_stat ps) -> real as
+select sum(select time(s) from stat s
+  where ps=in_period(s));
+
+create function util_time(period_stat ps) -> real as
+select proc_time(ps)+comm_in(ps)+comm_out(ps)+ sys_time(ps);
+
+create function idle_time(period_stat ps) -> real as
+select len(ps)-util_time(ps);
+
+/*constructor*/
+create function period_stat(charstring wn, 
+	integer pn, real ttime, real stime,
+	real cin, real cout) -> period_stat as
+begin
+	declare period_stat ps;
+	create period_stat(pn,len,sys_time,comm_in,comm_out)
+	  instances ps (pn,ttime,stime,cin,cout);
+	set at_site(ps)= site_named(wn);
+	set ts(ps)=now();
+	result ps;
+end;
+
+create function get_period_stat(charstring wn, 
+	integer pno) -> period_stat ps as
+select ps 
+where pn(ps)=pno and at_site(ps)=site_named(wn);
+
+/*constructor*/
+create function stat(charstring wn, 
+	integer pn, charstring q, integer c, real tm) -> stat as
+begin
+	declare stat s;
+	create stat(qid, cnt,time) instances s(q,c,tm);
+	set in_period(s)= get_period_stat(wn,pn);
+	result s;
+end;
+
+
+/****************** INFO********************/
+create function all_stat()-> <charstring,integer,real> as
+select qid(s),cnt(s),time(s) from stat s;
+
+create function stat_in_period(charstring wn, 
+	integer pno)-> <charstring,integer,real> as
+select qid(s),cnt(s),time(s) from stat s
+where in_period(s)=get_period_stat(wn,pno);
+
+create function all_period_stat()->
+	<charstring,integer,real,real,real,real,real,real> as
+select name(at_site(ps)),pn(ps),len(ps),sys_time(ps), comm_in(ps),
+	comm_out(ps),proc_time(ps),idle_time(ps)
+from period_stat ps;
+
+create function period_stat_at_site(charstring wn)->
+	<integer,real,real,real,real,real,real> as
+select pn(ps),len(ps),sys_time(ps), comm_in(ps),
+	comm_out(ps),proc_time(ps),idle_time(ps)
+from period_stat ps
+where at_site(ps)=site_named(wn);
+
+create function periods(site wn)-> period_stat ps
+as select ps where at_site(ps)=wn;
+
+/* wn_stat- statistics per working node, derived form period stats */
+
+create function wn_proc_time(site wn)-> real
+as select sum(select proc_time(periods(wn)));
+
+create function wn_comm_in(site wn)-> real
+as select sum(select comm_in(periods(wn)));
+
+create function wn_comm_out(site wn)-> real
+as select sum(select comm_out(periods(wn)));
+
+create function wn_sys_time(site wn)-> real
+as select sum(select sys_time(periods(wn)));
+
+create function wn_util_time(site wn)-> real
+as select sum(select util_time(periods(wn)));
+
+create function wn_util_proc(site wn)-> real
+as select 100*wn_util_time(wn)/total_time(wn);
+
+/* total time per wn is not a sum of periods total times, but the time between the first and last execution, reported from the scheduler */
+
+create function wn_idle_time(site wn)-> real
+as select total_time(wn)-wn_util_time(wn);	
+
+
+create function wn_stat(site wn)->
+	<real,real,real,real,real,real,real> as
+select wn_proc_time(wn), wn_comm_in(wn), wn_comm_out(wn),wn_sys_time(wn),
+	wn_util_time(wn),wn_idle_time(wn),total_time(wn);
+
+
+/* all stat objects assoc with an node, 1 for each period */
+create function op_stat(node op)-> stat s
+as select s 
+   from site wn, period_stat ps
+   where wn=assigned_to(op) and wn=at_site(ps) and
+     ps=in_period(s) and qid(s)=id(op);
+
+create function op_cnt(node op)-> integer cnt
+as select sum(select cnt(op_stat(op)));
+
+create function op_time(node op)-> real tm
+as select sum(select time(op_stat(op)));
+
+create function op_avg(node op)-> real tm
+as begin
+	if op_cnt(op)= 0 then result 0.0
+	else result op_time(op)/op_cnt(op);
+end;
+
+create function node_stat(node op)->
+	<charstring qid, charstring fn, integer cnt, real tm, real av>
+as select id(op),fn(op),op_cnt(op),op_time(op),op_avg(op);
+
+/* Statistics for entire data flow */
+create function util_time(dataflow d)-> real
+as select maxagg(select wn_util_time(get_wn(d)));
+
+create function max_loaded(dataflow d)-> site
+as select g from site
+where wn_util_time(g)= maxagg(select wn_util_time(get_wn(d)));
+
+create function total_proc_time(dataflow d)-> real
+as select sum(select wn_proc_time(get_wn(d)));
+
+create function total_comm_in(dataflow d)-> real
+as select sum(select wn_comm_in(get_wn(d)));
+
+create function total_comm_out(dataflow d)-> real
+as select sum(select wn_comm_out(get_wn(d)));
+
+create function total_util_time(dataflow d)-> real
+as select sum(select wn_util_time(get_wn(d)));
+
+/* Time for Measurements- total_time at last proc WN */
+create function exp_time(dataflow d)-> real
+as select total_time(assigned_to(out(d)));
+
+create function total_cnt(dataflow d)-> integer
+as select op_cnt(out(d));
+
+create function max_total_time(dataflow d)-> real
+as select maxagg(select total_time(get_wn(d)));
+
+create function opt_turn_arround(dataflow d,charstring fn)->boolean
+as begin
+	declare site maxl, real opt;
+	set maxl=max_loaded(d);
+	if wn_util_proc(maxl)> 95.0 then
+		set opt = total_time(maxl)/total_cnt(d)
+	else set opt= wn_util_time(maxl)/total_cnt(d);
+	print("Optimal turn around " + cast(opt as charstring),fn,"a");
+	if wn_util_proc(maxl)> 96.0 then
+		println(" Check for overload",fn,"a")
+	else println(" Probable underload",fn,"a");
+end;
+
+
+create function nows()-> charstring s
+as begin
+	declare timeval tnow, charstring tnows;
+
+	set tnow = now();
+	set tnows = itoa(month(tnow)) +  '-' + itoa(day(tnow)) + '-' + 	itoa(hour(tnow)) + '-' + itoa(minute(tnow));
+
+	result tnows;
+end;
+
+
+
+create function print_op_stat(charstring fn, node op)-> boolean
+as begin
+	declare charstring row;
+	set row="";	
+	set row=id(op)+"  " + fn(op) + "  ";
+	set row= row + cast(op_cnt(op) as charstring) + " ";
+	set row= row + cast(op_time(op) as charstring)+ " ";
+	set row= row + cast(op_avg(op) as charstring);
+
+	if latency(op) then 
+	set row= row + " Latency " +  cast(latency(op) as charstring);
+	println(row,fn,"a");
+end;
+
+
+create function print_op_stat_all(charstring fn,site wn)-> boolean
+as begin
+	declare node op;
+
+	println("QID  FN  CNT   TIME   AVG",fn,"a");
+	for each node op
+	where wn=assigned_to(op)
+	print_op_stat(fn,op);
+	println("",fn,"a");
+end;
+
+create function print_stream_stat(charstring fn, mstream s)-> boolean
+as begin
+	declare charstring row;
+	set row="";	
+	set row=name(s)+ "  ";
+	set row= row + "CNT " + cast(cnt(s) as charstring) + " ";
+	set row= row + "Rate " + cast(rate(s) as charstring)+ " ";
+	set row= row + "Lat " + cast(lat(s) as charstring);
+
+	println(row,fn,"a");
+end;
+
+create function print_streams_stat(charstring fn,site wn)-> boolean
+as begin
+	declare mstream s;
+
+	println("Streams ",fn,"a");
+	for each mstream s
+	where wn=assigned_to(s)
+	print_stream_stat(fn,s);
+	println("",fn,"a");
+end;
+
+create function print_wn_stat(charstring fn, site wn)-> boolean
+as begin
+	declare charstring row;
+	println(name(wn),fn,"a");
+	set row= cast(wn_proc_time(wn) as charstring) + "  ";
+	set row= row + cast(wn_comm_in(wn) as charstring)+ "  ";
+	set row= row + cast(wn_comm_out(wn) as charstring)+ "  ";
+	set row= row + cast(wn_sys_time(wn) as charstring)+ "  ";
+	set row= row + cast(wn_util_time(wn) as charstring)+ "  ";
+	set row= row + cast(wn_idle_time(wn) as charstring)+ "  ";
+	set row= row + cast(total_time(wn) as charstring)+ "  ";
+	set row= row + cast(wn_util_proc(wn) as charstring) + "%";
+	println(row,fn,"a");
+end;
+
+
+create function print_dataflow_stat(dataflow d)-> boolean
+as begin
+	declare charstring fn, charstring stat_dir, site maxl;
+
+	set stat_dir=getenv('AMOS_HOME') + "/gsdm/dat/";
+
+	set fn= stat_dir + name(d) + "-" + nows();
+/*	save_database(fn + ".dmp"); */
+	set fn= fn + ".dat";
+	println("Data flow "+ name(d) + " " + params(d),fn,"w");
+	println("",fn,"a");
+
+	println("Proc  CommIN  CommOUT  Sys   Util  Idle  Total %Util",fn,"a");
+	for each site wn 
+	where wn=get_wn(d)
+	begin
+	   print_wn_stat(fn,wn);
+	   print_op_stat_all(fn,wn);
+	   print_streams_stat(fn,wn);
+	end;
+
+	println("Receiver time "+ cast(exp_time(d) as charstring),fn,"a");
+	print("Max total time "+ cast(max_total_time(d) as charstring),fn,"a");
+	println(" Count "+ cast(total_cnt(d) as charstring),fn,"a");
+	
+	println("Total operators time "+ cast(total_proc_time(d) as charstring),fn,"a");
+	println("Total comm IN time "+ cast(total_comm_in(d) as charstring),fn,"a");
+	println("Total comm OUT time "+ cast(total_comm_out(d) as charstring),fn,"a");
+	println("Total util time "+ cast(total_util_time(d) as charstring),fn,"a");
+	set maxl=max_loaded(d);
+	print("Max util time " + cast(util_time(d) as charstring),fn,"a");
+	print("= " + cast(wn_util_proc(maxl) as charstring) + "% ",fn,"a");
+	println("on  " + name(maxl),fn,"a");
+	opt_turn_arround(d,fn);
+end;
+
+
+create function clean_stat(dataflow d) -> boolean
+as begin
+	declare stat s;
+	for each stat s, period_stat ps, site g
+	where ps=in_period(s) and ps=periods(g)
+	and g=get_wn(d)
+	delete s;
+	for each period_stat ps, site g
+	where ps=periods(g) and g=get_wn(d)
+	delete ps;
+end;
+
+lisp;
+(defun register-amos-at (logical-name addr &optional reregister)
+   ;;; Inform name server about the name of this AMOS. 
+   ;;; Then name will be bound to _AMOSID_.
+  (let ((name (amos-servername logical-name)))
+    (reval@nameserver `(register-in-nameserver 
+			(quote , name) , (mkstring addr) -1 , reregister))
+    (commit)
+    (set-amos-servername name reregister)
+    ))
+
+(foreign-lispfn register_at ((charstring name)(charstring addr))((charstring))
+		  "Register this database as inactive peer"	
+		  (register-amos-at name addr)
+		  (foreign-result name)
+		  )
+:osql
+
+
+register_at("STATSRV",getenv("NAMESERVER_HOST")); 
+
+listen();

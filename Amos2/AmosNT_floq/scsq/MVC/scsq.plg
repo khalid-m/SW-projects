@@ -1,0 +1,26 @@
+<html>
+<body>
+<pre>
+<h1>Build Log</h1>
+<h3>
+--------------------Configuration: scsq - Win32 Debug--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "C:\Users\minzh812\AppData\Local\Temp\RSP31FC.tmp" with contents
+[
+kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib Ws2_32.lib /nologo /subsystem:console /profile /debug /machine:I386 /out:"..\..\bin\scsq.exe" 
+.\Debug\scsq.obj
+..\..\bin\scsqlib.lib
+]
+Creating command line "link.exe @C:\Users\minzh812\AppData\Local\Temp\RSP31FC.tmp"
+<h3>Output Window</h3>
+Linking...
+   Creating library ..\..\bin\scsq.lib and object ..\..\bin\scsq.exp
+
+
+
+<h3>Results</h3>
+scsq.exe - 0 error(s), 0 warning(s)
+</pre>
+</body>
+</html>

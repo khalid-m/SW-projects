@@ -1,0 +1,26 @@
+/* This file creates the ORWIS.dmp file */
+
+create type document;
+create function url(document)->charstring as stored;
+create function title(document)->charstring as stored;
+create function subject(document)->charstring as stored;
+create function date(document)->charstring as stored;
+create function size(document)->charstring as stored;
+create function relevance(document)->real as stored;
+create function authors(document)->charstring as stored;
+create function relatedDoc(document)->charstring as stored;
+create function bibTex(document)->charstring as stored;
+create function searchEngine(document)->charstring as stored;
+
+create function setTrace(charstring) -> boolean 
+       as foreign "JAVA:orwise.DebugSE/setTrace";
+create function getURL(charstring, charstring) -> boolean 
+       as foreign "JAVA:orwise.URLTools/getURL";
+create function orwise(vector) -> document
+       as foreign "JAVA:orwise.SearchEngineManager/webSearch";
+save "../bin/orwise.dmp";
+quit;
+
+
+
+

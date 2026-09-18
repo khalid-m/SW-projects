@@ -1,0 +1,175 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2006 Johan Petrini UDBL
+ * $RCSfile: h.amosql,v $
+ * $Revision: 1.12 $ $Date: 2009/11/17 17:31:20 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Definition of fns used by SWARD system.
+ *
+ ****************************************************************************
+ * $Log: h.amosql,v $
+ * Revision 1.12  2009/11/17 17:31:20  torer
+ * '=' changed to 'in'
+ *
+ * Revision 1.11  2008/03/27 16:53:53  petrini
+ * Clean up.
+ *
+ * Revision 1.10  2008/03/12 10:06:47  petrini
+ * Added construction of row identifier in terms of class identifier instead of property identifier.
+ *
+ * Revision 1.9  2007/12/03 14:46:22  petrini
+ * Changed name of fn 'compile_query' to 'compileQuery' according to Java coding convention.
+ *
+ * Revision 1.1  2006/02/12 20:01:08  torer
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+create function SWOfUPV(Charstring upv)->Charstring sw as stored;
+create function CWOfUPV(Charstring upv)->Charstring cw as stored;
+create function pStat()->Boolean as foreign 'p-stat'; /*Returns true if partial evaluation is enabled (default)*/
+create function compileQuery(Charstring query)->Function fn as foreign 'compile-query'; 
+create function setWM(Integer wm)->Boolean as foreign 'setwm';
+create function resVars(Function q)->Vector as foreign 'resvars';
+create function resSQLVars(Charstring query)->Vector as foreign 'ressqlvars';
+create function bindsTpl(Vector val,Vector var)->Vector
+  as select vectorof(select {var[i],val[i]} 
+     from Integer i    
+     where i in iota(0,dim(var)));
+
+/* Fn for serializing several values into one value given a delimiter.
+ */
+create function serializeVal(Vector vals, Charstring dl)->Vector val 
+  as multidirectional ('bbf' foreign 'svbbf' cost {1,1})
+                      ('ffb' foreign 'svffb' cost {1,2});
+
+declare_key(theresolvent('Vector.Charstring.serializeVal->Vector'),
+                         {'vals','dl'});
+
+declare_key(theresolvent('Vector.Charstring.serializeVal->Vector'),
+                         {'val'});
+
+/* Inverse of fn serializeVal.
+ */
+create function usv(Vector val)-><Vector usv, Charstring dl>
+  as
+   select usv, dl where serializeVal(usv,dl)=val;
+
+/* Fn for serializing composite key (values).
+ */
+create function serializeCk(Vector ck)->Charstring sck 
+  as 
+   select sck where serializeVal(ck,'@')={sck,'@'};
+
+/* Inverse function of serializeCk.
+ */
+create function usck(Charstring sck)->Vector ck
+  as
+   select ck where serializeCk(ck)=sck;
+
+
+
+
+/* Must be updated to reflect changes in current code*/
+/*
+create function gen_tblsig(CHarstring upv,Charstring tn)->Charstring sig 
+as 
+	select tn + "(" + concatagg(inject((select cname 
+	from charstring cname, charstring ctype 
+	where <ctype, cname> = columns(JDBCOfUPV(upv), tn)), ",")) + ")";
+
+create function vectorcols(Charstring upv,Charstring tn)->Vector as
+	select vectorof(select cname 
+			from charstring cname, charstring ctype 
+			where <ctype, cname> = columns(JDBCOfUPV(upv), tn));
+
+create function gen_values(Vector v)->Charstring 
+as
+	begin	
+ 	 for each charstring col, integer i 
+	 where col = v[i] and i = iota(0,dim(v) - 1)
+		begin
+	 	 result "'0'";
+		end;
+	end;
+
+create function dropTbls(Charstring upv,Vector tns)->Boolean 
+as
+	begin
+	for each Charstring tn where tn = in(tns)
+	begin
+	sqlu(JDBCOfUPV(upv),"drop table " + tn);
+	end;
+	end;
+
+
+create function createTbls1(Charstring upv, Vector tns, Integer nofcols)->Boolean 
+as
+	begin
+	declare Charstring ptn,Integer n;
+	set ptn = "";
+	set n = 1;
+	for each Charstring tn where tn = in(tns)
+	begin
+	 if(n = 1) then
+	 begin
+	  sqlu(JDBCOfUPV(upv),"create table " + tn + 
+		"(k varchar(20) not null,
+		primary key (k))");
+	
+	  for each Integer i where i = iota(2,nofcols)
+	  begin
+	   sqlu(JDBCOfUPV(upv),"alter table " + tn + " add c" + 
+		cast(i as Charstring) + " Varchar(20)");
+	  end;
+          sqlu(JDBCOfUPV(upv),"insert into " + gen_tblsig(upv,tn) + 
+			" values(" + concatagg(inject(gen_values
+				           (vectorcols(upv,tn)), ',')) + ")");
+	  set ptn = tn;
+  	  set n = n+1;
+	 end
+	 else
+	 begin
+	  sqlu(JDBCOfUPV(upv),"create table " + tn + 
+	  	"(k varchar(20) not null,
+		fk varchar(20) not null,
+		foreign key (fk) references " + ptn + "(k),
+        	primary key (k))");
+
+	  for each Integer i where i = iota(3,nofcols)
+	  begin
+	   sqlu(JDBCOfUPV(upv),"alter table " + tn + " add c" + 
+		cast(i as Charstring) + " Varchar(20)");
+	  end;
+	  sqlu(JDBCOfUPV(upv),"create index fk on " + tn + "(fk)");		  
+
+          sqlu(JDBCOfUPV(upv),"insert into " + gen_tblsig(upv,tn) + 
+			" values(" + concatagg(inject(gen_values(vectorcols(upv,tn)), ',')) + ")");
+	 set ptn = tn;
+	 set n = n+1;
+	 end;
+	end;
+	end;
+
+create function createTbls2(Charstring upv, Vector tns, Integer nofcols)->Boolean 
+as
+	begin
+	for each Charstring tn where tn = in(tns)
+	begin
+	  sqlu(JDBCOfUPV(upv),"create table " + tn + 
+		"(k varchar(20) not null,
+		primary key (k))");
+	
+	  for each Integer i where i = iota(2,nofcols)
+	  begin
+	   sqlu(JDBCOfUPV(upv),"alter table " + tn + " add c" + 
+		cast(i as Charstring) + " Varchar(20)");
+	  end;
+          sqlu(JDBCOfUPV(upv),"insert into " + gen_tblsig(upv,tn) + 
+			" values(" + concatagg(inject(gen_values
+				           (vectorcols(upv,tn)), ',')) + ")");
+	 end
+	end;
+
+*/

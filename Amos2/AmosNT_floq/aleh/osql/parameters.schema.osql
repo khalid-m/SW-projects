@@ -1,0 +1,69 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2006 Ruslan Fomkin, UDBL
+ * $RCSfile: parameters.schema.osql,v $
+ * $Revision: 1.1 $ $Date: 2006/03/21 12:16:43 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Schema of parameters.
+ *
+ ****************************************************************************
+ * $Log: parameters.schema.osql,v $
+ * Revision 1.1  2006/03/21 12:16:43  ruslan
+ * missing file
+ *
+ ****************************************************************************/
+
+create type parameters; /* general parameters, see managment */
+/*
+ * minPtOfAllThreeLeptons: minPtL
+ * minPtOfTheHardestLepton: hardPtL
+ * etaRangeForAllThreeLeptons: etaL
+ */
+create function etaL(parameters) -> real as stored;
+create function minPtL(parameters) -> real as stored;
+create function hardPtL(parameters) -> real as stored;
+/*
+ * m_zMass: zMass
+ * m_minimumZMassDiff: minZMass
+ */
+create function zMass(parameters) -> real as stored;
+create function minZMass(parameters) -> real as stored;
+/*
+ * m_etaRangeForJets: etaJ
+ * m_minPtForJets: minPtJ
+ */
+create function etaJ(parameters) -> real as stored;
+create function minPtJ(parameters) -> real as stored;
+/*
+ * m_theIntegerForBTaggedJet: forBJet
+ */
+create function forBJet(parameters) -> integer as stored;
+/*
+ * m_wMass: wMass
+ * m_allowedWMassDiff: allowedWMass
+ */
+create function wMass(parameters) -> real as stored;
+create function allowedWMass(parameters) -> real as stored;
+/*
+ * m_topMass: tMass
+ * m_allowedTopMassDiff: allowedTMass
+ */
+create function tMass(parameters) -> real as stored;
+create function allowedTMass(parameters) -> real as stored;
+/*
+ * m_maxAllowedPtForOtherJets: ptOJets
+ */
+create function ptOJets(parameters) -> real as stored;
+/* 
+ * m_maxPtForAllThreeIsolatedLeptons: maxPtAll
+ * m_maxPtForTheSoftestIsolatedLepton: maxPtSoft
+ * m_minMissingTransverseEnergy: minTransEe
+ * m_maxAllowedEffectiveMass: maxEfMass
+ */
+create function maxPtAll(parameters) -> real as stored;
+create function maxPtSoft(parameters) -> real as stored;
+create function minTransEe(parameters) -> real as stored;
+create function maxEfMass(parameters) -> real as stored;

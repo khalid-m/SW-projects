@@ -1,0 +1,242 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2008 Ruslan Fomkin, UDBL
+ * $RCSfile: Thesis.experiments.naive.osql,v $
+ * $Revision: 1.14 $ $Date: 2008/09/06 11:29:11 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Scripts of experiments for the Thesis with naive query optimization model.
+ * Script is moved from Thesis.experiments.osql
+ ****************************************************************************
+ * $Log: Thesis.experiments.naive.osql,v $
+ * Revision 1.14  2008/09/06 11:29:11  ruslan
+ * with new file layout
+ *
+ * Revision 1.13  2008/05/29 15:00:38  ruslan
+ * Christian's order on signal
+ *
+ * Revision 1.12  2008/05/29 14:30:31  ruslan
+ * Chrisitan's order. bkgs experiments
+ *
+ * Revision 1.11  2008/05/20 08:11:21  ruslan
+ * filename in file schema
+ *
+ * Revision 1.10  2008/05/11 12:48:52  ruslan
+ * comment for MAN 2005 fixed
+ *
+ * Revision 1.9  2008/05/11 12:47:45  ruslan
+ * MAN for signal 2003 and 2005
+ *
+ * Revision 1.8  2008/05/11 10:37:44  ruslan
+ * minor fixing
+ *
+ * Revision 1.7  2008/05/11 10:31:10  ruslan
+ * manual for 2005 over bkg
+ *
+ * Revision 1.6  2008/05/08 14:02:25  ruslan
+ * comment on which version to run
+ *
+ * Revision 1.5  2008/05/08 10:26:53  ruslan
+ * MAN for bkgs 2003
+ *
+ * Revision 1.4  2008/04/11 10:11:31  ruslan
+ * scaling experiments over the signal file
+ *
+ * Revision 1.3  2008/04/09 08:03:11  ruslan
+ * better intervals for scaling over bkg files
+ *
+ * Revision 1.2  2008/04/07 09:24:38  ruslan
+ * number of points is corrected
+ *
+ * Revision 1.1  2008/03/25 14:50:20  ruslan
+ * reorganization: split experiments, which run without safisticated query optimization, and experiments on advanced system. experiment to tune zAplah and delta are added
+ *
+ ****************************************************************************/
+<'stream.naive.osql';
+
+/*******************************************************************
+ ********** UNOPT
+ ******************************************************************/
+
+/* Scaling over bkgs with 2003 query. Basic approach, i.e. with no CM, 
+	ranksort optimization, no materialization, and no rewritings. 
+	run with run.current.basic.sh 
+create function basicBkg2003() -> boolean as
+begin
+	openwritefile("basic.bkgs.2003.txt");
+	ExpBkgPart(1,5);
+	ExpBkgPart(9,5);
+	ExpBkgPart(17,5);
+	ExpBkgPart(25,5);
+	ExpBkgPart(33,5);
+	ExpBkgPart(41,5);
+	closewritefile();
+	sendmessage("Basic bkgs 2003");
+end;
+*/
+/* Scaling over bkgs with 2005 query. Basic approach, i.e. with no CM, 
+	ranksort optimization, no materialization, and no rewritings. 
+	run with run.current.basic.2005.sh 
+create function basicBkg2005() -> boolean as
+begin
+	openwritefile("basic.bkgs.2005.txt");
+	ExpBkgPart(1,5);
+	ExpBkgPart(9,5);
+	ExpBkgPart(17,5);
+	ExpBkgPart(25,5);
+	ExpBkgPart(33,5);
+	ExpBkgPart(41,5);
+	closewritefile();
+	sendmessage("Basic bkgs 2005");
+end;
+*/
+/* Measuring performance of 2003 query over the signal file. 
+	Basic approach, i.e. with no CM, 
+	ranksort optimization, no materialization, and no rewritings. 
+	run with run.current.basic.sh 
+create function basicSignal2003() -> Boolean as
+begin
+	openwritefile("basic.signal.2003.txt");
+	select expcuts(filename(f)) 
+		from eventfile f 
+		where name(experiment(f))="signal";
+	ExpSignal(1437,5);
+	ExpSignal(2874,5);
+	ExpSignal(4311,5);
+	ExpSignal(5748,5);
+	ExpSignal(7185,5);
+	ExpSignal(8622,5);
+	closewritefile();
+	sendmessage("Basic signal 2003");
+end;
+*/
+/* Measuring performance of 2005 query over the signal file. 
+	Basic approach, i.e. with no CM, 
+	ranksort optimization, no materialization, and no rewritings. 
+	run with run.current.basic.2005.sh 
+create function basicSignal2005() -> Boolean as
+begin
+	openwritefile("basic.signal.2005.txt");
+	select expcuts(filename(f)) 
+		from eventfile f 
+		where name(experiment(f))="signal";
+	ExpSignal(1437,5);
+	ExpSignal(2874,5);
+	ExpSignal(4311,5);
+	ExpSignal(5748,5);
+	ExpSignal(7185,5);
+	ExpSignal(8622,5);
+	closewritefile();
+	sendmessage("Basic signal 2005");
+end;
+*/
+/*******************************************************************
+ ********** MAN
+ ******************************************************************/
+
+/* Scaling over bkgs with 2003 query. Best effort manual approach. 
+	run with run.current.limited.sh 
+create function manualBkg2003() -> boolean as
+begin
+	openwritefile("manual.bkgs.2003.txt");
+	OptBkgPart(1,5);
+	OptBkgPart(9,5);
+	OptBkgPart(17,5);
+	OptBkgPart(25,5);
+	OptBkgPart(33,5);
+	OptBkgPart(41,5);
+	closewritefile();
+	sendmessage("Manual bkgs 2003");
+end;
+*/
+/* Scaling over bkgs with 2005 query. Best effort manual approach. 
+	run with run.current.limited.2005.sh 
+create function manualBkg2005() -> boolean as
+begin
+	openwritefile("manual.bkgs.2005.txt");
+	OptBkgPart(1,5);
+	OptBkgPart(9,5);
+	OptBkgPart(17,5);
+	OptBkgPart(25,5);
+	OptBkgPart(33,5);
+	OptBkgPart(41,5);
+	closewritefile();
+	sendmessage("Manual bkgs 2005");
+end;
+*/
+/* Measuring performance of 2003 query over the signal file. 
+	MAN approach, i.e. with no CM, 
+	ranksort optimization, but with materialization, and  rewritings. 
+	run with run.current.limited.sh 
+create function manualSignal2003() -> Boolean as
+begin
+	openwritefile("manual.signal.2003.txt");
+	OptSignal(1437,5);
+	OptSignal(2874,5);
+	OptSignal(4311,5);
+	OptSignal(5748,5);
+	OptSignal(7185,5);
+	OptSignal(8622,5);
+	closewritefile();
+	sendmessage("Manual signal 2003");
+end;
+*/
+/* Measuring performance of 2005 query over the signal file. 
+	MAN approach, i.e. with no CM, 
+	ranksort optimization, but with materialization, and  rewritings. 
+	The order of cuts is found manually, which is the same as in the
+	paper.
+	run with run.current.limited.2005.sh 
+create function manualSignal2005() -> Boolean as
+begin
+	openwritefile("manual.signal.2005.txt");
+	OptSignal(1437,5);
+	OptSignal(2874,5);
+	OptSignal(4311,5);
+	OptSignal(5748,5);
+	OptSignal(7185,5);
+	OptSignal(8622,5);
+	closewritefile();
+	sendmessage("Manual signal 2005");
+end;
+*/
+/*******************************************************************
+ ********** Original order by Christian
+ ******************************************************************/
+
+/* Scaling over bkgs with 2003 query. Christian's order. 
+	run with run.current.limited.sh 
+create function originalBkg2003() -> boolean as
+begin
+	openwritefile("original.bkgs.2003.txt");
+	AllBkgPart(1,5);
+	AllBkgPart(9,5);
+	AllBkgPart(17,5);
+	AllBkgPart(25,5);
+	AllBkgPart(33,5);
+	AllBkgPart(41,5);
+	closewritefile();
+	sendmessage("Original bkgs 2003");
+end;
+*/
+
+/* Measuring performance of 2003 query over the signal file. 
+	MAN approach, i.e. with no CM, 
+	ranksort optimization, but with materialization, and  rewritings. 
+	Order by Christian.
+	run with run.current.limited.sh 
+create function originalSignal2003() -> Boolean as
+begin
+	openwritefile("original.signal.2003.txt");
+	AllSignal(1437,5);
+	AllSignal(2874,5);
+	AllSignal(4311,5);
+	AllSignal(5748,5);
+	AllSignal(7185,5);
+	AllSignal(8622,5);
+	closewritefile();
+	sendmessage("Original signal 2003");
+end;
+*/

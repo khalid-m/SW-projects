@@ -1,0 +1,77 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Thanh Truong, UDBL
+ * $RCSfile: experiment0.osql,v $
+ * $Revision: 1.3 $ $Date: 2011/11/02 16:59:38 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Experiments based on DB2 lecture to test AQTI 
+ *
+ ****************************************************************************
+ * $Log: experiment0.osql,v $
+ * Revision 1.3  2011/11/02 16:59:38  thatr500
+ * *** empty log message ***
+ *
+ * Revision 1.2  2011/11/02 16:56:30  thatr500
+ * Use a new term "AQUIT" (Algebraic Query Inequality Transformation)
+ *
+ * Revision 1.1  2011/11/02 11:18:37  thatr500
+ * Simple AQUIT test
+ *
+ *
+ ****************************************************************************/
+/*Define data type Picture*/
+create type Picture;
+
+/*Each picture has a name*/
+create function name(Picture p)->Charstring n key as stored;
+
+
+/*Assume each picture is represented as a vector of pixels as number*/
+create function storedFeatures(Picture p)->Vector of Number fv as stored;
+
+
+/*Similarity between two pictures*/
+create function similarity(Picture p, Picture q) ->Number
+as 1/(1+euclid(storedFeatures(p), storedFeatures(q)));
+
+/*Queries*/
+select name(p2)
+from Picture p1, Picture p2
+where similarity(p1, p2) > 0.9
+and name(p1) = 'Picture00021';
+
+
+select name(p2) 
+from   Picture p1, Picture p2
+where 
+      1 / ( 1+ euclid(storedFeatures(p1), storedFeatures(p2))) > 0.9
+and  name(p1) = 'Picture00021';
+
+/*The flattened way*/
+select name(p2) 
+from   Picture p1, Picture p2,
+       Vector of Number v1, Vector of Number v2,
+       Number d     
+where 
+        name(p1) = 'Picture00021'
+and	v1 = storedFeatures(p1)
+and	v2 = storedFeatures(p2)
+and     d  = euclid(v1, v2) 
+and     1 / ( 1 + d) > 0.9;
+
+
+pc("q");
+
+register_exindextype('XT', 'C:xt', FALSE);
+
+create_index("storedFeatures","fv","XT","multiple");
+
+/*Recompile the originial query*/
+select name(p2)
+from Picture p1, Picture p2
+where similarity(p1, p2) > 0.9
+and name(p1) = 'Picture00021';
+
+pc("*select*");

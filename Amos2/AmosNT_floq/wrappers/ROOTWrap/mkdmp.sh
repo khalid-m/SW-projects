@@ -1,0 +1,2 @@
+../../bin/rootwrap -i rootinit.lsp < "wrapper3.amosql"
+

@@ -1,0 +1,300 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2008 Ruslan Fomkin, UDBL
+ * $RCSfile: stream.structs.basic.osql,v $
+ * $Revision: 1.24 $ $Date: 2008/09/24 08:09:46 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Basic AmosQL scripts for running stream with structs. It is used in
+ * different implementation of streaming, i.e. with and without materialization
+ * and rewritings.
+ ****************************************************************************
+ * $Log: stream.structs.basic.osql,v $
+ * Revision 1.24  2008/09/24 08:09:46  ruslan
+ * aleh_stream returns bag
+ *
+ * Revision 1.23  2008/08/20 09:15:05  ruslan
+ * aleh_stream is derived function, which returns event by iterating into wrapper access function
+ *
+ * Revision 1.22  2008/08/18 11:59:46  ruslan
+ * names are corrected according the schema in the thesis
+ *
+ * Revision 1.21  2008/05/20 07:24:48  ruslan
+ * using multidirectional
+ *
+ * Revision 1.20  2008/05/17 13:22:05  ruslan
+ * bag of notation in particle set constructors
+ *
+ * Revision 1.19  2008/05/17 11:55:26  ruslan
+ * bag of notation in particle set constructors
+ *
+ * Revision 1.18  2008/05/16 12:03:52  ruslan
+ * constructors of set of particles calls specialized constuctors of signle particles
+ *
+ * Revision 1.17  2008/05/15 15:27:17  ruslan
+ * multidirection particle-event relationship. interface of root_scan_project_addslots is improved
+ *
+ * Revision 1.16  2008/05/13 11:15:43  ruslan
+ * filename and id are defined correctly for event. id and event are defined for particle
+ *
+ * Revision 1.15  2008/05/11 08:28:01  ruslan
+ * definition of filename and id
+ *
+ * Revision 1.14  2008/05/10 13:47:31  ruslan
+ * jetb renamed in jet according the Thesis
+ *
+ * Revision 1.13  2008/05/10 13:06:51  ruslan
+ * wrapper returns only sobject without the key vector, names of wrapper functions in correspondance with the Thesis, aleh_stream is used to stream events instead of filename
+ *
+ * Revision 1.12  2008/05/09 06:59:30  ruslan
+ * using new_sobject directly
+ *
+ * Revision 1.11  2008/05/09 06:52:27  ruslan
+ * more unnecessary attributes are projected away
+ *
+ * Revision 1.10  2008/05/08 14:44:33  ruslan
+ * collection name does not contain version
+ *
+ * Revision 1.9  2008/05/06 12:07:57  ruslan
+ * file specification is required
+ *
+ * Revision 1.8  2008/05/06 08:02:50  ruslan
+ * the view definition
+ *
+ * Revision 1.7  2008/05/05 07:36:02  ruslan
+ * the same view as in loading
+ *
+ * Revision 1.6  2008/05/01 10:47:19  ruslan
+ * specifying file makes call to the wrapper in streaming approach
+ *
+ * Revision 1.5  2008/04/10 12:55:16  ruslan
+ * functions over intervals
+ *
+ * Revision 1.4  2008/03/06 08:57:54  ruslan
+ * using operator with 0 extra slots
+ *
+ * Revision 1.3  2008/02/28 13:14:13  ruslan
+ * using sobject
+ *
+ * Revision 1.2  2008/02/23 11:22:24  ruslan
+ * basic approach, i.e. most naive. experiment over it for bkgs 2003
+ *
+ * Revision 1.1  2008/02/18 15:24:41  ruslan
+ * redesigning files. basic contains functions, which are used by everyone, and it corresponds to the strategy without materialization. naive correspond the strategy with no rewrittings and partial evaluation. original file contains most advanced strategy.
+ *
+ ****************************************************************************/
+
+logging off;
+
+load_lisp("../lsp/stream.structs.lsp");
+
+declare_key(functionnamed('get_slot'),{'s','i'});
+
+/*
+ * Metadata about structs.
+ */
+/* Schema */
+create type SOBJECT_TYPE;
+create function name(SOBJECT_TYPE key) -> charstring key as stored;
+create function structof(SOBJECT_TYPE key) -> type key as stored;
+
+/* Meta-data */
+create SOBJECT_TYPE instances :evt;
+set name(:evt) = "EVENT";
+set structof(:evt) = typenamed("EVENT");
+
+create SOBJECT_TYPE instances :et;
+set name(:et) = "ELECTRON";
+set structof(:et) = typenamed("ELECTRON");
+
+create SOBJECT_TYPE instances :mt;
+set name(:mt) = "MUON";
+set structof(:mt) = typenamed("MUON");
+
+create SOBJECT_TYPE instances :jt;
+set name(:jt) = "JET";
+set structof(:jt) = typenamed("JET");
+
+/*
+ * Access functions to the slots of structs.
+ */
+
+create function aleh_stream(charstring filename)-> bag of Event ev as
+select ev
+where ev=root_scan_project(filename,"/ATLFAST","h51",{"Pxmiss",
+	"Pymiss","Kfele","Pxele","Pyele","Pzele","Eeele",
+	"Kfmuo","Pxmuo","Pymuo","Pzmuo","Eemuo","Kfjetb",
+	"Pxjetb","Pyjetb","Pzjetb","Eejetb"},typenamed("EVENT"));
+
+create function filename(event ev) -> charstring filename as
+select source(ev);
+
+create function eventId(event ev) -> integer id as
+select sid(ev);
+
+create function Pxmiss(event ev) -> real as
+select get_slot(ev,0);
+
+create function Pymiss(event ev) -> real as
+select get_slot(ev,1);
+
+create function Kfele(event ev) -> vector of integer as
+select get_slot(ev,2);
+create function Pxele(event ev) -> vector of real as
+select get_slot(ev,3);
+create function Pyele(event ev) -> vector of real as
+select get_slot(ev,4);
+create function Pzele(event ev) -> vector of real as
+select get_slot(ev,5);
+create function Eeele(event ev) -> vector of real as
+select get_slot(ev,6);
+
+create function Kfmuo(event ev) -> vector of integer as
+select get_slot(ev,7);
+create function Pxmuo(event ev) -> vector of real as
+select get_slot(ev,8);
+create function Pymuo(event ev) -> vector of real as
+select get_slot(ev,9);
+create function Pzmuo(event ev) -> vector of real as
+select get_slot(ev,10);
+create function Eemuo(event ev) -> vector of real as
+select get_slot(ev,11);
+
+create function Kfjetb(event ev) -> vector of integer as
+select get_slot(ev,12);
+create function Pxjetb(event ev) -> vector of real as
+select get_slot(ev,13);
+create function Pyjetb(event ev) -> vector of real as
+select get_slot(ev,14);
+create function Pzjetb(event ev) -> vector of real as
+select get_slot(ev,15);
+create function Eejetb(event ev) -> vector of real as
+select get_slot(ev,16);
+
+/* For particles. */
+/*
+create function id(particle p)-> integer as
+	select get_slot(p,0);
+*/
+create function kf(particle p)-> integer as
+	select get_slot(p,0);
+create function px(particle p)-> real as
+	select get_slot(p,1);
+create function py(particle p)-> real as
+	select get_slot(p,2);
+create function pz(particle p)-> real as
+	select get_slot(p,3);
+create function ee(particle p)-> real as
+	select get_slot(p,4);
+
+create function pid(particle p)-> integer as
+select sid(p);
+
+create function event(particle p)-> event as
+select source(p);
+
+/*
+create function new_jetb(Type r, Event src, integer id, Vector cont)-> 
+	jetb s key as foreign "make_sobjectbbbbf";
+create function new_electron(Type r, Event src, integer id, Vector cont)-> 
+	electron s key as foreign "make_sobjectbbbbf";
+create function new_muon(Type r, Event src, integer id, Vector cont)-> 
+	muon s key as foreign "make_sobjectbbbbf";
+create function new_event(Type r, charstring src, integer id, Vector cont)-> 
+	event s key as foreign "make_sobjectbbbbf";
+*/
+/* Does not work with particle ID
+create function new_electrons(vector eles) -> Electron e as
+select new_electron(typenamed("ELECTRON"),v)
+from integer i, vector v
+where v=eles[i];
+
+create function new_muons(vector muos) -> Muon m as
+select new_muon(typenamed("MUON"),v)
+from integer i, vector v
+where v=muos[i];
+
+create function new_jetbs(vector jetbs) -> Jetb b as
+select new_jetb(typenamed("JETB"),v)
+from integer i, vector v
+where v=jetbs[i];
+*/
+
+/* Constructors for stream objects of specific particle types */
+create function new_electron(Object ev, Integer i, Integer kf, Real px,
+	Real py, Real pz, Real ee)-> Electron as
+select new_sobject(typenamed("ELECTRON"),ev,i,{kf,px,py,pz,ee});
+
+create function new_muon(Object ev, Integer i, Integer kf, Real px,
+	Real py, Real pz, Real ee)-> Muon as
+select new_sobject(typenamed("MUON"),ev,i,{kf,px,py,pz,ee});
+
+create function new_jet(Object ev, Integer i, Integer kf, Real px,
+	Real py, Real pz, Real ee)-> Jet as
+select new_sobject(typenamed("JET"),ev,i,{kf,px,py,pz,ee});
+
+/* Creating electron structs for a given event and streaming them. */
+create function new_electrons(event ev)-> bag of Electron as
+select new_electron(ev,i,Kfele(ev)[i],
+	Pxele(ev)[i],Pyele(ev)[i],Pzele(ev)[i],Eeele(ev)[i])
+from integer i;
+
+/* Creating muon structs for a given event and streaming them. */
+create function new_muons(event ev)-> bag of Muon as
+select new_muon(ev,i,Kfmuo(ev)[i],
+	Pxmuo(ev)[i],Pymuo(ev)[i],Pzmuo(ev)[i],Eemuo(ev)[i])
+from integer i;
+
+/* Creating jetb structs for a given event and streaming them. */
+create function new_jets(event ev)-> bag of Jet as
+select new_jet(ev,i,Kfjetb(ev)[i],
+	Pxjetb(ev)[i],Pyjetb(ev)[i],Pzjetb(ev)[i],Eejetb(ev)[i])
+from integer i;
+
+create function electrons(event ev) -> bag of electron e as multidirectional
+("bf" select new_electrons(ev))
+("fb" select event(e));
+
+create function muons(event ev) -> bag of muon m as multidirectional
+("bf" select new_muons(ev))
+("fb" select event(m));
+
+create function jets(event ev) -> bag of jet j as multidirectional
+("bf" select new_jets(ev))
+("fb" select event(j));
+
+/*
+create function leptonsfn(event ev) -> bag of Lepton l as
+	select l where l=electrons(ev) or l=muons(ev);*/
+create function leptons(event ev)-> Lepton l as multidirectional
+("bf"	select l
+	where l=electrons(ev) or l=muons(ev))
+/*	from function fn
+	where fn=functionnamed("event.leptonsfn->lepton") and 
+		l=closednf(fn,1,ev))*/
+("fb"	select event(l));
+/*
+create function particlesfn(event ev)-> bag of Particle p as
+	select p where p=leptons(ev) or p=jets(ev);*/
+create function particles(event ev)-> Particle p as multidirectional
+("bf"	select p
+	where p=leptons(ev) or p=jets(ev))
+/*	from function fn
+	where p=closednf(fn,1,ev) and
+		fn=functionnamed("event.particlesfn->particle"))*/
+("fb"	select event(p));
+
+
+create function aleh_stream(charstring filename,integer firstEvent, 
+	integer lastEvent)-> bag of Event ev as
+select ev
+where ev=root_get_interval_sobjects_project(filename,"/ATLFAST","h51",
+	{"Pxmiss","Pymiss","Kfele","Pxele","Pyele","Pzele","Eeele",
+	"Kfmuo","Pxmuo","Pymuo","Pzmuo","Eemuo",
+	"Kfjetb","Pxjetb","Pyjetb","Pzjetb","Eejetb"},
+	typenamed("EVENT"),firstEvent,lastEvent);
+
+load_lisp("../lsp/help_fns.lsp");
+

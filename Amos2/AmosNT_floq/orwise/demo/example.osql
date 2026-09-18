@@ -1,0 +1,98 @@
+/* A simple example: websearch with three search engines */
+
+url(orwise({{"Google", {"query","sweden"}, {"results","23"}}}));
+
+title(orwise({{"Google",         {"query","sweden"}, {"results","23"}},
+        {"AltavistaPower", {"query","uppsala"}, {"results","24"}, {"language","en"}},
+        {"Cora",           {"query","database"}, {"results","25"}}}
+        ));
+
+/*the same example with separated orwise calls*/
+select url(webResult)
+from document webResult 
+where
+  webResult = orwise({{"Google",         {"query","sweden"}, {"results","23"}}}) or
+  webResult = orwise({{"AltavistaPower", {"query","uppsala"}, {"results","24"}, {"language","en"}}}) or
+  webResult = orwise({{"Cora",           {"query","database"}, {"results","25"}}});
+
+
+/* In this example AMOS II is used as the database*/
+/*
+Checks which employees can be found in the Top 10 of each search engine when searching for their 
+home pages by entering pre- and surname.
+After having executed the osql-file we may get a result as followed:
+"Risch"
+"Katchaounov"
+"Eckel"
+
+James Bond's homepage is not listed under the five first entries neither under Google nor under Altavista nor under Cora.
+*/
+
+create type employee;
+create function prename(employee)->charstring as stored;
+create function surname(employee)->charstring as stored;
+create function webpage(employee)->charstring as stored;
+create function available(employee)->boolean as stored;
+
+/* creating instances */
+create employee instances :tor, :tim, :bru, :jam;
+/* setting function values */
+set prename(:tor)='Tore';
+set surname(:tor)='Risch';
+set webpage(:tor)='http://www.dis.uu.se/~torer';
+
+set prename(:tim)='Timour';
+set surname(:tim)='Katchaounov';
+set webpage(:tim)='http://www.dis.uu.se/~timka';
+
+set prename(:bru)='Bruce';
+set surname(:bru)='Eckel';
+set webpage(:bru)='http://www.mindview.com';
+
+set prename(:jam)='James';
+set surname(:jam)='Bond';
+set webpage(:jam)="http://www.mi6.co.uk/007/jamesbond";
+
+/* defining query by creating a function, which gives back an object of type employee*/
+
+create function contains(character str, character substr)->boolean
+  as select like_i(str, "*" + substr + "*");
+
+create function get_emp(integer maxdepth) -> character as
+  select url(doc)
+  from employee e, document doc 
+  where 
+    doc = orwise({{"Google",{"query",prename(e)+ " " + surname(e)}, 
+                             {"results",itoa(maxdepth)}}})
+    and contains(url(doc),webpage(e));
+
+create function get_emp2(integer maxdepth) -> character as
+  select distinct count(doc)
+  from employee e, documentdescr doc
+  where 
+    doc = orwise({{"Google",{"query",prename(e)+ " " + surname(e)}, 
+                             {"results",itoa(maxdepth)}},
+                  {"AltavistaPower",{"query",prename(e)+ " AND " + surname(e)}, 
+                                     {"results",itoa(maxdepth)}, 
+                                     {"language","en"}},
+                  {"Cora",{"query","+" + prename(e)+ " " + "+" + surname(e)}, 
+                           {"results",itoa(maxdepth)}}})
+    and contains(url(doc), webpage(e)) and rank(doc)>10;
+
+select count(doc)
+  from employee e, document doc, altavista e
+  where
+    doc = SEQuery(e,prename(e)) and SEQuery(e,surname(e)) and linksto(d)="http:...";
+
+create abstract function SEQuery(character q)-> document as select SEQuery(e,q) from searchengine e where
+   current_search_engine()=e;
+/* An abstract function can be overridden (through redefinition or rewriting), but NOT executed */
+
+/* creating a function which reads the function value of the employee's surname /*
+create function get_emp_names() -> charstring
+  select surname(get_emp());
+get_emp_names();
+
+/* Search engine capabilities:
+   SEQuery(engine, query)->document
+   

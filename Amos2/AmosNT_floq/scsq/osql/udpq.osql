@@ -1,0 +1,65 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2006 Erik Zeitler, UDBL
+ * $RCSfile: udpq.osql,v $
+ * $Revision: 1.1 $ $Date: 2008/10/09 16:10:49 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: All functionality related to the UDP signal receiver
+ *
+ ****************************************************************************
+ * $Log: udpq.osql,v $
+ * Revision 1.1  2008/10/09 16:10:49  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.1  2006/02/12 20:01:08  torer
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+
+create function udp_start() -> integer 
+       as foreign 'start_udpqs';
+
+create function udp_stop() -> integer 
+       as foreign 'stop_udpqs';
+
+create function change_udp_scale() -> integer 
+       as foreign 'change_udp_scale';
+
+create function get_udp_carray(charstring ip) -> numarray
+       as foreign 'get_udp_carray';
+
+create function get_udp_carrays(charstring ip, integer n) -> numarray
+       as for each integer i where i = iota(1,n) 
+	result get_udp_carray(ip);
+
+create function get_udp_carrays(integer n) -> vector
+	as for each charstring c where c in sensor_ids() begin
+	 for each integer i where i = iota(1,n)
+		result {c, get_udp_carray(c)};
+	end;
+
+create function guc(integer n) -> vector
+as select {c, get_udp_carray(c)}
+from charstring c, integer i 
+where c in sensor_ids()
+and i in iota(1,n);
+
+create function get_all_udp_carrays() -> vector
+	as select get_udp_carrays(20)
+	where eternity(0.1);
+
+create function persecond()->vector as
+        select {c, count(get_udp_carrays(c,2000))}
+        from charstring c where c in sensor_ids()
+        and eternity(1.0);
+
+create function udpgw(stream) -> boolean
+	as foreign 'UDPGW';
+
+/*
+start_udp_consumer("130.238.30.114");
+count(get_udp_carrays("130.238.30.114",2000));
+stop_udp_consumer();
+*/

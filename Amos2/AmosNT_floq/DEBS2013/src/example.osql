@@ -1,0 +1,28 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: example.osql,v $
+ * $Revision: 1.1 $ $Date: 2013/03/29 17:31:07 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Examples 
+ *
+ ****************************************************************************
+ * $Log: example.osql,v $
+ * Revision 1.1  2013/03/29 17:31:07  thatr500
+ * *** empty log message ***
+ *
+ *
+ ****************************************************************************/
+
+create function foo(Window w) -> Boolean
+  as begin
+      print("elements in window");
+      for each integer i where i in w
+      begin
+      print(i);
+      end;
+     end;
+
+select foo(w) from window w where w in cwindowize(siota(1, 10), 5, 3, 2);

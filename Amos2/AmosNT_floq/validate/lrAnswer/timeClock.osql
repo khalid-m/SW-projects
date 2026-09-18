@@ -1,0 +1,11 @@
+
+/* needed */
+
+create function current_second() -> Integer; /* simulation time */
+create function current_minute() -> Integer; /* simulation time */
+
+create function set_current_second(Number s) -> Boolean
+  as set current_second() = s;
+
+create function set_current_minute(Number m)-> Boolean
+  as set current_minute() = m;

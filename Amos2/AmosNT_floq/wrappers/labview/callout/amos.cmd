@@ -1,0 +1,1 @@
+amos_labview %AMOS_HOME%bin\scsq.dmp -O defs.osql

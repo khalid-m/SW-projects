@@ -1,0 +1,1 @@
+java  -Djava.library.path=../bin -classpath ../bin/javaamos.jar;../wrappers/JDBC/;. AmosDemo ../bin/amos2.dmp

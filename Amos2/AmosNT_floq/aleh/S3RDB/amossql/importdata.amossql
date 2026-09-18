@@ -1,0 +1,52 @@
+
+
+set :ds = jdbc("cds", "com.microsoft.jdbc.sqlserver.SQLServerDriver");
+connect(:ds, "jdbc:microsoft:sqlserver://localhost;DatabaseName=reapeatid", "loginreapeatidf", "12345");
+
+fillevent(:ds);
+filljetb1(:ds);
+fillmuon1(:ds);
+fillelectron1(:ds);
+
+set :ds1b = jdbc("cds", "com.microsoft.jdbc.sqlserver.SQLServerDriver");
+connect(:ds1b, "jdbc:microsoft:sqlserver://localhost;DatabaseName=reapeatidb", "loginreapeatidv", "12345");
+
+fillevent(:ds1b);
+filljetb1(:ds1b);
+fillmuon1(:ds1b);
+fillelectron1(:ds1b);
+ 
+
+set :ds3 = jdbc("cds3", "com.microsoft.jdbc.sqlserver.SQLServerDriver");
+connect(:ds3, "jdbc:microsoft:sqlserver://localhost;DatabaseName=duplicatedata", "loginduplicatedataf", "12345");
+
+fillevent(:ds3);
+filljetb3(:ds3);
+fillmuon3(:ds3);
+fillelectron3(:ds3);
+
+set :dsb = jdbc("cds3b", "com.microsoft.jdbc.sqlserver.SQLServerDriver");
+connect(:dsb, "jdbc:microsoft:sqlserver://localhost;DatabaseName=duplicatedatab", "loginduplicatedatav", "12345");
+
+fillevent(:dsb);
+filljetb3(:dsb);
+fillmuon3(:dsb);
+fillelectron3(:dsb);
+
+
+set :ds4 = jdbc("cds4", "com.microsoft.jdbc.sqlserver.SQLServerDriver");
+connect(:ds4, "jdbc:microsoft:sqlserver://localhost;DatabaseName=bigtable", "loginbigtablef", "12345");
+
+fillevent(:ds4);
+filljetb4(:ds4);
+fillmuon4(:ds4);
+fillelectron4(:ds4);
+
+set :ds4b = jdbc("cds4b", "com.microsoft.jdbc.sqlserver.SQLServerDriver");
+connect(:ds4b, "jdbc:microsoft:sqlserver://localhost;DatabaseName=bigtableb", "loginbigtablec", "12345");
+
+fillevent(:ds4b);
+filljetb4(:ds4b);
+fillmuon4(:ds4b);
+fillelectron4(:ds4b);
+

@@ -1,0 +1,58 @@
+lisp;
+
+(checkequal "istream on tuple windows."
+            ((flatten (osql "in(istream(w_tuple(vstreamfile('data/lr32'), 5, 1, 1)));"))
+             (let ((data (mapcar (f/l (x) (car x)) (osql "readfile('data/lr32');"))))
+               (nconc (sublist data 10 5)
+                      (sublist data 27 5)
+                      (sublst data 32 37))))
+            ((flatten (osql "in(istream(w_tuple(vstreamfile('data/lr32'), 5, 3, 1)));"))
+             (let ((data (mapcar (f/l (x) (car x)) (osql "readfile('data/lr32');"))))
+               (nconc (sublist data 10 5)
+                      (sublist data 27 5)
+                      (sublst data 32 37))))
+            ((flatten (osql "in(istream(w_tuple(vstreamfile('data/lr32'), 5, 5, 1)));"))
+             (let ((data (mapcar (f/l (x) (car x)) (osql "readfile('data/lr32');"))))
+               (nconc (sublist data 10 5)
+                      (sublist data 27 5)
+                      (sublst data 32 37)))))
+
+(checkequal "istream on time windows."
+            ((osql "in(istream(w_time(vstreamfile('data/lr32'), 5, 1, 1)));")
+             (osql "readfile('data/lr32');"))
+            ((osql "in(istream(w_time(vstreamfile('data/lr32'), 5, 3, 1)));")
+             (osql "readfile('data/lr32');"))
+            ((osql "in(istream(w_time(vstreamfile('data/lr32'), 5, 5, 1)));")
+             (osql "readfile('data/lr32');")))
+
+(checkequal "dstream on tuple windows."
+            ((osql "in(dstream(w_tuple(vstreamfile('data/lr6'), 5, 1, 1)));")
+             nil)
+            ((flatten (osql "in(dstream(w_tuple(vstreamfile('data/lr32'), 5, 1, 1)));"))
+             (let ((data (mapcar (f/l (x) (car x)) (osql "readfile('data/lr32');"))))
+               (nconc (sublist data 10 5)
+                      (sublist data 27 5))))
+            ((flatten (osql "in(dstream(w_tuple(vstreamfile('data/lr32'), 5, 3, 1)));"))
+             (let ((data (mapcar (f/l (x) (car x)) (osql "readfile('data/lr32');"))))
+               (nconc (sublist data 10 5)
+                      (sublist data 27 5)
+                      (sublist data 32 1))))
+            ((flatten (osql "in(dstream(w_tuple(vstreamfile('data/lr32'), 5, 5, 1)));"))
+             (let ((data (mapcar (f/l (x) (car x)) (osql "readfile('data/lr32');"))))
+               (nconc (sublist data 10 5)
+                      (sublist data 27 5)))))
+
+(checkequal "dstream on time windows."
+            ((osql "in(dstream(w_time(vstreamfile('data/lr6'), 5, 1, 1)));")
+             nil)
+            ((osql "in(dstream(w_time(vstreamfile('data/lr32'), 5, 1, 1)));")
+             (firstn 32 (osql "readfile('data/lr32');")))
+            ((osql "in(dstream(w_time(vstreamfile('data/lr32'), 5, 3, 1)));")
+             (firstn 33 (osql "readfile('data/lr32');")))
+            ((osql "in(dstream(w_time(vstreamfile('data/lr32'), 5, 5, 1)));")
+             (firstn 35 (osql "readfile('data/lr32');"))))
+
+(checkequal "rstream on tuple windows."
+            ((flatten (osql "in(rstream(w_tuple(vstreamfile('data/lr32'), 5, 1, 1)));"))
+             (flatten (swinl-in (flatten (osql "in(w_tuple(vstreamfile('data/lr32'), 5, 1, 1));"))))))
+

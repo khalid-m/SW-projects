@@ -1,0 +1,38 @@
+/*-*-sql-*-*******************************************************************/
+
+logging off;
+create function lroutput()->vector;
+
+create function commtree(stream s, integer fo,  vector of integer fov)
+-> vector as select in(zipstreams(mapstreams(
+hpartstreamv(s, #'lrproute', fo, fov, 0), #'stream.scount->stream')));
+
+create function tresult(integer rep)
+-> <integer exp, real rtime, vector fov, vector cnt>;
+create_index("tresult", "rep", "hash", "multiple");
+
+create function flat_trees(stream s, integer maxexp)
+ -> <integer, real, vector, vector> as begin
+declare vector cnt, real stime, vector fo, vector of integer fov;
+set fo = vselect integer(power(2, i))
+from integer i where i in iota(0, maxexp);
+for each integer i where i in fo begin
+set fov = {i};
+set stime = rnow();
+set cnt = commtree(s, i, fov);
+set stime = rnow() - stime;
+print ({i, stime, fov, cnt});
+result <i, stime, fov, cnt>;
+end;
+end;
+
+lisp;
+;"
+
+(imagesize 100000000)
+
+(checkequal "Partition tree setup times"
+ ((osql "add tresult(1) = flat_trees(i_posrep(1), 6);")
+  nil))
+
+(sleep 5)

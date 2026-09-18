@@ -1,0 +1,95 @@
+/**** Pre-defined data flow graphs for the experiments */
+/* Execution env LOCAL or hagrid.it.uu.se */
+
+/* find a test stream for data size */
+create function exp_stream(integer ds)-> mstream s
+as begin
+	declare charstring sname, mstream s;
+	if ds< 2048 then 
+		set sname= "TEST" + cast(ds as charstring)
+	else set sname="TEST2048";
+	
+	set s= register_input_stream("TESTSIGNAL",sname,"PLAY");
+	result s;
+end;
+
+/* Central */
+create function central_dfg(integer ds)->dataflow d
+as begin
+
+	declare dataflow c1, dataflow c2,dataflow d, integer n, integer wsz;
+
+	if ds>2048 then set wsz= round(ds/2048)
+		else set wsz=1;
+	if wsz>1 then
+		set c1= lpipe(central("ts_it",{}),central("agg",{wsz}))
+	else set c1 = central("ts_it",{});
+
+	set c2 = pipe("fft3",{},central("dummy",{}));
+	set d = pipe(c1,c2);
+	set id(d)="central";
+	result d;
+end;
+
+create function central_dfg()->dataflow d
+as select central_dfg(1024);
+
+/****************************************************************/
+
+/* Round Robin */
+create function RR_dfg(integer n,integer ds,real timeout)->dataflow d
+as begin
+	declare dataflow c1, dataflow c2, 
+	dataflow d, integer wsz;
+
+	if ds>2048 then set wsz= round(ds/2048)
+		else set wsz=1;
+	if wsz>1 then
+		set c1= lpipe(central("ts_it",{}),central("agg",{wsz}))
+	else set c1 = central("ts_it",{});
+
+	set c2= PCC(n,"round_robin_part","fft3",{},"S-Merge",{timeout});
+
+	set d = pipe(c1,pipe(c2,"dummy",{}));
+	set id(d)="RR" + cast(n as charstring);
+
+	result d;
+end;
+
+create function RR_dfg(integer n,integer ds)->dataflow d
+as select RR_dfg(n,ds,0.1);
+create function RR_dfg(integer n)->dataflow d
+as select RR_dfg(n,1024,0.1);
+
+/***************************************************************/
+create function WS_dfg(integer n,integer ds)->dataflow d
+as begin
+	declare dataflow c1, dataflow c2, dataflow c3, dataflow d,
+	integer wsz;
+
+	if ds>2048 then set wsz= round(ds/2048)
+		else set wsz=1;
+	if wsz>1 then
+		set c1= lpipe(central("ts_it",{}),central("agg",{wsz}))
+	else set c1 = central("ts_it",{});
+	
+	set c2= PCC(n,"fft3part","fft3",{},"OS-Join",{"fft3combine"});
+	set d = pipe(c1,pipe(c2,"dummy",{}));
+	set id(d)="WS" + cast(n as charstring);
+
+	result d;
+end;
+
+create function WS_dfg(integer n)->dataflow d
+as select WS_dfg(n,1024);
+
+
+create function lat()->dataflow d
+as begin
+
+	declare dataflow d;
+	set d= pipe("ts_it",{},central("dummy",{1.0}));
+	set name(d)="latency test";
+	result d;
+end;
+

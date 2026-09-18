@@ -1,0 +1,27 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Mårten Svensson, UDBL
+ * $RCSfile: Timecalc.osql,v $
+ * $Revision: 1.3 $ $Date: 2007/12/18 20:55:34 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: ´Functions for time calculus
+ *
+ ****************************************************************************
+ * $Log: Timecalc.osql,v $
+ * Revision 1.3  2007/12/18 20:55:34  masv3245
+ * minor updates
+ *
+ * Revision 1.2  2007/11/13 14:19:40  torer
+ * Code cleanup
+ *
+ ****************************************************************************/
+
+create function tdiff(timeval t1, timeval t2)->real as
+select real(t1) - real(t2);
+
+create function current_second()->integer; /* simulation time */
+create function current_minute()->integer; /* simulation time */
+create function rtime()->timeval as stored; /* wall clock */
+

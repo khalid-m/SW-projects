@@ -1,0 +1,52 @@
+create function test1(Number x)->Bag of Number y;
+set test1(1)= bag(1,2,6);
+set test1(2)= bag(10,23,2);
+create_index("test1","y","mbtree","multiple");
+
+create function test2(Number x)->Bag of Number y;
+create_index("test2","y","mbtree","multiple");
+set test2(1)= bag(1,2,6);
+set test2(2)= bag(10,23,2);
+drop_index("test2","x");
+
+lisp;
+
+(defun test-mexi()
+  (checkequal 
+   "Mexi test"
+   ((osql "sort(test1(1));") '((#(1 2 6))))
+   ((externalize (osql "sort(indexes(#'test1'));"))
+    '((((P_NUMBER.TEST1->NUMBER 0 "hash" "multiple") 
+        (P_NUMBER.TEST1->NUMBER 1 "mbtree" "multiple")))))
+	
+   ((externalize (osql "sort(indexes(#'test2'));"))
+   '((((P_NUMBER.TEST2->NUMBER 1 "mbtree" "multiple")))))
+   ((osql "sort(test2(2));") '((#(2 10 23))))))
+
+(defun test-mexi-when-extension-couldnot-be-loaded()
+  (checkequal 
+   "Mexi test when extension couldnot be loaded"
+   ((osql "sort(test1(1));") '((#(1 2 6)))) ;; since there is still Hash index
+   ((externalize (osql "sort(indexes(#'test1'));"))
+    '((((P_NUMBER.TEST1->NUMBER 0 "hash" "multiple") 
+        (P_NUMBER.TEST1->NUMBER 1 "mbtree" "multiple")))))   
+   ((externalize (osql "sort(indexes(#'test2'));"))
+    '((((P_NUMBER.TEST2->NUMBER 1 "mbtree" "multiple")))))
+   ((osql "sort(test2(2));") '((#()))))) ;; all indexes are Mexi indexes, and 
+                                    ;; they were not able to be constructed
+
+(test-mexi)
+
+:osql
+
+save "foo.dmp";
+save "foo.dmp";
+save "foo.dmp";
+
+lisp;
+
+(test-mexi)
+
+:osql
+
+rollback;

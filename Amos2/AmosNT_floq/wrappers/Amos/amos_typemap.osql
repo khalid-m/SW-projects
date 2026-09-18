@@ -1,0 +1,40 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2002 Martin Hansson, UDBL
+ * $RCSfile: amos_typemap.osql,v $
+ * $Revision: 1.1 $ $Date: 2003/09/29 14:25:57 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: This function overloads the function 
+ *   amos_type(datasource, charstring)->type with the subtype amos. The 
+ *   assumption in the Amos wrapper is that any type that is a stored type is
+ *   present on all amoses. storedtype is the metatype of all stored types and
+ *   its extent is present an any installation of Amos II, hence there is 
+ *   never a need to import these types across Amos systems.
+ *   The overloaded variety of the function is a database procedure, but 
+ *   updates are still expected to target the original function 
+ *   amos_type(datasource, charstring)->type, so a special update function is
+ *   defined and declared to take care of updates. Unfortunately this is the 
+ *   'nicest' way (it's still not very nice) to accomplis this.
+ *
+ ****************************************************************************/
+
+/* Returns the amos type that has been associated with a wrapped Amos' native
+   type named native_type_name, except if this is a stored type, in which case
+   it is already present on both sides. */
+create function amos_type(amos a, charstring native_type_name) -> type
+as begin
+  if typeof(typenamed(native_type_name)) = typenamed('STOREDTYPE')
+  then result typenamed(native_type_name)
+  else result datasource.charstring.amos_type->type(a, native_type_name)
+end;
+
+create function add_amos_type(amos a, charstring native_type_name, type t)
+  -> boolean
+as begin
+  add datasource.charstring.amos_type->type(a, native_type_name)=t;
+end;	
+
+set add_function(functionnamed('AMOS.CHARSTRING.AMOS_TYPE->TYPE'))=
+    functionnamed('AMOS.CHARSTRING.TYPE.ADD_AMOS_TYPE->BOOLEAN');

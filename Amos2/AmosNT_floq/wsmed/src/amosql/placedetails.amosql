@@ -1,0 +1,16 @@
+
+
+
+
+
+/********** WSMED view defintion ***********/
+
+
+
+create function sql:PlaceDetails(charstring city, charstring state)-><charstring placename ,charstring resultState,charstring types, real latDegrees , real lonDegrees , real latRadians ,real  lonRadians> as 
+    select placename, resultState, types, latDegrees , lonDegrees , latRadians , lonRadians 
+    where GetPlaceDetails(city,state)=< placename ,resultState, types , latDegrees , lonDegrees , latRadians , lonRadians>;
+
+create function sql:States()-><charstring statename ,charstring types,charstring state, real latDegrees , real lonDegrees , real latRadians ,real  lonRadians> as 
+    select statename, types, state,latDegrees , lonDegrees , latRadians , lonRadians 
+    where GetAllStates()=< statename ,types ,state, latDegrees , lonDegrees , latRadians , lonRadians>;

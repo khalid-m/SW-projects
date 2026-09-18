@@ -1,0 +1,10 @@
+
+lisp;
+(load "vsq.lsp")
+:osql
+
+< 'vsq.osql';
+
+save "../bin/vsq.dmp";
+
+quit;

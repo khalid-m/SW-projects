@@ -1,0 +1,47 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 Erik Zeitler, UDBL
+ * $RCSfile: expbig.osql,v $
+ * $Revision: 1.2 $ $Date: 2010/03/17 16:07:05 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Distributed splitstream experiments 
+ *
+ ****************************************************************************
+ * $Log: expbig.osql,v $
+ * Revision 1.2  2010/03/17 16:07:05  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.1  2010/03/03 16:57:47  zeitler
+ * *** empty log message ***
+ *
+ *
+ ****************************************************************************/
+
+clear_function("tresult");
+
+add tresult("exp") = scale_exp(1000, 8, 5);
+add tresult("fsplit") = scale_fsplit(1000, 8, 5);
+add tresult("max") = scale_max(1000, 8, 5);
+add tresult("tosno") = scale_tos(1000, 8, 5, #'tosno');
+add tresult("tos") = scale_tos(1000, 8, 5, #'tos');
+
+write_ntuples(report(), "scaleupreport_1000_" + timestamp());
+
+sleep(2);
+
+clear_function("tresult");
+select c, tresult(c) from charstring c;
+
+add tresult("exp") = robust_exp(1000, 6);
+add tresult("fsplit") = robust_fsplit(1000, 6);
+add tresult("max") = robust_max(1000, 6);
+add tresult("tosno") = robust_tos(1000, 6, #'tosno');
+add tresult("tos") = robust_tos(1000, 6, #'tos');
+
+write_ntuples(report(), "robustness_64_" + timestamp());
+
+sleep(2);
+
+q();

@@ -1,0 +1,11 @@
+set :url = "jdbc:interbase://localhost/" + getenv("INTERBASE_BIN") 
+                      + "/exampleDB.gdb";
+sardunload(:url, "interbase.interclient.Driver", "SYSDBA", "masterkey", 
+                 "exampleDB");
+
+set :url = "jdbc:interbase://localhost/" + getenv("INTERBASE_BIN") 
+                      + "/reloadDB.gdb";
+sardload(:url, "interbase.interclient.Driver", "SYSDBA", "masterkey", 
+                 "exampleDB");
+
+quit;

@@ -1,0 +1,40 @@
+/*-*-sql-*-*******************************************************************/
+
+create function file_rrpsplit(charstring file, integer inl, integer mult,
+integer r0fo, integer r1fo) -> vector of vector of number as
+select in(zipstreams(premerge))
+from stream src, vector of stream r0, vector of stream of numarray r1,
+vector of stream premerge, vector of stream fsplit, integer q
+where premerge = mapflex(premerge(fsplit, integer(r0fo*r1fo), q), #'stcount', 
+{'rem':'mrg'})
+and fsplit = unpackfsplit(r1, q, #'xwayrfn', #'q2bfn', 15)
+and r1 = rsplit_force_flexx(r0, r1fo, {'rem':'r1'})
+and r0 = rsplit_force_flex(src, r0fo, {'rem':'r0', 'hostnum':0})
+and src = ostream(newspflex(streamof(clrmultiply(in(
+lreadfastbins({file})), inl, mult)), {'hostnum':0, 'rem':'src'}), 0)
+and q = inl*mult;
+
+create function x_file_rrpsplit(charstring file, integer inl, integer mult, 
+integer r0fo, integer r1fo) -> vector as begin
+reset_ipr();
+set res() = file_rrpsplit(file, inl, mult, r0fo, r1fo);
+return {inl*mult, file, r0fo*r1fo, exectime(res()), countsum(res()),
+psum(remcpu('src')), psum(remcpu('r0')), psum(remcpu('r1')), 
+psum(fscpu()), psum(remcpu('mrg'))};
+sleep(0.1);
+end;
+
+create function rrp_res()->vector;
+
+create function ub_file_rrpsplit(charstring file, integer inl, 
+vector of integer mults, integer r0fo, integer r1fo) -> object as begin
+for each integer mult where mult in mults begin
+declare charstring outputfilename;
+set outputfilename = "rrpsplit-" + "m" + stringify(mult) + "_rfo" + 
+stringify(r0fo) + "_" + stringify(r1fo);
+add rrp_res() = x_file_rrpsplit(file, inl, mult, r0fo, r1fo);
+print(rrp_res());
+writefile("dp-" + outputfilename, {dprofile()});
+end;
+write_ntuples(rrp_res(), "rrpsplit_" + timestamp());
+end;

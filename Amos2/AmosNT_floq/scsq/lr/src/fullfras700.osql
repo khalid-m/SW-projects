@@ -1,0 +1,81 @@
+/*-*-sql-*-*******************************************************************/
+
+create function inputdir(Charstring)->Charstring;
+set inputdir("mei.it.uu.se") = "/home/zeitler/binbench";
+set inputdir("grad1.uppmax.uu.se") = "/home/erikz/binbench";
+set inputdir("gr49.uppmax.uu.se") = "/home/erikz/binbench";
+create function outputdir(Charstring)->Charstring;
+set outputdir("mei.it.uu.se") = "/home/zeitler/lroutput";
+set outputdir("grad1.uppmax.uu.se") = "/scratch/erikz/lroutput";
+set outputdir("gr49.uppmax.uu.se") = "/scratch/erikz/lroutput";
+create function lroutput()->vector;
+create function lroutputbin()->numarray;
+create function last_clock()->real;
+
+lisp;
+;"
+
+(imagesize 100000000)
+
+(checkequal "dpartition of 700k tpls"
+((osql "in(zipstreams(mapstreams(splitflex(
+  lreadfast('/scratch/erikz/c30.bin3', 30),
+  2, #'dpartitionbin', make_record({'hostname', 'gr41.uppmax.uu.se'})), #'stream.scount->stream')));")
+'((#(689820 725)))))
+
+(checkequal "d + xpartition of 700k tpls"
+((osql "select in(zipstreams(concat(proc, my)))
+from vector of stream of vector dp, vector of stream xp, vector of stream proc,
+vector of stream my, integer L
+where proc = mapstreams(xp, #'stream.scount->stream')
+and my = mapstreams({dp[1]}, #'stream.scount->stream')
+and xp = splitstream(dp[0], L, #'xpartitionbin')
+and dp = splitflex(lreadfast({'/scratch/erikz/c30.bin3'}, L),
+                   2, #'dpartitionbin',
+  make_record({'hostname', 'gr41.uppmax.uu.se'}))
+and L=30;")
+'((#(26387 26738 26241 26327 26075 25837 25942 26012 26392 26448 26481 26331 26543 26613 26588 26424 26539 26272 26454 26312 26456 26434 26361 26261 26366 26748 26312 26258 26352 26903 725)))))
+
+(checkequal "d + xpartition + MySQL of 700k tpls"
+((osql "select in(zipstreams(proc))
+from vector of stream of vector dp, vector of stream xp, vector of stream proc,
+vector of stream my, integer L
+where proc = mapstreams(concat(xp, my), #'stream.scount->stream')
+and my = mapflexv({{'mei.it.uu.se', 'lr', dp[1]}}, #'dailyexp',
+                  make_record({'hostname', 'mei.it.uu.se', 'exe', 'javascsq'}))
+and xp = splitstream(dp[0], L, #'xpartitionbin')
+and dp = splitflex(lreadfast({'/scratch/erikz/c30.bin3'}, L),
+                   2, #'dpartitionbin',
+  make_record({'hostname', 'gr41.uppmax.uu.se'}))
+and L=30;")
+'((#(26387 26738 26241 26327 26075 25837 25942 26012 26392 26448 26481 26331 26543 26613 26588 26424 26539 26272 26454 26312 26456 26434 26361 26261 26366 26748 26312 26258 26352 26903 2)))))
+
+(checkequal "d + xpartition + MySQL + lr of 700k tpls"
+((osql "count(select v from numarray v where v in
+(select in(mergestreams(concat({abagg}, concat(alla, mybin))))
+from vector of stream of vector dp, vector of stream xp, vector of stream proc,
+vector of stream my, vector of stream mybin, vector of stream postproc,
+integer L, vector of stream alla, stream abagg
+where abagg = ostream(newsp(lrf(zipstreams(vectorize(select i, postproc[i*2+1]
+  from integer i where i in iota(0, dim(postproc)/2))))), 0)
+and alla = vectorize(select i, postproc[i*2]
+  from integer i where i in iota(0, dim(postproc)/2))
+and postproc = splitstreams(proc, 2, #'accbalsplit')
+and proc = mapstreams(xp, #'lrbin')
+and mybin = mapstreams(my, #'vstream2iastream')
+and my = mapflexv({{'mei.it.uu.se', 'lr', dp[1]}}, #'dailyexp',
+                  make_record({'hostname', 'mei.it.uu.se', 'exe', 'javascsq'}))
+and xp = splitstream(dp[0], L, #'xpartitionbin')
+and dp = splitflex(lreadfast({'/scratch/erikz/c30.bin3'}, L),
+                   2, #'dpartitionbin',
+  make_record({'hostname', 'gr41.uppmax.uu.se'}))
+and L=30));")
+'((686283))))
+
+
+
+(sleep 3)
+(send-form '(quit) (open-nameserver-port))
+:osql
+rollback;
+quit;

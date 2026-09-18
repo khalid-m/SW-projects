@@ -1,0 +1,644 @@
+
+set :id="producer180mDS";
+set :url="jdbc:microsoft:sqlserver://localhost;DatabaseName=producer180m";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="producer180m";
+set :catalog="producer180m";
+set :schema="producer180m";
+set :usern="product180m";
+set :passw="product180m";
+set :upv="prod";
+set :uriOfupv="http://user.it.uu.se/~udbl/sard/prod";
+
+
+defineDS(:id,
+         :url,
+         :driver,
+         :catalog,
+         :schema,
+         :usern,
+         :passw);
+defineUPV(:id,:upv, :uriofupv);
+/*defineUPV(:id,:upv_fn, :uriofupv_fn);*/
+DSConnect(:upv);	
+wrapRDB(jdbcOfDS(:id), :dbname, :catalog, :schema);
+assignIDs(:upv,:catalog, :schema);
+ViewRDB(:upv);
+
+
+/*Query 1
+ PREFIX db: <http://user.it.uu.se/~udbl/sard/prod#>
+ PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ PREFIX producttype: <http://user.it.uu.se/~udbl/sard/prod#producttype/>
+ PREFIX productfeature: <http://user.it.uu.se/~udbl/sard/prod#productfeature/>
+ CONSTRUCT {?product ?property ?value }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE
+	{?product	 ?property 				?value .
+	 ?product	product:product_label			?label .
+	 ?product	db:product_to_producttype	 	producttype:_1 .
+	 ?product	db:product_to_productfeature	 	productfeature:_3 .
+	 ?product	db:product_to_productfeature	 	productfeature:_4 .
+	 ?product 	product:product_propertyNum1		?value1 .
+	 FILTER (?value1 > '348') }
+
+*/
+
+/* SAQ */
+lisp;
+(setq _gct_ t)
+(setq _unif_ t);;to normalize variable names in a DNF RDB predicate 
+:osql
+create function query1()->(Charstring,Charstring, Charstring)
+as 
+	select _ss_, _pp_, _oo_
+  from Charstring value1, Charstring product, Charstring label, Charstring property, 
+	Charstring value, Charstring _ss_, Charstring _pp_, Charstring _oo_, 
+	Charstring val
+ where (product, property, value) in prod()
+   and (product, 'http://user.it.uu.se/~udbl/sard/prod#product/product_label', label) in prod()
+   and (product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_producttype', 'http://user.it.uu.se/~udbl/sard/prod#producttype/_1') in prod()
+   and (product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_productfeature', 'http://user.it.uu.se/~udbl/sard/prod#productfeature/_3') in prod()
+   and (product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_productfeature', 'http://user.it.uu.se/~udbl/sard/prod#productfeature/_4') in prod()
+   and (product, 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyNum1', value1) in prod()
+/* eqivalent to rewrite open FILTER */
+   and val > '348' and (value1 = valueid(val,'http://www.w3.org/2001/XMLSchema#int') 
+			or value1=valueid(val,'http://www.w3.org/2001/XMLSchema#float') 
+			or value1 = valueid(val, 'http://www.w3.org/2001/XMLSchema#integer') 
+			or value1 = valueid(val, 'http://www.w3.org/2001/XMLSchema#double') 
+			or value1 = valueid(val, 'http://www.w3.org/2001/XMLSchema#decimal') )	
+      and ((_ss_ = product and _pp_ = property and _oo_ = value));
+
+
+create function q1_arch()->(Charstring,Charstring,Charstring)
+	as remove_null(select distinct s,p,o from Charstring s, Charstring p, Charstring o 
+	where (s,p,o) in query1());
+
+create function count1a()-> Integer as count(q1_arch());
+
+
+/* SAQ Naive */
+lisp;
+(setq _gct_ nil)
+(setq _unif_ nil);;to normalize variable names in a DNF RDB predicate 
+:osql
+
+
+
+
+/*Query 2
+ PREFIX db: <http://user.it.uu.se/~udbl/sard/prod#>
+ PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ PREFIX producttype: <http://user.it.uu.se/~udbl/sard/prod#producttype/>
+ PREFIX productfeature: <http://user.it.uu.se/~udbl/sard/prod#productfeature/>
+ PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+ CONSTRUCT { ?product ?property  ?value }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE { 
+	?product ?property  ?value .
+	?product	product:product_label		?label .
+	?product	rdf:type 			 <http://user.it.uu.se/~udbl/sard/prod#product/> .
+	FILTER (?property != <http://user.it.uu.se/~udbl/sard/prod#product_to_productfeature> ) .
+	FILTER (?property != <http://user.it.uu.se/~udbl/sard/prod#product_to_producttype> ) .
+	FILTER REGEX (?label,'*gram*' ) }
+
+*/
+
+/* SAQ */
+lisp;
+(setq _gct_ t)
+(setq _unif_ t);;to normalize variable names in a DNF RDB predicate 
+:osql
+
+/* 1 sql query selecting columns from product */
+create function query2()->(Charstring,Charstring, Charstring)
+as 
+select ss,pp,oo
+  from Charstring product, Charstring label,Charstring ss, Charstring pp,Charstring oo,
+	Charstring pred, Charstring obj, Charstring val
+  where prod()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product/product_label', label)
+   and prod()=(product, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://user.it.uu.se/~udbl/sard/prod#product')
+   and like(val,'%gram%') and label=valueid(val,'http://www.w3.org/2001/XMLSchema#string')
+  and pred != 'http://user.it.uu.se/~udbl/sard/prod#product_to_productfeature'
+   and pred != 'http://user.it.uu.se/~udbl/sard/prod#product_to_producttype'
+	and (prod()=(product,pred,obj) and ss=product and pp=pred and oo=obj) ;
+
+
+create function q2_arch()->(Charstring,Charstring,Charstring)
+	as remove_null(select distinct s,p,o from Charstring s, Charstring p, Charstring o 
+	where (s,p,o) in query2());
+
+create function count2a()-> Integer as count(q2_arch());
+
+/* SAQ Naive */
+lisp;
+(setq _gct_ nil)
+(setq _unif_ nil);;to normalize variable names in a DNF RDB predicate 
+:osql
+
+
+
+
+/*Query 3
+ CONSTRUCT {?subject ?property ?value }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE 
+         { ?subject ?property ?value .
+	   FILTER (isLiteral(?value) .
+	   FILTER REGEX (?value, '%symbols%') } 
+
+*/
+
+
+
+/* SAQ */
+lisp;
+(setq _gct_ nil)
+(setq _unif_ nil);;to normalize variable names in a DNF RDB predicate 
+(setq _rewrite_row_and_like_ t)
+:osql
+
+create function query3()->(Charstring, Charstring, Charstring)
+as
+select _ss_, _pp_, _oo_
+  from Charstring value, Charstring subject, Charstring _ss_, Charstring _pp_, 
+		Charstring _oo_,Charstring property
+ where (subject, property, value) in prod() and like(value, '%symbols%') 
+    and ((_ss_ = subject and _pp_ = property and _oo_ = value));
+
+
+create function q3_arch()->(Charstring,Charstring,Charstring)
+	as remove_null(select distinct s,p,o from Charstring s, Charstring p, Charstring o 
+	where (s,p,o) in query3());
+
+create function count3a()-> Integer as count(q3_arch());
+
+/* 7 sql q - varchar columns */
+
+
+/* SAQ Naive */
+lisp;
+(setq _gct_ nil)
+(setq _unif_ nil);;to normalize variable names in a DNF RDB predicate 
+(setq _rewrite_row_and_like_ NIL)
+:osql
+
+
+/* 36 sql queries on F rewrite off: 27 sql q selecting from the correct column + 9 q  */
+
+
+
+ /*Query 4*/
+set :q=
+"
+ PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ CONSTRUCT {?object ?property1 ?value1 }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE 
+         { product:_2549 ?property   ?object .
+	   ?object       ?property1  ?value1 } ";
+
+
+/* SAQ  */
+lisp;
+(setq _gct_ t)
+(setq _unif_ t);;to normalize variable names in a DNF RDB predicate 
+(setq _elcon_ifnounif_ t)
+:osql
+
+/*3 sql queries(using GCT) <- mapping + rewrite + 1 */
+
+create function query4()->(Charstring, Charstring, Charstring)
+as
+select _ss_, _pp_, _oo_
+  from Charstring property, Charstring object, Charstring property1, 
+Charstring value1, Charstring _ss_, Charstring _pp_, Charstring _oo_
+ where ('http://user.it.uu.se/~udbl/sard/prod#product/_2549', property, object) in prod()
+   and (object, property1, value1) in prod() 
+    and ((_ss_ = object and _pp_ = property1 and _oo_ = value1));
+
+create function q4arch()->(Charstring,Charstring,Charstring)
+	as remove_null(select distinct s,p,o from Charstring s, Charstring p, Charstring o 
+	where (s,p,o) in query4());
+
+create function count4()-> Integer as count(q4arch());
+
+
+
+/* SAQ Naive */
+lisp;
+(setq _gct_ NIL)
+(setq _unif_ NIL);;to normalize variable names in a DNF RDB predicate 
+(setq _elcon_ifnounif_ NIL)
+:osql
+
+/*1254 sql q */
+
+/* SAQ Naive */
+lisp;
+(setq _gct_ NIL)
+(setq _unif_ NIL);;to normalize variable names in a DNF RDB predicate 
+(setq _elcon_ifnounif_ t)
+:osql
+
+/* 19 sql queries = 7q from table producer + 5 q from table productfeature + 6 q from producttype + 1*/
+
+
+/*Query 5*/
+set q5=
+" PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+ CONSTRUCT { ?sub ?prop  ?val }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE { 
+	?sub rdf:type  ?rdft .
+	?sub ?prop     ?val .	
+	FILTER (?rdft != <http://user.it.uu.se/~udbl/sard/prod#vendor> ) } ";
+	
+
+
+/* SAQ  */
+lisp;
+(setq _gct_ t)
+(setq _unif_ t);;to normalize variable names in a DNF RDB predicate 
+:osql
+
+
+
+/* SAQ Naive */
+lisp;
+(setq _gct_ NIL)
+(setq _unif_ NIL);;to normalize variable names in a DNF RDB predicate */
+
+
+
+
+/*Query 6
+ CONSTRUCT {?subject ?property ?value }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE 
+         { ?subject ?property1 ?value1 .
+	   ?subject ?property ?value .
+	   FILTER REGEX (str(?property1) '*homepage') } 
+
+*/
+
+
+/*SAQ*/
+lisp;
+(setq _gct_ t)
+(setq _unif_ t)
+(setq _sch_ t)
+:osql
+
+/* 2 queries selecting columns from tables vendor and producer, both having column
+   like 'homepage' */
+
+create function query6()->(Charstring, Charstring, Charstring)
+as
+select _ss_, _pp_, _oo_
+  from Charstring value, Charstring property, Charstring subject, Charstring _ss_, Charstring _pp_, 
+	Charstring _oo_, Charstring property1, Charstring value1
+ where (subject, property1, value1) in prod()
+   and (subject, property, value) in prod()
+   and like(property1, '*homepage')
+      and ((_ss_ = subject and _pp_ = property and _oo_ = value));
+
+
+/*SAQ-Naive*/
+lisp;
+(setq _gct_ nil)
+(setq _unif_ nil)
+(setq _sch_ nil)
+:osql
+
+/* 92 queries */
+
+/*SAQ-Naive*/
+lisp;
+(setq _gct_ t)
+(setq _unif_ t)
+(setq _sch_ nil)
+:osql
+
+/* 12 queries : selecting columns in all tables*/
+
+/*SAQ-Naive*/
+lisp;
+(setq _gct_ nil)
+(setq _unif_ nil)
+(setq _sch_ t)
+:osql
+
+/* 14 queries: 7 q selecting from producer + 7 selecting columns from vendor */
+
+
+
+/*Query 7*/
+ CONSTRUCT {?subject ?property ?value }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE 
+         { ?subject ?property1 ?value1 .
+	   ?subject ?property ?value .
+	   FILTER (isLiteral(?value) ).
+	   FILTER (?value1 != 'Caryn' )    } 
+
+
+create function query7()->(Charstring, Charstring, Charstring)
+as
+select _ss_, _pp_, _oo_
+  from Charstring value, Charstring property, Charstring subject, Charstring property1, 
+	Charstring _ss_, Charstring _pp_, Charstring _oo_, Charstring value1
+ where (subject, property1, value1) in prod()
+   and (subject, property, value) in prod()
+   and value1 != 'Caryn'
+      and ((_ss_ = subject and _pp_ = property and _oo_ = value));
+
+
+
+
+
+/* SAQ */
+lisp;
+(setq _gct_ t)
+(setq _unif_ t);;to normalize variable names in a DNF RDB predicate 
+(setq _rewrite_row_and_like_ t)
+(setq _sch_ t)
+:osql
+
+/* sql queries: 85 q? 3 from product+ !!!! (too many)
+/*results:9226156 (with NULLs)
+
+
+
+
+/* SAQ Naive */
+lisp;
+(setq _gct_ nil)
+(setq _unif_ nil);;to normalize variable names in a DNF RDB predicate 
+(setq _rewrite_row_and_like_ t)
+(setq _sch_ t)
+:osql
+
+
+/* sql queries:  309 q: (select from each table each column) x numb of Charstring columns in a table
+/*results:9226156 (with NULLs)
+
+
+
+* SAQ Naive */
+lisp;
+(setq _gct_ nil)
+(setq _unif_ nil);;to normalize variable names in a DNF RDB predicate 
+(setq _rewrite_row_and_like_ NIL)
+(setq _sch_ NIL)
+:osql
+
+/* sql queries: 
+/*results: (with NULLs)
+/*time ~  s */
+
+
+create function q7arch()->(Charstring,Charstring,Charstring)
+	as remove_null(select distinct s,p,o from Charstring s, Charstring p, Charstring o 
+	where (s,p,o) in query7());
+
+create function count7()-> Integer as count(q7arch());
+  
+
+
+
+
+
+
+
+
+
+
+
+
+/*****************************************************************************************/
+
+
+
+
+
+/* REASONING */
+/*1)*/
+set :query =
+"PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ CONSTRUCT {  ?product 	product:product_propertyNum1 '1328' }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE
+	{ ?product 	product:product_propertyNum1		'1328'} ";
+	 
+* Translated by the Sparql parser to */
+create function query()->(Charstring,Charstring, Charstring)
+as select _ss_, _pp_, _oo_
+  from Charstring product, Charstring _ss_, Charstring _pp_, Charstring _oo_
+ where (product, 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyNum1', '1328') in prod()
+      and ((_ss_ = product and _pp_ = 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyNum1' and _oo_ = '1328'));
+
+/*Processed by 1 sql query selecting column propertyNum1 in table product*/
+/*Reason : part evaluation on the property and invertable valueid and 
+vauleid(x,<xsd-type>)  where
+Typeof(x) = t and
+Xsdmap(t)=<xsd-type> -> x   */
+
+
+/*1-2 */
+
+set :query =
+"PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ CONSTRUCT {  ?product 	product:product_propertyNum1 '1328' }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE
+	{ ?product 	product:product_propertyNum1		'http//www.ab.bg'} ";
+
+/*Returns emty without serach in the RDB since 'http//www.ab.bg' is not 
+	of type int as product_propertyNum1 */
+
+
+/* 2*/
+set :query =
+"PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ CONSTRUCT {  ?product 	?prop '1328' }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE
+	{ ?product 	?prop		'1328'} ";
+
+/* Translated by the Sparql parser to */
+create function query()->(Charstring,Charstring, Charstring)
+as select _ss_, _pp_, _oo_
+  from Charstring product, Charstring prop, Charstring _ss_, Charstring _pp_, Charstring _oo_
+ where (product, prop, '1328') in prod()
+      and ((_ss_ = product and _pp_ = prop and _oo_ = '1328'));
+
+/*Processed by 21 sql queries fro the 21 columns in the RDB that are from type intger or float */
+/* Reason function valueid is defined so that
+vauleid(x,<xsd-type>)  where
+Typeof(x) = t and
+Xsdmap(t)=<xsd-type> -> x
+
+and thus the 21 sub-views where the object is a typed literal which is not of type integer or float, are eliminated */
+
+
+/* 3*/
+set :query =
+"PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ CONSTRUCT {  ?product 	?prop 'Caryn' }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE
+	{ ?product 	?prop		'Caryn'} ";
+
+create function query()->(Charstring,Charstring, Charstring)
+as select _ss_, _pp_, _oo_
+  from Charstring product, Charstring prop, Charstring _ss_, Charstring _pp_, Charstring _oo_
+ where (product, prop, 'Caryn') in prod()
+      and ((_ss_ = product and _pp_ = prop and _oo_ = 'Caryn'));
+
+/*Processed by 27 sql queries selecting 27 columns in the RDB that are from type Varchar*/
+/* Reason function valueid is defined so that
+vauleid(x,<xsd-type>)  where
+Typeof(x) = t and
+Xsdmap(t)=<xsd-type> -> x
+
+and thus the 27 sub-views where the object is a typed literal which is not of type xsd:string are eliminated*/
+
+
+/*4*/
+set :query =
+"CONSTRUCT  {?sub ?prop <http://user.it.uu.se/~udbl/sard/prod#product/_2549> }
+FROM <http://user.it.uu.se/~udbl/sard/prod>
+WHERE{ ?sub ?prop <http://user.it.uu.se/~udbl/sard/prod#product/_2549> } ";
+
+/*Translated by the Sparql parser to */
+create function query()->(Charstring,Charstring, Charstring)
+as select _ss_, _pp_, _oo_
+  from Charstring sub, Charstring prop, Charstring _ss_, Charstring _pp_, Charstring _oo_
+ where (sub, prop, 'http://user.it.uu.se/~udbl/sard/prod#product/_2549') in prod()
+      and ((_ss_ = sub and _pp_ = prop and _oo_ = 'http://user.it.uu.se/~udbl/sard/prod#product/_2549'));
+
+/*Processed by 2 sql queries selecting from tables review and offer owning having FK owned by table product */
+/*Reason: invertable rowid makes so that the two 2 sub views are lefte where the object can be evaluated to 'http://user.it.uu.se/~udbl/sard/prod#product/_2549' */
+
+
+/*5*/
+set :query =
+"CONSTRUCT  {?sub ?prop <novinar.bg> }
+FROM <http://user.it.uu.se/~udbl/sard/prod>
+WHERE{ ?sub ?prop <novinar.bg> } ";
+
+/*It is not correctly processed */
+/*Processed by 27 sql queries selecting 27 columns in the RDB that are from type Varchar*/
+/* Reason : it can not see that <novinar.bg> is an IRI not a literal */
+
+
+
+/*6*/
+
+set :query =
+"PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ CONSTRUCT {  ?product 	product:product_propertyNum1 ?val }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE
+	{ ?product 	product:product_propertyNum1 ?val .
+	  FILTER (?val > ' 1000' )}";
+
+/*Translated by the Sparql parser to */
+/*!NOT CORRECT Processed by 1 sql query, the filtering is done as postprocessing but the result is not correct */
+
+create function query()->(Charstring,Charstring, Charstring)
+as select _ss_, _pp_, _oo_
+  from Charstring val, Charstring product, Charstring _ss_, Charstring _pp_, Charstring _oo_
+ where (product, 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyNum1', val) in prod()
+   and val > ' 1000'
+      and ((_ss_ = product and _pp_ = 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyNum1' and _oo_ = val));
+
+
+/*!!! Correct Alternative translation, it can be done by the parser instead of a rewrite  */
+create function query()->(Charstring,Charstring, Charstring)
+as select _ss_, _pp_, _oo_
+  from Charstring val, Charstring product, Charstring _ss_, 
+	Charstring _pp_, Charstring _oo_, Charstring val1
+ where (product, 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyNum1', val) in prod()
+   and val1 > '1000' and (val = valueid(val1, 'http://www.w3.org/2001/XMLSchema#int') or
+			    val= valueid(val1, 'http://www.w3.org/2001/XMLSchema#float') or
+			    val = valueid(val1, 'http://www.w3.org/2001/XMLSchema#integer') or
+			    val = valueid(val1, 'http://www.w3.org/2001/XMLSchema#double') or
+			   val = valueid(val1, 'http://www.w3.org/2001/XMLSchema#decimal'))
+      and ((_ss_ = product and _pp_ = 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyNum1' 
+	and _oo_ = val));
+
+
+
+/*7*/
+
+set :query =
+"PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ CONSTRUCT { ?sub ?prop ?val }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE
+	{ ?sub	?prop ?val .
+	  FILTER (?val > '9990' )}";
+
+
+/*Translated by the Sparql parser to */
+/*!NOT CORRECT Processed by 76 q ;filtering as post-processing; the result is not correct */
+create function query()->(Charstring,Charstring, Charstring)
+as
+select _ss_, _pp_, _oo_
+  from Charstring val, Charstring prop, Charstring sub, Charstring _ss_, Charstring _pp_, Charstring _oo_
+ where (sub, prop, val) in prod()
+   and val > '9995'
+      and ((_ss_ = sub and _pp_ = prop and _oo_ = val));
+
+
+/* Correct translation : 21 q selecting from correct columns(with corrcet data type
+				   + 45 q (5 * 9 ) for the 9 fk columns - unnecessary queries
+  correct result set: 104 */				
+create function query()->(Charstring,Charstring, Charstring)
+as
+select _ss_, _pp_, _oo_
+  from Charstring val, Charstring prop, Charstring sub, Charstring _ss_, 
+	Charstring _pp_, Charstring _oo_,Charstring val1
+ where (sub, prop, val) in prod()
+   and val1 > '9995' and (val = valueid(val1, 'http://www.w3.org/2001/XMLSchema#int') or
+			    val= valueid(val1, 'http://www.w3.org/2001/XMLSchema#float') or
+			 val = valueid(val1, 'http://www.w3.org/2001/XMLSchema#integer') or
+			    val = valueid(val1, 'http://www.w3.org/2001/XMLSchema#double') or
+			   val = valueid(val1, 'http://www.w3.org/2001/XMLSchema#decimal') )			   
+      and ((_ss_ = sub and _pp_ = prop and _oo_ = val));
+
+
+
+
+/*8*/
+
+set :query=
+"
+ CONSTRUCT {?subject ?property ?value }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE 
+         { ?subject ?property ?value .
+	   FILTER REGEX (?value, '%symbols%') } ";
+
+/*Translated by the Sparql parser to */
+create function query()->(Charstring,Charstring, Charstring)
+as select _ss_, _pp_, _oo_
+  from Charstring value, Charstring property, Charstring subject, Charstring _ss_, Charstring _pp_, Charstring _oo_
+ where (subject, property, value) in prod()
+   and like(value, '%symbols%')
+      and ((_ss_ = subject and _pp_ = property and _oo_ = value));
+
+
+/* Correct translation : 27 q selecting from the correct columns 
+			+ 9  for the 9 fk columns - unnecessary queries
+			 correct result set: 166 */
+
+create function query()->(Charstring,Charstring, Charstring)
+as select _ss_, _pp_, _oo_
+  from Charstring value, Charstring property, Charstring subject, 
+	Charstring _ss_, Charstring _pp_, Charstring _oo_, Charstring val1
+ where (subject, property, value) in prod()
+   and like(val1, '%symbols%') and value = valueid(val1, 'http://www.w3.org/2001/XMLSchema#string')
+      and ((_ss_ = subject and _pp_ = property and _oo_ = value));

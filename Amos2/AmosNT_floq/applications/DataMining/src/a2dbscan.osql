@@ -1,0 +1,217 @@
+/*-*-sql-*-*******************************************************************/
+
+/* 
+
+   Help directives and skeleton for basic DBSCAN clustering and tasks 
+   in DM assignment 2. Read all comments and code. 
+
+   Students are expected to follow the directives and complete / replace 
+   / correct code where necessary (marked with TODO) according 
+   to the function signatures, descriptions, HINTS, and NOTES.
+   Students are encouraged to experiment with explicit or implicit 
+   options and alternative implementations. 
+
+*/
+
+/* Disable logging */
+logging off;
+/* Turn off one-tuple buffering to facilitate truly dynamic cursors */
+lisp; 
+(delay-emit NIL) ; disable
+:osql 
+
+/* Stored global parameters to make life easier by avoiding 
+   passing arguments from the top level */
+create function eps()->Number as stored;
+create function minpts()->Integer as stored;
+
+create function enumerate(Bag of Vector bv) ->Bag of (Integer i, Vector  v)
+/* Enumerates a bag of vectors bv from 1 to count(b) */
+as 
+begin
+  set i = 0;
+  for each original Vector v where v = in(bv)
+  begin
+    set i = i + 1;
+    return (i, v);
+  end;
+end; 
+
+/* Function / relation to store the enumerates data points as vectors */
+create function datapoint(Integer d)->Vector of Number v as stored;
+/* TODO: Use function create_index() to index the datapoint() function. 
+         Refer to the manual. Which attributes should be indexed and what 
+         type of index should be used should become clearer from how the 
+         function datapoint() will be used in the following queries. */
+
+create function datapoints()->Bag of Vector
+/* Enumerates values in stored function datapoint() */ 
+  as select datapoint(p) from Integer p; 
+
+create function add_vdp(Bag of Vector bv)->Boolean
+/* Adds the vectors in input bag bv to the stored 
+   function datapoint() */ 
+  as add datapoint(i) =  v
+     from Integer i, Vector v
+     where (i, v) in enumerate(bv);
+
+create function load_vdp(Charstring file)->Boolean
+/* Loads stored function datapoint() from a file that
+   contains numerical n-tuples representing vectors */
+  as add_vdp(read_ntuples(file)); 
+
+/* Stored function / relation of the directly density reachable 
+   graph, i.e. ddrtab(p)=q entails that p is a corepoint and q 
+   is in p's eps-neighborhood. */ 
+create function ddrtab(Integer p)->Bag of Integer q as stored; 
+/* TODO: Use function create_index() to index the ddtrab() function. 
+         Refer to the manual. Which attributes should be indexed and what 
+         type of index should be used should become clearer from the how 
+         the ddrtab() function will be used in the following queries. */
+
+create function nbr(Integer p)->Bag of Integer q
+/* TODO: Calculate the eps-neighborhood of point p (p is excluded)
+   HINT: Use functions euclid() and datapoint() and potentially 
+         prune the distance calculations by lower bounding the 
+         distance between points pairs. 
+   NOTE: A multidimensional (spatial) index, e.g., R-tree, would make 
+         this pruning more effective, but such index is not available in
+         the current release of Amos2. Vectors can be indexed! Experiment
+         wich how the sort-order on vectors is defined. Try to use a
+         vector index to speed up the function nbr().  */
+  as select p;
+
+create function ddr(Integer p)->Bag of Integer q
+/* TODO: Calculate the set of points q that are ddr from p. 
+   NOTE: By definition of ddr p has to be a core point.
+   HINT: Use function nbr(). */ 
+  as select p; 
+
+create function build_ddrtab()->Boolean
+/* TODO: Populate the stored function ddrtab() by applying ddr() to 
+         the data points in stored function datapoint(). 
+   HINT: Use the 'add' update statement. */
+  as TRUE;
+
+create function remove_ddrtab(Vector of Integer dcc)->Boolean
+/* TODO: Remove a density-connected dc component, i.e., a cluster 
+         from ddrtab.
+   HINT: Use the 'remove' update statement. 
+   NOTE: A data point in dcc, is not necessarily a core point. */
+  as TRUE;
+
+create function ddr_child(Integer p)->Bag of Integer
+/* TODO: Return a set of points q that are ddr from point p.
+         Essentially the same results as ddr(p), but instead
+         of operating on the stored table datapoint, it 
+         retrieves the results from the pre-calculated ddrtab.
+         Used to traverse the ddr graph stored in ddrtab() by 
+         iterative application of the function on its results
+         via transitive closure (see next function). */
+  as select q 
+     from Integer q
+     where q in ddrtab(p);  
+
+create function dc(Integer p)->Bag of Integer
+/* TODO: Retrieve the maximal set of density-connected points
+         starting from and including p, i.e., a the maximal ddr chain. 
+   HINT: Use function tclose() and ddr_child() to do this. */    
+  as select p;
+
+create function find_and_remove_dc(Integer p, Integer cn)->Vector
+/* Finds, removes, and emits (as a cluster) a density-connected 
+   dc points starting from p. */
+as 
+begin
+    declare Vector of Integer dcc;
+    /* find dc(p) */ 
+    set dcc = vectorof(dc(p));
+    /* add p to dcc */
+    set dcc = concat(dcc, {p});
+    /* remove dcc from ddrtab */
+    remove_ddrtab(dcc);
+    /* emit dcc */ 
+    return (select {cn, q, datapoint(q)} 
+            from Integer q
+            where q in dcc);
+end;
+
+create function nnbr(Integer p)->Integer
+/* TODO: Return the number of neighbors of p based on ddrtab */ 
+  as 1;
+
+create function corepoints()->Bag of Integer
+/* TODO: Return the corepoints based on the content of ddrtab() 
+   NOTE: Make sure that each point returned is a core point according
+         to the state of the ddrtab() function, and a core point is only 
+         returned once. */
+  as select 1;
+
+create function dbscan(Number eps, Integer minpts)->Bag of Vector
+/* The DBSCAN algorithm based on retrieval of dcc-s from the ddr graph */
+as 
+begin 
+   declare Integer cn;
+   set minpts() = minpts;
+   set eps() = eps;
+   set cn = 1; 
+   /* build ddr tab */
+   clear_function("ddrtab");
+   build_ddrtab();
+   /* find, remove and emit dcc-s from ddrtab */
+   for each original Integer cp
+   where cp in corepoints()
+   begin 
+      return find_and_remove_dc(cp, cn);
+      set cn = cn + 1;
+   end;
+end;
+
+/* NOTE: For each 'original' is almost like a true dynamic cursor over 
+   the result set, but a one-tuple buffering is performed by the DBMS. 
+   Hence the above implementation of DBSCAN is not entirely correct, 
+   because the for each original corepoint loop buffers one core point 
+   ahead. So for example if x and y are core points that are calculated 
+   in the given order and y belongs to the dcc of x, then y is added to 
+   the cluster of x and is removed from ddrtab. However, because of the 
+   buffering x will be tried as a new core point of a cluster, and 
+   because of the faulty logic, will actually be placed in its own 
+   singelton cluster AGAIN!!!  To avoid this one can disable the 
+   buffering as it is done in the beginning of this script. */
+
+create function dbscan_bag(Bag of vector bv, 
+                           Number eps, 
+                           Integer minpts)
+                           ->Bag of Vector
+/* The DBSCAN algorithm based on retrieval of dcc-s from the ddr graph */
+as 
+begin 
+  clear_function('datapoint');
+  add_vdp(bv);
+  return dbscan(eps, minpts); 
+end;
+
+create function dbscan_file(Charstring file, 
+                            Number eps, 
+                            Integer minpts)
+                            ->Bag of Vector
+/* The DBSCAN algorithm based on retrieval of dcc-s from the ddr graph */
+ as return dbscan_bag(read_ntuples(file),eps,minpts);
+
+create function disp_clustering3d(Bag of Vector c)
+                                  ->Integer   
+/* TODO: Create a 3D scatter plot display of a clustering */
+  as 1;
+
+/* TODO: Implement the k(=5)-dist based method to estimate value of eps. */
+
+create function kdist()->Bag of Number
+/* TODO: Calculate the distance to the k-th nearest neighbor for each point.
+   HINT: Calculate all-to-all distances. Use groupby() the to get for every 
+         point distances between the point and all other points. Define a kth 
+         aggregate function based on leastk() and topk(), and apply it on 
+         the grouped distances. Define sub-functions to preserve clarity. */
+  as select 1;
+
+/* TODO: Display the sorted k-distance graph and choose an appropriate value
+   for eps */ 

@@ -1,0 +1,47 @@
+defineDS("EGOVDS",
+         "jdbc:microsoft:sqlserver://localhost;DatabaseName=EGOVERNMENT_SD",
+         "com.microsoft.jdbc.sqlserver.SQLServerDriver",
+         "EGOVERNMENT_SD",
+         "dbo",
+         "sa",
+         "");
+
+set dialect("EGOVDS")="SD-SQL";
+set primaryUDKeys("EGOVDS","EGOVERNMENT_SD","dbo","LIFEEVENT")=<"EID","PK_EID">;
+set primaryUDKeys("EGOVDS","EGOVERNMENT_SD","dbo","FORM")=<"FID","PK_FID">;
+
+defineUPV("EGOVDS","eGov","http://udbl.it.uu.se/upv/eGov/");
+
+assignPropID("LIFEEVENT","EID","eGov",
+      "http://purl.org/dc/elements/1.1/Identifier");
+assignPropID("LIFEEVENT","LANG","eGov",
+      "http://www.egov_project.org/GovMLSchema#Language");
+assignPropID("LIFEEVENT","DESCR","eGov",
+      "http://www.egov_project.org/GovMLSchema#Subject");
+assignPropID("LIFEEVENT","LAW","eGov","http://udbl.it.uu.se/schemas/eGovern#Law");
+assignPropID("LIFEEVENT","FORM","eGov","http://udbl.it.uu.se/schemas/eGovern#LEForm"); 
+
+assignPropID("FORM","FID","eGov",
+      "http://udbl.it.uu.se/schemas/eGovern#FormID");
+assignPropID("FORM","URL","eGov",
+      "http://udbl.it.uu.se/schemas/eGovern#URL");
+assignPropID("FORM","CREATOR","eGov",
+      "http://www.egov_project.org/GovMLSchema#Creator");
+assignPropID("FORM","NOFP","eGov",
+      "http://udbl.it.uu.se/schemas/eGovern#NumberOfProps");
+
+assignClassID("LIFEEVENT","eGov","http://udbl.it.uu.se/schemas/eGovern#LifeEvent");
+assignClassID("FORM","eGov","http://udbl.it.uu.se/schemas/eGovern#Form");
+
+DSConnect("eGov");		
+
+exportRDB("eGov");
+lisp;
+
+;;(defglobal _get-columns-cache_)
+;;(memo '_get-columns-cache_ 'get-columns '(ds table))
+
+:osql
+
+register("SWASS");
+listen();

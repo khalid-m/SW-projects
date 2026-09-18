@@ -1,0 +1,306 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2 */
+
+/* String functions replace and explode */
+load_lisp("./src/string.lsp");
+
+/* Normalization function definitions */
+create function removeProtocol(Charstring url)-> Charstring
+/* Removes "HTTP://" from the beginning of a URL */
+  as replace(url, "HTTP://", "");
+
+create function lastChar(Charstring s)-> Charstring
+/* Returns the last character of a string */
+  as select substring(s, l-1, l-1)
+     from integer l
+     where l = char_length(s);
+
+create function allButLastChar(Charstring s)-> Charstring
+/* Rerurns input string except its last character */ 
+  as select substring(s, 0, l-2)
+     from integer l
+     where l = char_length(s);
+
+create function removeTrailingSlash(Charstring url)-> Charstring
+/* Removes trailing slash from a URL */ 
+  as if (lastChar(url) = "/") then result allButLastChar(url)
+     else result url;
+
+create function removeINDEXdotHTML(Charstring url)-> Charstring 
+/* Removes "INDEX.HTML" from a URL */
+  as replace(url, "INDEX.HTML", "");
+
+create function normalizeURL(Charstring url)-> Charstring
+/* Performs simple URL normalization */ 
+  as removeTrailingSlash(removeINDEXdotHTML(removeProtocol(upper(url))));
+
+/* DB represeantion of pages + linkage graph and 
+   utilities to load / view data */
+
+/* Create a stored function / relation pages */
+create function pages()->Bag of Charstring p as stored;
+create_index("pages", "p", "hash", "multiple");
+
+/* Create a stored function / relation links */ 
+create function links(Charstring)->Bag of Charstring t as stored;
+create_index("links", "t", "hash", "multiple");
+create_index("links", "Charstring", "hash", "multiple");
+
+create function populateLinks(Vector of Charstring vl)->Boolean
+/* Populate the function links from a adjecency list vector of a page 
+   Also normalize the URLs of the pages */
+  as add links(NormalizeURL(vl[0]))=NormalizeURL(vl[i]) 
+     from Integer i
+     where i > 0;
+
+create function addPage(Charstring p)->Boolean
+/* Add a page to the function pages 
+   Also normalize the URL of page p */
+  as add pages()=NormalizeURL(p);
+
+create function loadLinks(Charstring file)->Boolean
+/* Populate the function links from an linkage FILE where
+   each line contains an adjecency list separated by space. */
+  as populateLinks(cast(read_ntuples(file) as Vector of Charstring));
+
+create function loadPages(Charstring file)->Boolean
+/* Populate the function pages from an linkage FILE where
+   each line contains an adjecency list separated by space. 
+   The *first* page on such a list is the page that is added to pages */
+  as addPage(cast(read_ntuples(file)[0] as Charstring));
+
+create function showLinks()->Bag of <Charstring, Charstring>
+/* Show the contents of the function links */
+  as select f, t 
+     from Charstring f, Charstring t
+     where t in links(f);
+
+/* Show pages: simply call pages(); */
+
+create function showDeadPages()->Bag of Charstring
+/* Function to show links to a site f if we do not know the link 
+   structure of f, i.e., f is not i n pages but links(dummy)=f is not NIL. 
+   Note that these are not the pages that do not link to pages!!! */
+  as select dp
+     from charstring dp, charstring f
+     where notany(dp in pages())
+       and dp in links(f);
+
+create function removeDeadLinks()->Boolean
+/* Function to remove all links to cite f if we do not know 
+   the link structure of f, i.e., f is not in pages, but 
+   links(dummy)=f is not NIL. 
+   Note that these are not the pages that do not link to pages!!! */
+  as remove links(f)=dp
+     from charstring dp, charstring f
+     where dp in showDeadPages();
+
+/* Note that deleting a link from page f to t, where f only likns to t
+   will make f look like a page with no links. One could perform an 
+   iterative removal or pages and links as shown bellow but this will
+   potentially drastically shrink the graph, which might be undesierable. 
+   Hence, as part of the proprocessing a single step of deadLink removal 
+   is proposed. Note that in this step a page p to which the links are 
+   removed, by definition is not present in the function pages, hence 
+   no page removal is necessary. */   
+
+/* Iterative link removal: not used! */
+create function removeDeadLinks_tcf(Integer ndl)->Integer 
+/* Transitive closure function to remove read links from
+   the function links */
+as 
+begin	
+  removeDeadLinks();
+  result count(showDeadPages());
+end;
+
+create function removeAllDeadLinks(Integer input, Integer maxiter)->Vector
+/* Function for iterative removal of links via tclose */
+  as select output
+     from Integer d, Integer output
+     where <output, d> = tclose(#'removeDeadLinks_tcf', input, maxiter);
+
+/* Stored function / relation to store the authority and hubiness of pages */   
+create function Authority(Charstring p)->Number a as stored;
+create function Hubbiness(Charstring p)->Number as stored;
+
+create function showAuthority()->Bag of <Charstring, Number>
+/* Show the authority of pages */
+  as select p, roundto(a,5) 
+     from Charstring p, Number a
+     where a = Authority(p);
+
+create function showHubbiness()->Bag of <Charstring, Number>
+/* Show the authority of pages */
+  as select p, roundto(h,5) 
+     from Charstring p, Number h
+     where h = Hubbiness(p);
+
+create function initialize() ->Boolean
+/* Sets initial values of hubbiness and authority of all the pages */
+as for each Charstring p where pages()=p
+   begin
+     set hubbiness(p)=1;
+     set authority(p)=1;
+   end;
+
+create function calculateAuthority(Charstring p)->Number 
+/* Calculates the authority of a page */
+ as sum(select Hubbiness(f) 
+        from Charstring f 
+        where p in links(f));
+
+create function calculateHubbiness(Charstring p)->Number 
+/* Calculates the hubbiness of a page */
+ as sum(select Authority(t) 
+        from Charstring t 
+        where t in links(p));
+
+create function updateAuthority()->Boolean
+/* Updates the authority values of pages based on the 
+   hubbiness values of the pages that link to them. */
+  as set Authority(p) = calculateAuthority(p)
+     from Charstring p
+     where p in pages();
+
+create function updateHubbiness()->Boolean
+/* Updates the hubbiness values of pages based on the 
+   authority values of the pages that they link to. */
+  as set Hubbiness(p) = calculateHubbiness(p)
+     from Charstring p
+     where p in pages();
+
+create function enorm(Bag of Number b)->Number
+/* Calculates the Euclidean norm of a bag of numbers */
+  as sqrt(sum(select power(n,2) 
+              from Number n 
+              where n in b));
+
+create function normalizeAuthority()->Boolean
+/*  Normalizes the Authorities to unit length */ 
+  as set Authority(p) = Authority(p) / lenAuth
+     from Charstring p, Number lenAuth
+     where p in pages()
+       and lenAuth = enorm(Authority(pages()));
+
+create function normalizeHubbiness()->Boolean
+/*  Normalizes the Authorities to unit length */ 
+  as set Hubbiness(p) = Hubbiness(p) / lenHubb
+     from Charstring p, Number lenHubb
+     where p in pages()
+       and lenHubb = enorm(Hubbiness(pages()));
+
+create function mse(Vector of Number a, Vector of Number b)->Number
+/* Calculates the mean square error between two vectors. 
+   Used to check convergence of iterative calculation  */
+  as select sum(select (a[i]-b[i])*(a[i]-b[i]) 
+                from Integer i); 
+
+create function HITS_tcf(Number input) -> Number 
+/* An iterative step of the HITS algorithm */
+as
+begin
+  declare Vector of Number a0, Vector of Number h0;
+  set a0 = vectorof(calculateAuthority(pages()));
+  set h0 = vectorof(calculateHubbiness(pages()));
+  updateAuthority();
+  updateHubbiness();
+  normalizeAuthority();
+  normalizeHubbiness();
+  result roundto((mse(a0, vectorof(calculateAuthority(pages()))) + 
+                  mse(h0, vectorof(calculateHubbiness(pages())))),
+                 3);      
+end;
+
+create function HITS_tclose(Number input, integer maxiter) -> Number
+/* Iterative HITS calculation based on convergence of 
+   the hubbiness and authority values */
+   as select output
+      from integer d, vector output
+      where tclose(#"HITS_tcf", input, maxiter) = <output, d>;
+
+create function topk(Bag b, Integer k, Integer pos, Charstring ord)->Vector
+/* Top-k function */
+  as vselect sv[i] 
+     from Vector sv, Integer i
+     where sv = sortbagby(b, pos, ord)
+       and i < k;
+
+create function HITS(Charstring file, number maxiter)->Vector 
+/* The HITS algorithm including loading, preprocessing, 
+   iteration until convergence, and display of top10 results  */
+as
+begin
+  clear_function('links');	/* empty relations */
+  clear_function('pages');
+  clear_function('Authority');	
+  clear_function('Hubbiness');
+  loadLinks(file);		/* load links and pages */ 
+  loadPages(file);   
+  removeDeadLinks();		/* remove dead links */
+  initialize();			/* initialize authority and hubbiness of pages to 1 */
+  normalizeAuthority();		/* normalize authority and hubbiness of pages to unit length */
+  normalizeHubbiness();
+  /* Pretty print? */ 	
+  if (1<0) then
+  begin
+    print(concat(concat("Analysing web-graph in file: ", file), " ..."));
+    print(HITS_tclose(-1,maxiter));/* iteration with convergence indicator */
+  end
+  else 
+    HITS_tclose(-1,maxiter);
+  /* Output top 10 hubby and authoritive pages */
+  result 'Hubbiness';
+  result in(topk((showHubbiness()),10,2,'dec'));
+  result 'Authority';
+  result in(topk((showAuthority()),10,2,'dec'));
+end;
+
+
+/* Regression test */
+
+
+lisp;
+(checkequal "Hits convergence"
+ ((osql "HITS('./data/hits_regressdata.nt', 10);")
+ '(("Hubbiness") (#("A" 0.45726)) (#("B" 0.44479)) (#("C" 0.42018)) (#("D" 0.38412)) (#("E" 0.33757)) (#("F" 0.28182)) (#("G" 0.21838)) (#("H" 0.14898)) (#("I" 0.07552)) (#("J" 0.0)) ("Authority") (#("J" 0.45727)) (#("I" 0.4448)) (#("H" 0.42019)) (#("G" 0.38412)) (#("F" 0.33757)) (#("E" 0.28181)) (#("D" 0.21837)) (#("C" 0.14898)) (#("B" 0.07552)) (#("A" 0.0)))
+))
+(checkequal "Hits slash"
+ ((osql "HITS('./data/hits_regressdata_slash.nt', 10);")
+ '(("Hubbiness") (#("A" 0.45726)) (#("B" 0.44479)) (#("C" 0.42018)) (#("D" 0.38412)) (#("E" 0.33757)) (#("F" 0.28182)) (#("G" 0.21838)) (#("H" 0.14898)) (#("I" 0.07552)) (#("J" 0.0)) ("Authority") (#("J" 0.45727)) (#("I" 0.4448)) (#("H" 0.42019)) (#("G" 0.38412)) (#("F" 0.33757)) (#("E" 0.28181)) (#("D" 0.21837)) (#("C" 0.14898)) (#("B" 0.07552)) (#("A" 0.0)))
+))
+(checkequal "Hits deadlink"
+ ((osql "HITS('./data/hits_regressdata_deadlink.nt', 10);")
+ '(("Hubbiness") (#("A" 0.45726)) (#("B" 0.44479)) (#("C" 0.42018)) (#("D" 0.38412)) (#("E" 0.33757)) (#("F" 0.28182)) (#("G" 0.21838)) (#("H" 0.14898)) (#("I" 0.07552)) (#("J" 0.0)) ("Authority") (#("J" 0.45727)) (#("I" 0.4448)) (#("H" 0.42019)) (#("G" 0.38412)) (#("F" 0.33757)) (#("E" 0.28181)) (#("D" 0.21837)) (#("C" 0.14898)) (#("B" 0.07552)) (#("A" 0.0)))
+))
+(checkequal "Hits index.html"
+ ((osql "HITS('./data/hits_regressdata_index_html.nt', 10);")
+ '(("Hubbiness") (#("A" 0.45726)) (#("B" 0.44479)) (#("C" 0.42018)) (#("D" 0.38412)) (#("E" 0.33757)) (#("F" 0.28182)) (#("G" 0.21838)) (#("H" 0.14898)) (#("I" 0.07552)) (#("J" 0.0)) ("Authority") (#("J" 0.45727)) (#("I" 0.4448)) (#("H" 0.42019)) (#("G" 0.38412)) (#("F" 0.33757)) (#("E" 0.28181)) (#("D" 0.21837)) (#("C" 0.14898)) (#("B" 0.07552)) (#("A" 0.0)))
+))
+(checkequal "Hits http"
+ ((osql "HITS('./data/hits_regressdata_http.nt', 10);")
+ '(("Hubbiness") (#("A" 0.45726)) (#("B" 0.44479)) (#("C" 0.42018)) (#("D" 0.38412)) (#("E" 0.33757)) (#("F" 0.28182)) (#("G" 0.21838)) (#("H" 0.14898)) (#("I" 0.07552)) (#("J" 0.0)) ("Authority") (#("J" 0.45727)) (#("I" 0.4448)) (#("H" 0.42019)) (#("G" 0.38412)) (#("F" 0.33757)) (#("E" 0.28181)) (#("D" 0.21837)) (#("C" 0.14898)) (#("B" 0.07552)) (#("A" 0.0)))
+))
+(checkequal "Hits car weblinks"
+ ((osql "HITS('./data/links_car_manufacturer.nt', 10);")
+ '(("Hubbiness") (#("WWW.GROCERYGETTERS.COM/RESOURCE-AUTO-MAKERS.SHTML" 0.20363)) (#("WWW.WORLD-AUTO.DE/LINKS/HERSTELLERLINKS.HTML" 0.20189)) (#("WWW.BUSINESS.COM/DIRECTORY/AUTOMOTIVE/MANUFACTURERS_AND_DISTRIBUTORS/PASSENGER_CARS_AND_TRUCKS" 0.17014)) (#("CARROS.WS/TRUCKS.HTM" 0.16976)) (#("WWW.AUTOMOTIVE-ESOURCES.COM/OES.HTM" 0.16754)) (#("WWW.LOEWENAUTO24.DE/LINKS.HTM" 0.16695)) (#("WWW.BEISSBARTH.COM/CARS_E.HTM" 0.16516)) (#("WWW.CONSUMERFINDER.COM/AUTO/MIDSIZE-CARS.HTM" 0.16073)) (#("WWW.MYCARSUCKS.COM/CAR-MAUNFACTURERS" 0.15862)) (#("WWW.FABINI.COM/AUTOMOTIVEMFG.HTM" 0.14939)) ("Authority") (#("WWW.FORD.COM" 0.21531)) (#("WWW.HONDA.COM" 0.1971)) (#("WWW.CADILLAC.COM" 0.19225)) (#("WWW.CHEVROLET.COM" 0.19024)) (#("WWW.PONTIAC.COM" 0.18534)) (#("WWW.BUICK.COM" 0.18426)) (#("WWW.TOYOTA.COM" 0.18156)) (#("WWW.GM.COM" 0.17735)) (#("WWW.OPEL.COM" 0.17169)) (#("WWW.VW.COM" 0.16938)))))
+(checkequal "Hits execution time" 
+ ((< (time-spent (osql "HITS('./data/links_car_manufacturer.nt', 10);")) 3) 
+ T))
+:osql
+
+
+/* Sample calls to the HITS algorithm */
+/*
+
+HITS("./data/links_car_manufacturer.nt", 10);
+
+HITS("./data/links_java_coffee.nt", 10);
+
+HITS("./data/links_search_engines.nt", 10);
+
+HITS("./data/links_stock_market.nt", 10);
+
+HITS("./data/hits_regressdata.nt", 10);
+
+*/

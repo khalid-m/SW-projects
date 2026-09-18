@@ -1,0 +1,156 @@
+/***************************************************************
+ *  AMOS2
+ *  
+ *  Author: (c) 2010 Robert Kajic, UDBL
+ *  $RCSfile: base.osql,v $
+ *  $Revision: 1.11 $ $Date: 2010/10/08 02:33:27 $
+ *  $State: Exp $ $Locker:  $
+ * 
+ *  Description: Regressions tests of basic lisp functions. 
+ *  =============================================================
+ *  $Log: base.osql,v $
+ *  Revision 1.11  2010/10/08 02:33:27  roka4241
+ *  res_idx and join_res_idx now take the name of the query function for which to resolve an output field, instead of the query metadata function associated with the query.
+ *
+ *  Revision 1.10  2010/08/22 03:51:50  roka4241
+ *  Tests for flatten, sublist, sublst, indexof, join_res_idx, arefl, projectl and alrefl.
+ *
+ *  Revision 1.9  2010/07/30 18:56:51  roka4241
+ *  *** empty log message ***
+ *
+ *  Revision 1.8  2010/07/22 00:41:05  roka4241
+ *  Updated regression tests of cartesian join to no longer use flist.
+ *
+ *  Revision 1.7  2010/07/08 02:22:36  roka4241
+ *  Regression tests for fn-field-idx.
+ *
+ *  Revision 1.6  2010/07/07 03:52:14  roka4241
+ *  Added additional regression tests for istream / dstream / time window and tuple window operators. Fixed bugs in time window operator. Added sublist and sublst functions for extractions of a lists' subset. Made it so that the swin-make-c wrapper swin-make no longer takes a hashmap argument and passes nil as hashmap to the underlying implementation.
+ *
+ *  Revision 1.5  2010/07/03 02:47:07  roka4241
+ *  Now using correct versions of extfunction. Wrote regress tests for stream group by and fixed some bugs. Refactored stream window datatype.
+ *
+ *  Revision 1.4  2010/07/01 13:19:09  roka4241
+ *  Added CVS header.
+ * 
+ **************************************************************/
+
+lisp;
+(defun map-cartc-tolist(size)
+  (let 
+      ((a (make-array size))
+       (pos 0))
+    (list
+     (f/l (value)
+          (seta a pos (arraytolist value))
+          (1++ pos))
+     (f/l ()
+          (arraytolist a)))))
+
+(checkequal "cartesian map."
+            ((let
+                  ((closure (map-cartc-tolist 8)))              
+               (map-cartc (first closure) (list '(1 2) '(1 2) '(1 2)))
+               (funcall (second closure)))
+             '((1 1 1) (1 1 2) (1 2 1) (1 2 2) 
+               (2 1 1) (2 1 2) (2 2 1) (2 2 2))))       
+
+(checkequal "cartesian join."
+            ((map-cart-join 
+              (f/l (row) 
+                   (= (array-sum row) 4)) 
+              (list '(1 2) '(1 2) '(1 2)))
+             (list '(1 1 2)
+                   '(1 2 1)
+                   '(2 1 1))))
+
+(checkequal "flatten list."
+            ((flatten '(1 (2 (3 4 5) 6) (7 8)))
+             '(1 2 3 4 5 6 7 8)))
+
+(checkequal "list subset (using sublist)."
+            ((sublist '(1 2 3 4 5) 1 3)
+             '(2 3 4)))
+
+(checkequal "list subset (using sublst)."
+            ((sublst '(1 2 3 4) 2 4)
+             '(3 4)))
+
+(checkequal "indexof."
+            ((indexof 2 '(1 3 2 4) (f/l (needle el) (= needle el)))
+             2)
+            ((indexof 5 '(1 3 2 4) (f/l (needle el) (= needle el)))
+             nil))
+
+(checkequal "function result column name to index."
+            ((progn 
+               (osql "
+create function __meta__lr(Charstring filename) -> 
+        <Integer kind, Integer time, Integer car_id, Integer speed, 
+         Integer exp_way, Integer lane, Integer dir, 
+         Integer segment, Integer x_pos> as 
+    select v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8]
+    from Vector v 
+    where v = in(streamfile(filename));")
+               (list 
+                (caar (osql "res_idx('lr', 'kind');"))
+                (caar (osql "res_idx('lr', 'time');"))
+                (caar (osql "res_idx('lr', 'speed');"))
+                (caar (osql "res_idx('lr', 'segment');"))
+                (caar (osql "res_idx('lr', 'x_pos');"))))
+             (list 0 1 3 7 8)))
+
+
+(checkequal "joined function result column name to index (2 functions)."
+            ((progn 
+               (osql "
+create function __meta__lr(Charstring filename) -> 
+        <Integer kind, Integer time, Integer car_id, Integer speed, 
+         Integer exp_way, Integer lane, Integer dir, 
+         Integer segment, Integer x_pos>;
+
+create function __meta__person(Charstring filename) -> 
+        <Integer kind, Charstring first, Charstring last, Integer ssn>;
+")
+               (list 
+                (caar (osql "join_res_idx({'lr', 'person'}, 'kind');")) 
+                (caar (osql "join_res_idx({'lr', 'person'}, 'time');"))
+                (caar (osql "join_res_idx({'lr', 'person'}, 'car_id');"))
+                (caar (osql "join_res_idx({'lr', 'person'}, 'speed');"))
+                (caar (osql "join_res_idx({'lr', 'person'}, 'exp_way');"))
+                (caar (osql "join_res_idx({'lr', 'person'}, 'lane');"))
+                (caar (osql "join_res_idx({'lr', 'person'}, 'dir');"))
+                (caar (osql "join_res_idx({'lr', 'person'}, 'segment');"))
+                (caar (osql "join_res_idx({'lr', 'person'}, 'x_pos');"))
+                (caar (osql "join_res_idx({'lr', 'person'}, 'person', 'kind');"))
+                (caar (osql "join_res_idx({'lr', 'person'}, 'first');"))
+                (caar (osql "join_res_idx({'lr', 'person'}, 'last');"))
+                (caar (osql "join_res_idx({'lr', 'person'}, 'ssn');"))                
+                ))
+             '((0 0) (0 1) (0 2) (0 3) (0 4) (0 5) (0 6) (0 7) (0 8)
+               (1 0) (1 1) (1 2) (1 3))))
+
+(checkequal "array projection."
+            ((arefl #(1) '(0))
+             #(1))
+            ((arefl #(1 2 3 4 5) '(4))
+             #(5))
+            ((arefl #(1 2 3 4 5) '(0 2 4))
+             #(1 3 5)))
+
+(checkequal "array list projection."
+            ((projectl '(#(1 2 3 4 5)
+                         #(6 7 8 9 10)
+                         #(11 12 13 14 15))
+                       '(0 2 4))
+             '(#(1 3 5)
+               #(6 8 10)
+               #(11 13 15))))
+
+(checkequal "multiple array projection (alrefl)."
+            ((alrefl '(#(1 2 3 4 5) #(6 7 8 9 10)) '((0 0)))
+             #(1))
+            ((alrefl '(#(1 2 3 4 5) #(6 7 8 9 10)) '((0 0) (1 0)))
+             #(1 6))
+            ((alrefl '(#(1 2 3 4 5) #(6 7 8 9 10)) '((0 0) (0 4) (1 0) (1 4)))
+             #(1 5 6 10)))

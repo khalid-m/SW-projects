@@ -1,0 +1,185 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Thanh Truong, UDBL
+ * $RCSfile: demo.osql,v $
+ * $Revision: 1.1 $ $Date: 2011/05/18 23:37:55 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Demo for 17th May 2011 presentation by Thanh Truong
+ *
+ ****************************************************************************
+ * $Log: demo.osql,v $
+ * Revision 1.1  2011/05/18 23:37:55  thatr500
+ * Demo for 17th May
+ *
+ ****************************************************************************/
+
+ /*---------------------------------------------------------------------
+  Each picture stored in database (as Charstring) has a feature vector(
+  as Vector of Number
+ ---------------------------------------------------------------------*/
+create function pictureFeatures(Charstring pic)->Vector of Number features
+  as stored;
+
+/*---------------------------------------------------------------------
+  Populate some data	
+ ---------------------------------------------------------------------*/
+add pictureFeatures('Pic001')={1.0,2.0,3.0,4.0};
+add pictureFeatures('Pic002')={1.0,2.0,3.0,5.0};
+add pictureFeatures('Pic003')={1.0,2.0,2.0,6.0};
+add pictureFeatures('Pic004')={1.0,2.0,3.0,4.0};
+add pictureFeatures('Pic005')={5.0,6.0,7.0,8.0};
+add pictureFeatures('Pic006')={1.0,2.0,3.0,4.0};
+add pictureFeatures('Pic007')={5.0,6.0,7.0,8.0};
+
+
+remove pictureFeatures('Pic004')={1.0,2.0,3.0,4.0};
+remove pictureFeatures('Pic006')={1.0,2.0,3.0,4.0};
+remove pictureFeatures('Pic005')={5.0,6.0,7.0,8.0};
+remove pictureFeatures('Pic007')={5.0,6.0,7.0,8.0};
+
+
+/*---------------------------------------------------------------------
+  List all pictures
+ ---------------------------------------------------------------------*/
+create function q0()-> Charstring
+as 
+  select c from Charstring c, Vector of Number f
+  where pictureFeatures(c) = f;
+
+/*---------------------------------------------------------------------
+ Get a picture given a feature vector
+ ---------------------------------------------------------------------*/
+create function q1(Vector of Number f)->Charstring
+as 
+  select c from Charstring c
+  where pictureFeatures(c) = f;
+
+/*---------------------------------------------------------------------
+ Investigate the execution plans
+ ---------------------------------------------------------------------*/
+pc('q0');
+
+pc('q1');
+
+/*---------------------------------------------------------------------
+ Index type LINH(Linear Hashing)
+ ---------------------------------------------------------------------*/
+register_exindextype('LINH', 'C:linh', FALSE);
+
+/*Create index on features*/
+create_index('pictureFeatures', 'features', 'LINH' , 'multiple');
+
+drop_index('pictureFeatures', 'pic');
+
+recompile(#'q0');
+
+recompile(#'q1');
+
+pc('q0');
+
+pc('q1');
+
+q0();
+
+q1({1.0, 2.0, 3.0, 4.0});
+
+/*---------------------------------------------------------------------
+ Register a new index type BT(Main memory BTree)
+ ---------------------------------------------------------------------*/
+register_exindextype('BT', 'C:bt', FALSE);
+
+create_index('pictureFeatures', 'features', 'BT' , 'multiple');
+
+recompile(#'q0');
+
+recompile(#'q1');
+
+pc('q0');
+
+pc('q1');
+
+q0();
+
+q1({1.0, 2.0, 3.0, 4.0});
+
+/*---------------------------------------------------------------------
+  Distance search and the rewrite
+ ---------------------------------------------------------------------*/
+lisp;
+;; Define a foreign function
+(defun g-+ (fn x res) 
+  (osql-result x (sqrt x)))
+
+(osql "create function g(Number x)-> Number 
+   as foreign 'g-+';")
+
+:osql
+
+create_index('pictureFeatures', 'pic', 'HASH', 'multiple');
+
+drop_index('pictureFeatures', 'features');
+
+indexes(#'pictureFeatures');
+
+create function q2(Vector of Number v) -> Bag of Charstring
+  as select p from Charstring p 
+     where 
+           4/(4/((7 / ((3 + euclid(pictureFeatures(p), 
+                     v)) *2 - 1))* 2)) - 0.0004 
+          + 1/1 - sqrt(2) > (3 - (2/2 + 0)*1 - sin(2))
+
+         and (4 / euclid(pictureFeatures(p), v)
+                  + g(3) > g(2));
+
+pc('q2');
+
+/*---------------------------------------------------------------------
+  Utilize the XTree with distance search
+ ---------------------------------------------------------------------*/
+/*Register a new index type XT(Main memory Xtree)*/
+register_exindextype('XT', 'C:xt', FALSE);
+
+create_index('pictureFeatures', 'features', 'XT' , 'multiple');
+
+recompile(#'q2');
+
+pc('q2');
+
+
+/*---------------------------------------------------------------------
+ Remove/Add a rewrite rule
+ ---------------------------------------------------------------------*/
+remove_index_rewrite_rule('XT', #'euclid', #'XT_DISTANCE_SEARCH_FN');
+
+recompile(#'q2');
+
+pc('q2');
+
+
+add_index_rewrite_rule('XT', #'euclid', #'XT_DISTANCE_SEARCH_FN');
+
+recompile(#'q2');
+
+pc('q2');
+
+
+/*---------------------------------------------------------------------
+ Unregister an index type. 
+ ---------------------------------------------------------------------*/
+/*It causes error as XT is in used*/
+unregister_exindextype('XT');
+
+indexes(#'pictureFeatures');
+
+/*No error*/
+drop_index('pictureFeatures', 'features');
+
+unregister_exindextype('XT');
+/*TODO : Complete this functionality*/
+
+save 'xt.dmp';
+
+
+q2({1.0, 2.0, 3.0, 4.0});

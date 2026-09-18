@@ -1,0 +1,201 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: numsparqlexp.osql,v $
+ * $Revision: 1.1 $ $Date: 2013/12/10 09:14:23 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: numerical sparql queries
+ ****************************************************************************
+ ****************************************************************************/
+
+/* create triple view from udblserver1 server */
+/* database size 1GB */
+set :id="regressDS";
+set :url="jdbc:microsoft:sqlserver://udblserver1;DatabaseName=bm1GB";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="bm1GB";
+set :usern="udbl";
+set :passw="udbl";
+set :catal="bm1GB"; 
+set :schem="dbo";
+set :upv="prod";
+set :uriOfupv="http://user.it.uu.se/~udbl/prod";
+
+/* database size 5GB */
+set :id="regressDS";
+set :url="jdbc:microsoft:sqlserver://udblserver1;DatabaseName=bm5GB";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="bm5GB";
+set :usern="udbl";
+set :passw="udbl";
+set :catal="bm5GB"; 
+set :schem="dbo";
+set :upv="prod";
+set :uriOfupv="http://user.it.uu.se/~udbl/prod";
+
+
+/* database size 10GB */
+set :id="regressDS";
+set :url="jdbc:microsoft:sqlserver://udblserver1;DatabaseName=bm10GB";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="bm10GB";
+set :usern="udbl";
+set :passw="udbl";
+set :catal="bm10GB"; 
+set :schem="dbo";
+set :upv="prod";
+set :uriOfupv="http://user.it.uu.se/~udbl/prod";
+
+
+/* database size 15GB */
+set :id="regressDS";
+set :url="jdbc:microsoft:sqlserver://udblserver1;DatabaseName=bm15GB";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="bm15GB";
+set :usern="udbl";
+set :passw="udbl";
+set :catal="bm15GB"; 
+set :schem="dbo";
+set :upv="prod";
+set :uriOfupv="http://user.it.uu.se/~udbl/prod";
+
+
+/* run functions */
+defineDS(:id,
+         :url,
+         :driver,
+         :catal,
+         :schem,
+         :usern,
+         :passw);
+
+
+defineUPV(:id,:upv, :uriofupv);
+/*defineUPV(:id,:upv_fn, :uriofupv_fn);*/
+
+DSConnect(:upv);
+
+wrapRDB(jdbcOfDS(:id), :dbname, :catal, :schem);
+
+assignIDs(:upv,:catal, :schem);
+
+cmap();
+
+pmap();
+
+rcmap();
+
+ViewRDB("prod");
+
+/* don't do prod(); since it is too much data returned */
+
+lisp;
+
+(setq _rewrite_filter_ t)
+
+(DEFUN USTR-LITERAL-+ (FNO X RES)
+     (OSQL-RESULT X X))
+
+:osql
+
+
+
+
+set_bijective_function("USTR_LITERAL",true);
+
+set_bijective_function("rowid_uri",true); 
+
+set_bijective_function("ustr",true);
+
+/* experiment queries */
+
+/* query Q1 retrieves the machine identifiers m where an embedded sensor has measured 
+   values mv for measurement of class A higher than the expected values ev by a threshold 
+   value @th, the starting time bt and the ending time et for this abnormal behaviour 
+   (Thanh's query 1) */
+set :sparql1 =
+"select ?m ?bt ?et
+ from <http://user.it.uu.se/~udbl/prod>
+ where { ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA_of_sensor> ?sensor .
+         ?sensor    <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev.
+         ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA/m> ?m.
+         ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA/bt> ?bt.
+         ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA/et> ?et.
+         ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA/mv> ?mv.
+         FILTER (?mv > (?ev + 343)). } ";
+
+
+eval("create function sparql1()->(Literal, Literal, Literal) as " + sparql_translate(:sparql1, true));
+
+pc("sparql1");
+
+lisp;
+
+(start-profile)
+
+:osql
+
+count(sparql1());
+
+lisp;
+
+(profile)
+
+:osql
+
+
+/* Query Q2 identifies a potential failure by retrieving for machine models M_1, M_2, and 
+   M_3 those machineid where during the time interval (bt, et) mv was above 75% of the 
+   allowed deviation @th  from the expected value ev */
+create function sparql2v3amos()->(literal, literal, literal) as
+select machineid, bt, et
+  from Literal mv, Literal mm, Literal ev, Literal sensor, Literal measuresa, Literal et, Literal bt, Literal machineid
+ where (measuresa, URI('http://user.it.uu.se/~udbl/prod#measuresA_of_sensor'), sensor) in prod()
+   and (sensor, URI('http://user.it.uu.se/~udbl/prod#sensor/ev'), ev) in prod()
+   and (measuresa, URI('http://user.it.uu.se/~udbl/prod#measuresA_of_machine'), machineid) in prod()
+   and (machineid, URI('http://user.it.uu.se/~udbl/prod#machine/mm'), mm) in prod()
+   and (measuresa, URI('http://user.it.uu.se/~udbl/prod#measuresA/bt'), bt) in prod()
+   and (measuresa, URI('http://user.it.uu.se/~udbl/prod#measuresA/et'), et) in prod()
+   and (measuresa, URI('http://user.it.uu.se/~udbl/prod#measuresA/mv'), mv) in prod()
+   and mm in {'E_1', 'E_2', 'E_3'}
+   and mv>rdf:plus(ev, 0.75*15);
+
+
+pc("sparql2v3amos");
+
+lisp;
+
+(start-profile)
+
+:osql
+
+count(sparql2v3amos());
+
+lisp;
+
+(profile)
+
+:osql
+
+/* Query Q3 identifies abnormal behaviours of machines of one measurement class based on 
+   absolute deviations: when and for which machine identifiers did the pressure reading of 
+   class B deviate more than @thB from its expected value ev? */
+set :sparql3 =
+"select ?m ?bt ?et
+from <http://user.it.uu.se/~udbl/prod>
+ where { ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB_of_sensor> ?sensor.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/bt> ?bt.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/et> ?et.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/mv> ?mv.
+         ?sensor    <http://user.it.uu.se/~udbl/prod#sensor/m>     ?m.
+         ?sensor    <http://user.it.uu.se/~udbl/prod#sensor/ev>    ?ev.
+         bind ((?mv-?ev) as ?temp).
+         FILTER (abs(?temp) > 5).} " ;
+
+eval("create function sparql3()->(Literal, Literal, Literal) as " + sparql_translate(:sparql3, true));
+
+pc("sparql3");
+
+count(sparql3());

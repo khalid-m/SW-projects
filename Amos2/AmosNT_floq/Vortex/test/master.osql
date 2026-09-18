@@ -1,0 +1,35 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2013 Tore Risch, UDBL
+ * $RCSfile: master.osql,v $
+ * $Revision: 1.2 $ $Date: 2013/06/26 18:26:11 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Regression testing Vortex code
+ *
+ ****************************************************************************
+ * $Log: master.osql,v $
+ * Revision 1.2  2013/06/26 18:26:11  torer
+ * numtuples() in regression test
+ *
+ * Revision 1.1  2013/05/30 12:37:38  torer
+ * Smart Vortex regression test
+ *
+ ****************************************************************************/
+
+set :s1 = my_csv_stream("../extensions/humbledata.csv"); 
+
+set :s2 = section(numtuples(0.001),0,100);
+
+lisp;
+
+(checkequal
+ "extensions"
+ ((osql "round(sum(vsum(na2vec(in(:s1)))));") '((214778)))
+ ((osql "count(in(:s2));") '((100)))
+ )
+
+:osql
+
+rollback;

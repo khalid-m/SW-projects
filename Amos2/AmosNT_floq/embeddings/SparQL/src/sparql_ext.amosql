@@ -1,0 +1,195 @@
+<'../../lsp/URI.amosql';
+/*Create new literal*/
+create function newLit(Charstring)->Rlit as foreign "sparql_new_lit";
+
+create function new_lit_true()->Rlit as select r(5,"true");
+create function new_lit_false()->Rlit as select r(5,"false");
+
+/*Retrieve the value string of literal*/
+create function _str_(Resource x)->Charstring as 
+  select concatagg(ovs) from integer n, Literal ovs where r(n,ovs)=x;
+/*specification 11.4.5*/  
+create function str(Resource x)->Resource as select r(1,_str_(x));
+
+/*Retrieve the datatype URI id of literal*/
+create function _dt_(Resource x)->Integer as
+  select n from integer n, Charstring vs where r(n,vs)=x; 
+/*specification 11.4.7*/
+create function dt(Resource res)->Resource as 
+  select uri(datatypeURI) from Charstring datatypeURI
+  where _dt_(res)=FindLitID(datatypeURI);
+
+
+/*see specification 11.2.2*/
+create function _ebv_(Integer, Charstring)->Rlit as foreign "sparql_ebv";
+create function ebv(Resource x)->Rlit as select _ebv_(_dt_(x),_str_(x));
+
+/*This is invoked for every 'FILTER' in SPARQL statement */
+/*To conveert a xsd:boolean to Amos II type boolean      */
+create function fltr(Resource x)->Boolean as select _str_(ebv(x))="true";
+
+/*Logical operation OR*/
+create function l_o(Resource x, Resource y)->Rlit as
+begin
+  declare Charstring ebvxvs, Charstring ebvyvs;
+ 
+  set ebvxvs = _str_(ebv(x));
+  set ebvyvs = _str_(ebv(y));
+  
+  if ebvxvs="true" or ebvyvs="true" then result new_lit_true()
+  else result new_lit_false();
+end;
+
+/*Logical operation AND*/
+create function l_a(Resource x, Resource y)->Rlit as
+begin
+  declare Charstring ebvxvs, Charstring ebvyvs;
+  
+  set ebvxvs = _str_(ebv(x));
+  set ebvyvs = _str_(ebv(y));
+  
+  if ebvxvs="true" and ebvyvs="true" then result new_lit_true()
+  else result new_lit_false();
+end;
+
+/*comparison operations*/
+create function _cmp_(integer xdt,charstring xvs,integer ydt,charstring yvs,charstring opt)
+		-> Rlit as foreign "sparql_cmp";
+create function EQ(Resource x,Resource y)
+		-> Rlit as select _cmp_(_dt_(x),_str_(x),_dt_(y),_str_(y),"EQ");
+create function NEQ(Resource x,Resource y)
+		->Rlit as select _cmp_(_dt_(x),_str_(x),_dt_(y),_str_(y),"NEQ");
+create function LT(Resource x,Resource y)
+		-> Rlit as select _cmp_(_dt_(x),_str_(x),_dt_(y),_str_(y),"LT");
+create function GT(Resource x,Resource y)
+		-> Rlit as select _cmp_(_dt_(x),_str_(x),_dt_(y),_str_(y),"GT");
+create function LTE(Resource x,Resource y)
+		->Rlit as select _cmp_(_dt_(x),_str_(x),_dt_(y),_str_(y),"LTE");
+create function GTE(Resource x,Resource y)
+		->Rlit as select _cmp_(_dt_(x),_str_(x),_dt_(y),_str_(y),"GTE");
+
+/*arithmetic operations*/
+create function _div_(integer xdt,charstring xvs,integer ydt,charstring yvs)
+		->Rlit as foreign 'sparql_div';
+create function _times_(integer xdt,charstring xvs,integer ydt,charstring yvs)		
+		->Rlit as foreign 'sparql_times';
+create function _plus_(integer xdt,charstring xvs,integer ydt,charstring yvs)		
+		->Rlit as foreign 'sparql_plus';
+create function _minus_(integer xdt,charstring xvs,integer ydt,charstring yvs)		
+		->Rlit as foreign 'sparql_minus';
+						
+create function div(Resource x, Resource y)
+		->Rlit as select _div_(_dt_(x),_str_(x),_dt_(y),_str_(y));
+create function times(Resource x, Resource y)
+		->Rlit as select _times_(_dt_(x),_str_(x),_dt_(y),_str_(y));
+create function plus(Resource x, Resource y)
+		->Rlit as select _plus_(_dt_(x),_str_(x),_dt_(y),_str_(y));
+create function minus(Resource x, Resource y)
+		->Rlit as select _minus_(_dt_(x),_str_(x),_dt_(y),_str_(y));
+
+create function _fn_neg_(Integer,Charstring)->Rlit as foreign "sparql_neg";
+create function fn_neg(Resource x)->Rlit as select _fn_neg_(_dt_(x),_str_(x));
+	
+create function fn_not(Resource x)->Rlit as
+begin
+	if _str_((_ebv_(_dt_(x),_str_(x))))="true" then result new_lit_false()
+	else result new_lit_true();
+end;		
+
+create function isLtrl(Resource x)->Rlit as 
+begin
+	if _dt_(x) > 0 then result new_lit_true()
+	else result new_lit_false();
+end;
+
+create function isBlnk(Resource x)->Rlit as
+begin
+	if _dt_(x)=0 and like(_str_(x), "_:*") then result new_lit_true()
+	else result new_lit_false();
+end;
+
+create function isIRI(Resource x)->Rlit as 
+begin
+	if _dt_(x)=0 then
+		if like(_str_(x), "_:*") then result new_lit_false()
+		else result new_lit_true()
+	else
+		result new_lit_false();
+end;
+
+create function _LANG_(Literal)->Rlit as foreign "sparql_LANG";
+create function LANG(Resource x)->Rlit as select _LANG_(_str_(x)) where _dt_(x)=1;
+
+create function langMatches(Resource tag, Resource range)->Resource as
+begin
+	if like_i(_str_(tag), _str_(range)+"*") then result new_lit_true()
+	else result new_lit_false();
+end;
+
+create function VecOfSortbagby2Bag(Object o)->Bag of Object as 
+begin
+	print(name(typeof(cast (o as Vector)[0])));
+	if like(name(typeof(cast (o as Vector)[0])),"VECTOR*") then
+		result o
+	else
+		result o;
+end;
+
+create function LastErrorMsg()->Charstring as stored;
+
+/*Caching RDF source*/
+create function rdf_tr_c(Charstring src)-><Resource, Resource, Resource> as
+begin
+	if notany(rdf_triple_cache(src)) then 
+		parseRDF_cache(src);
+
+	result rdf_triple_cache(src);
+end;
+create function rdf_tr_c(Charstring src, Resource o)-><Resource,Resource> as
+ select sub, pre from Resource sub, Resource pre, Resource obj
+ where rdf_tr_c(src)=<sub,pre,obj> and _dt_(obj)=_dt_(o) and fltr(EQ(obj,o));
+
+/*Not Cache RDF source*/
+create function rdf_tr(Charstring src)-><Resource, Resource, Resource> as
+	select parseRDF(src);
+
+create function rdf_tr(Charstring src, Resource o)-><Resource,Resource> as
+	select sub, pre from Resource sub, Resource pre, Resource obj
+	where parseRDF(src)=<sub,pre,obj> and _dt_(obj)=_dt_(o) and fltr(EQ(obj,o));
+
+
+create function like(Resource r1, Resource r2)->Resource 
+as
+	select r(5,in(select "true" where like(cast(_str_(r1) as Charstring),cast(_str_(r2) as Charstring))));
+
+/************************************************/
+/*          Interface of SparQL Parser          */
+/************************************************/
+
+/*Input a SparQL language query as a string     */
+/*Input1: RDF source                            */
+/*Input2: Cache RDF source or not, ==1 for cache*/
+/*Input3: SPARQL query statement                */
+create function __sparql__(Charstring,Integer,Charstring)->Charstring as foreign "sparql_query";
+
+/*Function for parsing a SparQL query to AmosQL. 
+ *Default is caching of resources and specification of dataset 
+ *in FROM clause of SparQL query.
+ *Added by Johan Petrini
+ */
+create function parse_sparql(Charstring query)->Charstring 
+as
+	select __sparql__("",1,query);
+
+create function sparql(Charstring rdf, Integer bCache, Charstring query)->Vector of Object as 
+	select VecOfSortbagby2Bag(eval(__sparql__(rdf, bCache, query)));
+	
+/*Input a SparQL language query stored in a file*/
+/*Input1: RDF source                            */
+/*Input2: Cache RDF source or not, ==1 for cache*/
+/*Input3: file includes SPARQL query statement  */
+create function __sparql_from_file__(Charstring,Integer,Charstring)->Charstring as foreign "sparql_from_file";
+	
+create function sparql_from_file(Charstring rdf, Integer bCache, Charstring fn)->Vector of Object as 
+	select VecOfSortbagby2Bag(eval(__sparql_from_file__(rdf,bCache,fn)));
+	

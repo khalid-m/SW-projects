@@ -1,0 +1,168 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Cheng Xu, UDBL
+ * $RCSfile: gen.osql,v $
+ * $Revision: 1.3 $ $Date: 2013/01/08 12:23:50 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Generate streams based on one stream
+ *
+ ****************************************************************************
+ * $Log: gen.osql,v $
+ * Revision 1.3  2013/01/08 12:23:50  chexu484
+ * 30 second stream generator
+ *
+ * Revision 1.2  2013/01/04 13:17:59  chexu484
+ * experiment
+ *
+ * Revision 1.1  2012/12/19 20:07:03  chexu484
+ * central vs paralell
+ *
+ *
+ ****************************************************************************/
+
+
+/* stored function for the original stream */
+create function rawData(Integer id) -> Vector of Number as stored;
+
+create function rawDataSize() -> Integer as stored;
+
+create function randOffsetRange() -> Integer as stored;
+
+create function addRawData(Charstring file) -> Boolean
+  as begin
+	declare Integer counter;
+	set counter = 0;
+	for each Vector of Number v where v in read_csv(file)
+	  begin
+	    set rawData(counter) = v;
+	    set counter = counter + 1;
+	  end;
+     end;
+
+create function hb(Integer id) -> Number as stored;
+
+add hb(i) = 0.0001 * i
+from Integer i
+where i in iota(1, 10);
+
+/* consider the raw data as a circula buffer
+   generate bag of vector of number of size: size */
+create function newStream00(Integer size, Integer offset) -> Bag of Vector of Number
+  as begin
+       declare Integer totalSize, Integer ofst, Integer counter;
+       /*print({"random offset: " + offset});*/
+       if rawDataSize() > 0
+       then set totalSize = rawDataSize()
+       else set totalSize = size;
+       set ofst = offset;
+       set counter = 0;
+       while counter < size
+       do return rawData(ofst);
+          set counter = counter + 1;
+	  set ofst = mod(ofst + 1, totalSize);
+       end while;
+     end;
+/*
+create function newStream01(Integer size, Integer offset) -> Bag of Vector of Number
+  as begin
+       declare Integer ofst;
+       set ofst = offset;
+       print({"random offset: " + ofst});
+       print({"stream size: " + (size - ofst)});
+       print({"time range: " + (rawData(size - 1)[0] - rawData(ofst)[0])});
+       while ofst != size
+       do return rawData(ofst);
+	  set ofst = ofst + 1;
+       end while;
+     end;
+*/
+
+/* full speed */
+create function newStream0(Integer size, Integer offset) -> Stream of Vector of Number
+  as streamof(newStream00(size, offset));
+
+/* start a sp for each stream source, streaming the original stream tuple in full speed */
+create function newStreams0(Integer size, Integer fanout) -> Bag of Stream
+  as for each Integer i where i in iota(1, fanout)
+	return ostream(newsp(newStream0(size, ezrand(RandOffsetRange()))), 0);
+
+/* calm pace */
+create function newStream1(Integer size, Integer offset) -> Stream of Vector of Number
+  as streamof(playback(streamof(newStream00(size, offset))));
+
+/* start a sp for each stream source, streaming the original stream tuple in calm pace */
+create function newStreams1(Integer size, Integer fanout) -> Bag of Stream
+  as for each Integer i where i in iota(1, fanout)
+	return ostream(newsp(newStream1(size, ezrand(RandOffsetRange()))), 0);
+
+/* wrapp original strem tuple with time stamp and machine id */
+create function newStream2_b(Number logicSize, Integer offset, Integer id, Number hb) -> Bag of Vector
+  as begin
+       declare Integer size, Number ts;
+       set size = floor(logicSize/hb);
+       set ts = 0;
+       for each Vector of Number v where v in newStream00(size, offset)
+         begin
+	   return {ts, id, v};
+	   set ts = ts + hb;
+	   sleep(hb);
+	 end;
+     end;
+create function newStream2(Number logicSize, Integer offset, Integer id, Number hb) -> Stream of Vector
+  as streamof(newStream2_b(logicsize, offset, id, hb));
+
+/* start a sp for each stream source, streaming the wrapped tuple in calm pace, frequency 0.005 */
+create function newStreams2(Number logicSize, Integer fanout) -> Bag of Stream
+  as for each Integer i where i in iota(1, fanout)
+     	return ostream(newsp(newStream2(logicSize, ezrand(RandOffsetRange()), i, 0.005)), 0);
+
+/* start a sp for each stream source, streaming the wrapped tuple in calm pace, with random frequency */
+create function newStreams3(Number logicSize, Integer fanout) -> Bag of Stream
+  as for each Integer i where i in iota(1, fanout)
+     	return ostream(newsp(newStream2(logicSize, ezrand(RandOffsetRange()), i, rand(1,10) / 1000)), 0);
+
+/* calm pace with machine id time stamp is set via frequency
+create function newStream3_b(Integer size, Integer offset, Integer id, Number hb) -> Bag of Vector
+  as begin
+       declare Number ts;
+       set ts = 0;
+       for each Vector of Number v where v in newStream01(size, offset)
+       begin
+         return {ts, id, v};
+	 sleep(hb);
+	 set ts = ts + hb;
+       end;
+     end;
+create function newStream3(Integer size, Integer offset, Integer id, Number hb) -> Stream of Vector
+  as streamof(newStream3_b(size, offset, id, hb));
+
+create function newStreams3(Integer fanout) -> Bag of Stream
+  as for each Integer i where i in iota(1, fanout)
+     	return ostream(newsp(newStream3(rawDatasize(), ezrand(RandOffsetRange()), i, hb(i))), 0); */
+
+/* ts function for time window */
+create function millTS(Vector v) -> Number
+  as select ts
+  from Number ts, Integer id, Vector of Number val
+  where {ts, id, val} = v;
+
+/* create time window */
+create function millWindow(Stream s) -> Stream of Window
+  as twindowize(s, #'millTS', 0.1, 0.1);
+
+
+/* the following populate the database */
+
+/* add the raw data */
+addRawData("../../../Vortex/Sandvik/data/mill.csv");
+
+/* size of the raw data */
+set rawDataSize() = count(select rawData(i) from Integer i);
+
+/* random offset between 0 - 3300 */
+set RandOffsetRange() = floor(0.1 * rawDataSize());
+
+/* profile on */
+validation_profile(True);

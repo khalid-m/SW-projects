@@ -1,0 +1,72 @@
+
+
+
+
+/* importing metadata from WSDL */
+sql("select * from init i");
+sql("select * from  importwsdl i where i.userid=0 and i.wsdlurl='http://user.it.uu.se/~msabesan/WSDL/TerraService2.wsdl' ");
+sql("select * from  importwsdl i where i.userid=0 and i.wsdlurl='http://user.it.uu.se/~msabesan/WSDL/PlaceLookup.wsdl' ");
+sql("select * from  importwsdl i where i.userid=0 and i.wsdlurl='http://user.it.uu.se/~msabesan/WSDL/ZipCodeLookup.wsdl' ");
+sql("select * from  importwsdl i where i.userid=0 and i.wsdlurl='http://user.it.uu.se/~msabesan/WSDL/uszip.wsdl' ");
+sql("select * from  importwsdl i where i.userid=0 and i.wsdlurl='http://user.it.uu.se/~msabesan/WSDL/Weather.wsdl'");
+sql("select * from  importwsdl i where i.userid=0 and i.wsdlurl='http://user.it.uu.se/~msabesan/WSDL/WeatherForecast.wsdl' ");
+sql("select * from  importwsdl i where i.userid=0 and i.wsdlurl='http://user.it.uu.se/~msabesan/WSDL/LocalTime.wsdl' ");
+
+/* importing values for soapheaders */
+
+sql("select * from  import_soaph i where i.userid=0 and i.wsdluri='http://user.it.uu.se/~msabesan/WSDL/PlaceLookup.wsdl' and i.webservice='GeoPlaces' and i.oper='GetAllStates' and i.val='5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'");
+
+sql("select * from  import_soaph i where i.userid=0 and i.wsdluri='http://user.it.uu.se/~msabesan/WSDL/PlaceLookup.wsdl' and i.webservice='GeoPlaces' and i.oper='GetPlacesWithin' and i.val='5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'");
+
+sql("select * from  import_soaph i where i.userid=0 and i.wsdluri='http://user.it.uu.se/~msabesan/WSDL/ZipCodeLookup.wsdl' and i.webservice='ZipCodes' and i.oper='GetPlacesInside' and i.val='5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'");
+
+sql("select * from  import_soaph i where i.userid=0 and i.wsdluri='http://user.it.uu.se/~msabesan/WSDL/ZipCodeLookup.wsdl' and i.webservice='ZipCodes' and i.oper='GetZipCodesWithin' and i.val='5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'");
+
+/* some helping function */
+lisp;
+(defun getzipcode (fno string r)
+  "Returns a list of substrings (zipcode) of string"
+  (let ((zc "") (j 0) tstr)
+    (if (string= string "") (osql-result string nil)
+      (progn 
+	(setq tstr (explode (mksymbol string)))
+	(dolist (i tstr)
+	  (if (integerp i) (progn (if (< j 5)(setq zc ( concat zc (mkstring i)))) (setq j (1+ j)))
+	    (if (not (string= zc "")) (progn (setq j 0)(osql-result string zc) (setq zc "")) ))
+      
+      
+	  )))
+    ))
+
+:osql
+create function sql:getzipcode(charstring string)->charstring as foreign "getzipcode"; 
+
+save "wsmed.dmp";
+
+
+
+/******** query definitions ***********************/
+
+
+sql("select * from findservices s where s.userid=0");
+sql("select * from findoperations i where i.userid=0");
+sql("select * from operationin i where i.userid=0 and i.opname='GetPlaceDetails' ");
+sql("select * from operationout i where i.userid=0 and i.wsdluri='http://user.it.uu.se/~msabesan/WSDL/PlaceLookup.wsdl' and i.wsname='GeoPlaces' and i.opname='GetPlaceDetails' ");
+
+sql(" select * from query q where q.userid=0 and q.sqlq='select gl.City ,  gl.PlaceTypeId from  GetAllStates gs, GetPlacesWithin gp, GetPlaceList gl where  gs.State=gp.state and gp.distance=15.0 and gp.placeTypeToFind= \"City\" and gp.place= \"Atlanta\" and gl.placeName=gp.ToPlace+\" , \"+gp.ToState and gl.MaxItems=100 and gl.imagePresence= \"true\" ' ");
+
+sql(" select * from query q where q.userid=0 and q.sqlq='select * from  GetAllStates gs'");
+
+select * from  GetAllStates gs where gs.State='CA'
+
+select gl.City ,  gl.PlaceTypeId from  GetAllStates gs, GetPlacesWithin gp, GetPlaceList gl where  gs.State=gp.state and gp.distance=15.0 and gp.placeTypeToFind= 'City' and gp.place= 'Atlanta' and gl.placeName=gp.ToPlace+' , '+gp.ToState and gl.MaxItems=100 and gl.imagePresence= 'true' 
+
+5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q
+
+
+sql(" select * from query q where q.userid=0 and q.sqlq='select gl.City ,  gl.PlaceTypeId from  GetAllStates gs, GetPlacesWithin gp, GetPlaceList gl where  gs.State=gp.state and gp.distance=15.0 and gp.placeTypeToFind= \"City\" and gp.place= \"Atlanta\" and gl.placeName=gp.ToPlace+\" , \"+gp.ToState and gl.MaxItems=100 and gl.imagePresence= \"true\" ' ");
+
+
+select * from GetUserPlacesWithin g where g.place="Atlanta" and g.state="GA" and g.distance=13.0 and g.category="City"
+
+select * from Authenticate 

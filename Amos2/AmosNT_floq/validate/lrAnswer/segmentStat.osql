@@ -1,0 +1,28 @@
+/*-*-sql-*-*************************************
+ * AMOS2
+ *
+ * seg stat ************************************/
+
+create function seg_stat(Vector of Integer x) -> Vector
+  /* Update statistics stored per expressway segment */
+  as begin
+	if (x[1] > current_second()) 	/*new second*/
+	then begin
+             set_current_second(cast(x[1] as Integer));
+	     remove_stopped_cars(current_second());
+                                        /*remove old reports of stopped cars*/
+	     if (mod(cast(x[1]as Integer),60) =0 )   /*new minute*/
+             then begin		
+	          set_current_minute(floor(current_second()/60) + 1);
+		  print({current_minute(), now(), "**************************************************"});
+	          select check_kill_accident(xways) 
+	            from Integer xways 
+	           where xways in iota(0,1); 
+        /* check if there are any reports of accident that have been cleared*/
+	          init_stat(current_minute()); 
+                                 /*remove old hash-table and start a new one*/
+	          end;
+	      end;
+     add_stat(x, current_minute()); /* add stat to NOV and LAV*/
+     /*if(current_minute()>10) then error("Completed 10 min run");*/
+     end; 

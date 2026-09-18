@@ -1,0 +1,1 @@
+java -cp javaamos.jar JavaAMOS %1% -o "goovi();"

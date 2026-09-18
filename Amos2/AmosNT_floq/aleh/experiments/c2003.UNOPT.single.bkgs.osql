@@ -1,0 +1,7 @@
+cd('osql');
+<'cuts.const.stream.nohints.osql';
+<'../experiments/stream.osql';
+
+openwritefile('../experiments/c2003.UNOPT.single.bkgs.txt');
+UNOPTsingleBkgs();
+closewritefile();

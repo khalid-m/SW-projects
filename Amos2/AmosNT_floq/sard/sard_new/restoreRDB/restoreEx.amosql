@@ -1,0 +1,94 @@
+<'Code/patch.amosql';
+<'Code/Recreate_inMSSQL.amosql';
+<'Code/generateCSV.amosql';
+
+set :dbname="example_db";
+set :url="jdbc:microsoft:sqlserver://130.238.11.146;DatabaseName=example_db";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :jdb=jdbc("example",:driver);
+set :dbuser="reloader";
+set :dbpass="reloader"; 
+set :catalog="example_db";
+set :schema="example_db";
+connect(:jdb, :url, :dbuser, :dbpass);
+
+
+importSchema('NTArchives/producer1/schema1m.nt','http://user.it.uu.se/~udbl/sard/prod');
+
+importSchema('NTArchives/producer90m/schema90m.nt','http://user.it.uu.se/~udbl/sard/prod');
+
+importSchema('NTArchives/producer180m_primk/schema180m.nt','http://user.it.uu.se/~udbl/sard/prod');
+
+/*******************/
+importSchema('NTArchives/prod180m_q8/schema8.nt','http://user.it.uu.se/~udbl/sard/prod');
+/******************/
+
+importSchema('NTArchives/producer552m_primk/schema552m.nt','http://user.it.uu.se/~udbl/sard/prod');
+
+importSchema('NTArchives/producer20mil_primk/schema20mil.nt','http://user.it.uu.se/~udbl/sard/prod');
+
+importSchema('NTArchives/producer500M/schema500M.nt','http://user.it.uu.se/~udbl/sard/prod');
+
+logging off;
+
+dropDatabase_mssql(:jdb);
+
+
+/*Insert by Insert Attribute Value */
+InsertAttVal_mssql(:jdb,:schema,'NTArchives\prod1.nt','http://user.it.uu.se/~udbl/sard/prod');
+
+InsertAttVal_mssql(:jdb,:schema,'NTArchives\producer90m\unsorted_data90m.nt','http://user.it.uu.se/~udbl/sard/prod');
+
+InsertAttVal_mssql(:jdb,:schema,'NTArchives\producer552m\data552m.nt'','http://user.it.uu.se/~udbl/sard/prod');
+
+InsertAttVal_mssql(:jdb,:schema,'NTArchives\producer20mil_o\producer20mil_o.nt','http://user.it.uu.se/~udbl/sard/prod');
+
+
+dropDatabase_mssql(:jdb);
+
+makeAllTable_mssql(:jdb,:schema,'http://user.it.uu.se/~udbl/sard/prod');
+
+clean_colURI_proc();
+PColOrder_mssql(:jdb,:schema,'http://user.it.uu.se/~udbl/sard/prod');
+
+Insert_mssql_new(:jdb,:schema,'NTArchives\producer90m\unsorted_data90m.nt','http://user.it.uu.se/~udbl/sard/prod');
+
+Insert_mssql_new(:jdb,:schema,'NTArchives\producer20mil_primk/unsorted_data20mil.nt','http://user.it.uu.se/~udbl/sard/prod');
+
+Insert_mssql_new(:jdb,:schema,'NTArchives/producer500M/triples.nt','http://user.it.uu.se/~udbl/sard/prod');
+
+/*Sort */
+
+set :id_a="archiveDS";
+set :url_a="jdbc:microsoft:sqlserver://130.238.11.146;DatabaseName=archive";
+set :driver_a="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :ra=jdbc("arch", :driver_a);
+set :usern_a="archiver";
+set :passw_a="archiver";
+set :catalog_a="archive";
+set :schema_a="archive";
+
+connect(:ra, :url_a, :usern_a, :passw_a);
+
+sql(:ra,"drop table MyTriple");
+
+sql(:ra, "CREATE TABLE archive.MyTriple(
+	[s] [varchar](200) NOT NULL,
+	[p] [varchar](200) NOT NULL,
+	[o] [varchar](2200) NOT NULL) ");
+
+sql(:ra,"delete from archive.archive.Attributes;");
+
+makeAllTable_mssql(:jdb,:schema,'http://user.it.uu.se/~udbl/sard/prod');
+
+produce_sorted(:ra,'http://user.it.uu.se/~udbl/sard/prod');
+
+makeCSV(:ra,'http://user.it.uu.se/~udbl/sard/prod');
+
+/*Bulk Load */
+TripleBulkLoad2_mssql(:jdb,:schema);
+
+
+makeAllConstraint2_mssql(:jdb,:schema,'http://user.it.uu.se/~udbl/sard/prod');
+
+

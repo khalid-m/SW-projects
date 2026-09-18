@@ -1,0 +1,5 @@
+load_amosql(getenv("AMOS_HOME") + "/gsdm/osql/coordinator.osql");
+logging off;
+
+save_database("coord.dmp");
+quit;   

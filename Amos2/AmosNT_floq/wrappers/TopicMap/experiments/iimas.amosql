@@ -1,0 +1,114 @@
+lisp;
+(defun pred-size (pred)
+  (let ((cnt 0))
+    (mappred pred (f/l (p)(1++ cnt)))
+    cnt))
+
+(defun execplan-size (fno)
+   (pred-size (selectbody-optpred (getselectbody fno))))
+
+:osql
+
+Query 1
+-----------
+Very big file (10 591 KB)
+importTopicMap("mondial", "http://user.it.uu.se/~udbl/software/swatm/mondial.xtm");
+
+count(select t from tm_object t) --> 69800
+number triples 257276
+
+set :sparql_content1  = "SELECT ?tm2
+		       	FROM <http://user.it.uu.se/~udbl/software/swatm/mondial.xtm>
+			WHERE {?tm0  <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?tm1.
+			       ?tm1  <http://udbl2.it.uu.se/swatm:BASENAMESTRING> 'Nottinghamshire'. 
+			       ?tm0  <http://udbl2.it.uu.se/swatm:OCCURRENCETOPIC> ?tm2 }";
+
+eval("create function test1()-> Charstring as "+parsesparql(:sparql_content1));
+
+sparql(:sparql_content1);
+
+{"http://user.it.uu.se/~udbl/software/swatm/mondial.xtm:2671"}
+{"http://user.it.uu.se/~udbl/software/swatm/mondial.xtm:2670"}
+
+-----------------------------------------------------------------------------------------------				
+		with PE and ranksort	without PE and RankS			
+------------------------------------------------------------------------------------------------
+Qopt		0.2564			 0.4127
+-------------------------------------------------------------------------------------------------
+Qexec		0.0036	 		 0.0073				 
+------------------------------------------------------------------------------------------------
+Qtot		0.26			 0.42
+-----------------------------------------------------------------------------------------------
+predicates	23			104
+--------------------------------------------------------------------------------------------
+
+Query 2
+-----------
+Small file "uc-literature.xtm" (14 KB)
+importTopicMap("ucliterature","http://www.isotopicmaps.org/tmql/uc-literature.xtm");
+
+count(select t from tm_object t) --> 113
+
+set :sparql_content2 = "SELECT DISTINCT ?bnt1 
+      	     FROM <http://www.isotopicmaps.org/tmql/uc-literature.xtm>
+      	     WHERE{ ?ass <http://udbl2.it.uu.se/swatm:INSTANCEOFASSOCIATION> ?t2.
+		    ?t2  <http://udbl2.it.uu.se/swatm:IDTOPIC> 'is-author-of'.
+		    ?ass <http://udbl2.it.uu.se/swatm:MEMBERASSOCIATION> ?mass1.
+		    ?mass1 <http://udbl2.it.uu.se/swatm:ROLESPEC> ?t3.
+		    ?t3 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'author'.
+		    ?mass1 <http://udbl2.it.uu.se/swatm:TOPICMEMBER> ?t1.
+		    ?t1 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bn.
+		    ?bn <http://udbl2.it.uu.se/swatm:BASENAMESTRING> ?bnt1.
+		    ?bn <http://udbl2.it.uu.se/swatm:SCOPEBASENAME> ?t4.
+		    ?t4 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'sort' }";
+
+eval("create function test2()-> Charstring as "+parsesparql(:sparql_content2));
+
+sparql(:sparql_content2);
+
+/*The result*/
+{"Newcomb, Steve"}
+{"Biezunski, Michel"}
+{"Pepper, Steve"}
+{"Rath, Holger"}
+
+--------------------------------------------------------------------------------------------
+		with PE and randopt		without PE and randopt
+--------------------------------------------------------------------------------------------
+Qopt		2.2704 				329.01
+--------------------------------------------------------------------------------------------
+Qexec		0.0096				  0.099
+--------------------------------------------------------------------------------------------
+Qtot		2.28	 			330
+--------------------------------------------------------------------------------------------
+predicates	74				63008
+--------------------------------------------------------------------------------------------
+
+
+Query 3
+--------------------------
+Schema query
+ 
+set :sparql_schema = 
+	"SELECT ?tp
+	WHERE {?tp <http://www.w3.org/1999/02/22-rdf-syntax-ns:type> <http://www.w3.org/1999/02/22-rdf-syntax-ns:Property>. 
+	      ?tp  <http://www.w3.org/2000/01/rdf-schema:domain> <http://udbl2.it.uu.se/swatm:TOPIC>.
+	      ?tp  <http://www.w3.org/2000/01/rdf-schema:range>  <http://www.w3.org/2000/01/rdf-schema:Literal>.
+	FILTER  (?tp != <http://udbl2.it.uu.se/swatm:IDTOPIC>).} ";
+
+eval("create function test3()-> Charstring as "+parsesparql(:sparql_schema));
+  
+      sparql(:sparql_schema);
+
+{"http://udbl2.it.uu.se/swatm:SUBJECTIDENTITY"}
+
+-----------------------------------------------
+		with PE		without PE
+----------------------------------------------
+Qopt		0.0143			0.0143
+------------------------------------------------
+Qexec		0.0007			0.0007
+-----------------------------------------------
+Qtot		0.015			0.015
+------------------------------------------------
+

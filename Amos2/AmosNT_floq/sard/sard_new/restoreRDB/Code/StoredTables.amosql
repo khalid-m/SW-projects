@@ -1,0 +1,112 @@
+
+/***************************************************************************************/
+				/**STORED TABLES***/
+/***************************************************************************************/
+
+/****ALL TABLEATTRIBUTES*****/
+
+/*Stored table holding all table URIs along with its columnURIs and primary key URIs. This is created from schema table holding all metat data information for the faster processing.*/
+create function AlltableAttributes(Integer id key, Charstring tn,Charstring attr,Charstring pk)->Boolean  as stored;
+
+/*Creating index on the stored table.*/
+create_index('Integer.Charstring.Charstring.Charstring.AlltableAttributes->Boolean',"attr","hash","multiple");	
+
+create_index('Integer.Charstring.Charstring.Charstring.AlltableAttributes->Boolean',"tn","hash","multiple");	
+
+/*Dispalys the attributes of the AlltableAttributes.*/
+create function valueOfAttr()-> (Integer,Charstring,Charstring,Charstring)
+as select id,tn,attr,pk from integer id, Charstring attr, Charstring tn,Charstring pk where AlltableAttributes(id,tn,attr,pk)=true;
+
+/* Clears all the contents of the stored table.*/
+create function removeAllattr()->Boolean
+as remove AlltableAttributes(id,tn,attr,pk)=true from Integer id,Charstring attr, Charstring pk,Charstring tn;
+
+/*Add URI of the Tables, its columns and primary keys reading from the stored meta data. It is created for the fast processing.*/
+create function addAllcolumn(Charstring baseURI)->Boolean
+as begin declare Integer i;
+	set i=1;
+        for each Charstring tableURI,Charstring pk where tableURI in ret_tableURIs1() and pk=ret_pkURIs(tableURI) 
+        begin   for each Charstring ch1,Charstring ch2 where (ch1,ch2) in ret_columnURIs(tableURI,baseURI)
+		begin	set Alltableattributes(i,tableURI,ch1,pk)=true;	set i=i+1;end;
+ 	end;
+end;
+
+/*Retrieves primary key for the given table reading from the stored table.*/
+create function ret_pkURIfromRowID2(Charstring t)->Charstring
+/*Retrieve name of PK of the table for the given RowID reading from  stored table allTAbleAttr*/
+as select distinct pk from Integer id,Charstring tableURI,Charstring pk, Charstring colURI
+	where  AlltableAttributes(id,tableURI,colURI,pk)=true and tableURI=t;
+
+
+/********************************************************************************************/
+
+/*Stored table for a specific table that holds URI of its column and its respective value.*/
+create function tableAttributes(Integer id key, Charstring attribute key)-> Object as stored;
+create_index('Integer.Charstring.tableAttributes->Object',"attribute","mbtree","multiple");	
+
+/*Retrieves Bag of Object (values) in the stored table that is sorted according to the 'ID'.*/
+create function valueofAttr1()->Bag of Object
+as select value from Object value, Integer id ,Bag of(Integer,Object) a 
+	where (id, value) in a 
+	and a in sortbagby((select (id, val) from Integer id, Charstring attr,Object val where tableAttributes(id,attr)=val),1,'inc');
+
+
+/*Cleans the value attribute of the table*/
+create function clean_tableVal()-> Boolean
+as set tableAttributes(id,attr)='\N'
+    from integer id, Charstring attr, Object value where tableAttributes(id,attr)=value;
+
+/*Clears all the contents of the table.*/
+create function remove_attr()->Boolean
+as remove tableAttributes(id,attr)=value from Integer id,Charstring attr, Object value;
+
+
+/*Add the given table columns in the stored table.*/
+create function addcolumn(Charstring tableURI)->Boolean
+as
+begin
+	declare Integer i;
+	set i=1;
+	for each Integer id,Charstring colURI,Charstring pk where AllTableAttributes(id,tableURI,colURI,pk)=true
+	begin	set tableattributes(i,colURI)='\N';set i=i+1;	end;
+end;
+
+/*Add values to the corresponding column read from the data file to the stored table.*/
+create function addValue(Charstring colURI,Charstring val)->Boolean
+as set tableAttributes(id,attr)=Val
+    from Integer id,Charstring attr,Object value where tableAttributes(id,attr)=value and attr=colURI;
+
+/**********************STORED Function for connecting tables***********************************/
+create function ct(Charstring attribute)-> Boolean as stored;
+
+create function addCTcolumn()->Boolean
+as for each Charstring tableURI where tableURI=ret_tableURIsCT()
+	set ct(tableURI)=true;
+	
+create function valueofCT()-> Bag of Object
+    as select tableURI from Charstring tableURI where ct(tableURI)=true;
+/********************************************************************************************/
+
+/*Add vlaues in the stored table for the case of FKInsertLoaderST and PlainInsertLoaderST.*/
+
+create function addValuePIL(Charstring colURI,Charstring val)->Boolean
+as
+set tableAttributes(id,attr)="'"+Val+"'"
+    from Integer id,Charstring attr, Object value where tableAttributes(id,attr)=value and attr=colURI;
+
+
+
+
+
+/********************************************************************************************/
+
+create function importSchema(Charstring filename,Charstring baseURI)->Boolean
+as
+begin
+	importS(filename);
+	addAllcolumn(baseURI);/*Stored table holding columns for given table info.*/
+	addCTcolumn();/*Stored table holding all column for given connecting table info.*/
+	addmapVal();/*Stored table holding all tableURI, columnURI,mapped name for table and column.*/
+end;
+/********************************************************************************************/
+

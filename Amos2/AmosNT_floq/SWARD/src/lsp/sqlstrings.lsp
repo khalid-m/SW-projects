@@ -1,0 +1,15 @@
+(defun extract-sql-strings (&optional fn)
+  (let (name optpred)
+    (cond ((eq fn nil)  (setq name  '*select*))
+	  (t            (setq name fn)))
+    (setq optpred (selectbody-optpred (getselectbody (getfunctionnamed name))))
+    (if (conjunctionp optpred)
+	(mapfilter #'sqlcallp (rest optpred) #'extract-sql-string)
+      (if (sqlcallp optpred)
+	  (list (extract-sql-string optpred))))))
+
+(defun extract-sql-string (pred)
+   (get-sql-string (getobject (fourth pred) 'sqlquery)))
+
+(defun sqlcallp (pred)
+   (equal (firstn 2 pred) '(call apply-pred-+)))

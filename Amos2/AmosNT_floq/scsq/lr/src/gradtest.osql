@@ -1,0 +1,167 @@
+/*-*-sql-*-*******************************************************************/
+
+create function last_clock() -> real;    
+create function lroutput()->vector;
+create function lroutputbin()->numarray;
+create function actual0(integer xway, integer carid, integer time)
+ -> <real, real>;
+create_index("actual0", "carid", "hash", "multiple");
+create_index("actual0", "time", "hash", "multiple");
+create function actual1()->vector;
+create function actual2()->vector;
+create function actual3()->vector;
+create function expected0(integer xway, integer carid, integer time)
+ -> <number, number>;
+create function expected1()->vector;
+create function expected2()->vector;
+create function expected3()->vector;
+add expected0(v[0], v[1], v[2]) = <v[4], v[5]>
+from vector v
+where v = readfile('data/o40-0-expected.out');
+create_index('expected0', 'carid', 'hash', 'multiple');
+create_index('expected0', 'time', 'hash', 'multiple');
+add expected1() = readfile('data/o40-1-expected.out');
+add expected2() = {v[0],v[3],v[5]}
+  from vector v
+  where v = readfile('data/o40-2-expected.out');
+add expected3() = {v[0],v[1],v[3],v[4]}
+  from vector v
+  where v = readfile('data/o40-3-expected.out');
+logging off;
+lisp; 
+;"
+
+(checkequal "extract from a SP"
+((osql "vectorof(extract(newsp(siota(1,10))));")
+'((#(1 2 3 4 5 6 7 8 9 10)))))
+
+(checkequal "extract from a SP on mei"
+((osql "vectorof(extract(newspflex(siota(1,10), 
+        make_record({'hostname', 'mei.it.uu.se'}))));")
+'((#(1 2 3 4 5 6 7 8 9 10)))))
+
+(checkequal "extract from a javascsq SP on mei"
+((osql "vectorof(extract(newspflex(siota(1,10),
+        make_record({'exe', 'javascsq', 'hostname', 'mei.it.uu.se'}))));")
+'((#(1 2 3 4 5 6 7 8 9 10)))))
+
+(checkequal "mysql lrhist in a javascsq SP on mei"
+((osql "extract(spvflex(
+{dailyexp('mei.it.uu.se', 'lrtest', 
+           streamof({3,2,1,-1,0,-1,-1,-1,-1,5,-1,-1,-1,-1,64}))},
+make_record({'exe', 'javascsq', 'hostname', 'mei.it.uu.se'}))[0]);")
+'((#(3 2 0 5 49)))))
+
+(checkequal "mysql lrhist, mapflex"
+((osql "in(mergestreams(mapflexv({{'mei.it.uu.se', 'lrtest',
+           streamof({3,2,1,-1,0,-1,-1,-1,-1,5,-1,-1,-1,-1,64})}}, #'dailyexp',
+make_record({'hostname', 'mei.it.uu.se', 'exe', 'javascsq'}))));")
+'((#(3 2 0 5 49)))))
+
+(checkequal "stream of lrhist queries, 1.5 xways"
+((osql "select 
+count(extract(spvflex({dailyexp('mei.it.uu.se', 'lrtest', s)},
+make_record({'hostname', 'mei.it.uu.se', 'exe', 'javascsq'}))[0]))
+from stream s where s=streamof(
+select v from vector v where 
+v=readfile(getenv('AMOS_HOME') + '/scsq/lr/data/cdp_mid15.out') and v[0]=3);")
+'((40))))
+
+(checkequal "stream of lrhist queries, 4 xways"
+((osql "select 
+count(extract(spvflex({dailyexp('mei.it.uu.se', 'lrtest40', s)},
+make_record({'hostname', 'mei.it.uu.se', 'exe', 'javascsq'}))[0]))
+from stream s where s=streamof(
+select v from vector v where 
+v=readfile('/home/zeitler/AmosNT/scsq/lr/data/cdp_lite40.out') and v[0]=3);")
+'((4))))
+
+(checkequal "L=4, // per dir, mySQL node on mei"
+((osql "set last_clock() = real(now());
+add lroutput() = lrfuse(mergestreams(all), 2*L)
+from vector of stream all, vector of stream my,
+vector of stream src, vector of stream so, integer L
+where all = concat(my, so)
+and my = mapflexv({{'mei.it.uu.se', 'lrtest40', src[0]}}, #'dailyexp',
+                 make_record({'hostname', 'mei.it.uu.se', 'exe', 'javascsq'}))
+and so = mapstreams((vselect src[i] from integer i where i in iota(1, 2*L)),
+                    #'lr')
+and src = splitstream(lreadfast(
+  getenv('AMOS_HOME') + '/scsq/lr/data/cdp_lite40.out', L), 2*L + 1,
+  #'lrdistrib2dir_db')
+and L = 4;
+
+add actual0(v[0], v[1], v[2]) = <r1, r2>
+from vector of number v, real r1, real r2
+where v = lrlogfilter(lroutput(), 0, 0)
+and r1 = real(v[4])
+and r2 = v[5];
+add actual1() = lrlogfilter(lroutput(), 1, 0);
+add actual2() = {v[0],v[3],v[5]} 
+  from vector v
+  where v = lrlogfilter(lroutput(), 2, 0);
+add actual3() = {v[0],v[1],v[3],v[4]} 
+  from vector v
+  where v = lrlogfilter(lroutput(), 3, 0);
+print({'duration L=4 // = ', real(now()) - last_clock()});
+count(select actual0(i,j,k) from integer i, integer j, integer k);")
+'((5010))))
+(checkequal "output count type 2"
+((osql "count(actual2());")
+'((67))))
+(checkequal "output count type 3"
+((osql "count(actual3());")
+'((4))))
+
+(checkequal "full output type 3"
+ ((osql "sort(actual3());")
+  (osql "sort(expected3());")))
+
+(checkequal "L=4 binary: split-[map+MySQL+split]-abagg-merge"
+ ((osql "clear_function('actual0');
+clear_function('actual1');
+clear_function('actual2');
+clear_function('actual3');
+clear_function('lroutputbin');
+writefile('data/cdp_lite40.bin', iarray(vreadfile('data/cdp_lite40.out')));
+set last_clock() = real(now());
+add lroutputbin() = in(mergestreams(concat({abagg}, concat(alla, mybin))))
+from vector of stream src, vector of stream of darray proc, 
+vector of stream of darray postproc,
+vector of stream alla, stream abagg, vector of stream my, 
+vector of stream mybin, integer L
+where abagg = ostream(newsp(lrf(zipstreams(vectorize(select i, postproc[i*2+1]
+  from integer i where i in iota(0, dim(postproc)/2))))), 0)
+and alla = vectorize(select i, postproc[i*2]
+  from integer i where i in iota(0, dim(postproc)/2))
+and postproc = splitstreams(proc, 2, #'accbalsplit')
+and proc = mapstreams((vselect src[i] from integer i where i in iota(0, L - 1)),
+                    #'lrbin')
+and mybin = mapstreams(my, #'vstream2iastream')
+and my = mapflexv({{'mei.it.uu.se', 'lrtest40', src[L]}}, #'dailyexp',
+                 make_record({'hostname', 'mei.it.uu.se', 'exe', 'javascsq'}))
+and src = splitstream(lreadfast(
+                getenv('AMOS_HOME') + '/scsq/lr/data/cdp_lite40.bin', L),
+                L + 1, #'dxpartitionbin')
+and L = 4;
+print({'duration L=4 // = ', real(now()) - last_clock()});
+add actual0(integer(v[0]), integer(v[1]), integer(v[2])) = <v[4], v[5]>
+from vector of number v
+where v = lrbinlogfilter(lroutputbin(), 0, 0);
+add actual1() = {integer(v[0]), integer(v[1]), integer(v[3]), integer(v[4])} 
+  from vector of number v
+  where v = lrbinlogfilter(lroutputbin(), 1, 0);
+add actual2() = {integer(v[0]), integer(v[3]), v[5]}
+  from vector of number v
+  where v = lrbinlogfilter(lroutputbin(), 2, 0);
+add actual3() = {integer(v[0]), integer(v[1]), integer(v[3]), integer(v[4])} 
+  from vector of number v
+  where v = lrbinlogfilter(lroutputbin(), 3, 0);
+count(select actual0(i,j,k) from integer i, integer j, integer k);")
+  (osql "count(select expected0(i,j,k) from integer i, integer j, 
+               integer k);"))
+ ((osql "count(actual1());") (osql "count(expected1());"))
+ ((osql "count(actual2());") (osql "count(expected2());"))
+ ((osql "count(actual3());") (osql "count(expected3());")))
+
+(send-form '(quit) (open-nameserver-port))

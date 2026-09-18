@@ -1,0 +1,1181 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: test.osql,v $
+ * $Revision: 1.4 $ $Date: 2013/09/10 07:40:55 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: numerical sparql queries
+ ****************************************************************************
+ ****************************************************************************/
+
+/* create triple view from udblserver1 server */
+/* database size 1GB */
+set :id="regressDS";
+set :url="jdbc:microsoft:sqlserver://udblserver1;DatabaseName=bm1GB";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="bm1GB";
+set :usern="udbl";
+set :passw="udbl";
+set :catal="bm1GB"; 
+set :schem="dbo";
+set :upv="prod";
+set :uriOfupv="http://user.it.uu.se/~udbl/prod";
+
+/* database size 5GB */
+set :id="regressDS";
+set :url="jdbc:microsoft:sqlserver://udblserver1;DatabaseName=bm5GB";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="bm5GB";
+set :usern="udbl";
+set :passw="udbl";
+set :catal="bm5GB"; 
+set :schem="dbo";
+set :upv="prod";
+set :uriOfupv="http://user.it.uu.se/~udbl/prod";
+
+
+/* database size 10GB */
+set :id="regressDS";
+set :url="jdbc:microsoft:sqlserver://udblserver1;DatabaseName=bm10GB";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="bm10GB";
+set :usern="udbl";
+set :passw="udbl";
+set :catal="bm10GB"; 
+set :schem="dbo";
+set :upv="prod";
+set :uriOfupv="http://user.it.uu.se/~udbl/prod";
+
+
+/* database size 25GB */
+set :id="regressDS";
+set :url="jdbc:microsoft:sqlserver://udblserver1;DatabaseName=bm25GB";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="bm25GB";
+set :usern="udbl";
+set :passw="udbl";
+set :catal="bm25GB"; 
+set :schem="dbo";
+set :upv="prod";
+set :uriOfupv="http://user.it.uu.se/~udbl/prod";
+
+
+/* ---------------------------------------- */
+/* create triple view from udblserver3 server */
+/* database size small */
+set :id="regressDS";
+set :url="jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bmsmall";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="bmsmall";
+set :usern="udbl";
+set :passw="udbl";
+set :catal="bmsmall"; 
+set :schem="udb";
+set :upv="prod";
+set :uriOfupv="http://user.it.uu.se/~udbl/prod";
+
+
+/* database size 1GB */
+set :id="regressDS";
+set :url="jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm1GB";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="bm1GB";
+set :usern="udbl";
+set :passw="udbl";
+set :catal="bm1GB"; 
+set :schem="udb";
+set :upv="prod";
+set :uriOfupv="http://user.it.uu.se/~udbl/prod";
+
+
+/* database size 5GB */
+set :id="regressDS";
+set :url="jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm5GB";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="bm5GB";
+set :usern="udbl";
+set :passw="udbl";
+set :catal="bm5GB"; 
+set :schem="udb";
+set :upv="prod";
+set :uriOfupv="http://user.it.uu.se/~udbl/prod";
+
+
+/* database size 10GB */
+set :id="regressDS";
+set :url="jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm10GB";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="bm10GB";
+set :usern="udbl";
+set :passw="udbl";
+set :catal="bm10GB"; 
+set :schem="udb";
+set :upv="prod";
+set :uriOfupv="http://user.it.uu.se/~udbl/prod";
+
+
+/* database size 25GB */
+set :id="regressDS";
+set :url="jdbc:microsoft:sqlserver://udblserver3;DatabaseName=bm25GB";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="bm25GB";
+set :usern="udbl";
+set :passw="udbl";
+set :catal="bm25GB"; 
+set :schem="udb";
+set :upv="prod";
+set :uriOfupv="http://user.it.uu.se/~udbl/prod";
+
+
+/* run functions */
+defineDS(:id,
+         :url,
+         :driver,
+         :catal,
+         :schem,
+         :usern,
+         :passw);
+
+
+defineUPV(:id,:upv, :uriofupv);
+/*defineUPV(:id,:upv_fn, :uriofupv_fn);*/
+
+DSConnect(:upv);
+
+wrapRDB(jdbcOfDS(:id), :dbname, :catal, :schem);
+
+assignIDs(:upv,:catal, :schem);
+
+cmap();
+
+pmap();
+
+rcmap();
+
+ViewRDB("prod");
+
+/* don't do prod(); since it is too much data returned */
+
+lisp;
+
+(setq _rewrite_filter_ t)
+
+:osql
+
+
+/* experiment queries */
+
+/* finds when and on what machines, the pressure reading of class A was higher
+   than a threshold from its expected value (Thanh's query 1) */
+/*
+set :sparql1 = 
+"select ?m ?bt ?et
+ from <http://user.it.uu.se/~udbl/prod>
+ where { ?measuresa <http://user.it.uu.se/~udbl/prod#measuresA/m> ?m.
+         ?measuresa <http://user.it.uu.se/~udbl/prod#measuresA/bt> ?bt.
+         ?measuresa <http://user.it.uu.se/~udbl/prod#measuresA/et> ?et.
+         ?measuresa <http://user.it.uu.se/~udbl/prod#measuresA/s> ?s.
+         ?measuresa <http://user.it.uu.se/~udbl/prod#measuresA/mv> ?mv.
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/m> ?m.
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/s> ?s.
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev.
+         FILTER (?mv > (?ev + 343)).          
+                   }";
+*/
+
+set :sparql1 =
+"select ?m ?bt ?et
+ from <http://user.it.uu.se/~udbl/prod>
+ where { ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA_of_sensor> ?sensor .
+         ?sensor    <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev.
+         ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA/m> ?m.
+         ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA/bt> ?bt.
+         ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA/et> ?et.
+         ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA/mv> ?mv.
+         FILTER (?mv > (?ev + 343)). } ";
+
+
+eval("create function sparql1()->(Literal, Literal, Literal) as " + sparql_translate(:sparql1, true));
+
+pc("sparql1");
+
+count(sparql1());
+
+
+
+/* When was the pressure readings of class B almost indicating a failured
+   for machines of model 'E_1' (similar to Thanh's query 5) */
+set :sparql2 = 
+"select ?m ?bt ?et
+ from <http://user.it.uu.se/~udbl/prod>
+ where { ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA/m> ?m.
+         ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA/bt> ?bt.
+         ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA/et> ?et.
+         ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA/s> ?s.
+         ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA/mv> ?mv.
+         ?machine <http://user.it.uu.se/~udbl/prod#machine/m> ?m.
+         ?machine <http://user.it.uu.se/~udbl/prod#machine/mm> 'E_1'.
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/m> ?m.
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/s> ?s.
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev.
+         FILTER (?mv > (?ev + 0.75*5)).          
+                   }";
+
+
+/* before Thanh's suggestion */
+set :sparql2 = 
+"select ?m ?bt ?et
+ from <http://user.it.uu.se/~udbl/prod>
+ where { ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/m> ?m.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/bt> ?bt.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/et> ?et.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/s> ?s.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/mv> ?mv.
+         ?machine <http://user.it.uu.se/~udbl/prod#machine/m> ?m.
+         ?machine <http://user.it.uu.se/~udbl/prod#machine/mm> 'E_1'.
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/m> ?m.
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/s> ?s.
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev.
+         FILTER (?mv > (?ev + 0.75*5)).          
+                   }";
+*/
+
+eval("create function sparql2()->(Literal, Literal, Literal) as " + sparql_translate(:sparql2, true));
+
+pc("sparql2");
+
+count(sparql2());
+
+
+
+/* FILTER (?mm in ('E_1', 'E_2', 'E_3')).  is not supported by sparql parser,  */
+/* currently write it in amosql */
+/*
+set :sparql2v3 = 
+"select ?m ?bt ?et
+ from <http://user.it.uu.se/~udbl/prod>
+ where { ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA/m> ?m.
+         ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA/bt> ?bt.
+         ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA/et> ?et.
+         ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA/s> ?s.
+         ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA/mv> ?mv.
+         ?machine <http://user.it.uu.se/~udbl/prod#machine/m> ?m.
+         ?machine <http://user.it.uu.se/~udbl/prod#machine/mm> ?mm.
+         FILTER (?mm in ('E_1' , 'E_2', 'E_3')). 
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/m> ?m.
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/s> ?s.
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev.
+         FILTER (?mv > (?ev + 0.75*5)).          
+                   }";
+*/
+
+set :sparql2v3 =
+"SELECT ?machine ?bt ?et
+ FROM <http://user.it.uu.se/~udbl/prod>
+ WHERE {?measuresA <http://user.it.uu.se/~udbl/prod#measuresA_of_sensor> ?sensor .
+        ?sensor    <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev.
+        ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA_of_machine> ?machine.
+        ?machine <http://user.it.uu.se/~udbl/prod#machine/mm>   ?mm.
+        ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA/bt> ?bt.
+        ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA/et> ?et.
+        ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA/mv> ?mv.
+        FILTER (?mm in ('E_1' , 'E_2', 'E_3')) .
+        FILTER (?mv > (?ev + 0.75*10)).} "; 
+
+eval("create function sparql2v3()->(Literal, Literal, Literal) as " + sparql_translate(:sparql2v3, true));
+
+pc("sparql2v3");
+
+count(sparql2v3());
+
+
+create function sparql2v3amos()->(literal, literal, literal) as
+select machineid, bt, et
+  from Literal mv, Literal mm, Literal ev, Literal sensor, Literal measuresa, Literal et, Literal bt, Literal machineid
+ where (measuresa, URI('http://user.it.uu.se/~udbl/prod#measuresA_of_sensor'), sensor) in prod()
+   and (sensor, URI('http://user.it.uu.se/~udbl/prod#sensor/ev'), ev) in prod()
+   and (measuresa, URI('http://user.it.uu.se/~udbl/prod#measuresA_of_machine'), machineid) in prod()
+   and (machineid, URI('http://user.it.uu.se/~udbl/prod#machine/mm'), mm) in prod()
+   and (measuresa, URI('http://user.it.uu.se/~udbl/prod#measuresA/bt'), bt) in prod()
+   and (measuresa, URI('http://user.it.uu.se/~udbl/prod#measuresA/et'), et) in prod()
+   and (measuresa, URI('http://user.it.uu.se/~udbl/prod#measuresA/mv'), mv) in prod()
+   and mm in {'E_1', 'E_2', 'E_3'}
+   and mv>rdf:plus(ev, 0.75*10);
+
+
+pc("sparql2v3amos");
+
+count(sparql2v3amos());
+
+
+
+/* when and for which machine identifiers did the pressure reading of class
+   B deviating @thRB % relatively from its expected value? */
+/*
+set :sparql3_10_27 = 
+"select ?m ?bt ?et
+ from <http://user.it.uu.se/~udbl/prod>
+ where { ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/m> ?m.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/bt> ?bt.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/et> ?et.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/s> ?s.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/mv> ?mv.
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/m> ?m.
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/s> ?s.
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev.
+	 bind ((?mv-?ev) as ?temp1). 
+	 bind (?temp1/?ev as ?temp2).	
+         FILTER (abs(?temp2) > 0.7).          
+                   }";
+*/
+
+set :sparql3_10_27 =
+"select ?m ?bt ?et
+from <http://user.it.uu.se/~udbl/prod>
+ where { ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB_of_sensor> ?sensor.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/bt> ?bt.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/et> ?et.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/mv> ?mv.
+         ?sensor    <http://user.it.uu.se/~udbl/prod#sensor/m>     ?m.
+         ?sensor    <http://user.it.uu.se/~udbl/prod#sensor/ev>    ?ev.
+         bind ((?mv-?ev) as ?temp).
+         FILTER (abs(?temp) > 5).} " ;
+
+eval("create function sparql3_10_27()->(Literal, Literal, Literal) as " + sparql_translate(:sparql3_10_27, true));
+
+pc("sparql3_10_27");
+
+count(sparql3_10_27());
+
+/* when and for which machine identifiers did the pressure reading of class
+   B deviate more than a threshold from its expected value (Thanh's query 2) */
+set :sparql3 = 
+"select ?m ?bt ?et
+ from <http://user.it.uu.se/~udbl/prod>
+ where { ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/m> ?m.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/bt> ?bt.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/et> ?et.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/s> ?s.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/mv> ?mv.
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/m> ?m.
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/s> ?s.
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev.
+         FILTER (abs(?mv-?ev) > 19.9).          
+                   }";
+
+eval("create function sparql3()->(Literal, Literal, Literal) as " + sparql_translate(:sparql3, true));
+
+pc("sparql3");
+
+count(sparql3());
+
+
+set :sparql3v2 = 
+"select ?m ?temp
+ from <http://user.it.uu.se/~udbl/prod>
+ where { ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/m> ?m.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/bt> ?bt.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/et> ?et.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/s> ?s.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/mv> ?mv.
+	 bind (greater(?bt, ?et) as ?temp).
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/m> ?m.
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/s> ?s.
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev.
+         FILTER (abs(?mv-?ev) > 19.9).          
+                   }";
+
+
+
+create function rdf:greater(literal x, literal y)->literal as 
+greater(cast(x as number), cast(y as number));
+
+eval("create function sparql3v2()->(Literal, Literal) as " + sparql_translate(:sparql3v2, true));
+
+pc("sparql3v2");
+
+count(sparql3v2());
+
+
+
+set :sparql3v = 
+"select ?m ?temp
+ from <http://user.it.uu.se/~udbl/prod>
+ where { ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/m> ?m.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/bt> ?bt.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/et> ?et.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/s> ?s.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/mv> ?mv.
+	 bind (tduration(?bt, ?et) as ?temp).
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/m> ?m.
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/s> ?s.
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev.
+         FILTER (abs(?mv-?ev) > 19.9).          
+                   }";
+
+
+
+create function rdf:tduration(literal x, literal y)->literal as 
+foreign 'tdiff--+';
+
+lisp;
+
+(defun tdiff--+ (fn x y res)
+  (osql-result x y (- y x)))
+
+:osql
+
+create_wrapper_absorbability('relational','rdf:tduration');
+
+sqloperator('rdf:tduration', 'dbo.tduration', false, true, false);
+
+
+eval("create function sparql3v3()->(Literal, Literal) as " + sparql_translate(:sparql3v3, true));
+
+pc("sparql3v3");
+
+count(sparql3v3());
+
+
+
+
+
+
+
+
+
+/*************************** old stuff *************************************/
+/* --------- eq1 = Q2 in Thanh's paper --------- */
+set :eq1 = 
+"select ?m ?bt ?et
+ from <http://user.it.uu.se/~udbl/prod>
+ where { ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/m> ?m.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/bt> ?bt.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/et> ?et.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/s> ?s.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/mv> ?mv.
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/m> ?m.
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/s> ?s.
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev.
+         FILTER (abs(?mv-?ev) > 19.9).          
+                   }";
+
+eval("create function eq1()->(Literal, Literal, Literal) as " + sparql_translate(:eq1, true));
+
+pc("eq1");
+
+
+/* eq1 amosql */
+create function eq1amos()->(literal, literal, literal) as
+select m, bt, et
+  from Number ev, Literal sensor, Number mv, Literal s, Literal measuresb, Literal et, Literal bt, Literal m
+ where (measuresb, URI('http://user.it.uu.se/~udbl/prod#measuresB/m'), m) in prod()
+   and (measuresb, URI('http://user.it.uu.se/~udbl/prod#measuresB/bt'), bt) in prod()
+   and (measuresb, URI('http://user.it.uu.se/~udbl/prod#measuresB/et'), et) in prod()
+   and (measuresb, URI('http://user.it.uu.se/~udbl/prod#measuresB/s'), s) in prod()
+   and (measuresb, URI('http://user.it.uu.se/~udbl/prod#measuresB/mv'), mv) in prod()
+   and (sensor, URI('http://user.it.uu.se/~udbl/prod#sensor/m'), m) in prod()
+   and (sensor, URI('http://user.it.uu.se/~udbl/prod#sensor/s'), s) in prod()
+   and (sensor, URI('http://user.it.uu.se/~udbl/prod#sensor/ev'), ev) in prod()
+   and abs(minus(mv, ev))>19.9;
+
+pc("eq1amos");
+
+count(eq1amos());
+
+
+
+
+/* ---------eq2 = Q5 in Thanh's paper -----------*/
+/* in operator is not supported */
+set :eq2 = 
+"select ?m ?bt ?et
+ from <http://user.it.uu.se/~udbl/prod>
+ where { ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/m> ?m.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/bt> ?bt.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/et> ?et.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/s> ?s.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/mv> ?mv.
+         ?machine <http://user.it.uu.se/~udbl/prod#machine/m> ?m.
+         ?machine <http://user.it.uu.se/~udbl/prod#machine/mm> ?mm.
+         FILTER (?mm in ('M_1' , 'M_2', 'M_3')). 
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/m> ?m.
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/s> ?s.
+         ?sensor <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev.
+         FILTER (abs(?mv-?ev) > 300).          
+                   }";
+
+eval("create function eq2()->(Literal, Literal, Literal) as " + sparql_translate(:eq2, true));
+
+pc("eq2");
+
+
+
+/* eq2 amosql */
+create function eq2amos()->(literal, literal, literal) as
+select m, bt, et
+  from Number ev, Literal sensor, Number mv, Literal s, Literal measuresb, Literal et, Literal bt, Literal m, Literal machine, Literal mm
+ where (measuresb, URI('http://user.it.uu.se/~udbl/prod#measuresB/m'), m) in prod()
+   and (measuresb, URI('http://user.it.uu.se/~udbl/prod#measuresB/bt'), bt) in prod()
+   and (measuresb, URI('http://user.it.uu.se/~udbl/prod#measuresB/et'), et) in prod()
+   and (measuresb, URI('http://user.it.uu.se/~udbl/prod#measuresB/s'), s) in prod()
+   and (measuresb, URI('http://user.it.uu.se/~udbl/prod#measuresB/mv'), mv) in prod()
+   and (machine, URI('http://user.it.uu.se/~udbl/prod#machine/m'), m) in prod()
+   and (machine, URI('http://user.it.uu.se/~udbl/prod#machine/mm'), mm) in prod()
+   and (sensor, URI('http://user.it.uu.se/~udbl/prod#sensor/m'), m) in prod()
+   and (sensor, URI('http://user.it.uu.se/~udbl/prod#sensor/s'), s) in prod()
+   and (sensor, URI('http://user.it.uu.se/~udbl/prod#sensor/ev'), ev) in prod()
+   and abs(minus(mv, ev))>15
+   and mm in ('E_1','E_10','E_100');
+
+
+pc("eq2amos");
+
+
+/* ---------query 3 = Q7 in Thanh's paper -----------*/
+set :eq3 = 
+"select ?m 
+ from <http://user.it.uu.se/~udbl/prod>
+ where { ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA/bt> ?bt1.
+         ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA/et> ?et1.
+         ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA/m> ?m.
+         ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA/s> ?sa.
+         ?measuresA <http://user.it.uu.se/~udbl/prod#measuresA/mv> ?mv1.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/m> ?m.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/bt> ?bt2.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/et> ?et2.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/s> ?sb.
+         ?measuresB <http://user.it.uu.se/~udbl/prod#measuresB/mv> ?mv2.
+         FILTER (?bt1 <= ?et2).
+         FILTER (?et1 >= ?bt2). 
+         ?sensora <http://user.it.uu.se/~udbl/prod#sensor/m> ?m.
+         ?sensora <http://user.it.uu.se/~udbl/prod#sensor/s> ?sa.
+         ?sensora <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev1.
+         ?sensorb <http://user.it.uu.se/~udbl/prod#sensor/m> ?m.
+         ?sensorb <http://user.it.uu.se/~udbl/prod#sensor/s> ?sb.
+         ?sensorb <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev2.
+        FILTER (((?mv1-?ev1)+abs(?mv2-?ev2))/2 > 300).          
+                   }";
+
+eval("create function eq3()->(Literal, Literal, Literal) as " + sparql_translate(:eq3, true));
+
+pc("eq3");
+
+
+
+/* eq3 amosql */
+/* don't use this query, this query runs too long time */
+create function eq3amos()->(literal, literal, literal) as
+select m, greater(bt1, bt2), lesser(et1, et2)
+  from Number ev2, Literal sensorb, Number ev1, Literal sensora, Number mv2, Literal sb, Number et2, Number bt2, Literal measuresb, Number mv1, Literal sa, Number et1, Number bt1, Literal measuresa, Literal m
+ where (measuresa, URI('http://user.it.uu.se/~udbl/prod#measuresA/bt'), bt1) in prod()
+   and (measuresa, URI('http://user.it.uu.se/~udbl/prod#measuresA/et'), et1) in prod()
+   and (measuresa, URI('http://user.it.uu.se/~udbl/prod#measuresA/m'), m) in prod()
+   and (measuresa, URI('http://user.it.uu.se/~udbl/prod#measuresA/s'), sa) in prod()
+   and (measuresa, URI('http://user.it.uu.se/~udbl/prod#measuresA/mv'), mv1) in prod()
+   and (measuresb, URI('http://user.it.uu.se/~udbl/prod#measuresB/m'), m) in prod()
+   and (measuresb, URI('http://user.it.uu.se/~udbl/prod#measuresB/bt'), bt2) in prod()
+   and (measuresb, URI('http://user.it.uu.se/~udbl/prod#measuresB/et'), et2) in prod()
+   and (measuresb, URI('http://user.it.uu.se/~udbl/prod#measuresB/s'), sb) in prod()
+   and (measuresb, URI('http://user.it.uu.se/~udbl/prod#measuresB/mv'), mv2) in prod()
+   and (sensora, URI('http://user.it.uu.se/~udbl/prod#sensor/m'), m) in prod()
+   and (sensora, URI('http://user.it.uu.se/~udbl/prod#sensor/s'), sa) in prod()
+   and (sensora, URI('http://user.it.uu.se/~udbl/prod#sensor/ev'), ev1) in prod()
+   and (sensorb, URI('http://user.it.uu.se/~udbl/prod#sensor/m'), m) in prod()
+   and (sensorb, URI('http://user.it.uu.se/~udbl/prod#sensor/s'), sb) in prod()
+   and (sensorb, URI('http://user.it.uu.se/~udbl/prod#sensor/ev'), ev2) in prod()
+   and bt1<=et2 
+   and et1>=bt2 
+   and div(plus(minus(mv1,ev1), abs(minus(mv2,ev2))), 2)>300 ;
+
+
+pc("eq3amos");
+
+count(eq3amos());
+
+
+
+
+
+/* ********************************below is the old stuff*********************************** */
+/* ********************************below is the old stuff*********************************** */
+
+/* create triple view from udbl1 server */
+
+set :id="regressDS";
+set :url="jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=bmsmall";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="bmsmall";
+set :usern="udbl";
+set :passw="udbl";
+set :catal="bmsmall"; 
+set :schem="dbo";
+
+set :upv="prod";
+set :uriOfupv="http://user.it.uu.se/~udbl/prod";
+
+
+/* create triple view from local mysql setting */ 
+
+set :id="regressDS";
+set :url="jdbc:mysql://localhost:3306/regress";
+set :driver="com.mysql.jdbc.Driver";
+set :dbname="regress";
+set :usern="regress";
+set :passw="regress";
+set :catal="regress";
+set :schem="";
+
+set :upv="prod";
+set :uriOfupv="http://user.it.uu.se/~udbl/prod";
+
+defineDS(:id,
+         :url,
+         :driver,
+         :catal,
+         :schem,
+         :usern,
+         :passw);
+
+
+defineUPV(:id,:upv, :uriofupv);
+/*defineUPV(:id,:upv_fn, :uriofupv_fn);*/
+
+DSConnect(:upv);
+
+wrapRDB(jdbcOfDS(:id), :dbname, :catal, :schem);
+
+load_amosql("../../../BigIntegrator/JDBC/regress/mappings.osql");
+
+ViewRDB("prod");
+
+
+/* Thanh's old queries */
+/*Q1 */
+set :s1 = "select ?ts 
+           from <http://user.it.uu.se/~udbl/prod>
+           where { ?reg407 <http://user.it.uu.se/~udbl/prod#reg407/ts> ?ts.
+                   ?reg407 <http://user.it.uu.se/~udbl/prod#reg407/e> ?e.
+                   ?sensor <http://user.it.uu.se/~udbl/prod#sensor/e> ?e.
+                   ?sensor <http://user.it.uu.se/~udbl/prod#sensor/name> 'REG407'. 
+                   ?equipment <http://user.it.uu.se/~udbl/prod#equipment/e> ?e.
+                   ?reg407 <http://user.it.uu.se/~udbl/prod#reg407/mv> ?mv.
+                   ?sensor <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev.
+		   bind ((?ev-?mv) as ?cal) 
+                   FILTER (?cal > 11).
+                 }" ;
+
+set :s1 = "select ?ts
+           from <http://user.it.uu.se/~udbl/prod>
+           where { ?reg407 <http://user.it.uu.se/~udbl/prod#reg407/ts> ?ts.
+                   ?reg407 <http://user.it.uu.se/~udbl/prod#reg407/e> ?e.
+                   ?sensor <http://user.it.uu.se/~udbl/prod#sensor/e> ?e.
+                   ?sensor <http://user.it.uu.se/~udbl/prod#sensor/name> 'REG407'. 
+                   ?equipment <http://user.it.uu.se/~udbl/prod#equipment/e> ?e.
+                   ?reg407 <http://user.it.uu.se/~udbl/prod#reg407/mv> ?mv.
+                   ?sensor <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev.
+                   FILTER( (?ev-?mv) > 348).
+                 }" ;
+
+eval("create function sparqlq1()-><Literal> as " + sparql_translate(:s1, true));
+
+pc("sparqlq1");
+
+sparqlq1();
+
+
+/*Q2 */
+set :s2 = "select ?name ?ts
+           from <http://user.it.uu.se/~udbl/prod>
+           where { ?reg408 <http://user.it.uu.se/~udbl/prod#reg408/ts> ?ts.
+                   ?reg407 <http://user.it.uu.se/~udbl/prod#reg407/e> ?e.
+                   ?sensor1 <http://user.it.uu.se/~udbl/prod#sensor/e> ?e.
+                   ?sensor1 <http://user.it.uu.se/~udbl/prod#sensor/name> 'A'. 
+                   ?reg408 <http://user.it.uu.se/~udbl/prod#reg408/e> ?e.
+	           ?sensor2 <http://user.it.uu.se/~udbl/prod#sensor/e> ?e.
+                   ?sensor2 <http://user.it.uu.se/~udbl/prod#sensor/name> 'B'. 
+                   ?reg407 <http://user.it.uu.se/~udbl/prod#reg407/ts> ?ts.
+                   ?equipment <http://user.it.uu.se/~udbl/prod#equipment/e> ?e.
+		   ?equipment <http://user.it.uu.se/~udbl/prod#equipment/name> ?name.
+                   ?reg407 <http://user.it.uu.se/~udbl/prod#reg407/mv> ?mv.
+                   ?sensor1 <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev.       
+                   ?reg408 <http://user.it.uu.se/~udbl/prod#reg408/mv> ?mv2.
+                   ?sensor2 <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev2.    
+		  FILTER(?ev > 11) .   
+                 }" ;
+
+eval("create function sparqlq2()->(Literal, Literal) as " + sparql_translate(:s2, true));
+
+pc("sparqlq2");
+
+sparqlq2();
+
+
+/*Q3 */
+set :s3 = "select ?name ?ts
+           from <http://user.it.uu.se/~udbl/prod>
+           where { ?reg408 <http://user.it.uu.se/~udbl/prod#reg408/ts> ?ts.
+                   ?reg407 <http://user.it.uu.se/~udbl/prod#reg407/e> ?e.
+                   ?sensor1 <http://user.it.uu.se/~udbl/prod#sensor/e> ?e.
+                   ?sensor1 <http://user.it.uu.se/~udbl/prod#sensor/name> 'A'. 
+                   ?reg408 <http://user.it.uu.se/~udbl/prod#reg408/e> ?e.
+	           ?sensor2 <http://user.it.uu.se/~udbl/prod#sensor/e> ?e.
+                   ?sensor2 <http://user.it.uu.se/~udbl/prod#sensor/name> 'B'. 
+                   ?reg407 <http://user.it.uu.se/~udbl/prod#reg407/ts> ?ts.
+                   ?equipment <http://user.it.uu.se/~udbl/prod#equipment/e> ?e.
+		   ?equipment <http://user.it.uu.se/~udbl/prod#equipment/name> ?ename.
+                   {?reg407 <http://user.it.uu.se/~udbl/prod#reg407/mv> ?mv.
+                   ?sensor1 <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev.
+		   bind (?mv-?ev as ?diff1)
+                   FILTER (?diff>300).}
+		   UNION
+                   {?reg408 <http://user.it.uu.se/~udbl/prod#reg408/mv> ?mv2.
+                   ?sensor2 <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev2.
+                   bind (abs(?mv2-?ev2) as ?cal)
+		   FILTER (?cal>11).}
+                 }" ;
+/* old parser doesn't support numerical filter */
+set :s3 = "select ?ename ?ts
+           from <http://user.it.uu.se/~udbl/prod>
+           where { ?reg408 <http://user.it.uu.se/~udbl/prod#reg408/ts> ?ts.
+                   ?reg407 <http://user.it.uu.se/~udbl/prod#reg407/e> ?e.
+                   ?sensor1 <http://user.it.uu.se/~udbl/prod#sensor/e> ?e.
+                   ?sensor1 <http://user.it.uu.se/~udbl/prod#sensor/name> 'A'. 
+                   ?reg408 <http://user.it.uu.se/~udbl/prod#reg408/e> ?e.
+	           ?sensor2 <http://user.it.uu.se/~udbl/prod#sensor/e> ?e.
+                   ?sensor2 <http://user.it.uu.se/~udbl/prod#sensor/name> 'B'. 
+                   ?reg407 <http://user.it.uu.se/~udbl/prod#reg407/ts> ?ts.
+                   ?equipment <http://user.it.uu.se/~udbl/prod#equipment/e> ?e.
+                   ?equipment <http://user.it.uu.se/~udbl/prod#equipment/name> ?ename.
+                   {?reg407 <http://user.it.uu.se/~udbl/prod#reg407/mv> ?mv.
+                   ?sensor1 <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev.
+	           FILTER (?mv-?ev>'300').}
+		   UNION
+                   {?reg408 <http://user.it.uu.se/~udbl/prod#reg408/mv> ?mv2.
+                   ?sensor2 <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev2.
+                   FILTER (abs(?mv2-?ev2)>'11').}
+                 }" ;
+
+/* it works after i take numerical filter out */ 
+set :s3 = "select ?ename ?ts
+           from <http://user.it.uu.se/~udbl/prod>
+           where { ?reg408 <http://user.it.uu.se/~udbl/prod#reg408/ts> ?ts.
+                   ?reg407 <http://user.it.uu.se/~udbl/prod#reg407/e> ?e.
+                   ?sensor1 <http://user.it.uu.se/~udbl/prod#sensor/e> ?e.
+                   ?sensor1 <http://user.it.uu.se/~udbl/prod#sensor/name> 'A'. 
+                   ?reg408 <http://user.it.uu.se/~udbl/prod#reg408/e> ?e.
+	           ?sensor2 <http://user.it.uu.se/~udbl/prod#sensor/e> ?e.
+                   ?sensor2 <http://user.it.uu.se/~udbl/prod#sensor/name> 'B'. 
+                   ?reg407 <http://user.it.uu.se/~udbl/prod#reg407/ts> ?ts.
+                   ?equipment <http://user.it.uu.se/~udbl/prod#equipment/e> ?e.
+                   ?equipment <http://user.it.uu.se/~udbl/prod#equipment/name> ?ename.
+                   ?reg407 <http://user.it.uu.se/~udbl/prod#reg407/mv> ?mv.
+                   ?sensor1 <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev.}";
+	          
+
+eval("create function sparqlq3()->(Literal, Literal) as " + sparql_translate(:s3));
+
+pc("sparqlq3");
+
+sparqlq3();
+ 
+
+/*Q4 */
+/* old parser doesn't support numerical filter */ 
+set :s4 = "select ?ts
+           from <http://user.it.uu.se/~udbl/prod>
+           where { ?reg408 <http://user.it.uu.se/~udbl/prod#reg408/ts> ?ts.
+                   ?reg408 <http://user.it.uu.se/~udbl/prod#reg408/e> ?e.
+                   ?sensor <http://user.it.uu.se/~udbl/prod#sensor/e> ?e.
+                   ?sensor <http://user.it.uu.se/~udbl/prod#sensor/name> 'B'. 
+                   ?equipment <http://user.it.uu.se/~udbl/prod#equipment/e> ?e.
+	           ?equipment <http://user.it.uu.se/~udbl/prod#equipment/name> 'E_1'.
+                   ?reg408 <http://user.it.uu.se/~udbl/prod#reg408/mv> ?mv.
+                   ?sensor <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev.
+                   FILTER (abs(?mv-?ev)>11).
+                 }" ;
+
+eval("create function sparqlq4()-><Literal> as " + sparql_translate(:s4));
+
+pc("sparqlq4");
+
+sparqlq4();
+
+
+/*Q5 */
+/* old parser doesn't support numerical filter */
+set :s5 = "select ?ts
+           from <http://user.it.uu.se/~udbl/prod>
+           where { ?reg408 <http://user.it.uu.se/~udbl/prod#reg408/ts> ?ts.
+                   ?reg408 <http://user.it.uu.se/~udbl/prod#reg408/e> ?e.
+                   ?sensor <http://user.it.uu.se/~udbl/prod#sensor/e> ?e.
+                   ?sensor <http://user.it.uu.se/~udbl/prod#sensor/name> 'B'. 
+         	   ?equipment <http://user.it.uu.se/~udbl/prod#equipment/e> ?e. 
+ 		   ?equipment <http://user.it.uu.se/~udbl/prod#equipment/name> 'E_1'.
+                   ?reg408 <http://user.it.uu.se/~udbl/prod#reg408/mv> ?mv.
+                   ?sensor <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev.
+                   FILTER (abs(?mv-?ev)>11).
+                   
+		   ?reg408II <http://user.it.uu.se/~udbl/prod#reg408/ts> ?ts.
+
+                   ?reg408II <http://user.it.uu.se/~udbl/prod#reg408/e> ?reg408IIe.
+                   ?sensorII <http://user.it.uu.se/~udbl/prod#sensor/e> ?reg408IIe.
+                   ?sensorII <http://user.it.uu.se/~udbl/prod#sensor/name> 'B'. 
+ 		   ?equipmentII <http://user.it.uu.se/~udbl/prod#equipment/e> ?reg408IIe. 
+ 		   ?reg408II <http://user.it.uu.se/~udbl/prod#reg408/e> ?reg408IIe.
+ 		   ?equipmentII <http://user.it.uu.se/~udbl/prod#equipment/name> 'E_2'. 
+                   ?reg408II <http://user.it.uu.se/~udbl/prod#reg408/mv> ?reg408IImv.
+                   ?sensorII <http://user.it.uu.se/~udbl/prod#sensor/ev> ?sensorIIev.
+                   FILTER (abs(?reg408IImv-?sensorIIev)>11).
+                 }" ;
+
+eval("create function sparqlq5()->(Literal) as " + sparql_translate(:s5));
+
+pc("sparqlq5");
+
+sparqlq5();
+
+
+/*Q6 contains in operator */
+/* old parser doesn't support numerical filter */
+set :s6 = "select ?ts
+           from <http://user.it.uu.se/~udbl/prod>
+           where { ?reg408 <http://user.it.uu.se/~udbl/prod#reg408/ts> ?ts.
+                   ?reg408 <http://user.it.uu.se/~udbl/prod#reg408/e> ?e.
+                   ?sensor <http://user.it.uu.se/~udbl/prod#sensor/e> ?e.
+                   ?sensor <http://user.it.uu.se/~udbl/prod#sensor/name> 'B'. 
+                   ?equipment <http://user.it.uu.se/~udbl/prod#equipment/e> ?e.
+                   ?equipment <http://user.it.uu.se/~udbl/prod#equipment/name> ?ename.
+		   FILTER (?ename in ('E_1','E_2')).
+                   ?reg408 <http://user.it.uu.se/~udbl/prod#reg408/mv> ?mv.
+                   ?sensor <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev.
+                   FILTER (abs(?mv-?ev)>11).
+                 }" ;
+
+eval("create function sparqlq6()->(Literal) as " + sparql_translate(:s6));
+
+pc("sparqlq6");
+
+sparqlq6();
+
+
+/*Q7 */
+/* old parser doesn't support numerical filter */
+set :s7 = "select ?eqname ?ts
+           from <http://user.it.uu.se/~udbl/prod>
+           where { ?reg408 <http://user.it.uu.se/~udbl/prod#reg408/ts> ?ts.
+                   ?reg407 <http://user.it.uu.se/~udbl/prod#reg407/e> ?e.
+                   ?sensor1 <http://user.it.uu.se/~udbl/prod#sensor/e> ?e.
+                   ?sensor1 <http://user.it.uu.se/~udbl/prod#sensor/name> 'A'. 
+                   ?reg408 <http://user.it.uu.se/~udbl/prod#reg408/e> ?e.
+	           ?sensor2 <http://user.it.uu.se/~udbl/prod#sensor/e> ?e.
+                   ?sensor2 <http://user.it.uu.se/~udbl/prod#sensor/name> 'B'. 
+                   ?reg407 <http://user.it.uu.se/~udbl/prod#reg407/ts> ?ts.
+                   ?equipment <http://user.it.uu.se/~udbl/prod#equipment/e> ?e.
+                   ?equipment <http://user.it.uu.se/~udbl/prod#equipment/name> ?eqname.
+                   ?reg407 <http://user.it.uu.se/~udbl/prod#reg407/mv> ?mv.
+                   ?sensor1 <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev.
+                   ?reg408 <http://user.it.uu.se/~udbl/prod#reg408/mv> ?mv2.
+                   ?sensor2 <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev2.
+                   FILTER ((?mv-?ev)+abs(?mv2-?ev2)>311).
+                 }" ;
+
+eval("create function sparqlq7()->(Literal, Literal) as " + sparql_translate(:s7));
+
+pc("sparqlq7");
+
+sparqlq7();
+
+
+/*Q8 */
+/* old parser doesn't support numerical filter */
+set :s8 = "select ?eqname ?ts
+           from <http://user.it.uu.se/~udbl/prod>
+           where { ?reg408 <http://user.it.uu.se/~udbl/prod#reg408/ts> ?ts.
+                   ?reg407 <http://user.it.uu.se/~udbl/prod#reg407/e> ?e.
+                   ?sensor1 <http://user.it.uu.se/~udbl/prod#sensor/e> ?e.
+                   ?sensor1 <http://user.it.uu.se/~udbl/prod#sensor/name> 'A'. 
+                   ?reg408 <http://user.it.uu.se/~udbl/prod#reg408/e> ?e.
+	           ?sensor2 <http://user.it.uu.se/~udbl/prod#sensor/e> ?e.
+                   ?sensor2 <http://user.it.uu.se/~udbl/prod#sensor/name> 'B'. 
+                   ?reg407 <http://user.it.uu.se/~udbl/prod#reg407/ts> ?ts.
+                   ?equipment <http://user.it.uu.se/~udbl/prod#equipment/e> ?e.
+                   ?equipment <http://user.it.uu.se/~udbl/prod#equipment/name> ?eqname.
+                   ?reg407 <http://user.it.uu.se/~udbl/prod#reg407/mv> ?mv.
+                   ?sensor1 <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev.
+                   ?reg408 <http://user.it.uu.se/~udbl/prod#reg408/mv> ?mv2.
+                   ?sensor2 <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev2.
+                   FILTER (((?mv-?ev)+abs(?mv2-?ev2))/2>155.5).
+                 }" ;
+
+eval("create function sparqlq8()->(Literal, Literal) as " + sparql_translate(:s8));
+
+pc("sparqlq8");
+
+sparqlq8();
+
+
+/*Q10 */
+/* old parser doesn't support numerical filter */
+set :s10 = "select ?eqname ?reg408ts
+           from <http://user.it.uu.se/~udbl/prod>
+           where { ?reg407 <http://user.it.uu.se/~udbl/prod#reg407/e> ?e.
+                   ?sensor1 <http://user.it.uu.se/~udbl/prod#sensor/e> ?e.
+                   ?sensor1 <http://user.it.uu.se/~udbl/prod#sensor/name> 'A'. 
+                   ?reg408 <http://user.it.uu.se/~udbl/prod#reg408/e> ?e.
+	           ?sensor2 <http://user.it.uu.se/~udbl/prod#sensor/e> ?e.
+                   ?sensor2 <http://user.it.uu.se/~udbl/prod#sensor/name> 'B'. 
+                   ?reg407 <http://user.it.uu.se/~udbl/prod#reg407/ts> ?ts.
+                   ?equipment <http://user.it.uu.se/~udbl/prod#equipment/e> ?e.
+                   ?equipment <http://user.it.uu.se/~udbl/prod#equipment/name> ?eqname.
+                   ?reg407 <http://user.it.uu.se/~udbl/prod#reg407/mv> ?mv.
+                   ?sensor1 <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev.
+		   FILTER (?mv-?ev> 300).
+                   ?reg408 <http://user.it.uu.se/~udbl/prod#reg408/mv> ?mv2.
+                   ?sensor2 <http://user.it.uu.se/~udbl/prod#sensor/ev> ?ev2.
+                   FILTER (abs(?mv2-?ev2)>11).
+		   ?reg408 <http://user.it.uu.se/~udbl/prod#reg408/ts> ?reg408ts.
+		   ?reg407 <http://user.it.uu.se/~udbl/prod#reg407/ts> ?reg407ts.
+		   FILTER (?reg407ts-?reg408ts<5).
+                 }" ;
+
+eval("create function sparqlq10()->(Literal, Literal) as " + sparql_translate(:s10));
+
+pc("sparqlq10");
+
+sparqlq10();
+
+
+
+/* queries */
+
+set :q2 =
+"SELECT ?x
+    FROM <http://user.it.uu.se/~udbl/prod>
+    WHERE { ?s <http://user.it.uu.se/~udbl/regress#/MEASURE2/mv> ?x }" ;
+
+eval("create function sparql2()-><Literal> as " + sparql_translate(:q2));
+
+pc("sparql2"); 
+
+sparql2();
+
+
+set :q2a =
+"SELECT ?si ?ts ?mv
+    FROM <http://user.it.uu.se/~udbl/prod>
+    WHERE { ?s <http://user.it.uu.se/~udbl/regress#/MEASURE2/si> ?si. 
+	    ?s <http://user.it.uu.se/~udbl/regress#/MEASURE2/ts> ?ts.
+	    ?s <http://user.it.uu.se/~udbl/regress#/MEASURE2/mv> ?mv}" ;
+
+eval("create function sparql2a()->(Charstring, Charstring, Charstring) as " + sparql_translate(:q2a));
+
+pc("sparql2a"); 
+
+sparql2a();
+
+
+/* apply filter, Silvia needs to load Andrej's new parser */
+set :q2b =
+"SELECT ?si ?ts ?mv
+    FROM <http://user.it.uu.se/~udbl/prod>
+    WHERE { ?s <http://user.it.uu.se/~udbl/regress#/MEASURE2/si> ?si. 
+	    ?s <http://user.it.uu.se/~udbl/regress#/MEASURE2/ts> ?ts.
+	    ?s <http://user.it.uu.se/~udbl/regress#/MEASURE2/mv> ?mv.
+            FILTER (?mv > '100.0'). }" ;
+
+
+eval("create function sparql2b()->(Charstring, Charstring, Charstring) as " + sparql_translate(:q2b));
+
+pc("sparql2b"); 
+
+sparql2b();
+
+
+/* join query, sensorinstallation join measured, what is wrong?? */
+/* seems like join involves with measurement has problem */
+/* approach 1 */
+set :q2c =
+"SELECT ?ev ?th ?ts ?mv
+    FROM <http://user.it.uu.se/~udbl/prod>
+    WHERE { ?x <http://user.it.uu.se/~udbl/regress#/SENSORINSTALLATION/si> ?si.
+	    ?y <http://user.it.uu.se/~udbl/regress#/MEASUREMENT/si> ?si.
+            ?x <http://user.it.uu.se/~udbl/regress#/SENSORINSTALLATION/ev> ?ev.
+            ?x <http://user.it.uu.se/~udbl/regress#/SENSORINSTALLATION/th> ?th.
+            ?y <http://user.it.uu.se/~udbl/regress#/MEASUREMENT/ts> ?ts.
+            ?y <http://user.it.uu.se/~udbl/regress#/MEASUREMENT/mv> ?mv.
+            }" ;
+
+eval("create function sparql2c()->(number, number, number, number) as " + sparql_translate(:q2c));
+
+pc("sparql2c"); 
+
+sparql2c();
+
+/* approach 2 */
+set :q2c =
+"SELECT ?ev ?th ?ts ?mv
+    FROM <http://user.it.uu.se/~udbl/prod>
+    WHERE { ?y <http://user.it.uu.se/~udbl/regress#/MEASUREMENT/si> ?si.
+            ?si <http://user.it.uu.se/~udbl/regress#/SENSORINSTALLATION/ev> ?ev.
+            ?si <http://user.it.uu.se/~udbl/regress#/SENSORINSTALLATION/th> ?th.
+            ?y <http://user.it.uu.se/~udbl/regress#/MEASUREMENT/ts> ?ts.
+            ?y <http://user.it.uu.se/~udbl/regress#/MEASUREMENT/mv> ?mv
+            }" ;
+
+/* works, join the other two tables, site, installedequipment */
+set :q1b =
+"SELECT ?ie ?location
+    FROM <http://user.it.uu.se/~udbl/prod>
+    WHERE { ?x <http://user.it.uu.se/~udbl/regress#INSTALLEDEQUIPMENT/site> ?si.
+            ?x <http://user.it.uu.se/~udbl/regress#INSTALLEDEQUIPMENT/ie> ?ie.
+            ?y <http://user.it.uu.se/~udbl/regress#SITE/site> ?si.
+            ?y <http://user.it.uu.se/~udbl/regress#SITE/location> ?location.
+            ?y <http://user.it.uu.se/~udbl/regress#SITE/country> ?country.
+            FILTER REGEX (?country, 'Sweden').
+              }" ;
+
+eval("create function sparql1b()->(number, charstring) as " + sparql_translate(:q1b));
+
+pc("sparql1b"); 
+
+sparql1b();
+
+/* simple query on Measurement with numerical predicates */
+set :q1c =
+"SELECT ?si ?ts ?mv
+    FROM <http://user.it.uu.se/~udbl/prod>
+    WHERE { ?x <http://user.it.uu.se/~udbl/regress#/MEASUREMENT/mv> ?mv.
+            FILTER (?mv > 0.75*100) .
+            ?x <http://user.it.uu.se/~udbl/regress#/MEASUREMENT/si> ?si.
+            ?x <http://user.it.uu.se/~udbl/regress#/MEASUREMENT/ts> ?ts.
+              }" ;
+
+/*eval("create function sparql1c()->(number, charstring, number) as " + sparql_translate(:q1c));*/
+eval("create function sparql1c()->(number, charstring, number) as " + sparql_translate(:q1c));
+
+pc("sparql1c"); 
+
+sparql1c();
+
+
+/* join measurement with site, failed query join with measurement */
+set :q1d =
+"SELECT ?mv ?location
+    FROM <http://user.it.uu.se/~udbl/prod>
+    WHERE { ?x <http://user.it.uu.se/~udbl/regress#SITE/logdbid> ?logdbid.
+            ?y <http://user.it.uu.se/~udbl/regress#/MEASUREMENT/logdbid> ?logdbid.
+            ?x <http://user.it.uu.se/~udbl/regress#/MEASUREMENT/mv> ?mv.
+            ?x <http://user.it.uu.se/~udbl/regress#SITE/location> ?location.
+            ?x <http://user.it.uu.se/~udbl/regress#SITE/country> ?country.
+            FILTER REGEX (?country, 'Sweden').
+              }" ;
+
+eval("create function sparql1d()->(number, charstring) as " + sparql_translate(:q1d));
+
+pc("sparql1d"); 
+
+sparql1d();
+
+/* approach 3 with less triple pattern */
+set :q2c =
+"SELECT  ?th ?ts ?mv
+    FROM <http://user.it.uu.se/~udbl/prod>
+    WHERE { ?y <http://user.it.uu.se/~udbl/regress#/MEASURE2/si> ?si.
+            ?si <http://user.it.uu.se/~udbl/regress#/SENSORINSTALLATION/th> ?th.
+            ?y <http://user.it.uu.se/~udbl/regress#/MEASURE2/ts> ?ts.
+            ?y <http://user.it.uu.se/~udbl/regress#/MEASURE2/mv> ?mv
+            }" ;
+
+eval("create function sparql2c()->(number, number, number) as " + sparql_translate(:q2c));
+
+pc("sparql2c"); 
+
+sparql2c();
+
+
+set :q3 =
+"SELECT ?x
+    FROM <http://user.it.uu.se/~udbl/prod>
+    WHERE { ?s <http://user.it.uu.se/~udbl/regress#/SENSORINSTALLATION/si> ?x }" ;
+
+eval("create function sparql3()-><Literal> as " + sparql_translate(:q3));
+
+sparql3();
+
+
+
+lisp;
+
+(setq _save-intermediates_ t)
+
+:osql
+
+pc("sparql2"); 
+
+lisp;
+
+(osql "sparql(:q2);")
+
+
+/* amosql queries */
+import_table(:a, 'EQUIPMENTMODEL');
+
+import_table(:a, 'SENSORMODEL');
+
+import_table(:a, 'MEASURED2');
+
+parteval("now");
+
+parteval("real");
+
+/* numerical queries */
+/*nq1: What equipment in Uppsala has failed (mv-ev>th) during the last month? */
+create function nq1()->(Integer, charstring) as
+select ie(si), ename(e)
+from SENSORINSTALLATION@C1 si, SITE@C1 s, MEASURED2@C1 m, 
+     INSTALLEDEQUIPMENT@C1 ie, EQUIPMENTMODEL@C1 e
+where location(s)='Uppsala' and 
+      Real(now())-30*24*60*60<ts(m) and
+      mv(m)-ev(si)>th(si) and
+      site(s)=site(ie) and
+      ie(ie)=ie(si) and
+      e(ie)=e(e) and
+      si(m)=si(si) and
+      logdbid(m)=logdbid(s);
+
+pc("nq1");
+
+/* with times operations */
+create function nq2()->(Integer, charstring) as
+select ie(si), ename(e)
+from SENSORINSTALLATION@C1 si, SITE@C1 s, MEASURED2@C1 m, 
+     INSTALLEDEQUIPMENT@C1 ie, EQUIPMENTMODEL@C1 e
+where location(s)='Uppsala' and 
+      Real(now())-30*24*60*60<ts(m) and
+      mv(m)-ev(si)>0.75*th(si) and
+      site(s)=site(ie) and
+      ie(ie)=ie(si) and
+      e(ie)=e(e) and
+      si(m)=si(si) and
+      logdbid(m)=logdbid(s);
+
+pc("nq2");
+
+/* with abs and times operations */
+create function nq3()->(Integer, charstring) as
+select ie(si), ename(e)
+from SENSORINSTALLATION@C1 si, SITE@C1 s, MEASURED2@C1 m, 
+     INSTALLEDEQUIPMENT@C1 ie, EQUIPMENTMODEL@C1 e
+where location(s)='Uppsala' and 
+      Real(now())-30*24*60*60<ts(m) and
+      abs(mv(m)-ev(si))/2>0.75*th(si) and
+      site(s)=site(ie) and
+      ie(ie)=ie(si) and
+      e(ie)=e(e) and
+      si(m)=si(si) and
+      logdbid(m)=logdbid(s);
+
+pc("nq3");

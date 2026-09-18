@@ -1,0 +1,17 @@
+/*****************************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2005 Johan Petrini, UDBL
+ * $RCSfile: mk_experiment_dmp.amosql,v $
+ * $Revision: 1.2 $ $Date: 2010/04/28 14:46:27 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Save SWARD generating UPVs without class membership views
+ * class relationship views and support for composite keys
+ * (as it were when running the experiments) as sward_experiment.dmp.
+ ****************************************************************************/
+<'src/AmosQL/master_experiment.amosql';
+
+save_database(getenv("SWARD_ROOT") + "/bin/sward.dmp");
+
+quit;

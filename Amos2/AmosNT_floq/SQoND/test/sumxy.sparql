@@ -1,0 +1,7 @@
+# Sum of :x and :y properties of given subject ?s
+
+PREFIX  : <http://example.org/>
+DEFINE FUNCTION sumxy(?s)
+AS SELECT (?x + ?y as ?result)
+    WHERE { ?s :x ?x ;
+               :y ?y }

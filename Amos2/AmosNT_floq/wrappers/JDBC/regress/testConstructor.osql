@@ -1,0 +1,61 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2003 Martin Hansson, UDBL
+ * $RCSfile: testConstructor.osql,v $
+ * $Revision: 1.7 $ $Date: 2011/04/14 11:47:12 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Regression test for transparent constructors
+ ****************************************************************************
+ * $Log: testConstructor.osql,v $
+ * Revision 1.7  2011/04/14 11:47:12  torer
+ * Relational wrapper now null tolerant
+ *
+ * Revision 1.6  2009/04/15 08:43:28  torer
+ * Removed debugging
+ *
+ * Revision 1.5  2009/04/15 08:37:17  torer
+ * Incorrect CommonLisp syntax in backquote
+ *
+ * Revision 1.4  2008/08/08 10:04:07  zeitler
+ * mysqltest on Linux
+ *
+ * Revision 1.3  2008/08/07 20:08:37  torer
+ * Same test for FireBird and MySQL
+ *
+ * Revision 1.2  2008/08/07 17:40:56  torer
+ * Corrected CVS header
+ *
+ ****************************************************************************/
+
+/* You cannot have constructors if you do not import the table as updateable. */
+
+import_table(:a,'PERSON3', true);
+import_table(:a,'JOBB');
+import_table(:a,'MARRIED',true);
+
+create person3_ibds(ssn, first_name) instances :Herman(77, 'Herman');
+create person3_ibds(ssn) instances :Torsten(78, 'Torsten');
+create married_ibds (ssn, cid, score) instances (1,1,1);
+
+lisp;
+(checkequal "Transparent constructors"
+  ((osql "sql(:a,'select * from PERSON3');")
+   '((#(77 "Herman")) (#(78 NIL))))
+  ((osql "sql(:a,'select ssn from PERSON3');")
+   '((#(77)) (#(78))))
+  ((catch-error (osql "create person3_ibds instances :Urban;")) 
+   '(:ERRCOND (-1 "Property must be set: SSN" NIL)))
+  ((osql "select ssn(m), cid(m), score(m) from married_ibds m;")
+   '((1 1 1))))
+
+(checkequal "Setting variables from constructors"
+  ((osql "first_name(:Herman);")
+   '(("Herman"))))
+
+(checkequal "Forbidding constructors."
+  ((catch-error (osql "create jobb_ibds instances :jobbet;"))
+   '(:ERRCOND (-1 "This mapped type is read-only" NIL))))
+
+:osql

@@ -1,0 +1,1 @@
+%AMOS_HOME%/validate/svali %AMOS_HOME%/validate/svali.dmp -O "master.osql"

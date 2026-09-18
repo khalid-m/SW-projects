@@ -1,0 +1,815 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2008 Erik Zeitler, UDBL
+ * $RCSfile: partition.osql,v $
+ * $Revision: 1.70 $ $Date: 2013/10/30 15:01:04 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Partitioning functions for parallel execution of LR
+ *
+ ****************************************************************************
+ * $Log: partition.osql,v $
+ * Revision 1.70  2013/10/30 15:01:04  jaba9649
+ * *** empty log message ***
+ *
+ * Revision 1.69  2012/05/15 20:41:13  torer
+ * result -> return
+ *
+ * Revision 1.68  2012/04/09 12:24:47  jaba9649
+ * *** empty log message ***
+ *
+ * Revision 1.67  2012/03/13 10:49:09  zeitler
+ * Type warnings eliminated by casting
+ * Assignment replaced by in
+ *
+ * Revision 1.66  2012/02/28 13:16:52  jaba9649
+ * Modifying idexpmodpartition
+ *
+ * Revision 1.65  2011/11/03 11:07:38  jaba9649
+ *
+ * dexpmodpartion added by javad
+ *
+ * Revision 1.64  2010/07/02 14:55:02  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.63  2010/06/30 17:16:45  zeitler
+ * type conversion eliminated from account balance fusion
+ *
+ * Revision 1.62  2010/06/29 17:11:10  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.61  2010/02/17 18:03:33  zeitler
+ * rfn + bfn for lr
+ *
+ * Revision 1.60  2009/12/09 10:00:22  zeitler
+ * Heartbeats
+ *
+ * Revision 1.59  2009/11/25 14:01:12  zeitler
+ * equality on bag valued functions removed
+ *
+ * Revision 1.58  2009/11/23 16:52:28  fred2431
+ * adding non-working timestamp code for daily expenditure queries in LR.
+ * lread: fix compilation.
+ *
+ * Revision 1.57  2009/11/11 10:44:46  fred2431
+ *
+ * Add my scsq-mysql code. It's running and validating, but timestamps are not done yet.
+ *
+ * Revision 1.56  2009/11/02 14:18:04  zeitler
+ * mylrf0 fuse vectors of partial account balance results
+ *
+ * Revision 1.55  2009/08/17 15:16:02  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.54  2009/05/19 15:15:12  zeitler
+ * out of band bcast topology
+ *
+ * Revision 1.53  2009/05/08 22:31:11  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.52  2009/05/04 15:55:19  zeitler
+ * binary partition without binary -> vector conversion
+ *
+ * Revision 1.51  2009/04/22 15:58:08  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.50  2009/04/08 16:12:58  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.49  2009/03/24 18:38:02  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.48  2009/03/09 17:07:49  zeitler
+ * more xways in generator
+ *
+ * Revision 1.47  2009/03/05 16:21:19  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.46  2009/03/05 12:55:46  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.45  2009/02/24 11:34:31  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.44  2009/02/19 13:15:18  zeitler
+ * Account balance fuse in a separate process
+ *
+ * Revision 1.43  2009/02/17 12:35:50  zeitler
+ * Binary all the way sir!
+ *
+ * Revision 1.42  2009/02/12 17:54:37  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.41  2009/02/11 14:07:55  zeitler
+ * type checker
+ *
+ * Revision 1.40  2008/12/22 15:08:54  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.39  2008/11/25 13:10:20  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.38  2008/11/23 18:25:08  zeitler
+ * 1. Re-wrote SP in lisp.
+ *
+ * 2. Postfilter is replaced by routing function.
+ *    This affects all SCSQ applications.
+ *
+ * Revision 1.37  2008/11/21 10:21:15  zeitler
+ * Fixing type bug in statfns.
+ *
+ * Revision 1.36  2008/10/16 16:49:22  zeitler
+ * EDBT 09 tests
+ *
+ * Revision 1.35  2008/10/15 20:26:22  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.34  2008/10/15 18:02:39  zeitler
+ * zipstreams
+ * edbt09 tests
+ *
+ * Revision 1.33  2008/10/15 15:54:54  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.32  2008/10/09 16:10:46  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.31  2008/10/03 21:32:54  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.30  2008/10/03 12:41:33  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.29  2008/10/02 17:07:25  zeitler
+ * Global variable _spv-tag_ eliminated
+ * ostream(Sp, tag) implemented
+ *
+ * Revision 1.28  2008/10/01 16:21:19  zeitler
+ * port signature changed
+ * SP() is replaced with newSP()
+ *
+ * Revision 1.27  2008/09/12 10:38:11  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.26  2008/09/09 21:50:49  zeitler
+ * profiled different tree fanouts
+ *
+ * Revision 1.25  2008/09/09 16:07:34  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.24  2008/09/07 08:17:42  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.23  2008/09/04 20:25:15  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.22  2008/09/03 16:27:35  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.21  2008/09/01 12:38:01  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.20  2008/08/28 11:27:09  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.19  2008/08/13 15:14:57  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.18  2008/07/11 13:20:34  zeitler
+ * Account balance fixes
+ *
+ * Revision 1.17  2008/07/10 18:24:28  zeitler
+ * Removing obsolete things
+ *
+ * Revision 1.16  2008/07/09 18:34:17  zeitler
+ * - get_nsport.sh: Automatically acquire a free nameserver TCP port
+ * - test scripts changed accordingly
+ *
+ * - NB: Some SCSQ tests currently fail due to changes in groupagg and Linear Road
+ *
+ * Revision 1.15  2008/05/07 18:02:36  zeitler
+ * LR with PS
+ *
+ * Revision 1.14  2008/05/06 16:47:55  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.13  2008/04/22 21:56:10  zeitler
+ * Improved partial dumping
+ *
+ * Revision 1.12  2008/04/17 22:15:45  zeitler
+ * Improved timestamping
+ *
+ * Revision 1.11  2008/04/16 10:29:00  zeitler
+ * better daily exp req filter
+ *
+ * Revision 1.10  2008/02/25 16:58:02  zeitler
+ * correct partition borders
+ *
+ * Revision 1.9  2008/02/25 15:54:26  zeitler
+ * Performance improvement
+ *
+ * Revision 1.8  2008/02/22 18:18:20  zeitler
+ * - More LR tests
+ * - correct sdiv
+ *
+ * Revision 1.7  2008/02/18 16:55:17  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.6  2008/02/18 15:56:58  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.5  2008/02/15 11:59:53  zeitler
+ * Enabling individual history .dmp files for each sp in lr
+ *
+ * Revision 1.4  2008/02/13 21:37:43  zeitler
+ * Portable LR
+ *
+ * Revision 1.3  2008/02/13 17:54:35  zeitler
+ * *** empty log message ***
+ *
+ * Revision 1.2  2008/02/05 16:06:12  zeitler
+ * Parallel LR
+ *
+ * Revision 1.1  2008/02/04 17:47:01  zeitler
+ * - Fully streamed LR.
+ * - tdiff() replaced by real(). Faster file writes and less state kept.
+ *
+ *
+ ****************************************************************************/
+
+create function stslrs(stream of vector of number s)->stream of vector of number as
+streamof(tslr(in(s)));
+
+create function lread(charstring filename, integer L)->stream of vector as
+begin
+clear_function("L");
+add L() = L;
+return streamof(lread0(filename));
+end;
+
+create function lread(vector of charstring filenames, integer L)
+ -> stream of vector as begin
+clear_function("L");
+add L() = L;
+return streamof(lread0(filenames));
+end;
+
+create function histo_part(integer L, integer part)-> integer;
+add histo_part(1, 0) = 0;
+add histo_part(1, 1) = 10000000; /* All history goes to the same partition */
+add histo_part(2, 0) = 0;
+add histo_part(2, 1) = 137392;
+add histo_part(2, 2) = 274784;
+add histo_part(3, 0) = 0;
+add histo_part(3, 1) = 137444;
+add histo_part(3, 2) = 274889;
+add histo_part(3, 3) = 412334;
+add histo_part(4, 0) = 0;
+add histo_part(4, 1) = 137345;
+add histo_part(4, 2) = 274690;
+add histo_part(4, 3) = 412035;
+add histo_part(4, 4) = 549377;
+add histo_part(5, 0) = 0;
+add histo_part(5, 1) = 137342;
+add histo_part(5, 2) = 274684;
+add histo_part(5, 3) = 412026;
+add histo_part(5, 4) = 549368;
+add histo_part(5, 5) = 686711;
+
+create function expfilter(vector v, integer j, integer fanout)->Boolean as
+select 
+where histo_part(fanout, j) < vidno(v)
+and histo_part(fanout, integer(j + 1)) >= vidno(v);
+
+create function splitfiles(integer L, charstring histofile)->vector as
+select merge(p) from vector of sp p
+where p=spv(vselect streamof(
+  select writefile("/home/zeitler/ht" + stringify(L) + "-" + 
+                   stringify(port) + ".out", in(
+    select v from vector v
+    where v in readfile(histofile)
+    and histo_part(L, port) < v[0]
+    and histo_part(L, integer(port + 1)) >= v[0])))
+  from integer port
+  where port in iota(0, L - 1));
+
+create function expfilter0(vector v, integer fanout)->
+(integer j, vector) as
+select j, v
+where histo_part(fanout, j) < v[0]
+and histo_part(fanout, integer(j + 1)) >= v[0];
+
+/* Basic postfilter functions */
+
+create function lrdistrib2(vector v, integer fanout)->(integer port, vector) as
+select port, v
+where (eventtype(v) = 0 and port = xway(v))
+or (eventtype(v) = 2 and port in iota(0, fanout - 1))
+or (eventtype(v) = 3 and port in iota(0, fanout - 1));
+
+create function lrdistrib2bin(iarray v, integer fanout)
+ -> (integer port, iarray) as
+select port, v
+where (eventtype(v) = 0 and port = xway(v))
+or (eventtype(v) = 2 and port in iota(0, fanout - 1))
+or (eventtype(v) = 3 and port in iota(0, fanout - 1));
+
+create function lrdistrib2dir(vector v, integer fanout)
+ -> (integer port, vector) as
+select port, v
+where (eventtype(v) = 0 and port = 2*xway(v) + direction(v))
+or (eventtype(v) = 2 and port in iota(0, fanout - 1))
+or (eventtype(v) = 3 and port in iota(0, fanout - 1));
+
+create function lrdistrib2dir_db(vector v, integer fanout)
+ -> (integer port, vector) as
+select port, v
+where (eventtype(v) = 0 and port = 2*xway(v) + direction(v) + 1)
+or (eventtype(v) = 2 and port in iota(1, fanout - 1))
+or (eventtype(v) = 3 and port = 0);
+
+create function mylrdir(vector v, integer fanout)
+ -> (integer port, vector) as
+select port, v
+where (eventtype(v) = 0 and port = 2*xway(v) + direction(v))
+or (eventtype(v) = 2 and port in iota(0, fanout - 1));
+
+/* lrdistrib2_db2 scales out the mySQL for historical data.
+   This does not improve performance as the mySQL is not a bottleneck. */
+
+create function lrdistrib2_db2(vector v, integer fanout)
+ -> (integer port, vector) as
+select port, v
+where (eventtype(v) = 0 and port = xway(v) + 2)
+or (eventtype(v) = 2 and port in iota(2, fanout - 1))
+or (eventtype(v) = 3 and port = 0 and xway(v) < 10)
+or (eventtype(v) = 3 and port = 1 and xway(v) > 10);
+
+/* dxpartition() splits input stream into one dailyexp query stream and one
+   stream per xway. This is used as a baseline experiment in EDBT'09. */
+
+create function dxpartition(vector e, integer fanout)
+ -> (integer port, vector) as
+select port, e 
+where (eventtype(e) = 0 and port = xway(e))
+or (eventtype(e) = 2 and port in iota(0, fanout - 2))
+or (eventtype(e) = 3 and port = fanout - 1);
+
+create function dxpartitionbin(iarray e, integer fanout)
+ -> (integer port, object o) as
+select port, o
+where (eventtype(e) = 0 and port = xway(e) and o = e)
+or (eventtype(e) = 2 and port in iota(0, fanout - 2) and o = e)
+or (eventtype(e) = 3 and port = fanout - 1 and o = na2vec(e));
+
+create function dxpartitionbin_nc(iarray e, integer fanout)
+ -> (integer port, object o) as
+select port, e
+where (eventtype(e) = 0 and port = xway(e))
+or (eventtype(e) = 2 and port in iota(0, fanout - 2))
+or (eventtype(e) = 3 and port = fanout - 1);
+
+create function accbalsplit(darray e, integer fanout)
+ -> (integer port, numarray) as
+select port, e
+where (eventtype(e) = 2.0 and port = 1)
+or (eventtype(e) != 2.0 and port = 0);
+
+
+/* dxpartition() is split into dpartition() and xpartition() */
+
+create function dpartition(vector e, integer fanout)
+ -> (integer port, vector) as
+select port, e
+where (eventtype(e) = 3 and port = 1)
+or (eventtype(e) < 3 and port = 0);
+
+/* Heralds are broadcast */
+
+create function dhpartition(vector e, integer fanout)
+ -> (integer port, vector) as
+select port, e
+where (eventtype(e) = 3 and port = 1)
+or (eventtype(e) < 3 and port = 0)
+or (eventtype(e) = 4 and port in iota(0, fanout - 1));
+
+create function noherald(vector e)->vector
+as select e where e[0] != 4;
+
+create function snoheralds(stream of vector se) -> stream of vector
+as streamof(noherald(in(se)));
+
+create function dpartitiontest(vector e, integer fanout)
+ -> (integer port, vector o) as
+select port, o
+where (eventtype(e) = 3 and port = 0 and (o = {0,0,0,0,0} or o = {1,0,0,0,0} or o = {2,0,0,0,0} or o = {4,0,0,0,0} or o = {5,0,0,0,0} or o = {6,0,0,0,0} or o = {7,0,0,0,0} or o = {8,0,0,0,0} or o = {9,0,0,0,0} or o = {10,0,0,0,0} or o = {11,0,0,0,0} or o = {12,0,0,0,0} or o = {13,0,0,0,0} or o = {14,0,0,0,0} or o = {15,0,0,0,0} or o = {16,0,0,0,0} or o = {17,0,0,0,0} or o = {18,0,0,0,0} or o = {19,0,0,0,0} or o = {20,0,0,0,0} or o = {21,0,0,0,0} or o = {22,0,0,0,0} or o = {23,0,0,0,0} or o = {24,0,0,0,0} or o = {25,0,0,0,0} or o = e));
+
+create function xpartition(vector e, integer fanout)
+ -> (integer port, vector) as
+select port, e 
+where (eventtype(e) = 0 and port = xway(e))
+or (eventtype(e) = 2 and port in iota(0, fanout -1));
+
+create function dpartitionbin(iarray e, integer fanout)
+ -> (integer port, object o) as
+select port, o
+where (eventtype(e) < 3 and port = 0 and o = e)
+or (eventtype(e) = 3 and port = 1 and o = na2vec(e));
+
+create function dpartitionbin_nc(iarray e, integer fanout)
+ -> (integer port, iarray) as
+select port, e
+where (eventtype(e) < 3 and port = 0)
+or (eventtype(e) = 3 and port = 1);
+
+create function xpartitionbin(iarray e, integer fanout)
+ -> (integer port, iarray) as
+select port, e
+where (eventtype(e) = 0 and port = xway(e))
+or (eventtype(e) = 2 and port in iota(0, fanout - 1));
+
+create function dexpxpartitionbin(iarray e, integer fanout)
+ -> (integer port, iarray) as
+select port, e
+where (eventtype(e) = 3 and port = xway(e));
+
+/* xpartition is further split into modpartition() and rangepartition() */
+create function vid(vector x)->integer as
+select x[9];
+create function modpartition0(vector e, integer fanout)
+ -> integer j as mod(xway(e), fanout);
+
+create function modpartition1(iarray e, integer fanout)
+ -> integer j as mod(xway(e), fanout);
+
+create function modpartition(vector e, integer fanout)
+ -> (integer port, vector) as
+select port, e
+where (eventtype(e) = 0 and port = modpartition0(e, fanout))
+or (eventtype(e) = 2 and port in iota(0, fanout - 1));
+
+create function dexpmodpartition(vector e, integer fanout)
+ -> (integer port, vector) as
+select port, e
+where (eventtype(e) = 3 and port = modpartition0(e, fanout));
+
+create function idexpmodpartition(iarray e, integer fanout)
+ -> (integer port, object o) as 
+select port, o
+where (eventtype(e) = 3 and port = modpartition1(e, fanout) and o = na2vec(e));
+
+create function rangepartition0(vector e, integer fanout)
+ -> integer j as
+select j
+where (xway(e) * fanout >= j * L() 
+   and xway(e) * fanout < (j + 1) * L())
+   and j in iota(0, fanout - 1);
+
+create function rangepartition(vector e, integer fanout)
+ -> (integer port, vector) as
+select port, e 
+where port = rangepartition0(e, fanout)
+or (eventtype(e) = 2 and port in iota(0, fanout - 1));
+
+create function lr_thru0(Stream s, Integer L)->Vector
+as begin
+set L() = L;
+return in(s);
+end;
+
+create function lr_thru(Stream s, Integer L)->Stream
+as select streamof(lr_thru0(s, L));
+
+/* historyfilter() et al partitions daily expenditure data, which is used
+   when making a partitioned main memory database. */
+
+create function historyfilter(vector v, integer fanout)
+ -> (integer port, object) as
+select port, v[1]
+where port = v[0];
+
+create function hannotate_select(charstring filename, integer maxcarid, 
+                          integer p)->vector as 
+select {dest, v}
+from vector v, integer dest
+where v in readintstream(filename)
+and dest = floor(p * cast(v[0] as number) / (maxcarid + 1));
+
+create function h_annotate(charstring filename, integer p) -> vector as
+begin
+  declare integer maxcarid;
+  set maxcarid = maxagg(in(readintstream(filename))[0]);
+  return hannotate_select(filename, maxcarid, p)
+end;
+
+create function lrhistorysplit(charstring outpath, charstring outfile,
+                               charstring infile, integer p)
+  -> Vector as
+select merge(writers)
+from vector of sp writers, sp src
+where writers = spv(
+  vselect streamof(
+   makepdump(ostream(src, i), outpath + "/" + outfile + stringify(i) + ".dmp"))
+  from integer i
+  where i in iota(0, p - 1))
+and src = newsp(streamof(readfile(infile)), p, #'expfilter0');
+
+/* lrlogfilter and lrfilesplit split the output files and prepares them for
+   the Linear Road Validator. */
+
+create function lrlogfilter(vector v, integer port, integer fanout)
+ -> object as
+select cast(v as object)
+where v[0] = port;
+
+create function lrbinlogfilter(numarray na, integer port, integer fanout)
+ -> vector of number v as
+select v
+where v = na2vec(na)
+and integer(v[0]) = port;
+
+create function lrfilesplit(charstring path, charstring filename, integer lo,
+                            integer hi) -> vector as
+select merge(writers)
+from vector of sp writers, sp src
+where writers = spv(
+  vselect streamof(
+    writefile(path + "/o-" + stringify(i), in(ostream(src, integer(i - lo)))))
+  from integer i
+  where i in iota(lo, hi))
+and src = newsp(streamof(readfile(filename)), integer(hi - lo + 1), #'lrlogfilter');
+
+create function lrsplitoutput(stream expr, integer lo, integer hi) 
+ -> vector as
+select merge(writers)
+from vector of sp writers, sp src
+where writers = spv(
+  vselect streamof(
+    writefile("o-" + stringify(i), in(ostream(src, integer(i - lo)))))
+  from integer i
+  where i in iota(lo, hi))
+and src = newsp(expr, integer(hi - lo + 1), #'lrlogfilter');
+
+/* Fuse the account balance query answers from all parallel distribfns.
+   sum() the partial balances and max() all balance times. */
+
+create function abanswer(integer qid)-> integer;
+create_index("abanswer","qid","hash","multiple");
+
+create function abtime(integer qid)->integer;
+create_index("abtime","qid","hash","multiple");
+
+create function qid(vector x)->integer as
+select x[3];
+
+create function ptime(vector x)->integer as
+select x[4];
+
+create function ptoll(vector x)->integer as
+select x[5];
+
+create function qid(numarray x)->integer as
+select integer(x[3]);
+
+create function ptime(numarray x)->integer as
+select integer(x[4]);
+
+create function ptime_d(darray x)->real as
+select x[4];
+
+create function ptoll(numarray x)->integer as
+select integer(x[5]);
+
+create function ptoll_d(darray x)->real as
+select x[5];
+
+create function lrfuse0(vector x)->vector as
+begin
+  if x[0] = 2 then begin
+    if count(abanswer(qid(x))) + 1 = L() then begin
+      declare Number balance, Integer atime;
+      set balance = sum(abanswer(qid(x)));
+      set atime = maxagg(abtime(qid(x)));
+      return {x[0], x[1], x[2], x[3], max(x[4], atime), real(ptoll(x)) + 
+              real(balance)};
+      remove abanswer(qid(x))=i from integer i;
+      remove abtime(qid(x))=i from integer i;
+    end else begin
+      add abanswer(qid(x)) = ptoll(x);
+      add abtime(qid(x)) = ptime(x);
+    end;
+  end else if x[0] != 6 then begin 
+    return x;
+  end;
+end;
+
+create function lrfuse(stream s, integer L)->vector as
+begin
+set L() = L;
+return lrfuse0(in_vi(s));
+end;
+
+create function lrfuse0bin(numarray x)->numarray as
+begin
+  if integer(x[0]) = 2 then begin
+    if count(abanswer(qid(x))) + 1 = L() then begin
+      declare Number balance, Integer atime;
+      set balance = sum(abanswer(qid(x)));
+      set atime = maxagg(abtime(qid(x)));
+      return realify({x[0], x[1], x[2], x[3], max(x[4], atime), 
+                      real(ptoll(x)) + real(balance)});
+      remove abanswer(qid(x))=i from integer i;
+      remove abtime(qid(x))=i from integer i;
+    end else begin
+      add abanswer(qid(x)) = ptoll(x);
+      add abtime(qid(x)) = ptime(x);
+    end;
+  end else if x[0] != 6 then begin 
+    return x;
+  end;
+end;
+
+create function lrfusebin(stream of numarray s, integer L)->numarray as
+begin
+set L() = L;
+return lrfuse0bin(in(s));
+end;
+
+/* lrf0 adds all account balance information in a vector of darray */
+
+create function lrf0(Vector w)->Darray as
+select darray({real(x[0]), real(x[1]), real(x[2]), real(x[3]), lastupdated,
+               toll})
+from Real toll, Real lastupdated, Numarray x
+where toll = real(sum(select ptoll(p) from numarray p where p in w))
+and lastupdated = real(maxagg(select ptime(p) from numarray p where p in w))
+and x = w[0];
+
+create function lrf(stream of vector s)->Stream of Darray as
+select streamof(lrf0(in(s)));
+
+/* lrf0d is more efficient than lrf0 because of eliminated type conversion */
+create function lrf0d(Vector w)->Darray as
+select darray({x[0], x[1], x[2], x[3], lastupdated, toll})
+from Real toll, Real lastupdated, Darray x
+where toll = sum(select ptoll_d(p) from Darray p where p in w)
+and lastupdated = maxagg(select ptime_d(p) from Darray p where p in w)
+and x = w[0];
+
+create function lrfd(stream of vector s)->Stream of Darray as
+select streamof(lrf0d(in(s)));
+
+create function mylrf0(Vector w)->Vector as
+select {x[0], x[1], x[2], x[3], lastupdated, toll}
+from Real toll, Real lastupdated, Vector x
+where toll = real(sum(select ptoll(p) from vector p where p in w))
+and lastupdated = real(maxagg(select ptime(p) from vector p where p in w))
+and x = w[0];
+
+
+/* Several partition layers */
+
+create function layer_1_fast(vector of charstring indata, integer L)->sp as
+select newspflex(lreadfast(indata, L), 
+                 make_record({'fanout', 2, 'routingfn', #'dpartition', 
+                              'hostname', 'gr35.uppmax.uu.se'}));
+
+create function layer_1_rt(vector of charstring indata, integer L)->sp as
+select newspflex(streamof(lread(indata, L)),
+                 make_record({'fanout', 2, 'routingfn', #'dpartition', 
+                              'hostname', 'gr35.uppmax.uu.se'}));
+
+create function jdbcnode(sp src)->stream as
+select streamof(mysqltoll('grad1.uppmax.uu.se', 'lr', stract(src)));
+
+create function lr_extract(sp sp, integer L)->vector as
+begin
+set L() = L;
+return extract(sp);
+end;
+
+create function db_partstream(sp src, integer nsub, integer L, 
+charstring postfilter) -> vector of sp as
+select spvflex({jdbcnode(src), streamof(lr_extract(src, L))},
+make_record({'fanout', {1, nsub},
+             'routingfn', {'', postfilter},
+             'dump', {'mytoll.dmp', 'lr.dmp'},
+             'hostname', {'mei.it.uu.se', 'gr35.uppmax.uu.se'},
+             'exe', {'javascsq', getenv('AMOS_HOME') + 'bin/scsq.exe'}}));
+
+create function lrwrite(vector of sp proc, integer L, charstring outfile)
+-> (real, real) as
+select writefiles(outfile, 10000000, 
+in(select tsrec(lrfuse(suall(proc), L))));
+
+create function lrwrite(vector of sp proc, integer L)->(real, real) as
+select lrwrite(proc, L, "/scratch/erikz/lroutput/" + stringify(L) + "/o");
+
+/* treenodes().
+   create an spv of length fanout containing treenodes
+   - each sp subscribes to root
+   - each sp has nsub subscribers */
+
+create function treenodes(sp root, integer L, integer fanout, integer nsub, 
+                          charstring postfilter)
+-> vector of sp as
+select spvflex(streams, make_record({'routingfn', pf, 'fanout', vn}))
+from vector of stream streams, vector of charstring pf, vector of integer vn
+where streams = (
+vselect streamof(lr_extract(root, L))
+from integer i 
+where i in iota(1, fanout))
+and pf = (vselect postfilter from integer i where i in iota(1, fanout))
+and vn = (vselect nsub from integer i where i in iota(1, fanout));
+
+create function procnodes(sp inp, integer fanout)->vector of sp as
+select spv(streams)
+from vector of stream streams
+where streams = vectorof(
+select streamof(lr(sv)) 
+from integer i, stream of vector of integer sv
+where i in iota(1, fanout)
+and sv = stract(inp));
+
+/* lrinputstreams make nsub streams for each leaf. Typically, one LR node
+   is executed on each stream by applying procs() on the output of this 
+   lrinputstreams.
+   NB: Running spv on lrinputstreams output will extract the LR input data. */
+
+create function lrinputstreams(vector of sp tree, integer nsub)
+->vector of stream as
+vselect ostream(t, i)
+from integer i, sp t
+where i in iota(0, nsub - 1)
+and t in tree;
+
+create function apply1(Function fn, Object arg)->Object
+  as select apply(fn, {arg})[0];
+
+create function procs(vector of stream inps, Function sqf)->vector of sp as
+select spv(vselect streamof(apply1(sqf, s))
+  from stream s
+  where s in inps);
+
+/* Generated split trees */
+create function lrproute(iarray e, integer fanout, integer attrib,
+integer level)
+ -> (integer port, iarray) as
+select port, e
+where (eventtype(e) = 0 and port = mlhash(xway(e), level, fanout))
+or (eventtype(e) = 2 and port in iota(0, fanout - 1));
+
+/* rfn + bfn */
+
+create function q2bfn(iarray e) -> Boolean as
+eventtype(e) = 2;
+
+create function lrprfn(iarray e, integer fanout, integer attrib, integer level)
+ -> integer p as
+select mlhash(xway(e), level, fanout)
+where eventtype(e) = 0;
+
+/* post split on event type */
+create function oesplit(darray e, integer fanout)
+-> (integer port, numarray) as
+select port, e
+where (eventtype(e) = 2.0 and port = 2)
+or (eventtype(e) = 1.0 and port = 1)
+or (eventtype(e) = 0.0 and port = 0);
+
+create function dexpoesplit(darray e, integer fanout)
+-> (integer port, numarray) as
+select port, e
+where (eventtype(e) = 3.0 and port = 3) 
+or (eventtype(e) = 2.0 and port = 2)
+or (eventtype(e) = 1.0 and port = 1)
+or (eventtype(e) = 0.0 and port = 0);
+
+create function myoesplit(Vector e, integer fanout)
+-> (integer port, vector) as
+select port, e
+where (eventtype(e) = 2 and port = 2)
+or (eventtype(e) = 1 and port = 1)
+or (eventtype(e) = 0 and port = 0);
+
+create function myxpartition(vector e, integer fanout)
+ -> (integer port, vector) as
+select port, e
+where (eventtype(e) = 0 and port = 2*xway(e) + direction(e))
+or (eventtype(e) = 2 and port in iota(0, fanout -1));
+
+create function dirxpartition(vector e, integer fanout)
+ -> (integer port, vector) as
+select port, e
+where (eventtype(e) = 0 and port = 2*xway(e) + direction(e))
+or (eventtype(e) = 3 and port = 2*xway(e) + direction(e))
+or (eventtype(e) = 2 and port in iota(0, fanout -1));
+
+create function qdsplit(iarray e, integer fanout) -> (integer p, numarray) as
+select p, e
+where (eventtype(e) = 0 and p = 0)
+or (eventtype(e) = 2 and p = 1);
+
+create function dsplit(iarray e, integer fanout) -> (integer p, numarray) as
+select xway(e), e;

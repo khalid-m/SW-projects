@@ -1,0 +1,50 @@
+/*-*-sql-*-*******************************************************************
+
+
+/* USAGE: Must be placed (along with the input data files links_*.nt and 
+   hits_regressdata*.nt) and run in/from the parent directory of the student
+   solutions. In Amos execute the following:
+
+< 'some_student_dir/a4hits.osql';
+< 'a4hits_validator.osql'
+
+*/
+
+lisp;
+
+(checkequal "Hits convergence"
+ ((osql "HITS('hits_regressdata.nt');")
+ '((0.0 "J") (0.07552 "I") (0.14898 "H") (0.21838 "G") (0.28182 "F") (0.33757 "E") (0.38412 "D") (0.42018 "C") (0.44479 "B") (0.45726 "A") (0.0 "A") (0.07552 "B") (0.14898 "C") (0.21837 "D") (0.28181 "E") (0.33757 "F") (0.38412 "G") (0.42019 "H") (0.4448 "I") (0.45727 "J"))
+))
+
+(checkequal "Hits slash"
+ ((osql "HITS('hits_regressdata_slash.nt');")
+ '((0.0 "J") (0.07552 "I") (0.14898 "H") (0.21838 "G") (0.28182 "F") (0.33757 "E") (0.38412 "D") (0.42018 "C") (0.44479 "B") (0.45726 "A") (0.0 "A") (0.07552 "B") (0.14898 "C") (0.21837 "D") (0.28181 "E") (0.33757 "F") (0.38412 "G") (0.42019 "H") (0.4448 "I") (0.45727 "J"))
+))
+
+(checkequal "Hits deadlink"
+ ((osql "HITS('hits_regressdata_deadlink.nt');")
+ '((0.0 "J") (0.07552 "I") (0.14898 "H") (0.21838 "G") (0.28182 "F") (0.33757 "E") (0.38412 "D") (0.42018 "C") (0.44479 "B") (0.45726 "A") (0.0 "A") (0.07552 "B") (0.14898 "C") (0.21837 "D") (0.28181 "E") (0.33757 "F") (0.38412 "G") (0.42019 "H") (0.4448 "I") (0.45727 "J"))
+))
+
+(checkequal "Hits index.html"
+ ((osql "HITS('hits_regressdata_index_html.nt');")
+ '((0.0 "J") (0.07552 "I") (0.14898 "H") (0.21838 "G") (0.28182 "F") (0.33757 "E") (0.38412 "D") (0.42018 "C") (0.44479 "B") (0.45726 "A") (0.0 "A") (0.07552 "B") (0.14898 "C") (0.21837 "D") (0.28181 "E") (0.33757 "F") (0.38412 "G") (0.42019 "H") (0.4448 "I") (0.45727 "J"))
+))
+
+(checkequal "Hits http"
+ ((osql "HITS('hits_regressdata_http.nt');")
+ '((0.0 "J") (0.07552 "I") (0.14898 "H") (0.21838 "G") (0.28182 "F") (0.33757 "E") (0.38412 "D") (0.42018 "C") (0.44479 "B") (0.45726 "A") (0.0 "A") (0.07552 "B") (0.14898 "C") (0.21837 "D") (0.28181 "E") (0.33757 "F") (0.38412 "G") (0.42019 "H") (0.4448 "I") (0.45727 "J"))
+))
+
+(checkequal "Hits car weblinks"
+ ((osql "HITS('links_car_manufacturer.nt');")
+ '((0.14939 "WWW.FABINI.COM/AUTOMOTIVEMFG.HTM") (0.15862 "WWW.MYCARSUCKS.COM/CAR-MAUNFACTURERS") (0.16073 "WWW.CONSUMERFINDER.COM/AUTO/MIDSIZE-CARS.HTM") (0.16516 "WWW.BEISSBARTH.COM/CARS_E.HTM") (0.16695 "WWW.LOEWENAUTO24.DE/LINKS.HTM") (0.16754 "WWW.AUTOMOTIVE-ESOURCES.COM/OES.HTM") (0.16976 "CARROS.WS/TRUCKS.HTM") (0.17014 "WWW.BUSINESS.COM/DIRECTORY/AUTOMOTIVE/MANUFACTURERS_AND_DISTRIBUTORS/PASSENGER_CARS_AND_TRUCKS") (0.20189 "WWW.WORLD-AUTO.DE/LINKS/HERSTELLERLINKS.HTML") (0.20363 "WWW.GROCERYGETTERS.COM/RESOURCE-AUTO-MAKERS.SHTML") (0.16938 "WWW.VW.COM") (0.17169 "WWW.OPEL.COM") (0.17735 "WWW.GM.COM") (0.18156 "WWW.TOYOTA.COM") (0.18426 "WWW.BUICK.COM") (0.18534 "WWW.PONTIAC.COM") (0.19024 "WWW.CHEVROLET.COM") (0.19225 "WWW.CADILLAC.COM") (0.1971 "WWW.HONDA.COM") (0.21531 "WWW.FORD.COM"))
+))
+
+(checkequal "Hits execution time" 
+ ((< (time-spent (osql "HITS('links_car_manufacturer.nt');")) 6) 
+ T))
+:osql
+
+

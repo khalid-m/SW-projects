@@ -1,0 +1,61 @@
+c:\AmosNT\wrappers\WSDM>javaamos wsdm.dmp
+/**********************************/
+/* Load partial evaluation add-on */
+/**********************************/
+load_lisp("c:/amosnt/lsp/parteval.lsp");
+
+/***************************************/
+/* Test without any partial evaluation */
+/***************************************/
+importwsdl("http://ws.strikeiron.com/USDAData?WSDL");
+
+callwebservice("http://ws.strikeiron.com/USDAData?WSDL","SearchFoodByDescription",{"Sweet","1900"});
+
+/************************************************************/
+/* Look att execution plan  without any partial evaluation: */
+/************************************************************/
+
+lisp; 
+(pc _select_)
+:osql
+
+/*********************************************/
+/*  Add some partial evaluation declarations */
+/*********************************************/
+parteval("name");
+parteval("soapactionuri");
+parteval("style");
+parteval("encodingstyle");
+parteval("targetobjecturi");
+
+/******************************************/
+/* Rerun query and look at execution plan */
+/******************************************/
+callwebservice("http://ws.strikeiron.com/USDAData?WSDL","SearchFoodByDescription",{"Sweet","1900"});
+
+/***********************************************************/
+/* Look at execution plan after partial partial evaluation */
+/***********************************************************/
+lisp;
+(pc _select_)
+:osql
+
+/*****************************************/
+/* Declare some more partial evaluations */
+/*****************************************/
+parteval("namespaceuri");
+parteval("port");
+parteval("targeturl");
+parteval("decode");
+
+/*******************/
+/* Run query again */ 
+/*******************/
+callwebservice("http://ws.strikeiron.com/USDAData?WSDL","SearchFoodByDescription",{"Sweet","1900"});
+
+/**********************************************************************/
+/* Look at execution plan after full partial evaluations of meta-data */
+/**********************************************************************/
+lisp;
+(pc _select_)
+:osql

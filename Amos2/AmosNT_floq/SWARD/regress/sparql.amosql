@@ -1,0 +1,385 @@
+/* Subset of standard SparQL test queries from: 
+ * http://www.w3.org/2001/sw/DataAccess/tests/
+ */
+
+/***********  Successes *************/
+set :q1 = 'PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+           SELECT ?name ?mbox
+           WHERE { ?x foaf:name  ?name ;
+                  foaf:mbox  ?mbox .
+           FILTER isLiteral(?mbox) }';
+
+set :q2 = 'PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+           SELECT ?name ?mbox
+           WHERE { ?x foaf:name  ?name ;
+                   foaf:mbox  ?mbox .
+           FILTER isUri(?mbox) }';
+
+set :q3 = 'PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+           SELECT ?name ?mbox
+           WHERE { ?x foaf:name  ?name ;
+                  foaf:mbox  ?mbox .
+           FILTER regex(str(?mbox), "@work.example") }';
+
+set :q4 = 'PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+           SELECT ?name ?mbox
+           WHERE { ?x foaf:name  ?name ;
+                   foaf:mbox  ?mbox .
+           FILTER ( lang(?name) = "ES" ) }';
+
+
+set :q5 = 'PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+           PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+           PREFIX eg:   <http://biometrics.example/ns#>
+           SELECT ?name ?size
+           WHERE { ?x foaf:name  ?name ; eg:shoeSize  ?size .
+           FILTER ( datatype(?size) = xsd:int ) }';
+
+set :q6 = 'SELECT  ?title
+           WHERE 
+           { <http://example.org/book/book1> <http://purl.org/dc/elements/1.1/title> ?title }';
+
+
+set :q7 = 'PREFIX  dc: <http://purl.org/dc/elements/1.1/>
+           SELECT  ?title
+           WHERE
+           { <http://example.org/book/book1> dc:title ?title }';
+
+
+set :q8 = 'PREFIX  dc: <http://purl.org/dc/elements/1.1/>
+           PREFIX  : <http://example.org/book/>
+           SELECT  ?title
+           WHERE
+           { :book1 dc:title ?title }';
+
+set :q9 = 'PREFIX  dcore: <http://purl.org/dc/elements/1.1/>
+           PREFIX  xsd: <http://www.w3.org/2001/XMLSchema#>
+           SELECT  ?title
+           WHERE
+           { ?book dcore:title ?title }';
+
+set :q10 = 'SELECT  *
+            WHERE
+            { ?x ?x ?v }';
+
+
+set :q11 = 'PREFIX  foaf: <http://xmlns.com/foaf/0.1/>
+            SELECT  ?mbox
+            WHERE
+            { ?x foaf:name "Johnny Lee Outlaw" .
+              ?x foaf:mbox ?mbox .}';
+
+set :q12 = 'PREFIX  foaf: <http://xmlns.com/foaf/0.1/>
+            SELECT  ?name ?mbox
+            WHERE
+            { ?x foaf:name ?name .
+            ?x foaf:mbox ?mbox .}';
+
+set :q13 = 'PREFIX  dc: <http://purl.org/dc/elements/1.1/>
+            PREFIX  ns: <http://example.org/ns#>
+            SELECT  ?title ?price
+            WHERE
+            { ?x ns:price ?price . 
+            FILTER ( ?price < 30 ) .
+            ?x dc:title ?title .}';
+
+set :q14 = 'PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+            SELECT DISTINCT ?name 
+            WHERE { ?x foaf:name ?name }';
+
+/*************** Failures *****************/ 
+
+set :q15 = 'PREFIX a:      <http://www.w3.org/2000/10/annotation-ns#>
+            PREFIX dc:     <http://purl.org/dc/elements/1.1/>
+            PREFIX xsd:    <http://www.w3.org/2001/XMLSchema#>
+            SELECT ?annot
+            WHERE { ?annot  a:annotates  <http://www.w3.org/TR/rdf-sparql-query/> .
+                    ?annot  dc:created   ?date .
+            FILTER ( xsd:dateTime(?date) < xsd:dateTime("2005-01-01T00:00:00Z") )}';
+
+set :q16 = 'PREFIX a:      <http://www.w3.org/2000/10/annotation-ns#>
+            PREFIX dc:     <http://purl.org/dc/elements/1.1/>
+            PREFIX xsd:    <http://www.w3.org/2001/XMLSchema#>
+            SELECT ?annot
+            WHERE { ?annot  a:annotates  <http://www.w3.org/TR/rdf-sparql-query/> .
+                    ?annot  dc:created   ?date .
+            FILTER ( ?date < xsd:dateTime("2005-01-01T00:00:00Z") ) }';
+
+set :q17 = 'PREFIX a:      <http://www.w3.org/2000/10/annotation-ns#>
+            PREFIX dc:     <http://purl.org/dc/elements/1.1/>
+            PREFIX foaf:   <http://xmlns.com/foaf/0.1/>
+            SELECT ?given ?family
+            WHERE { ?annot  a:annotates  <http://www.w3.org/TR/rdf-sparql-query/> .
+                    ?annot  dc:creator   ?c .
+            OPTIONAL { ?c  foaf:given   ?given ; foaf:family  ?family } .
+            FILTER isBlank(?c)}';
+
+set :q18 = 'PREFIX  dc: <http://purl.org/dc/elements/1.1/>
+            PREFIX  x: <http://example.org/ns#>
+            SELECT  ?title ?price
+            WHERE
+            { ?book dc:title ?title . 
+            OPTIONAL
+            { ?book x:price ?price . 
+            FILTER (?price < 15) .} .}';
+
+set :q19 = 'PREFIX a:      <http://www.w3.org/2000/10/annotation-ns#>
+            PREFIX dc:     <http://purl.org/dc/elements/1.1/>
+            PREFIX xsd:    <http://www.w3.org/2001/XMLSchema#>
+            SELECT ?annotates
+            WHERE { ?annot  a:annotates  ?annotates .
+                    ?annot  dc:created   ?date .
+            FILTER ( ?date = xsd:dateTime("2004-01-01T00:00:00Z") || ?date = xsd:dateTime("2005-01-01T00:00:00Z"))}';
+
+set :q20 = 'PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+            PREFIX dc:   <http://purl.org/dc/elements/1.1/>
+            SELECT ?name ?givenName
+            WHERE { { ?x foaf:name  ?name } UNION { ?x foaf:givenName ?givenName; dc:created ?created } .
+            FILTER ( bound(?name) || ?created < "2005-01-01T00:00:00Z" ) }';
+
+set :q21 = 'PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+            PREFIX dc:   <http://purl.org/dc/elements/1.1/>
+            SELECT ?name
+            WHERE { ?x foaf:name  ?name .
+            OPTIONAL { ?x dc:created ?created } .
+            FILTER ( !bound(?created))}';
+
+/***********  Other SparQL queries *************/
+set :q22 = 'SELECT DISTINCT ?x
+            WHERE
+            { ?x ?x ?v }';
+
+set :q23 = 'SELECT FROM';
+
+set :q24 = 'SELECT DISTINCT ?x
+            FROM <http://udbl.it.uu.se/upv/test/>
+            WHERE
+            { ?x ?x ?v }';
+
+/********************* Regression test ***************/
+
+/* Define dummy UPV 'test' and 'default' associated with dummy data source 'TESTDS' and 'DEFAULTDS'. 
+ */
+defineUPV("DEFAULTDS","default","");
+defineUPV("TESTDS","test","http://udbl.it.uu.se/upv/test/");
+
+lisp;
+(defglobal _q1_res_ 
+(list(list "select name,mbox
+from Charstring name,Charstring mbox,Charstring x
+where default()=<x,\"http://xmlns.com/foaf/0.1/name\",name>and
+default()=<x,\"http://xmlns.com/foaf/0.1/mbox\",mbox>and
+FLTR(isLtrl(mbox));")))
+
+(defglobal _q2_res_ 
+(list(list "select name,mbox
+from Charstring name,Charstring mbox,Charstring x
+where default()=<x,\"http://xmlns.com/foaf/0.1/name\",name>and
+default()=<x,\"http://xmlns.com/foaf/0.1/mbox\",mbox>and
+FLTR(isIRI(mbox));")))
+
+(defglobal _q3_res_ 
+(list(list "select name,mbox
+from Charstring name,Charstring mbox,Charstring x
+where default()=<x,\"http://xmlns.com/foaf/0.1/name\",name>and
+default()=<x,\"http://xmlns.com/foaf/0.1/mbox\",mbox>and
+FLTR(like(STR(mbox),areg(\"@work.example\")));")))
+
+(defglobal _q4_res_ 
+(list(list "select name,mbox
+from Charstring name,Charstring mbox,Charstring x
+where default()=<x,\"http://xmlns.com/foaf/0.1/name\",name>and
+default()=<x,\"http://xmlns.com/foaf/0.1/mbox\",mbox>and
+FLTR((EQ(LANG(name),\"ES\")));")))
+
+(defglobal _q5_res_ 
+(list(list "select name,size
+from Charstring name,Charstring size,Charstring x
+where default()=<x,\"http://xmlns.com/foaf/0.1/name\",name>and
+default()=<x,\"http://biometrics.example/ns#shoeSize\",size>and
+FLTR((EQ(DT(size),\"http://www.w3.org/2001/XMLSchema#int\")));")))
+
+(defglobal _q6_res_ 
+(list(list "select title
+from Charstring title
+where default()=<\"http://example.org/book/book1\",\"http://purl.org/dc/elements/1.1/title\",title>;")))
+
+(defglobal _q7_res_ 
+(list(list "select title
+from Charstring title
+where default()=<\"http://example.org/book/book1\",\"http://purl.org/dc/elements/1.1/title\",title>;")))
+
+(defglobal _q8_res_ 
+(list(list "select title
+from Charstring title
+where default()=<\"http://example.org/book/book1\",\"http://purl.org/dc/elements/1.1/title\",title>;")))
+
+(defglobal _q9_res_ 
+(list(list "select title
+from Charstring title,Charstring book
+where default()=<book,\"http://purl.org/dc/elements/1.1/title\",title>;")))
+
+(defglobal _q10_res_ 
+(list(list "select x,v
+from Charstring x,Charstring v
+where default()=<x,x,v>;")))
+
+(defglobal _q11_res_ 
+(list(list "select mbox
+from Charstring mbox,Charstring x
+where default(\"Johnny Lee Outlaw\")=<x,\"http://xmlns.com/foaf/0.1/name\">and
+default()=<x,\"http://xmlns.com/foaf/0.1/mbox\",mbox>;")))
+
+(defglobal _q12_res_ 
+(list(list "select name,mbox
+from Charstring name,Charstring mbox,Charstring x
+where default()=<x,\"http://xmlns.com/foaf/0.1/name\",name>and
+default()=<x,\"http://xmlns.com/foaf/0.1/mbox\",mbox>;")))
+
+(defglobal _q13_res_ 
+(list(list "select title,price
+from Charstring title,Charstring price,Charstring x
+where default()=<x,\"http://example.org/ns#price\",price>and
+default()=<x,\"http://purl.org/dc/elements/1.1/title\",title>and
+FLTR((LT(price,30)));")))
+
+(defglobal _q14_res_ 
+(list(list "select  distinct name
+from Charstring name,Charstring x
+where default()=<x,\"http://xmlns.com/foaf/0.1/name\",name>;")))
+
+(defglobal _q15_res_  "IRI(...) when reaching: )")
+
+(defglobal _q16_res_  "IRI(...) when reaching: )")
+
+(defglobal _q17_res_  "Optional when reaching: OPTIONAL")
+
+(defglobal _q18_res_  "Optional when reaching: OPTIONAL")
+
+(defglobal _q19_res_  "IRI(...) when reaching: )")
+
+(defglobal _q20_res_  "UNION when reaching: .")
+
+(defglobal _q21_res_  "Optional when reaching: OPTIONAL")
+
+(defglobal _q22_res_ 
+(list(list "select  distinct x
+from Charstring x,Charstring v
+where default()=<x,x,v>;")))
+
+(defglobal _q23_res_  "SparQL syntax error")
+
+(defglobal _q24_res_ 
+(list(list "select  distinct x
+from Charstring x,Charstring v
+where test()=<x,x,v>;")))
+
+
+
+(checkequal "SparQL query Q1"
+	    ((osql "parse_sparql(:q1);")
+	     _q1_res_))
+
+(checkequal "SparQL query Q2"
+	    ((osql "parse_sparql(:q2);")
+	     _q2_res_))
+
+(checkequal "SparQL query Q3"
+	    ((osql "parse_sparql(:q3);")
+	     _q3_res_))
+
+(checkequal "SparQL query Q4"
+	    ((osql "parse_sparql(:q4);")
+	     _q4_res_))
+
+(checkequal "SparQL query Q5"
+	    ((osql "parse_sparql(:q5);")
+	     _q5_res_))
+
+(checkequal "SparQL query Q6"
+	    ((osql "parse_sparql(:q6);")
+	     _q6_res_))
+
+(checkequal "SparQL query Q7"
+	    ((osql "parse_sparql(:q7);")
+	     _q7_res_))
+
+(checkequal "SparQL query Q8"
+	    ((osql "parse_sparql(:q8);")
+	     _q8_res_))
+
+(checkequal "SparQL query Q9"
+	    ((osql "parse_sparql(:q9);")
+	     _q9_res_))
+
+(checkequal "SparQL query Q10"
+	    ((osql "parse_sparql(:q10);")
+	     _q10_res_))
+
+(defglobal amos_q10a "SELECT  *
+            WHERE 
+            { ?x ?x ?v }")
+
+(checkequal "SparQL query Q10 bad chars"
+	    ((osql "parse_sparql(:q10a);")
+	     _q10_res_))
+
+(checkequal "SparQL query Q12"
+	    ((osql "parse_sparql(:q12);")
+	     _q12_res_))
+
+(checkequal "SparQL query Q13"
+	    ((osql "parse_sparql(:q13);")
+	     _q13_res_))
+
+(checkequal "SparQL query Q14"
+	    ((osql "parse_sparql(:q14);")
+	     _q14_res_))
+
+(checkequal "SparQL query error handling by using an operator in Q15 that is not implemented: 'IRI(...)'"
+	    ((errcond-arg (catch-error (osql "parse_sparql(:q15);")))
+	     _q15_res_))
+
+(checkequal "SparQL query error handling by using an operator in Q16 that is not implemented: 'IRI(...)'"
+	    ((errcond-arg (catch-error (osql "parse_sparql(:q16);")))
+	     _q16_res_))
+
+(checkequal "SparQL query error handling by using an operator in Q17 that is not implemented: 'Optional'"
+	    ((errcond-arg (catch-error (osql "parse_sparql(:q17);")))
+	     _q17_res_))
+
+(checkequal "SparQL query error handling by using an operator in Q18 that is not implemented: 'Optional'"
+	    ((errcond-arg (catch-error (osql "parse_sparql(:q18);")))
+	     _q18_res_))
+
+(checkequal "SparQL query error handling by using an operator in Q19 that is not implemented: 'IRI(...)'"
+	    ((errcond-arg (catch-error (osql "parse_sparql(:q19);")))
+	     _q19_res_))
+
+(checkequal "SparQL query error handling by using an operator in Q20 that is not implemented: 'UNION'"
+	    ((errcond-arg (catch-error (osql "parse_sparql(:q20);")))
+	     _q20_res_))
+
+(checkequal "SparQL query error handling by using an operator in Q21 that is not implemented: 'Optional'"
+	    ((errcond-arg (catch-error (osql "parse_sparql(:q21);")))
+	     _q21_res_))
+
+(checkequal "SparQL query Q22 with default 'FROM' clause"
+	    ((osql "parse_sparql(:q22);")
+	     _q22_res_))
+
+(checkequal "SparQL query error handling by writing a syntactically incorrect query in Q23"
+	    ((errcond-msg (catch-error (osql "parse_sparql(:q23);")))
+	     _q23_res_))
+
+
+(checkequal "SparQL query Q24 with 'FROM' clause"
+	    ((osql "parse_sparql(:q24);")
+	     _q24_res_))
+
+
+
+:osql
+
+/********************* Other SparQL tests ***************/
+

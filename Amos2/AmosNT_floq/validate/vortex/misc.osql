@@ -1,0 +1,30 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Cheng Xu, UDBL
+ * $RCSfile: misc.osql,v $
+ *
+ * Description: misc
+ *
+ ****************************************************************************
+ * $Log: misc.osql,v $
+ * Revision 1.2  2012/05/26 14:47:34  chexu484
+ * header
+ *
+ * Revision 1.1  2006/02/12 20:01:08  torer
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+
+
+create function input(Charstring file, Function start, Function stop) -> Stream of Window
+  as pwindowize(streamof(read_csv(file)), start, stop);         
+
+create function project_bv(Bag of Vector bv, Number d, Number baseline) -> Bag of Vector
+  as select project(v, {0, d})
+  from Vector of Number v
+  where v in bv and abs(v[d]) > baseline; 
+
+create function plot_v(Bag of Vector of Number bv) -> Integer
+  as plot(vselect {i, v[i]} from Integer i, Vector of Number v
+          where i in iota(0, dim(v)) and v in bv);

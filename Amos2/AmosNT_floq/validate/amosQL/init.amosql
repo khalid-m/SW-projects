@@ -1,0 +1,21 @@
+lisp;
+(cd "..")
+(setq _include-source_ (null (getenv "no_source")))
+(load "lsp/window.lsp")
+(load "lsp/misc.lsp")
+(load "lsp/record.lsp")
+(load "lsp/svali.lsp")
+(load "lsp/bgsmj.lsp")
+(load "lsp/join.lsp")
+
+(load "../logdir/src/Lisp/logdir.lsp")
+(load-amosql "../logdir/src/AmosQL/logdir.osql")
+(load-amosql "../logdir/hlund/hlund.osql")
+(load "../logdir/hlund/hlund.lsp")
+(load "../logdir/hlund/dgen.lsp")
+
+(setq _socket-systime_ nil)
+:osql
+
+<'osql/window_process.osql';
+<'osql/validate.osql';

@@ -1,0 +1,132 @@
+/*-*-sql-*-******************************************************************/
+
+/*************************************************************************
+Declarative PROPAD implementation: frequent itemsets
+**************************************************************************/
+
+create function frequent_items(Bag of Vector of Number tr, Number citem)
+                             -> Bag of (Number, Number)
+  /* Generate (item, support) tuples for each item > citem based on 
+     transactions TR 
+     tr    : set of transactions 
+     citem : (last projected) item, only items with id > citem are considered
+  */
+  as	groupby((select i,t 
+		   from Number i, Vector of Number t
+		  where i>citem 
+                    and t in tr 
+                    and i in t),
+                #'count');
+
+create function propad_project(Bag of Vector of Number tr, Number item) 
+                             -> Bag of Vector of Number
+  /* Project the set of transactions TR by given ITEM 
+     tr   : set of transactions
+     item : item to project transactions to */
+  as	select t 
+	from Vector of Number t
+	where t in tr 
+          and item in t;
+
+create function propad_basic(Bag of Vector of Number tr, 
+                             Vector of Number stack, Number stacksupp, 
+                             Number minsupp)
+	                   -> Bag of (Bag of Vector of Number, 
+                                      Vector of Number, 
+                                      Number, Number)
+  /* Produce candidate itemsets and projections  based on current itemset 
+     STACK and set of transactions TR 
+     tr        : set of transactions
+     stack     : itemset (constructed recursively)
+     stacksupp : support value of itemset in stack
+     minsupp   : minimum support requirement */
+  as 	select materialize(propad_project(tr,i)), concat({i},stack), 
+                           supp, minsupp
+	from Number i, Number supp
+	where supp >= minsupp 
+          and (i,supp) in frequent_items(tr,stack[0]);
+
+create function stack2itemset(Vector of Number stack) -> Vector of Number
+  /* Remove initial 0 value from stack */
+  as	sort(select stack[i] from Number i where i < (dim(stack)-1));
+
+create function propad(Bag of Vector of Number tr, Number minsupp)
+            -> Bag of (Vector of Number, Number)
+  /* Return itemsets and their support values 
+     tr      : (initial) set of transactions
+     minsupp : minimum support requirement */
+  as	select stack2itemset(stack),supp
+	  from Bag of Vector of Number tr1, Vector of Number stack, 
+               Number supp
+	 where (tr1,stack,supp,minsupp) in 
+               traverse(#'propad_basic',tr,{0},0,minsupp) /* run recursively */
+	   and supp>0; /* filter out the initial-state result */
+
+/*************************************************************************
+Subset generation
+**************************************************************************/
+
+create function vproject(Vector v, Object p) -> Vector
+  /* Returns a vector containing the elements of the 
+     input vector v that are larger than p */
+  as  vectorof(select o 
+                 from object o
+                where o in v
+                  and o > p);
+
+create function vsubset_tcf(Vector v, Vector rv) -> Bag of (Vector, Vector)
+/* Transition functions that produces the children of v,
+   i.e., vproject(v,p) for all p in v and accumulates 
+   the projecting object p by appending it to the input
+   vector rv. */
+  as  select pv, concat(rv, {p})
+        from Object p, Vector pv
+       where p in v
+         and pv = vproject(v,p);
+
+create function vsubset_traverse(Vector v) -> Bag of Vector
+/* Generates all the subsets of the elements of vector v
+   by traversing the tree defined by vsubset_tcf() */
+  as  select rv
+        from Vector ov, Vector rv
+       where (ov, rv) in traverse(#'vsubset_tcf', v, {}); 
+
+create function vdiff(Vector v1, Vector v2) -> Vector
+/* Returns a vector the elements of vector v1 that are not in v2 */
+  as  sort(select i 
+             from object i
+            where i in v1 
+              and notany(select where i in v2)); 
+
+/*************************************************************************
+Association Rules generation
+**************************************************************************/
+
+create function properARcands(Vector of Number v)
+                            -> Bag of Vector of Vector
+/* Generates all possibible (PROPER, i.e. {} is exluded) (candidate) 
+   Association Rules (ARs) that a (frequent) itemset v can generate */ 
+  as	select {head, tail}
+	  from Vector of Number head, Vector of Number tail
+	 where head in vsubset_traverse(v)
+	   and tail = vdiff(v, head)
+	   and dim(head) > 0
+	   and dim(tail) > 0;
+
+create function ARM(Bag of (Vector of Number, Number) frequent_itemsets, 
+                    Number minconf)
+                   -> Bag of (Vector of Number head, /* rule head */
+                              Vector of integer tail, /* rule tail */
+                              Number rsupp, /* rule support value */
+                              Number conf)  /* rule confidence value */
+  /* Compute confident rules from the frequent itemsets in FIS.
+     frequent_itemsets : set of frequent itemsetss and support counts
+     minconf : minimum confidence requirement */
+  as  select head, tail, rsupp, conf
+        from Vector of Number fis, Number hsupp
+       where (fis, rsupp) in frequent_itemsets
+         and {head, tail} in properARcands(fis)
+         and (head, hsupp) in frequent_itemsets
+         and conf = rsupp/hsupp
+         and conf >= minconf;   
+

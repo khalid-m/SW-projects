@@ -1,0 +1,77 @@
+ /****************************************************/
+/* populate Wsdlschema */
+/****************************************************/
+create Service instances :wsdlsumwsdlsummationService0; 
+set name(:wsdlsumwsdlsummationService0)='summationService'; 
+set namespaceuri(:wsdlsumwsdlsummationService0)='urn:WSAmos'; 
+set wsdluri(:wsdlsumwsdlsummationService0)='wsdl/sum.wsdl'; 
+/****************************************************/
+ /* populate Operaton, Elements */
+/****************************************************/
+create Operation instances :wsdlsumwsdlsummationServiceop0; 
+set name(:wsdlsumwsdlsummationServiceop0)='INTPLUS'; 
+set style(:wsdlsumwsdlsummationServiceop0)='rpc'; 
+set tablename(:wsdlsumwsdlsummationServiceop0)='INTPLUS'; 
+set targeturl(:wsdlsumwsdlsummationServiceop0)='http://130.238.14.133:8082/wsmed/service/WSMEDServlet'; 
+set soapactionuri(:wsdlsumwsdlsummationServiceop0)=''; 
+set encodingstyle(:wsdlsumwsdlsummationServiceop0)='http://schemas.xmlsoap.org/soap/encoding/'; 
+set authenticationstr(:wsdlsumwsdlsummationServiceop0)='none'; 
+add authentication(:wsdlsumwsdlsummationServiceop0)={}; 
+create Element instances :wsdlsumwsdlsummationServicee0 ; 
+set name(:wsdlsumwsdlsummationServicee0) = 'NUM1' ; 
+set value(:wsdlsumwsdlsummationServicee0)={}; 
+set wsdltype(:wsdlsumwsdlsummationServicee0) = 'int' ; 
+set wsmedtype(:wsdlsumwsdlsummationServicee0) = 'INTEGER';
+set minoccurs(:wsdlsumwsdlsummationServicee0) = '1' ; 
+set maxoccurs(:wsdlsumwsdlsummationServicee0) = '1' ; 
+create Element instances :wsdlsumwsdlsummationServicee1 ; 
+set name(:wsdlsumwsdlsummationServicee1) = 'NUM2' ; 
+set value(:wsdlsumwsdlsummationServicee1)={}; 
+set wsdltype(:wsdlsumwsdlsummationServicee1) = 'int' ; 
+set wsmedtype(:wsdlsumwsdlsummationServicee1) = 'INTEGER';
+set minoccurs(:wsdlsumwsdlsummationServicee1) = '1' ; 
+set maxoccurs(:wsdlsumwsdlsummationServicee1) = '1' ; 
+add input(:wsdlsumwsdlsummationServiceop0)={:wsdlsumwsdlsummationServicee0,:wsdlsumwsdlsummationServicee1}; 
+create Element instances :wsdlsumwsdlsummationServicee2 ; 
+set name(:wsdlsumwsdlsummationServicee2) = 'VWSMOS1' ; 
+set value(:wsdlsumwsdlsummationServicee2)={}; 
+set wsdltype(:wsdlsumwsdlsummationServicee2) = 'int' ; 
+set wsmedtype(:wsdlsumwsdlsummationServicee2) = 'INTEGER';
+set minoccurs(:wsdlsumwsdlsummationServicee2) = '1' ; 
+set maxoccurs(:wsdlsumwsdlsummationServicee2) = '-1' ; 
+add output(:wsdlsumwsdlsummationServiceop0)={:wsdlsumwsdlsummationServicee2}; 
+create Operation instances :wsdlsumwsdlsummationServiceop1; 
+set name(:wsdlsumwsdlsummationServiceop1)='INTBAG'; 
+set style(:wsdlsumwsdlsummationServiceop1)='rpc'; 
+set tablename(:wsdlsumwsdlsummationServiceop1)='INTBAG'; 
+set targeturl(:wsdlsumwsdlsummationServiceop1)='http://130.238.14.133:8082/wsmed/service/WSMEDServlet'; 
+set soapactionuri(:wsdlsumwsdlsummationServiceop1)=''; 
+set encodingstyle(:wsdlsumwsdlsummationServiceop1)='http://schemas.xmlsoap.org/soap/encoding/'; 
+set authenticationstr(:wsdlsumwsdlsummationServiceop1)='none'; 
+add authentication(:wsdlsumwsdlsummationServiceop1)={}; 
+add input(:wsdlsumwsdlsummationServiceop1)={}; 
+create Element instances :wsdlsumwsdlsummationServicee3 ; 
+set name(:wsdlsumwsdlsummationServicee3) = 'results' ; 
+set wsdltype(:wsdlsumwsdlsummationServicee3) = 'INTBAG' ; 
+set wsmedtype(:wsdlsumwsdlsummationServicee3) = '' ; 
+set minoccurs(:wsdlsumwsdlsummationServicee3) = '1' ; 
+set maxoccurs(:wsdlsumwsdlsummationServicee3) = '-1' ; 
+create Element instances :wsdlsumwsdlsummationServicee3_0 ; 
+set name(:wsdlsumwsdlsummationServicee3_0) = 'row' ; 
+set wsdltype(:wsdlsumwsdlsummationServicee3_0) = '' ; 
+set wsmedtype(:wsdlsumwsdlsummationServicee3_0) = ''; 
+set minoccurs(:wsdlsumwsdlsummationServicee3_0) = '0' ; 
+set maxoccurs(:wsdlsumwsdlsummationServicee3_0) = '-1' ; 
+create Element instances :wsdlsumwsdlsummationServicee3_0_0 ; 
+set name(:wsdlsumwsdlsummationServicee3_0_0) = 'OUT0' ; 
+set wsdltype(:wsdlsumwsdlsummationServicee3_0_0) = 'int' ; 
+set value(:wsdlsumwsdlsummationServicee3_0_0)={}; 
+set wsmedtype(:wsdlsumwsdlsummationServicee3_0_0) = 'INTEGER' ; 
+set minoccurs(:wsdlsumwsdlsummationServicee3_0_0) = '1' ; 
+set maxoccurs(:wsdlsumwsdlsummationServicee3_0_0) = '1' ; 
+add subelements(:wsdlsumwsdlsummationServicee3_0)={:wsdlsumwsdlsummationServicee3_0_0}; 
+add subelements(:wsdlsumwsdlsummationServicee3)={:wsdlsumwsdlsummationServicee3_0}; 
+add output(:wsdlsumwsdlsummationServiceop1)={:wsdlsumwsdlsummationServicee3}; 
+add port(:wsdlsumwsdlsummationService0) = :wsdlsumwsdlsummationServiceop0; 
+add port(:wsdlsumwsdlsummationService0) = :wsdlsumwsdlsummationServiceop1; 
+

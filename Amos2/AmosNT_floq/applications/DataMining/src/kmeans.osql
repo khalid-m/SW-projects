@@ -1,0 +1,107 @@
+/*-*-sql-*-*******************************************************************/
+
+create function square(Number x)->Number
+  as select x*x;
+
+create function euclid_distance(Vector of Number x, Vector of Number y)->Number
+  /* The Euclidean distance between coordinates X and Y */
+  as select sum(select square(x[i]-y[i]) from Integer i);
+
+create function vmin(Vector v)-> <Integer i, Number o>
+  as select i, o
+     where o = minagg(in(v)) and
+           v[i] = o;
+
+create function plus(vector of number v, vector of number w)->vector of number
+as vectorize(select i, v[i] + w[i] from integer i);
+
+create function div(vector of number v, number x)->vector of number
+as vectorize(select i, v[i]/x
+from integer i);
+
+create function datapoint(integer d)->vector of number;
+create function centroids(integer c)->vector of number;
+
+create function centroids()->vector of number as
+select centroids(i) from integer i;
+
+create function enumerate(bag of vector v) -> <integer i, vector>
+as begin
+  set i = 0;
+  for each original vector w where w = in(v) begin
+    set i = i + 1;
+    result <i, w>;
+  end;
+end;
+
+add datapoint(i) = v 
+from vector of number v, integer i 
+where <i, v> = enumerate(readfile("../data/patterns.out"));
+
+create function random_points(integer k, bag of vector p)-> <integer, vector>
+as for each integer j where j in iota(1, k) begin
+  result (select j, section(p, i, i) 
+  from integer i where i = rand(1, count(p)));
+end;
+
+create function d2centroids(Vector of Number p) -> vector as
+vectorize(select cast (c - 1 as integer), euclid_distance(centroids(c), p)
+from integer c);
+
+create function dpdistances()-> <integer, vector of number>
+as select d, d2centroids(p)
+from vector of number p, integer d
+where p = datapoint(d);
+
+create function clusterbelonging()-> <integer d, integer cluster, number err>
+as select d, cluster + 1, dist
+from vector of number distv, integer cluster, number dist
+where <d, distv> = dpdistances()
+and <cluster, dist> = vmin(distv);
+
+create function points_in_cluster(integer c)->integer d
+as select d
+from number err
+where <d, c, err> = clusterbelonging();
+
+create function dist2centroid(integer c) -> <integer d, number err>
+as select d, err
+where <d, c, err> = clusterbelonging();
+
+create function uniqueclusters()->Bag of Integer c as
+select distinct c
+from Vector of Number v 
+where centroids(c) = v;
+
+create function squaredist() -> Vector of Number as
+vectorize(select cast(c - 1 as integer), sum(
+select dist
+from Integer datapoint, Integer cluster, Number dist
+where <datapoint, dist> = dist2centroid(c))
+from integer c
+where c = uniqueclusters());
+
+create function newcentroids()-><integer, vector of number> as
+select i, vsum(datapoint(points_in_cluster(i)))/count(points_in_cluster(i))
+from integer i
+where i = uniqueclusters();
+
+/* Init random centroids */
+
+set centroids(j) = v 
+from vector v, integer j
+where <j, v> = random_points(5, (select datapoint(i) from integer i));
+
+/* Iteration */
+
+sum(select v[i] from vector of number v, integer i where v = squaredist());
+
+set centroids(c) = v
+from integer c, vector v
+where <c, v> = newcentroids();
+
+centroids();
+
+select i, count(points_in_cluster(i))
+from integer i
+where i = uniqueclusters();

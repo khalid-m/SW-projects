@@ -1,0 +1,147 @@
+/*-*-sql-*-*******************************************************************/
+
+logging off;
+create function lroutput()->vector;
+lisp;
+;"
+
+(checkequal "lreadfast of 20k tpls, L=10"
+((osql "count(in(
+lreadfast(getenv('AMOS_HOME') + '/scsq/lr/data/c10-20k', 10)));")
+'((20000))))
+
+(checkequal "dpartition of 20k tpls"
+((osql "in(zipstreams(mapstreams(splitstream(
+  lreadfast(getenv('AMOS_HOME') + '/scsq/lr/data/c10-20k', 10), 
+  2, #'dpartition'), #'stream.scount->stream')));")
+'((#(19900 17)))))
+
+(checkequal "dxpartition of 20k tpls"
+((osql "select in(zipstreams(mapstreams(s, #'stream.scount->stream')))
+from vector of stream of vector s 
+where s = splitstream(lreadfast(getenv('AMOS_HOME') + '/scsq/lr/data/c10-20k',
+                                10), 10 + 1, #'dxpartition');")
+'((#(2096 2096 2095 2095 2056 2055 2055 2056 2175 2120 17)))))
+
+(checkequal "d + xpartition of 20k tpls"
+((osql "select in(zipstreams(concat(so, my)))
+from vector of stream of vector si, vector of stream si0, vector of stream so,
+vector of stream my
+where so = mapstreams(si0, #'stream.scount->stream')
+and my = mapstreams({si[1]}, #'stream.scount->stream')
+and si0 = splitstream(si[0], 10, #'xpartition')
+and si = 
+splitstream(lreadfast(getenv('AMOS_HOME') + '/scsq/lr/data/c10-20k', 10), 
+            2, #'dpartition');")
+'((#(2096 2096 2095 2095 2056 2055 2055 2056 2175 2120 17)))))
+
+(checkequal "d + modpartition of 20k tpls"
+((osql "select in(zipstreams(concat(so, my)))
+from Vector of Stream my, Vector of Stream so, Vector of Stream of vector si,
+Vector of Stream si0
+where so = mapstreams(si0, #'stream.scount->stream')
+and my = mapstreams({si[1]}, #'stream.scount->stream')
+and si0 = splitstream(si[0], 5, #'modpartition')
+and si = splitstream(
+  lreadfast(getenv('AMOS_HOME') + '/scsq/lr/data/c10-20k', 10), 
+  2, #'dpartition');")
+'((#(4040 4040 4040 4159 4065 17)))))
+
+(checkequal "d + rangepartition of 20k tpls"
+((osql "select in(zipstreams(concat(so, my)))
+from vector of stream of vector si, vector of stream si0, vector of stream so,
+vector of stream my
+where so = mapstreams(si0, #'stream.scount->stream')
+and my = mapstreams({si[1]}, #'stream.scount->stream')
+and si0 = splitflex(si[0], 10, #'rangepartition',
+                    make_record({'osql', 'set L()=10;'}))
+and si = 
+splitstream(lreadfast(getenv('AMOS_HOME') + '/scsq/lr/data/c10-20k', 10), 
+            2, #'dpartition');")
+'((#(2096 2096 2095 2095 2056 2055 2055 2056 2175 2120 17)))))
+
+(checkequal "d + mod + rangepartition of 20k tpls"
+((osql "sort(select in(in(zipstreams(concat(so, my))))
+from vector of stream of vector si, vector of stream si0,
+vector of stream si0j, vector of stream so, vector of stream my
+where so = mapstreams(si0j, #'stream.scount->stream')
+and my = mapstreams({si[1]}, #'stream.scount->stream')
+and si0j = splitflexx(si0, 2, #'rangepartition',
+                    make_record({'osql', 'set L()=10;'}))
+and si0 = splitstream(si[0], 5, #'modpartition')
+and si = 
+splitstream(lreadfast(getenv('AMOS_HOME') + '/scsq/lr/data/c10-20k', 10), 
+            2, #'dpartition'));")
+'((#(17 2055 2055 2056 2056 2095 2095 2096 2096 2120 2175)))))
+
+(checkequal "LR + MY of dxpartition of 20k tpls, L=10"
+((osql "add lroutput() = lrfuse(mergestreams(concat(my,so)), L)
+from vector of stream of vector src, vector of stream so, vector of stream my,
+integer L
+where so = mapstreams(vselect src[i] from integer i where i in iota(0, L - 1),
+                      #'lr')
+and my = mapflexv({{'mei.it.uu.se', 'lr', src[L]}}, #'dailyexp',
+                 make_record({'hostname', 'mei.it.uu.se', 'exe', 'javascsq'}))
+and src = splitstream(
+  lreadfast(getenv('AMOS_HOME') + '/scsq/lr/data/c10-20k', L),
+  L + 1, #'dxpartition')
+and L = 10;
+count(select v from vector v where v=lroutput() and eventtype(v)=2);")
+'((111))
+(osql "count(select v from vector v where v=lroutput() and eventtype(v)=0);")
+'((10544))
+(osql "count(select v from vector v where v=lroutput() and eventtype(v)=3);")
+'((1)))) 
+
+:osql
+clear_function("lroutput"); /* ' */
+lisp;
+
+(checkequal "LR + MY of d + xpartition of 20k tpls, L=10"
+((osql "
+add lroutput() = lrfuse(mergestreams(concat(my, so)), L)
+from vector of stream of vector src, vector of stream so, vector of stream my,
+integer L, vector of stream si0
+where so = mapstreams(si0, #'lr')
+and my = mapflexv({{'mei.it.uu.se', 'lr', src[1]}}, #'dailyexp',
+                 make_record({'hostname', 'mei.it.uu.se', 'exe', 'javascsq'}))
+and si0 = splitstream(src[0], L, #'xpartition')
+and src = splitstream(
+  lreadfast(getenv('AMOS_HOME') + '/scsq/lr/data/c10-20k', L),
+  2, #'dpartition')
+and L = 10;
+count(select v from vector v where v=lroutput() and eventtype(v)=2);")
+'((111))
+(osql "count(select v from vector v where v=lroutput() and eventtype(v)=0);")
+'((10544))
+(osql "count(select v from vector v where v=lroutput() and eventtype(v)=3);")
+'((1))))
+
+:osql
+clear_function("lroutput");
+lisp;
+
+(checkequal "LR + MY of d + mod + rangepartition of 20k tpls, L=10"
+((osql "add lroutput() = lrfuse(mergestreams(concat(my, so)), L)
+from vector of stream of vector si, vector of stream so, vector of stream my,
+integer L, vector of stream si0, vector of stream si0j, integer f1, integer f2
+where so = mapstreams(si0j, #'lr')
+and my = mapflexv({{'mei.it.uu.se', 'lr', si[1]}}, #'dailyexp',
+                 make_record({'hostname', 'mei.it.uu.se', 'exe', 'javascsq'}))
+and si0j = splitflexx(si0, f2, #'rangepartition',
+                    make_record({'osql', 'set L()=10;'}))
+and si0 = splitstream(si[0], f1, #'modpartition')
+and si = splitstream(
+  lreadfast(getenv('AMOS_HOME') + '/scsq/lr/data/c10-20k', L),
+  2, #'dpartition')
+and L = 10
+and f1 = 5
+and f2 = L/f1;
+count(select v from vector v where v=lroutput() and eventtype(v)=2);")
+'((111))
+(osql "count(select v from vector v where v=lroutput() and eventtype(v)=0);")
+'((10544))
+(osql "count(select v from vector v where v=lroutput() and eventtype(v)=3);")
+'((1))))
+
+(send-form '(quit) (open-nameserver-port))

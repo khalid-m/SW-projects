@@ -1,0 +1,112 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2009 Gyozo Gidofalvi, UDBL
+ * $RCSfile: winpred_demo.osql,v $
+ * $Revision: 1.2 $ $Date: 2009/05/09 06:18:34 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: OSQL script to demonstate winpred usage, among others
+ * extended stress calculations needed in Ove's analysis
+ *
+ ****************************************************************************
+ * $Log: winpred_demo.osql,v $
+ * Revision 1.2  2009/05/09 06:18:34  gyogi445
+ * Updated stream_transducer code, vectorized stream aggregators, spectrum monitoring
+ *
+ * Revision 1.1  2009/03/05 18:18:46  guestgyg
+ * Initial SDM checkin with install, run and test commands
+ * Initial winpred.lps and random.lsp checkin
+ *
+ * Revision 1.1  2006/02/12 20:01:08  torer
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+ 
+/* Upper threshold predicate function 0.5 */ 
+create function gt05(number x)->boolean
+as x>0.5;
+
+/* Between limits 0.2 and 0.5 predicate function */ 
+create function bl_02_05(number x)->boolean
+as x<=0.5 and x>=0.2;
+
+/* "Generic" upper trheshold function */
+create function upperthrfn(Charstring name, Number th)->Function
+ as eval("create function "+name+"(Number x)->Boolean 
+            as x >= "+th+";");
+
+/* Partially evaluate upperthrfn */
+parteval("upperthrfn");
+ 
+/* Instanciation of the generic upper threshold function */
+upperthrfn("gt03", 0.3);
+
+/* Predicate windows on stream of 1000 U~(0,1) numbers based on gt05*/
+winpred(urrandstream(1000), #'gt05');
+
+/* Predicate windows on stream of 1000 U~(0,100) integers based on even */
+winpred(uirandstream(100,1000), #'INTEGER.EVEN->BOOLEAN');
+
+/* Count of predicate windows above a minimum length 
+   (# of elements) = 3 */
+count( select w 
+       from vector w 
+       where dim(w)>3 
+         and w = winpred(urandstream(1000), #'gt05'));
+
+/* Sum of lengths of predicate windows above a minimum length, 3  
+   (can be thought of sum of "extended stress")*/
+sum( select dim(w) 
+     from vector w 
+     where dim(w)>3 
+       and w = winpred(urrandstream(1000), #'gt05'));
+
+/***************************************************/
+/* Accumulated Extended Stress Calculations: 
+   Example of Stream Monitoring Query 
+   motivated by Ove's Haglunds analysis needs */
+/***************************************************/
+
+/* Function to define a stress function which 
+   calculates the *extended* stress during a predicate window,
+   i.e., the sum or values in and the length of a predicate 
+   window above a minimum length, minlen. */ 
+create function stressfn(Charstring fnname, Integer minlen)
+                         -> Function
+as eval(
+"create function " +fnname+ "(Vector of Number v)
+                            -> Vector of Number
+ as if dim(v)>" +minlen+ " then result {vsum(v), dim(v)}
+                           else result {0, 0};"
+); 
+
+parteval("stressfn");
+ 
+/* Query to calculate the extended stress of a stream of random 
+   numbers */ 
+select in(wds)
+from Stream of Real rs, 
+     Stream of Vector wps, 
+     Stream of Vector of Number wds, 
+     Function sfn
+where rs = nrrandstream(100)
+  and wps = swinpred(rs, #"gt0")
+  and sfn = stressfn("sfn", 2)
+  and wds = sapply(wps, sfn); 	
+
+/* Fn to calculate the accumilated extended stress
+   of a number stream */
+create function saccustress(Stream of Number s,
+                            Function thrpredfn,
+                            Function stressfn)
+                            -> Stream of Vector of Number
+  as select ssum(wds) 
+     from Stream of Vector wps, 
+          Stream of Vector of Number wds
+     where wps = swinpred(s, thrpredfn)
+       and wds = sapply(wps, stressfn);  
+
+/* Query to demonstrate saccustress */
+in(saccustress(nrrandstream(1000), #"gt0", stressfn("sfn", 3)));
+ 

@@ -1,0 +1,74 @@
+/*-*-sql-*-*************************************
+ * AMOS2
+ *
+ * Replace this to suit your BG configuration */
+
+/* Astron */
+/*
+set :bghostid = "10.20.1.17";
+set :bghome = "/bglst1/home/zeitler/amos/";
+set :bgout = :bghome + "out";
+set :bgscsq = :bghome + "scsq";
+set :environment = "batch";
+
+set :stdbgmode = "vn";
+set :numnodes = "32";
+
+set :iorichbgmode = "VN";
+set :iorichnumnodes = "64";
+set :tominutes = "10";
+set :crdatapath = :bghome + "out/crdata4/";
+
+
+set :bgsubmission = "cqsub -q default -C " + :bgout +
+                    " -t " + :tominutes + " -m " + :stdbgmode +
+                    " -n " + :numnodes + " " + :bgscsq + " bg.dmp";
+*/
+
+/* I/O rich partition */
+
+/*
+set :bgsubmission = "mpirun -np " + :iorichnumnodes +
+		    " -mode " + :iorichbgmode + 
+		    " -partition R001_B01 -exe " + :bgscsq +
+		    " -args \"bg.dmp\" >> ScsqLog 2>&1 &";
+*/
+
+/* Epcc: */
+/*
+set :bgsubmission = "cqsub -n 20 -t 10 -C %s ./scsq bg.dmp";
+
+mpirun: Needs separate partition parameter??
+"mpirun -partition UE_R000_32A -np 1 -cwd %s -exe ./scsq -args \"bg.dmp -l '(init-bg-node)' \" >> scsq.log 2>&1 &";
+set :bgmode = "batch";
+
+*/
+/* End Cobalt */
+
+/* PC */
+/* NB cmd.exe syntax: 
+	/k=keep window (useful for debug), 
+	/c=close window after exit */
+
+
+set :bgsubmission = "start cmd.exe /k mpiexec -n 4 " + 
+getenv("AMOS_HOME") + "\\\astro\\proc\\Debug\\proc.exe " +
+getenv("AMOS_HOME") + "\\astro\\bg.dmp";
+set :bghome = "";
+set :bghostid = "localhost";
+set :environment = "interactive";
+set :crdatapath="/crdata4/";
+
+
+/*
+Post link:
+start ..\bin\amos2.exe -O "scsq.osql"
+
+Example:
+pcfront\Debug\pcfront.exe scsq.dmp
+
+bg(mpismerge(vectorof(select bagof(sn(i,cast (i+10 as integer))) from integer i where i=iota(1,2 ))));
+
+*/
+/* End PC */
+/*********************************************/

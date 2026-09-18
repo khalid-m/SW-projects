@@ -1,0 +1,346 @@
+/*-*-sql-*-*******************************************************************/
+
+/* This is obsoleted by dasfaa10_scaleup.osql */
+
+logging off;
+
+create function tresult(integer rep)
+-> <integer exp, vector of vector of number, vector fov, real starttime>;
+create_index("tresult", "rep", "hash", "multiple");
+create function tbasedir()->charstring;
+create function pbasedir()->charstring;
+create function experimentdir()->charstring;
+
+/* Two basic functions to generate communication trees: 
+   commtree and hybtree. */
+
+create function hybtree_ib(stream of iarray s, integer fo)
+-> vector as select in(zipstreams(proc))
+from vector of stream of iarray pre,
+vector of stream of iarray sposrep,
+vector of stream of iarray squeries,
+vector of stream of darray proc,
+vector of stream of iarray preproc,
+stream of iarray ps
+where proc = mapstreams(preproc, #'stcount')
+and preproc = vselect mergestreams({sposrep[i], squeries[i]}) from integer i
+and sposrep = hpartstreamv(pre[0], #'lrproute', fo, {fo}, 0)
+and squeries = hpartstreamv(pre[1], #'bcast', fo, expv(fo), 0)
+and pre = splitstream(ps, 2, #'qdsplit')
+and ps = ostream(newsp(s), 0);
+
+create function rrtree(stream of iarray s, integer fo) -> vector as 
+select in(zipstreams(proc))
+from vector of stream of darray proc,
+vector of stream of iarray pmerge,
+vector of stream of iarray left,
+vector of stream of iarray right,
+vector of stream of iarray rr,
+stream of iarray ps
+where proc = mapstreams(pmerge, #'stcount')
+and pmerge = vselect mergestreams({left[i], right[i]}) from integer i
+and left = hpartstreamv(rr[0], #'lrproute', fo, {fo}, 0)
+and right = hpartstreamv(rr[1], #'lrproute', fo, {fo}, 0)
+and rr = splitstream(streamof(winagg(in(ps), 2, 2)), 2, #'rr')
+and ps = ostream(newsp(s), 0);
+
+create function rrtree_sort(stream of iarray s, integer fo) -> vector as 
+select in(zipstreams(proc))
+from vector of stream of darray proc,
+vector of stream of iarray pmerge,
+vector of stream of iarray left,
+vector of stream of iarray right,
+vector of stream of iarray rr,
+stream of iarray ps
+where proc = mapstreams(pmerge, #'stcount')
+and pmerge = vectorof(
+select streamof(smjna({spov(left[i]), spov(right[i])}, 1))
+from integer i where i in iota(0, dim(left) - 1))
+and left = hpartstreamv(rr[0], #'lrproute', fo, {fo}, 0)
+and right = hpartstreamv(rr[1], #'lrproute', fo, {fo}, 0)
+and rr = splitstream(streamof(winagg(in(ps), 2, 2)), 2, #'rr')
+and ps = ostream(newsp(s), 0);
+
+create function commtree(stream s, vector of integer fov)
+-> vector as select in(zipstreams(mapstreams(
+hpartstreamv(ps, #'lrproute', prod(in(fov)), fov, 0), #'stcount')))
+from stream ps
+where ps = ostream(newsp(s), 0);
+
+create function opttree(stream s, integer target_fo, integer bc)
+-> vector as select in(zipstreams(mapstreams(
+hpartstreamv(ps, #'lrproute', target_fo, fov, 0), #'stcount')))
+from stream ps, vector of integer fov
+where ps = ostream(newsp(s), 0)
+and fov = optv(target_fo, bc);
+
+/* Construct comm trees given an input stream. fanout = 2^exp
+   bin, exp, flat, twomax use commtree, which generates a comm tree with
+   fanout according to fanout vector.
+   x_hyb_tree contains two comm trees (fsplit and exp).
+   x_opttree needs knowledge of b.
+   x_rr_tree pre-splits the input stream into two parallel fsplits. */
+
+create function x_opttree(stream s, integer target_fo, integer bc,
+charstring odir) -> <integer expon, vector of vector of number res, 
+vector of integer fov, real sstart>
+as begin
+reset_ipr();
+proctime_dir(experimentdir() + "/" + odir);
+delay_file(experimentdir() + "/" + odir + "/delay");
+set fov = optv(target_fo, bc);
+set sstart = rnow();
+set res = opttree(s, target_fo, bc);
+print({target_fo, fov, res, sstart});
+result(select target_fo, res, fov, sstart);
+sleep(10);
+end;
+
+create function x_hyb_tree(stream of iarray s, integer exp, charstring odir)
+ -> <integer, vector of vector of number res, vector of integer, real sstart>
+as begin
+declare integer fo, vector of vector of integer fov;
+reset_ipr();
+set fo = integer(power(2, exp));
+proctime_dir(experimentdir() + "/" + odir);
+delay_file(experimentdir() + "/" + odir + "/delay");
+set fov = {{fo}, expv(fo)};
+set sstart = rnow();
+set res = hybtree_ib(s, fo);
+print ({exp, res, fov, sstart});
+result <exp, res, fov, sstart>;
+sleep(10);
+end;
+
+create function x_rr_tree(stream s, integer exp, charstring odir) ->
+<integer fo, vector of vector of number res, vector of integer, real sstart>
+as begin
+reset_ipr();
+set fo = integer(power(2, exp));
+proctime_dir(experimentdir() + "/" + odir);
+delay_file(experimentdir() + "/" + odir + "/delay");
+set sstart = rnow();
+set res = rrtree(s, fo);
+print({fo, res, sstart});
+result(select fo, res, {fo, fo}, sstart);
+sleep(10);
+end;
+
+create function x_tree(stream s, vector of integer fov, charstring odir) ->
+<integer expon, vector of vector of number res, vector of integer, real sstart>
+as begin
+reset_ipr();
+set expon = prod(in(fov));
+proctime_dir(experimentdir() + "/" + odir);
+delay_file(experimentdir() + "/" + odir + "/delay");
+set sstart = rnow();
+set res = commtree(s, fov);
+print({expon, fov, res, sstart});
+result(select expon, res, fov, sstart);
+sleep(10);
+end;
+
+/* train: Use this query together with the profiler to obtain an estimate
+          of a and max throughput. */
+
+create function train(integer rep) ->
+<integer expon, vector of vector of number, vector of integer, real starttime>
+as begin
+reset_ipr();
+proctime_dir(experimentdir());
+delay_file(experimentdir() + "/delay");
+set starttime = rnow();
+result(select 1, in(zipstreams(mapstreams(p, #'stcount'))), {1}, starttime
+from vector of stream p, stream s
+where p = hsplitstream(s, #'lrproute', 1, 0, 1)
+and s = ostream(newsp(i_hybrid(256, 10, rep)), 0));
+end;
+
+create function emitcap(integer rep) ->
+<integer expon, vector of vector of number, vector of integer, real starttime>
+as begin
+reset_ipr();
+proctime_dir(experimentdir());
+delay_file(experimentdir() + "/delay");
+set starttime = rnow();
+result(select 1, in(zipstreams(mapstreams({s}, #'stcount'))), {1}, starttime
+from stream s
+where s = ostream(newsp(i_hybrid(256, 10, rep)), 0));
+end;
+
+/*
+Experiment definitions:
+ - bin, exp, flat, twomax, hyb, opt, rr
+Parameter sweeps:
+ - _fo: keep bc constant, try fo = 2...64
+ - _bc: keep fo constant, try bc in {0, 5, 10, 50, 100, 500, 1000} */
+
+create function bin_fo(integer rep, integer maxexp, integer bc)
+ -> <integer, vector of vector of number, vector of integer, real>
+as select x_tree(i_hybrid(256, bc, rep), binv(i), stringify(power(2, i)))
+from integer i where i in iota(1, maxexp);
+
+create function exp_fo(integer rep, integer maxexp, integer bc)
+ -> <integer, vector of vector of number, vector of integer, real>
+as select x_tree(i_hybrid(256, bc, rep), expv(power(2, i)),
+stringify(power(2, i)))
+from integer i where i in iota(1, maxexp);
+
+create function flat_fo(integer rep, integer maxexp, integer bc)
+ -> <integer, vector of vector of number, vector of integer, real>
+as select x_tree(i_hybrid(256, bc, rep), {integer(power(2, i))},
+stringify(power(2, i)))
+from integer i where i in iota(1, maxexp);
+
+create function twomax_fo(integer rep, integer maxexp, integer bc)
+ -> <integer, vector of vector of number, vector of integer, real>
+as select x_tree(i_hybrid(256, bc, rep), two_maxv(power(2, i)),
+stringify(power(2, i)))
+from integer i where i in iota(1, maxexp);
+
+create function hyb_fo(integer rep, integer maxexp, integer bc)
+ ->  <integer, vector of vector of number, vector, real>
+as select x_hyb_tree(i_hybrid(256, bc, rep), i, stringify(power(2, i)))
+from integer i where i in iota(1, maxexp);
+
+create function var_fo(integer rep, integer maxexp, integer bc)
+ -> <integer, vector of vector of number, vector of integer, real>
+as select x_tree(i_hybrid(256, bc, rep), optv(power(2, i), bc),
+stringify(power(2, i)))
+from integer i where i in iota(1, maxexp);
+
+create function rr_fo(integer rep, integer maxexp, integer bc)
+ -> <integer, vector of vector of number, vector of integer, real>
+as select x_rr_tree(i_hybrid(256, bc, rep), i, stringify(power(2, i)))
+from integer i where i in iota(1, maxexp);
+
+/* */
+
+create function hyb_bc(integer rep, integer exp) ->
+<integer i, vector of vector of number res, vector of integer fov, real nuv>
+as select i, res, fov, nuv
+from integer d
+where i in {0, 5, 10, 50, 100, 500, 1000}
+and <d, res, fov, nuv> =
+x_hyb_tree(i_hybrid(256, i, rep), exp, stringify(i));
+
+create function var_bc(integer rep, integer exp)
+ -> <integer, vector of vector of number, vector of integer, real nuv>
+as select i, res, fov, nuv
+from integer i, integer d, vector of vector of number res, vector fov
+where i in {0, 5, 10, 50, 100, 500, 1000}
+and <d, res, fov, nuv> =
+x_opttree(i_hybrid(256, i, rep), integer(power(2, exp)), i, stringify(i));
+
+create function rr_bc(integer rep, integer exp)
+ -> <integer, vector of vector of number, vector of integer, real nuv>
+as select i, res, fov, nuv
+from integer i, integer d, vector of vector of number res, vector fov
+where i in {0, 5, 10, 50, 100, 500, 1000}
+and <d, res, fov, nuv> =
+x_rr_tree(i_hybrid(256, i, rep), exp, stringify(i));
+
+create function bin_bc(integer rep, integer exp)
+ -> <integer, vector of vector of number, vector of integer, real nuv>
+as select i, res, fov, nuv
+from integer i, integer d, vector of vector of number res, vector fov
+where i in {0, 5, 10, 50, 100, 500, 1000}
+and <d, res, fov, nuv> =
+x_tree(i_hybrid(256, i, rep), binv(exp), stringify(i));
+
+create function exp_bc(integer rep, integer exp)
+ -> <integer, vector of vector of number, vector of integer, real nuv>
+as select i, res, fov, nuv
+from integer i, integer d, vector of vector of number res, vector fov
+where i in {0, 5, 10, 50, 100, 500, 1000}
+and <d, res, fov, nuv> =
+x_tree(i_hybrid(256, i, rep), expv(power(2, exp)), stringify(i));
+
+create function flat_bc(integer rep, integer exp)
+ -> <integer, vector of vector of number, vector of integer, real nuv>
+as select i, res, fov, nuv
+from integer i, integer d, vector of vector of number res, vector fov
+where i in {0, 5, 10, 50, 100, 500, 1000}
+and <d, res, fov, nuv> = 
+x_tree(i_hybrid(256, i, rep), {integer(power(2, exp))}, stringify(i));
+
+create function twomax_bc(integer rep, integer exp)
+ -> <integer, vector of vector of number, vector of integer, real nuv>
+as select i, res, fov, nuv
+from integer i, integer d, vector of vector of number res, vector fov
+where i in {0, 5, 10, 50, 100, 500, 1000}
+and <d, res, fov, nuv> =  
+x_tree(i_hybrid(256, i, rep), two_maxv(power(2, exp)), stringify(i));
+
+
+/* statistical post processing */
+
+
+create function setuptime(vector of vector of number x, real inittime)->real as
+maxagg(select y[0] from vector of number y where y in x) - inittime;
+
+create function exectime(vector of vector of number x)->real as
+maxagg(select y[2] from vector of number y where y in x);
+
+create function countsum(vector of vector of number x)->integer as
+sum(select y[3] from vector of number y where y in x);
+
+create function massdelaystat_fo(charstring output)->boolean as
+writefile(output, (
+select {method, fo, delaystat(c)}
+from charstring c, integer fo, charstring method
+where c = "retout/" + method + stringify(fo) + ".vec"
+and method in {"bin", "exp", "flat", "twomax", "hyb", "var"}
+and fo in {2, 4, 8, 16, 32, 64, 128, 256}));
+
+create function massdelaystat_bc(charstring dir, charstring method, 
+                                 charstring output) -> boolean as
+writefile(output, (
+select {method, bc, delaystat(c)}
+from charstring c, integer bc
+where c = dir + "/" + method + stringify(bc) + ".vec"
+and bc in {0, 5, 10, 50, 100, 500, 1000}));
+
+
+lisp;
+;"
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;; BASIC TESTS ;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(imagesize 100000000)
+
+(checkequal "Experiment number"
+ ((osql "count(experiment());")
+  '((1))))
+
+(checkequal "proctimedir string"
+((osql "
+set tbasedir() = '/scratch/erikz/e/' + stringify(experiment()) + '/times';
+set pbasedir() = '/scratch/erikz/e/' + stringify(experiment()) + '/proctime';
+count(pbasedir());")
+'((1))))
+
+(checkequal "existence of proctimedir + subdirs"
+((osql "count(dir(pbasedir()));")
+'((6))))
+
+(checkequal "Input streams"
+ ((osql "count(in(i_hybrid(64, 5, 1)));")
+  '((1000)))
+ ((osql "count(in(i_hybrid(64, 5, 2)));")
+  '((2000)))
+((osql "
+select
+count(select v from iarray v where v in i_hybrid(64, i, 1) and v[0] = 0),
+count(select v from iarray v where v in i_hybrid(64, i, 1) and v[0] = 2)
+from integer i where i in {0,5,10,50,100,500,1000};")
+'((1000 0) (995 5) (990 10) (950 50) (900 100) (500 500) (0 1000))))
+
+(checkequal "qdsplit counts"
+((osql "
+select in(zipstreams(mapstreams(s, #'stream.scount->stream')))
+from vector of stream of iarray s 
+where s = splitstream(i_hybrid(64, 100, 1), 2, #'qdsplit');") 
+'((#(900 100)))))

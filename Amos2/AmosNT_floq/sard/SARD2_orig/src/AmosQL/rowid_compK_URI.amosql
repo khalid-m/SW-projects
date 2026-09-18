@@ -1,0 +1,282 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 Silvia Stefanova UDBL
+ * $RCSfile: rowid_compK_URI.amosql,v $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Create rowid (as a Charstring) when Pk is compound
+ ******************************************************************************/
+
+
+lisp;			
+	
+(defun separate-CKels-old (uri)
+ (let ((lista nil)
+       (urr uri))
+   (cond
+    ((null(string-pos uri "_")) urr);;if there is not '_'
+    ((null(eq (string-pos uri "_") 0)) urr);;if '_' is not on 0-position
+    (t
+     (setf urr (substring 1 (length uri) uri)) 
+     (if (null(string-pos urr "_"))
+	 (setf lista (cons (mksymbol urr) lista))
+       (setf lista (cons (mksymbol (substring 0 (- (string-pos urr "_") 1 ) urr)) (separate-CKels (substring (string-pos urr "_") (length urr) urr)))))))))
+
+
+(defun separate-CKels (uri)
+"Retrieves the values of the separate elements that were stringified, i.e. '_66_per' returns (66 'per')"
+ (let ((lista nil)
+       (urr nil))
+   (cond
+    ((null(string-pos uri "_")) urr);;if there is not '_'
+    ((null(eq (string-pos uri "_") 0)) urr);;if '_' is not on 0-position
+    (t
+     (setf urr (substring 1 (length uri) uri)) 
+     (if (null(string-pos urr "_"))
+  	  (list (encode-numeric urr));;if there are no more "_"
+	(cons (encode-numeric (substring 0 (- (string-pos urr "_") 1 ) urr)) (separate-CKels (substring (string-pos urr "_") (length urr) urr))))))));;if there are more "_"
+
+
+(defun is-valid-cid (cid)
+"Checks whether the URI cid is a class URI, defined in cmap"
+  (let ( (ls  (amosql "ucmap();")))
+    (dolist (el ls)
+	(if (stringp (car (last el)))
+	  (if (string-like-i cid (car (last el)))
+	    (return T))))))
+
+
+
+(defun row-ident-old (fno rid cid pks)
+"Decodes the row identifier from the string rid, subject identifier cid" 
+    (if (and (stringp rid)(is-valid-cid cid) );;if rid is a string and cid is a valid class URI
+       (progn
+	(cond 
+	  ((null (string-pos rid "/_")) nil);;if /_ is not included in the rid	
+          (t 
+		  (if (null (equal cid (substring 0 (- (length cid) 1) rid)))
+			nil; ;if rid and cid do not belong to the same table
+		   (progn
+		    (let ((concvec (substring (+ (length cid) 1) (length rid) rid)))
+		    (osql-result rid cid (listtoarray (separate-CKels concvec)))))))
+	))))
+		
+
+(defun row-ident (fno rid cid pks)
+"Decodes the row identifier from the string rid, subject identifier cid" 
+    (if (and (stringp rid)(is-valid-cid cid) );;if rid is a string and cid is a valid class URI
+       (progn
+	(cond 
+	  ((null (string-pos rid "/_")) nil);;if /_ is not included in the rid	
+          (t 
+		  (if (null (string-like-i rid (concat (substring 0 (- (length cid) 2) cid) "*")))
+			nil    ;;if rid and cid do not belong to the same table
+		   (progn
+		      (if  (null (equal ">" (substring (- (length rid) 1) (length rid) rid)));;unload case
+                        (let ((concvec (substring (+ (length cid) 1) (length rid) rid)))
+ 	                       (osql-result rid cid (listtoarray (separate-CKels concvec))))
+	                (let ((concvec (substring (length cid)  (- (length rid) 2) rid)));; restore case
+                               (osql-result rid cid (listtoarray (separate-CKels concvec)))))))
+	)))))
+
+(defun row-ident-fk (fno rid cid pks)
+"Decodes FK row identifier from the string rid, identifier cid" 
+    (if (and (stringp rid)(is-valid-cid cid) );;if rid is a string and cid is a valid class URI
+       (progn
+	(cond 
+	  ((null (string-pos rid "/_")) nil);;if /_ is not included in the rid	
+          (t 
+		  (if (null (string-like-i rid (concat (substring 0 (- (length cid) 2) cid) "*")))
+			nil    ;;if rid and cid do not belong to the same table
+		   (progn
+		      (if  (null (equal ">" (substring (- (length rid) 1) (length rid) rid)));;unload case
+                        (let ((concvec (substring (+ (length cid) 1) (length rid) rid)))
+ 	                       (osql-result rid cid (listtoarray (separate-CKels concvec))))
+	                (let ((concvec (substring (length cid)  (- (length rid) 2) rid)));; restore case
+                               (osql-result rid cid (list (separate-CKels concvec))))))))))))
+
+
+(defun concatckels-+ (fno vec res)
+   (osql-result vec (concat "_" (concatl (arraytolist vec) "_") ) ) )
+
+
+(defun concat-str-vecels (str vec)
+   (cond (( null str) NIL) 
+	 ((null vec) NIL)
+	 ((listp str) NIL)
+	 ((null(listp vec)) NIL)
+	(t
+	  (mapcar (f/l (vecel) (concat (concat  str "_") vecel)) vec))))
+
+
+(defun concat-str-vecels--+ (fno str vec res)
+    (osql-result str vec (mapcar (f/l (vecel) (concat (concat  str "_") vecel)) (arraytolist vec))))
+
+(defun concat-str-vecels--+ (fno str vec res)
+    (osql-result str vec (concatl (mapcar (f/l (vecel) (concat (concat  str "_") vecel)) (arraytolist vec)) ",")))
+
+
+(defun construct-vectorfk (fno list res)
+	(osql-result list (listtoarray (cdr list))))
+
+(defun invert-vectorfk (fno vec res)
+	(osql-result vec (arraytolist vec)))
+
+(defun concatckels-n-+ (fno list res)
+	(cond ((listp list) 
+			(if (null (cadr list)) NIL
+			  (osql-result list (concat "/_" (concatl (cdr list) "_" )))))
+	      ((arrayp list) (osql-result list (concat "/_" (concatl (arraytolist list) "_"))))
+	      ((atom list) NIL)
+	      (t NIL )))
+
+
+(defun decode-fk--+ (fno pref list res)
+"Row identity for a foreign key value"
+	(cond ((listp list) 
+			(if (null (cadr list)) (osql-result pref list NIL)
+			  (osql-result pref list (concat pref "/_" (concatl (cdr list) "_" )))))
+	      ((arrayp list) (osql-result pref list (concat pref "/_" (concatl (arraytolist list) "_"))))
+	      ((atom list) (osql-result pref list NIL))
+	      (t (osql-result pref list NIL))))
+
+  
+
+:osql
+
+create function construct_vectorfk(Bag b)->Vector
+	as foreign "construct-vectorfk";
+
+
+create function invert_vectorfk(Vector vec)->Bag
+	as foreign "invert-vectorfk";
+
+
+create function vector_fk(Bag b)->Vector vec
+as multidirectional ('bf' select construct_vectorfk(b))
+		    ('fb' select invert_vectorfk(vec));
+
+
+				
+create function concatCKels(Vector vec)->Charstring
+/*Concatenates the elements of a vector with a delimiter "_" between each (els of compaund key)*/
+   as foreign "concatckels-+";
+
+create function concatCKels_n(Tuple list)->Charstring
+/*Concatenates the elements of a vector with a delimiter "_" between each (els of compaund key)*/
+   as foreign "concatckels-n-+";
+
+create function concat_cols(Charstring tit, Vector vec)->Charstring
+/*Concatenates each el of vector vec with the string tit*/
+as foreign "concat-str-vecels--+";
+ 
+create function row_ident(Charstring rid ,Charstring cid )-> Vector pks key
+as foreign 'row-ident';
+
+create function row_ident_fk(Charstring rid key,Charstring cid key)-> Tuple pks
+as foreign 'row-ident-fk';
+
+
+create function decode_key(Charstring pre , Vector k )->Charstring key
+/*Concatenates pre, '/' and '_' and vector el (latter two for each vector el*/
+as foreign "decode-key--+";
+
+create function decode_key_fk_old(Charstring pre, Tuple k)->Charstring
+/*Concatenates pre, '/' and '_' and vector el (latter two for each vector el*/
+	as concat(pre, concatCKels_n(k));
+
+create function decode_key_fk(Charstring pre, Tuple k)->Charstring
+	as foreign "decode-fk--+";
+
+
+create function rowid(Charstring cid, Vector pks )->Charstring rid 
+as multidirectional ('bbf' select decode_key(cid,pks))
+		    ('bfb' select row_ident(rid,cid));
+
+create function rowid_URI(Charstring cid, Vector pks )->URI rid 
+as multidirectional ('bbf' select uri(decode_key(cid,pks)))
+		    ('bfb' select row_ident(urii(rid),cid));
+
+
+declare_key(#'CHARSTRING.VECTOR.ROWID_URI->URI',{'cid','pks'});
+declare_key(#'CHARSTRING.VECTOR.ROWID_URI->URI',{'rid'});
+
+create function rowid_fk(Charstring cid, Tuple pks)->Charstring rid key
+as multidirectional ('bbf' select decode_key_fk(cid,pks))
+		    ('bfb' select row_ident_fk(rid,cid));
+
+
+create function formVal(Literal val key, Charstring xsdtype key)->Charstring maptype
+as foreign 'gen-concat';	
+
+create function retrieveVal(Charstring mapvalue,Charstring xsdtype)->Literal val
+as foreign 'split-value';
+
+create function valueid(Literal val, Charstring xsdtype)->Charstring mapvalue key
+as multidirectional ('bbf' select formVal(val,xsdtype))
+		    ('fbb' select retrieveVal(mapvalue,xsdtype));
+
+
+/*
+create function rowid(Charstring uri, Charstring pk)->Charstring rid
+as multidirectional ('bbf' key select concat(concat(uri,"/"),pk))
+		    ('bfb' key select pk from Charstring pk
+				where rid=(concat(concat(uri,"/"),pk)));
+
+*/
+
+
+
+
+
+
+
+
+
+/* Fn for defining a class relationship view for a class relationship property mapped to 
+ * a foreign key column for a mapped class (Silvia's version)
+ */
+/*
+create function genFPV(Charstring upv,		
+	                Charstring tn,
+                        Charstring cn,
+                        Charstring otn,
+			Charstring oc)->Charstring clause
+  as select "(" + genRelcall(upv,tn) + " and 
+	" + genRelcall(upv,otn) + " and 
+	"+tn+"_"+cn+"="+otn+"_"+oc+" and
+        cMap('" + tn + "','" + upv + "', cid) and 
+        rMap1('" + tn + "','" + cn + "','" + otn + "','" + oc + "','"+upv +"', p) and
+        s = rowID(cid," + k + ") and 
+        val = rowID(cMap('" + otn + "','" + upv + "'),
+                      " + ko + "))"
+     from Charstring k, Charstring ko
+     where k = getKeyrr(DSOfUPV(upv),tn) and
+	   ko= getKeyrr(DSOfUPV(upv), otn);
+
+*/
+
+/* Generate class relationship views for each class relationship property for each mapped class.
+Version with rmap1
+ */
+/*
+create function genFPVs(Charstring up)->Bag of Charstring
+  as 
+  for each Charstring tn, Charstring cid where cMap(tn,up,cid)
+  begin 
+   for each Charstring cn,Charstring otn,Charstring oc,Charstring prop
+    where rMap1(tn,cn,otn,oc,up)=prop
+   begin
+    result genFPV(up,tn,cn,otn,oc);
+   end;
+  end;
+*/
+
+
+
+
+
+
+
+

@@ -1,0 +1,190 @@
+/***********************First**********************************/
+JavaAMOS 3> lisp;
+lisp 3> (pc _select_)
+----------------------------
+  Original definition of *SELECT*:
+(CREATE-FUNCTION #[OID 27 "*SELECT*"] NIL NIL AS
+   ((CALLWEBSERVICE "http://ws.strikeiron.com/USDAData?WSDL" "SearchFoodByDescri
+ption"
+       (VECTOR "Sweet" "1900"))))
+
+  Unoptimized objectlog:
+(*SELECT* _V2+) <-
+(AND (VECTOR _V1 "Sweet" "1900")
+     (CHARSTRING.CHARSTRING.VECTOR.CALLWEBSERVICE->VECTOR "http://ws.strikeiron.
+com/USDAData?WSDL"
+        "SearchFoodByDescription" _V1 _V2))
+
+ Rewritten ObjectLog:
+(*SELECT* _V2+) <-
+(AND (VECTOR _V1 "Sweet" "1900")
+     (P_OPERATOR.SOAPACTIONURI->CHARSTRING _V4 _V11)
+     (P_OPERATOR.STYLE->CHARSTRING _V4 _V10)
+     (P_OPERATOR.ENCODINGSTYLE->CHARSTRING _V4 _V9)
+     (P_OPERATOR.TARGETOBJECTURI->CHARSTRING _V4 _V8)
+     (P_OPERATOR.NAMESPACEURI->CHARSTRING _V4 _V7)
+     (P_OPERATOR.TARGETURL->CHARSTRING _V4 _V6)
+     (CHARSTRING.CHARSTRING.DECODE->VECTOR "http://ws.strikeiron.com/USDAData?WS
+DL"
+        "SearchFoodByDescription" _V5)
+     (CHARSTRING.CHARSTRING.CHARSTRING.CHARSTRING.CHARSTRING.CHARSTRING.CHARSTRI
+NG.VECTOR.VECTOR.CALL_WEBSERVICE->VECTOR
+        "SearchFoodByDescription" _V11 _V10 _V9 _V8 _V7 _V6 _V1 _V5 _V2)
+     (P_OPERATOR.NAME->CHARSTRING _V4 "SearchFoodByDescription")
+     (P_WEBSERVICE.NAME->CHARSTRING _V3 "http://ws.strikeiron.com/USDAData?WSDL"
+)
+     (P_WEBSERVICE.PORT->OPERATOR _V3 _V4)
+     (OBJECT.TYPESOF->TYPE _V1 #[OID 18 "VECTOR"]))
+
+  Coerced objectlog: same
+  Decomposed predicate:
+(*SELECT* _V2+) <-
+(AND (CALL CONSTRUCT-VECTOR #[OID 47 "VECTOR"] _V1 "Sweet" "1900")
+     (CALL OBJECT.TYPESOF-- #[OID 24 "OBJECT.TYPESOF->TYPE"] _V1 #[OID 18 "VECTO
+R"])
+     (CALL CHARSTRING.CHARSTRING.DECODE->VECTOR--+ #[OID 1131 "CHARSTRING.CHARST
+RING.DECODE->VECTOR"]
+        "http://ws.strikeiron.com/USDAData?WSDL" "SearchFoodByDescription"
+        _V5)
+     (P_OPERATOR.NAME->CHARSTRING _V4 "SearchFoodByDescription")
+     (P_OPERATOR.SOAPACTIONURI->CHARSTRING _V4 _V11)
+     (P_OPERATOR.STYLE->CHARSTRING _V4 _V10)
+     (P_OPERATOR.ENCODINGSTYLE->CHARSTRING _V4 _V9)
+     (P_OPERATOR.TARGETOBJECTURI->CHARSTRING _V4 _V8)
+     (P_OPERATOR.NAMESPACEURI->CHARSTRING _V4 _V7)
+     (P_OPERATOR.TARGETURL->CHARSTRING _V4 _V6)
+     (CALL #extpred "JAVA:WEBSERVICEWRAPPER/INITOPERATION"# #[OID 1133 "CHARSTRI
+NG.CHARSTRING.CHARSTRING.CHARSTRING.CHARSTRING.CHARSTRING.CHARSTRING.VECTOR.VECT
+OR.CALL_WEBSERVICE->VECTOR"]
+        "SearchFoodByDescription" _V11 _V10 _V9 _V8 _V7 _V6 _V1 _V5 _V2)
+     (P_WEBSERVICE.NAME->CHARSTRING _V3 "http://ws.strikeiron.com/USDAData?WSDL"
+)
+     (P_WEBSERVICE.PORT->OPERATOR _V3 _V4))
+
+  Locals:    (_V11 _V10 _V9 _V8 _V7 _V6 _V5 _V4 _V3 _V1)
+NIL
+0.078 s
+lisp 3> :osql
+
+/*************************************Second************************************/
+
+JavaAMOS 9> lisp;
+lisp 9> (pc _select_)
+----------------------------
+  Original definition of *SELECT*:
+(CREATE-FUNCTION #[OID 27 "*SELECT*"] NIL NIL AS
+   ((CALLWEBSERVICE "http://ws.strikeiron.com/USDAData?WSDL" "SearchFoodByDescri
+ption"
+       (VECTOR "Sweet" "1900"))))
+
+  Unoptimized objectlog:
+(*SELECT* _V2+) <-
+(AND (VECTOR _V1 "Sweet" "1900")
+     (CHARSTRING.CHARSTRING.VECTOR.CALLWEBSERVICE->VECTOR "http://ws.strikeiron.
+com/USDAData?WSDL"
+        "SearchFoodByDescription" _V1 _V2))
+
+ Rewritten ObjectLog:
+(*SELECT* _V2+) <-
+(AND (VECTOR _V1 "Sweet" "1900")
+     (P_OPERATOR.NAMESPACEURI->CHARSTRING #[OID 1139] _V7)
+     (P_OPERATOR.TARGETURL->CHARSTRING #[OID 1139] _V6)
+     (CHARSTRING.CHARSTRING.DECODE->VECTOR "http://ws.strikeiron.com/USDAData?WS
+DL"
+        "SearchFoodByDescription" _V5)
+     (CHARSTRING.CHARSTRING.CHARSTRING.CHARSTRING.CHARSTRING.CHARSTRING.CHARSTRI
+NG.VECTOR.VECTOR.CALL_WEBSERVICE->VECTOR
+        "SearchFoodByDescription" "http://www.strikeiron.com/SearchFoodByDescrip
+tion"
+        "document" "http://schemas.xmlsoap.org/soap/encoding/" "http://www.strik
+eiron.com/"
+        _V7 _V6 _V1 _V5 _V2)
+     (P_WEBSERVICE.PORT->OPERATOR #[OID 1138] #[OID 1139])
+     (OBJECT.TYPESOF->TYPE _V1 #[OID 18 "VECTOR"]))
+
+  Coerced objectlog: same
+  Decomposed predicate:
+(*SELECT* _V2+) <-
+(AND (CALL CONSTRUCT-VECTOR #[OID 47 "VECTOR"] _V1 "Sweet" "1900")
+     (CALL OBJECT.TYPESOF-- #[OID 24 "OBJECT.TYPESOF->TYPE"] _V1 #[OID 18 "VECTO
+R"])
+     (P_OPERATOR.NAMESPACEURI->CHARSTRING #[OID 1139] _V7)
+     (P_OPERATOR.TARGETURL->CHARSTRING #[OID 1139] _V6)
+     (CALL CHARSTRING.CHARSTRING.DECODE->VECTOR--+ #[OID 1131 "CHARSTRING.CHARST
+RING.DECODE->VECTOR"]
+        "http://ws.strikeiron.com/USDAData?WSDL" "SearchFoodByDescription"
+        _V5)
+     (CALL #extpred "JAVA:WEBSERVICEWRAPPER/INITOPERATION"# #[OID 1133 "CHARSTRI
+NG.CHARSTRING.CHARSTRING.CHARSTRING.CHARSTRING.CHARSTRING.CHARSTRING.VECTOR.VECT
+OR.CALL_WEBSERVICE->VECTOR"]
+        "SearchFoodByDescription" "http://www.strikeiron.com/SearchFoodByDescrip
+tion"
+        "document" "http://schemas.xmlsoap.org/soap/encoding/" "http://www.strik
+eiron.com/"
+        _V7 _V6 _V1 _V5 _V2)
+     (P_WEBSERVICE.PORT->OPERATOR #[OID 1138] #[OID 1139]))
+
+  Locals:    (_V7 _V6 _V5 _V1)
+NIL
+0.062 s
+lisp 9> :osql
+
+
+/**************************************Third****************************************************/
+
+
+lisp 14> (pc _select_)
+----------------------------
+  Original definition of *SELECT*:
+(CREATE-FUNCTION #[OID 27 "*SELECT*"] NIL NIL AS
+   ((CALLWEBSERVICE "http://ws.strikeiron.com/USDAData?WSDL" "SearchFoodByDescri
+ption"
+       (VECTOR "Sweet" "1900"))))
+
+  Unoptimized objectlog:
+(*SELECT* _V2+) <-
+(AND (VECTOR _V1 "Sweet" "1900")
+     (CHARSTRING.CHARSTRING.VECTOR.CALLWEBSERVICE->VECTOR "http://ws.strikeiron.
+com/USDAData?WSDL"
+        "SearchFoodByDescription" _V1 _V2))
+
+ Rewritten ObjectLog:
+(*SELECT* _V2+) <-
+(AND (VECTOR _V1 "Sweet" "1900")
+     (CHARSTRING.CHARSTRING.CHARSTRING.CHARSTRING.CHARSTRING.CHARSTRING.CHARSTRI
+NG.VECTOR.VECTOR.CALL_WEBSERVICE->VECTOR
+        "SearchFoodByDescription" "http://www.strikeiron.com/SearchFoodByDescrip
+tion"
+        "document" "http://schemas.xmlsoap.org/soap/encoding/" "http://www.strik
+eiron.com/"
+        "http://www.strikeiron.com/" "http://ws.strikeiron.com/StrikeIron/USDADa
+ta"
+        _V1
+        #("FoodKeywords" "FoodGroupCode")
+        _V2)
+     (OBJECT.TYPESOF->TYPE _V1 #[OID 18 "VECTOR"]))
+
+  Coerced objectlog: same
+  Decomposed predicate:
+(*SELECT* _V2+) <-
+(AND (CALL CONSTRUCT-VECTOR #[OID 47 "VECTOR"] _V1 "Sweet" "1900")
+     (CALL OBJECT.TYPESOF-- #[OID 24 "OBJECT.TYPESOF->TYPE"] _V1 #[OID 18 "VECTO
+R"])
+     (CALL #extpred "JAVA:WEBSERVICEWRAPPER/INITOPERATION"# #[OID 1133 "CHARSTRI
+NG.CHARSTRING.CHARSTRING.CHARSTRING.CHARSTRING.CHARSTRING.CHARSTRING.VECTOR.VECT
+OR.CALL_WEBSERVICE->VECTOR"]
+        "SearchFoodByDescription" "http://www.strikeiron.com/SearchFoodByDescrip
+tion"
+        "document" "http://schemas.xmlsoap.org/soap/encoding/" "http://www.strik
+eiron.com/"
+        "http://www.strikeiron.com/" "http://ws.strikeiron.com/StrikeIron/USDADa
+ta"
+        _V1
+        #("FoodKeywords" "FoodGroupCode")
+        _V2))
+
+  Locals:    (_V1)
+NIL
+0.047 s
+lisp 14> :osql
+

@@ -1,0 +1,148 @@
+lisp;
+
+(defun hashok (x y)
+    "Performs hash test on two variables"
+    (if (equal x y)
+        (equal (sxhash x) (sxhash y))))
+
+(defun triplehashok (t1 t2)
+    "Performs hash test on two triples"
+    (if (null t1)
+        T
+        (if (hashok (first t1) (first t2))
+            (triplehashok (rest t1) (rest t2)))))
+
+(defun triplelisthashok (l1 l2)
+    "Performs hash test on two triple lists"
+    (if (null l1)
+        T
+        (if (triplehashok (first l1) (first l2))
+            (triplelisthashok (rest l1) (rest l2)))))
+
+(defun propsok (x y)
+    "Performs property test on resource"
+    (if (equal (rdfr-data x) (nth 0 y))
+        (if (equal (rdfr-lang x) (nth 1 y))
+            (if (equal (rdfr-datatype x) nil)
+                (equal (rdfr-datatype x) (nth 2 y))
+                (if (equal (rdfr-data (rdfr-datatype x)) (nth 2 y))
+                T)))))
+
+(defun triplepropsok (t1 t2)
+    "Performs property equal test on two triples"
+    (if (null t1)
+        T
+        (if (propsok (first t1) (first t2))
+            (triplepropsok (rest t1) (rest t2)))))
+
+(defun triplelistpropsok (l1 l2)
+    "Performs property equal test on two triple lists"
+    (if (null l1)
+        T
+        (if (triplepropsok (first l1) (first l2))
+            (triplelistpropsok (rest l1) (rest l2)))))
+
+(defglobal testlist1)
+(setq testlist1 nil)
+(setq testlist1 (cons (list #[RDFR 0 "http://example.org/resource1" "" nil] #[RDFR 0 "http://example.org/property" "" nil] #[RDFR 1 "+20.0" "" #[RDFR 0 "http://www.w3.org/2001/XMLSchema#decimal" "" nil]]) testlist1))
+(setq testlist1 (cons (list #[RDFR 0 "http://example.org/resource2" "" nil] #[RDFR 0 "http://example.org/property" "" nil] #[RDFR 1 "-3.0" "" #[RDFR 0 "http://www.w3.org/2001/XMLSchema#decimal" "" nil]]) testlist1))
+
+(setq testlist1 (cons (list #[RDFR 0 "http://dbpedia.org/resource/Abadilah" "" nil] #[RDFR 0 "http://www.w3.org/2003/01/geo/wgs84_pos#lat" "" nil] #[RDFR 1 "25.43E2" "" #[RDFR 0 "http://www.w3.org/2001/XMLSchema#float" "" nil]]) testlist1))
+(setq testlist1 (cons (list #[RDFR 0 "http://dbpedia.org/resource/Abadilah" "" nil] #[RDFR 0 "http://www.w3.org/2003/01/geo/wgs84_pos#long" "" nil] #[RDFR 1 "56.1913888889" "" #[RDFR 0 "http://www.w3.org/2001/XMLSchema#float" "" nil]]) testlist1))
+
+(setq testlist1 (cons (list #[RDFR 0 "http://example.org/resource30" "" nil] #[RDFR 0 "http://example.org/property" "" nil] #[RDFR 1 "chat" "fr" nil]) testlist1))
+(setq testlist1 (cons (list #[RDFR 0 "http://example.org/resource31" "" nil] #[RDFR 0 "http://example.org/property" "" nil] #[RDFR 1 "chat" "en" nil]) testlist1))
+
+(defglobal testlist2)
+(setq testlist2 (ntriples "nt/test.nt"))
+
+(defglobal testlist3)
+(setq testlist3 nil)
+(setq testlist3 (cons (list (list "http://example.org/resource1" "" nil) (list "http://example.org/property" "" nil) (list 20.0 "" "http://www.w3.org/2001/XMLSchema#decimal")) testlist3))
+(setq testlist3 (cons (list (list "http://example.org/resource2" "" nil) (list "http://example.org/property" "" nil) (list -3.0 "" "http://www.w3.org/2001/XMLSchema#decimal")) testlist3))
+
+(setq testlist3 (cons (list (list "http://dbpedia.org/resource/Abadilah" "" nil) (list "http://www.w3.org/2003/01/geo/wgs84_pos#lat" "" nil) (list 25.43E2 "" "http://www.w3.org/2001/XMLSchema#float")) testlist3))
+(setq testlist3 (cons (list (list "http://dbpedia.org/resource/Abadilah" "" nil) (list "http://www.w3.org/2003/01/geo/wgs84_pos#long" "" nil) (list 56.1913888889 "" "http://www.w3.org/2001/XMLSchema#float")) testlist3))
+
+(setq testlist3 (cons (list (list "http://example.org/resource30" "" nil) (list "http://example.org/property" "" nil) (list "chat" "fr" nil)) testlist3))
+(setq testlist3 (cons (list (list "http://example.org/resource31" "" nil) (list "http://example.org/property" "" nil) (list "chat" "en" nil)) testlist3))
+
+(rdf-print testlist1 "temp_for_test.txt")
+(defglobal testlist4)
+(setq testlist4 (ntriples "temp_for_test.txt"))
+(delete-file "temp_for_test.txt")
+
+(checkequal "rdfresource from file and from reader function"
+  (testlist1
+   testlist2))
+
+(checkequal "rdfresource print function"
+  (testlist1
+   testlist4))
+
+(checkequal "rdfresource properties 1"
+  ((triplelistpropsok testlist1 testlist3)
+   T))
+
+(checkequal "rdfresource properties 2"
+  ((triplelistpropsok testlist2 testlist3)
+   T))
+
+(checkequal "rdfresource hashing"
+  ((triplelisthashok testlist1 testlist2)
+   T))
+
+(defglobal rdfr1)
+(defglobal rdfr2)
+(defglobal rdfr3)
+
+(setq rdfr1 #[RDFR 1 "3.0" "" #[RDFR 0 "http://www.w3.org/2001/XMLSchema#float" "" nil]])
+(setq rdfr2 #[RDFR 1 "INF" "" #[RDFR 0 "http://www.w3.org/2001/XMLSchema#float" "" nil]])
+(checkequal "real compare 1"
+  ((compare rdfr1 rdfr2)
+   -1))
+
+(setq rdfr1 #[RDFR 1 "25.43E2" "" #[RDFR 0 "http://www.w3.org/2001/XMLSchema#float" "" nil]])
+(setq rdfr2 #[RDFR 1 "2.543E3" "" #[RDFR 0 "http://www.w3.org/2001/XMLSchema#float" "" nil]])
+(checkequal "real compare 2"
+  ((compare rdfr1 rdfr2)
+   0))
+
+(setq rdfr1 (rdfr-make 0 "uri" "" nil))
+(setq rdfr2 (rdfr-make 1 "test" "en" rdfr1))
+(setq rdfr3 (rdfr-make 2 "" "" nil))
+(checkequal "ALisp external functions"
+  ((and
+    (equal (rdfr-isuri rdfr1) T)
+    (equal (rdfr-islit rdfr1) nil)
+    (equal (rdfr-isbnode rdfr1) nil)
+    (equal (rdfr-isuri rdfr2) nil)
+    (equal (rdfr-islit rdfr2) T)
+    (equal (rdfr-isbnode rdfr2) nil)
+    (equal (rdfr-isuri rdfr3) nil)
+    (equal (rdfr-islit rdfr3) nil)
+    (equal (rdfr-isbnode rdfr3) T)
+    (equal (rdfr-kind rdfr2) 1)
+    (equal (rdfr-data rdfr2) "test")
+    (equal (rdfr-lang rdfr2) "en")
+    (equal (rdfr-datatype rdfr2) rdfr1))
+   T))
+
+(osql "set :rdfr1 = rdfr(0, \"uri\", \"\", nil);")
+(osql "set :rdfr2 = rdfr(1, \"test\", \"en\", :rdfr1);")
+(osql "set :rdfr3 = rdfr(2, \"\", \"\", nil);")
+(osql "select k, d, l, dt
+       into :k, :d, :l, :dt
+       from Integer k, Charstring d, Charstring l, Object dt
+       where rdfr(k, d, l, dt) = :rdfr2;
+")
+(checkequal "AmosQL external functions"
+  ((and
+    (equal (osql "rdfr_kind(:rdfr2) = :k;") '((TRUE)))
+    (equal (osql "rdfr_data(:rdfr2) = :d;") '((TRUE)))
+    (equal (osql "rdfr_lang(:rdfr2) = :l;") '((TRUE)))
+    (equal (osql "rdfr_datatype(:rdfr2) = :dt;") '((TRUE)))
+    (equal (osql "rdfr_datatype(:rdfr2) = :rdfr1;") '((TRUE))))
+   T))
+
+:osql

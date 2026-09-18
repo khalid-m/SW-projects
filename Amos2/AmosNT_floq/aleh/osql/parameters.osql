@@ -1,0 +1,41 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2004 Ruslan Fomkin, UDBL
+ * $RCSfile: parameters.osql,v $
+ * $Revision: 1.3 $ $Date: 2006/08/17 07:28:17 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Setting parameters values. Correspons to the file management.
+ *
+ ****************************************************************************
+ * $Log: parameters.osql,v $
+ * Revision 1.3  2006/08/17 07:28:17  ruslan
+ * moving aleh operations file back to schema file
+ *
+ * Revision 1.2  2006/08/17 06:59:16  ruslan
+ * loading parameters schema is moved from schema file to parameters file
+ *
+ ****************************************************************************/
+
+<"parameters.schema.osql";
+
+create Parameters instances :g;
+set minPtL(:g)=7.0;
+set hardPtL(:g)=20.0;
+set etaL(:g)=2.4;
+set zMass(:g)=91.1882;
+set minZMass(:g)=10.0;
+set etaJ(:g)=4.5;
+set minPtJ(:g)=20.0;
+set forBJet(:g)=5;
+set wMass(:g)=80.419;
+set allowedWMass(:g)=15.0;
+set tMass(:g)=174.3;
+set allowedTMass(:g)=35.0;
+set ptOJets(:g)=70.0;
+set maxPtAll(:g)=150.0;
+set maxPtSoft(:g)=40.0;
+set minTransEe(:g)=40.0;
+set maxEfMass(:g)=150.0;

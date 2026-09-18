@@ -1,0 +1,113 @@
+/*-*-sql-*-*******************************************************************/
+
+/* Windowed queries, load hlund_ex.osql first */
+
+create function retw(stream of window sw) -> stream of logevent 
+ /* Retrieve logevents from windows */
+ as streamof(select e from logevent e, window w
+             where w in sw and e in w);
+
+/* Functions for forming windows of the >=75 peaks */
+create function start_test(logevent e) -> number x 
+ as select x where x = value(e) and x >= 75 and variable(e)="REG401";
+
+create function stop_test(logevent e0, logevent e) -> boolean 
+ as select true where value(e) < 75 and variable(e)="REG401";
+
+create function w1() -> stream of window as
+ pwindowize(simlogeventstream(dirnamed('d1')),#'start_test',#'stop_test');
+
+/* Look at the peaks */
+create function wq1a() -> bag of (number,charstring,number,number,charstring) as
+ for each logevent e where e in retw(w1())
+  return (select timestamp(e),variable(e),t_offset(e),value(e),filename(logfile(e))
+          where variable(e)="REG401");
+
+
+/* Using record_agg */
+create function start_test_ra(record r) -> number
+ as select r["REG401"]
+    where r["REG401"] >= 75 and
+          r["REG403"] = 1;
+
+create function stop_test_ra(record r0, record r) -> boolean
+ as select true 
+    where (r["REG401"] < 75 and r["REG403"] = 1) or r["REG403"] = 0;
+
+create function w2() -> stream of window as
+ pwindowize(streamof(record_agg(simlogeventstream(dirnamed('d1')))),
+            #'start_test_ra',#'stop_test_ra');
+
+create function rretw(stream of window sw) -> stream of record
+ as streamof(select r from record r, window w
+             where r in w and w in sw);
+
+create function wq2a() -> bag of (number,number) as
+ for each record r where r in rretw(w2())
+  return (select r["TS"],r["REG401"]);
+
+
+/* Using events */
+create function wq2b() -> bag of (number,number,charstring) as
+ for each record r where r in rretw(w2())
+  return (select timestamp(e401),value(e401),filename(logfile(e401))
+          from logevent e401
+          where r["TS"] = timestamp(e401) and
+                r["REG401-EVENT"] = e401);
+
+
+create function le_ts_span(window w) -> number 
+ /* Timespan of a logevent window */
+ as select mx-mn from number mn, number mx
+    where mx = maxagg(select timestamp(e) from logevent e where e in w) and
+          mn = minagg(select timestamp(e) from logevent e where e in w);
+
+/* Timespan of the peaks */
+create function wq3a() -> bag of number as
+ for each window w where w in w1()
+  return le_ts_span(w);
+
+/* Total time of the peaks */
+create function wq3b() -> bag of number as 
+ running_sum(wq3a());
+
+
+/* Using record_agg */
+create function ra1_ts_span(window w) -> number 
+ /* Timespan of a record window */
+ as select mx-mn from number mn, number mx
+    where mx = maxagg(select r["TS"] from record r where r in w) and
+          mn = minagg(select r["TS"] from record r where r in w);
+
+create function wq3c() -> bag of number as
+ for each window w where w in w2()
+  return ra1_ts_span(w);
+
+/* Using events */
+create function ra2_ts_span(window w) -> number 
+ /* Timespan of a dataraw window */
+ as select mx-mn from number mn, number mx
+    where mx = maxagg(select timestamp(e401) from record r, logevent e401 
+                      where r in w and e401 = r["REG401-EVENT"]) and
+          mn = minagg(select timestamp(e401) from record r, logevent e401 
+                      where r in w and e401 = r["REG401-EVENT"]);
+
+create function wq3d() -> bag of number as
+ for each window w where w in w2()
+  return ra2_ts_span(w);
+
+
+/* Attempt to approximate the area under the peaks */
+create function le_rectarea_aux(window w) -> bag of number as
+ for each logevent e where e in w
+  return (select (timestamp(e)-timestamp(eprev))*((value(e)+value(eprev)-150.0)/2.0)
+          from logevent eprev
+          where eprev = prevevent(e));
+
+create function wq4a() -> bag of number as
+ for each window w where w in w1()
+  return (sum(le_rectarea_aux(w)));
+
+/* Total area of the Q4 windows */
+create function wq4a_sum() -> bag of number as
+ running_sum(wq4a());

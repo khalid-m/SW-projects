@@ -1,0 +1,120 @@
+/*-*-sql-*-*******************************************************************/
+
+logging off;
+
+lisp; 
+
+;"
+
+(checkequal "extract from a javascsq SP"
+((osql "vectorof(extract(newsp(siota(1,10))));")
+'((#(1 2 3 4 5 6 7 8 9 10)))))
+
+(checkequal "mysql lrhist in a javascsq SP"
+((osql "extract(spvflex(
+{dailyexp('mei.it.uu.se', 'lrtest', 
+           streamof({3,2,1,-1,0,-1,-1,-1,-1,5,-1,-1,-1,-1,64}))},
+make_record({'dump', 'lr.dmp', 'exe', 'javascsq'}))[0]);")
+'((#(3 2 0 5 49)))))
+
+(checkequal "mysql lrhist, mapflex"
+((osql "in(mergestreams(mapflex({{'mei.it.uu.se', 'lrtest',
+           streamof({3,2,1,-1,0,-1,-1,-1,-1,5,-1,-1,-1,-1,64})}}, #'dailyexp',
+make_record({'dump', 'lr.dmp', 'exe', 'javascsq'}))));")
+'((#(3 2 0 5 49)))))
+
+(checkequal "stream of lrhist queries, 1.5 xways"
+((osql "select 
+count(extract(spvflex({dailyexp('mei.it.uu.se', 'lrtest', s)},
+make_record({'dump', 'lr.dmp', 'exe', 'javascsq'}))[0]))
+from stream s where s=streamof(
+select v from vector v where 
+v=readfile(getenv('AMOS_HOME') + 'scsq/lr/data/cdp_mid15.out') and v[0]=3);")
+'((40))))
+
+(checkequal "stream of lrhist queries, 4 xways"
+((osql "select 
+count(extract(spvflex({dailyexp('mei.it.uu.se', 'lrtest40', s)},
+make_record({'dump', 'lr.dmp', 'exe', 'javascsq'}))[0]))
+from stream s where s=streamof(
+select v from vector v where 
+v=readfile(getenv('AMOS_HOME') + '/scsq/lr/data/cdp_lite40.out') and v[0]=3);")
+'((4))))
+
+(checkequal "DB postfilter"
+((osql "count(extract(newsp(streamof(readfile(getenv('AMOS_HOME') + 'scsq/lr/data/cdp_mid15.out')), 1, #'lrdistrib2dir_db')));")
+'((60))))
+
+(checkequal "DB postfilter, multiple processes"
+((osql "count(extract(newsp(streamof(readfile(getenv('AMOS_HOME') + 'scsq/lr/data/cdp_mid15.out')), 1, #'lrdistrib2dir_db')));")
+'((60))))
+
+(checkequal "DB postfilter + query stream, 4 xways"
+((osql "select 
+count(extract(spvflex({streamof(mysqltoll('mei.it.uu.se', 'lrtest40', s))},
+make_record({'dump', 'lr.dmp', 'exe', 'javascsq'}))[0]))
+from stream s where s=stract(newsp(
+streamof(readfile(getenv('AMOS_HOME') + 'scsq/lr/data/cdp_lite40.out')),
+1, #'lrdistrib2dir_db'));")
+'((4))))
+
+:osql
+
+/* " */
+
+create function lroutput()->vector;
+create function actual0(integer xway, integer carid, integer time)
+ -> <real, real>;
+create_index("actual0", "carid", "hash", "multiple");
+create_index("actual0", "time", "hash", "multiple");
+create function actual1()->vector;
+create function actual2()->vector;
+create function actual3()->vector;
+
+create function expected2()->vector;
+create function expected3()->vector;
+add expected3() = {v[0],v[1],v[3],v[4]}
+  from vector v
+  where v = readfile('data/o40-3-expected.out');
+
+add lroutput() = lrfuse(mergestreams(all), 2*L)
+from vector of stream all, vector of stream my,
+vector of stream src, vector of stream so, integer L
+where all = concat(my, so)
+and my = mapflex({{'mei.it.uu.se', 'lrtest40', src[0]}}, #'dailyexp',
+                 make_record({'dump', 'lr.dmp', 'exe', 'javascsq'}))
+and so = mapstreams((vselect src[i] from integer i where i in iota(1, 2*L)),
+                    #'lr')
+and src = splitstream(lreadfast(
+  getenv('AMOS_HOME') + 'scsq/lr/data/cdp_lite40.out', L), 2*L + 1,
+  #'lrdistrib2dir_db')
+and L = 4;
+
+add actual0(v[0], v[1], v[2]) = <v[4], v[5]>
+from vector v
+where v = lrlogfilter(lroutput(), 0, 0);
+add actual1() = lrlogfilter(lroutput(), 1, 0);
+add actual2() = {v[0],v[3],v[5]} 
+  from vector v
+  where v = lrlogfilter(lroutput(), 2, 0);
+add actual3() = {v[0],v[1],v[3],v[4]} 
+  from vector v
+  where v = lrlogfilter(lroutput(), 3, 0);
+
+lisp;
+
+(checkequal "output count type 0"
+((osql "count(select actual0(i,j,k) from integer i, integer j, integer k);")
+'((5010))))
+(checkequal "output count type 2"
+((osql "count(actual2());")
+'((67))))
+(checkequal "output count type 3"
+((osql "count(actual3());")
+'((4))))
+
+(checkequal "full output type 3"
+ ((osql "sort(actual3());")
+  (osql "sort(expected3());")))
+
+(send-form '(quit) (open-nameserver-port))

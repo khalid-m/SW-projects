@@ -1,0 +1,116 @@
+-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Cheng Xu, UDBL
+ * $RCSfile: drilling_demo.osql,v $
+ *
+ * Description: A drilling demo on window based processing
+ *
+ ****************************************************************************
+ * $Log: drilling_demo.osql,v $
+ * Revision 1.3  2012/01/16 13:58:14  chexu484
+ * simple test for record and validate
+ *
+ * Revision 1.2  2011/12/08 15:20:53  chexu484
+ * sync
+ *
+ * Revision 1.1  2011/11/30 21:27:01  chexu484
+ * operators on window and drilling model
+ *
+ *
+ ****************************************************************************/
+
+<'window_process.osql';
+<'sandvik_drilling.osql';                    
+
+/* the stream from the svs file */
+set :s = streamof(read_csv("data/Statistik20111122.csv"));              
+
+/* the power difference in the stream */
+set :p = (select power_difference(v) from Vector v where v in :s);            
+
+/* plot it the power difference*/
+scatter2(enumerate(:p));          
+
+/* now form sliding windows over the stream with size 1000, slide 10 */
+set :sw = winagg_tuple(:s, 1000, 10);                           
+
+/* look at the average power difference */
+window_average(in(:sw), #'power_difference');      
+
+/* plot the average power difference */
+plot(vselect enumerate(window_average(in(:sw), #'power_difference')));      
+
+/* for tumbling windows over the derived stream with size 100 */
+set :dw = winagg_tuple(streamof(enumerate(:p)), 100, 100);    
+
+/* plot using ordinary least square method */
+plot(vselect ols_line_of_window(in(:dw)));              
+
+enumerate(ols_a_of_window_v(in(:dw)));       
+
+plot(vselect enumerate(ols_a_of_window_v(in(:dw))));   
+
+
+/****** drill raw ******/
+set :drill = streamof(read_csv("data/drill_raw.csv"));                         
+
+/* the number of events */
+count(in(:drill));    
+
+set :pw = pwinagg_tuple(:drill, #'drill_start0', #'drill_stop0');           
+
+/* the number of actual holes drilled */
+count(in(:pw));      
+
+/* record_and_validate takes the first event in the stream and use it as a reference
+   to validate the stream, the second argument is the function accepts
+   1. the reference 2. the event to validate in the stream
+   the result depends on the validation function (wear_rate in this case) */
+record_and_validate(:pw, #'wear_rate');    
+
+/* why only one?   
+set :res = record_and_validate(:drill, #'wear_rate');
+:res; */   
+
+/* now this is the (derived) validation stream */
+set :s = streamof(enumerate(record_and_validate(:pw, #'wear_rate')));       
+
+/* plot the validation stream */
+plot(vselect in(:s));  
+
+/* form sliding window on the derived stream */
+set :w = winagg_tuple(:s, 20, 1);           
+
+/* average on the sliding window */
+window_average(in(:w), #'power_difference1');    
+
+plot(vselect enumerate(window_average(in(:w), #'power_difference1')));     
+
+/* the size of the stream is too small */
+count(in(:s)); 
+
+/* so the analysis on the small stream is not reliable */
+set :w = winagg_tuple(:s, 10, 10);       
+
+/* plot using ordinary least square method */
+plot(vselect ols_line_of_window(in(:w)));      
+
+enumerate(ols_a_of_window_v(in(:w)));            
+
+/* only plot the slope */
+plot(vselect enumerate(ols_a_of_window_v(in(:w))));  
+
+
+/* the real raw stream got from the drilling */
+set :raw = streamof(read_csv("data/real_raw.csv"));      
+
+/* the number of events */
+count(in(:raw));   
+
+/* create one window per hole */
+set :holes = pwinagg_tuple(:raw, #'drill_start', #'drill_stop');     
+
+count(in(:holes));
+
+count(record_n_validate(:raw, #'drill_start', #'drill_stop', #'drill_record', 1, #'drill_validate', 5));   

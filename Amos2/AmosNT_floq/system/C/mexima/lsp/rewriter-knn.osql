@@ -1,0 +1,85 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 Thanh Truong , UDBL
+ * $RCSfile: rewriter-knn.osql,v $
+ * $Revision: 1.5 $ $Date: 2013/11/07 19:45:12 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *
+ ****************************************************************************
+ * $Log: rewriter-knn.osql,v $
+ * Revision 1.5  2013/11/07 19:45:12  torer
+ * Integer -> Number
+ *
+ * Revision 1.4  2013/10/22 06:58:54  torer
+ * Added comments
+ *
+ * Revision 1.3  2013/09/14 12:44:46  thatr500
+ * - removed extra parameter when passing distance function
+ * - removed k_nearest naive implementation from AmosMiner
+ *
+ * Revision 1.1  2011/12/02 12:50:58  thatr500
+ * *** empty log message ***
+ *
+ * Revision 1.1  2011/05/06 01:40:16  thatr500
+ * generalized rewrite code of Mexima
+ *
+ *
+ ****************************************************************************/
+
+/*----------------------------------------------------------------------
+Navie implementation of KNN
+-----------------------------------------------------------------------*/
+
+create function distance(Vector of Number x, Function disfn,
+	 Vector of Number y)-> Number distance
+  /* Compute the distance between x and y using the distance function disfn */
+  as (apply(disfn, {x, y}))[0];
+
+create function classdistances(Vector of Number x, Function disfn,
+			       Bag of (Object, Vector of Number) cp)
+       -> Bag of (Number distance, Object cid)
+ /* Given a distance function disfn(x,y)
+    calculate all distances from query point x to the points
+    in set of classified points cp */
+ as select distance(x, disfn, v), cid
+    from Object cid, Vector of Number v
+    where (cid,v) in cp;
+
+
+create function k_nearest(Vector of Number x, Number k, 
+                          Function disfn, 
+			  Bag of (Object, Vector of Number) cp)
+                       -> Bag of (Object, Object)
+  /* Function searching K nearest neighbours of a query point x 
+     among classified points cp using disfn with. Brute force algorithm. */
+  as leastk(classdistances(x, disfn, cp), k);
+
+
+create function k_nearest_with_fn(Vector of Number x, Number k, 
+                          Function disfn, 
+			  Function fn)
+                       -> Bag of (Object, Object)
+  as k_nearest(x, k, disfn, cast((select extent(fn)) 
+		  as Bag of (Number, Vector of Number)));
+
+/*----------------------------------------------------------------------
+ Signatures of knn
+-----------------------------------------------------------------------*/
+
+/*Case 1 KNN with bag*/
+create function knn(Vector of Number, Number k, Bag of Object)
+                  -> Bag of Object 
+ as multidirectional
+    ('bbbf' foreign 'knnsearch_with_bag---+');
+
+/*Case 2 KNN with function*/
+create function knn(Vector of Number , Number k, Function fn)
+                  -> Bag of Object 
+ as multidirectional
+    ('bbbf' foreign 'knnsearch_with_fn---+');
+
+
+

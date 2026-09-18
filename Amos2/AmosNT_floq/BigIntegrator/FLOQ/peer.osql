@@ -1,0 +1,28 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: peer.osql,v $
+ * $Revision: 1.1 $ $Date: 2014/03/10 16:18:42 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: script for peer to load
+ ****************************************************************************
+ *
+ ****************************************************************************/
+
+create function logdburi_jdbc(Charstring logdburi)->JDBC as stored;
+
+create function pop_uri_jdbc(Charstring logdburi, JDBC jo)->Boolean as 
+ set logdburi_jdbc(logdburi)=jo;
+
+create function sql_my(Charstring logdburi, Charstring query, Vector args)->Vector
+as
+    sql(logdburi_jdbc(logdburi),query,args);
+
+/* sql_myv2 with args as vector of vector arguments for sql query running in 
+   peers */
+create function sql_myv2(Charstring logdburi, Charstring query, Vector of Vector args)->Vector
+as select sql(logdburi_jdbc(logdburi),query,arg)
+   from Vector arg
+   where arg in args;

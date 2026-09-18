@@ -1,0 +1,47 @@
+create type Emp;
+create function ssn(emp e key)-> integer a key;
+create function name(emp e key)-> charstring;
+create function salary(emp e key)-> integer;
+create function lab(emp e key) -> charstring;
+create function age(emp e key)-> integer;
+declare integer :i, charstring :x, integer :s, integer :a, charstring :l;
+lisp;
+(defun  % (a b) (- a (* (/ a b) b)))
+(let* (
+       (TOTAL 100)
+       (OFFSET 20)
+       (ls (- TOTAL (/ OFFSET 2)))
+       (le (+ TOTAL (/ OFFSET 2)))
+       (ls1 15)
+       (le1 25))
+
+  (dotimes (k TOTAL)
+    (setq amos_i (+ k OFFSET))
+    (setq amos_x (concat "emp" (mkstring amos_i)))
+    (setq amos_l (if (or (and (> amos_i ls)  (<= amos_i le))
+			 (and (> amos_i ls1) (<= amos_i le)))
+		     "edslab" 
+		   "otherlab"))	
+    (setq amos_s (* 1 amos_i))
+    (setq amos_a (% amos_i OFFSET))
+;   (print amos_l)
+    (create-userobjects Emp (ssn age name salary lab) 
+			((:i :a :x :s :l))))
+  )
+
+;(d)
+:osql;
+
+/* The following is for the JIIS paper example tests */
+create type person properties
+(  id integer key,
+   hobby charstring);
+create person(id,hobby) instances
+ (1,"Sailing"),
+ (2,"Golf"),
+ (3,"Soccer"),
+ (4,"Golf"),
+ (5,"Basketball"),
+ (6,"Crawling");
+
+ 

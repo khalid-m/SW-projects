@@ -1,0 +1,215 @@
+/*-*-sql-*-*******************************************************************/
+
+/* This file contains all definitions of the throughput and robustness
+   experiments of the DASFAA 2010 paper, namely fsplit, maxtree, and exp.
+
+   Furthermore, TOS is defined as a number of fsplit working in parallel.
+
+   One important difference:
+   In DASFAA 2010, a() was 1.08, due to the following reasons:
+   (1) In DASFAA 2010, rfn and bfn were executed as an sfn 
+       (cf. dasfaa10_sfn.osql), which was not as optimizeable as the present
+       rfn + bfn. This affected a().
+   (2) Due to a memory leak, the read cost reported in DASFAA was much higher,
+       which also affected a(). */
+
+/* (Need to have a coordinator running to turn off ts and proctime) */
+
+sp_ts(0);
+sp_proctime(0);
+
+/* Constant a = cc / (cp + ce) */
+create function a() -> real as 0.58;
+
+create function tresult(charstring name) -> <integer cnt, integer w,
+   integer bc, vector of vector of number times, vector fov, real tstart,
+   real splitcpu, real splitmergecpu>;
+create_index("tresult", "name", "hash", "multiple");
+
+/* rbfn tree definitions */
+
+create function tree(stream s, vector of integer fov)
+-> vector as select in(zipstreams(mapstreams(
+rbhpartstreamv(ps, #'lrprfn', #'q2bfn', prod(in(fov)), fov, 0), #'stcount')))
+from stream ps
+where ps = ostream(newsp(s), 0);
+
+create function maxtree(stream s, integer target_fo, integer bc)
+-> vector as select in(zipstreams(mapstreams(
+rbhpartstreamv(ps, #'lrprfn', #'q2bfn', target_fo, fov, 0), #'stcount')))
+from stream ps, vector of integer fov
+where ps = ostream(newsp(s), 0)
+and fov = optv(target_fo, a(), bc);
+
+create function tosno(stream s, integer fo, integer rrfo) -> vector as
+select in(zipstreams(pmerge))
+from vector of stream pmerge, vector of stream rr, vector of stream fsplit
+where pmerge = mapstreams(vectorof(
+  select mergestreams(vectorize(
+    select j, fsplit[i + j*fo]
+    from integer j
+    where j in iota(0, rrfo - 1)))
+  from integer i
+  where i in iota(0, fo - 1)), #'stcount')
+and fsplit = splitflexras(rr, fo, #'lrprfn', #'q2bfn', {0, 1}, make_record({}))
+and rr = splitstream(ostream(newsp(s), 0), rrfo, #'randr', #'f');
+
+create function tos(stream s, integer fo, integer rrfo) -> vector as
+select in(zipstreams(pmerge))
+from vector of stream pmerge, vector of stream rr, vector of stream fsplit
+where pmerge = mapstreams(vectorof(
+  select smjstreamsna(vectorize(
+    select j, fsplit[i + j*fo]
+    from integer j
+    where j in iota(0, rrfo - 1)), 1)
+  from integer i
+  where i in iota(0, fo - 1)), #'stcount')
+and fsplit = splitflexras(rr, fo, #'lrprfn', #'q2bfn', {0, 1}, make_record({}))
+and rr = splitstream(ostream(newsp(s), 0), rrfo, #'randr', #'f');
+
+
+/* Experiment definitions */
+
+create function x_tree(stream s, vector of integer fov, number stime) ->
+<integer w, vector of vector of number res, vector of integer, real tstart, 
+ real scpu, real smcpu>
+as begin
+reset_ipr();
+set w = prod(in(fov));
+set tstart = rnow();
+set res = tree(s, fov);
+set scpu = psum(splitcpu());
+set smcpu = psum(splitmergecpu());
+print({w, fov, res, tstart, scpu, smcpu});
+result(select w, res, fov, tstart, scpu, smcpu);
+sleep(stime);
+end;
+
+create function x_maxtree(stream s, integer target_fo, integer bc,
+                          number stime) ->
+<integer w, vector of vector of number res, vector of integer fov, real tstart,
+ real scpu, real smcpu>
+as begin
+reset_ipr();
+set fov = optv(target_fo, a(), bc);
+set w = prod(in(fov));
+set tstart = rnow();
+set res = maxtree(s, target_fo, bc);
+set scpu = psum(splitcpu());
+set smcpu = psum(splitmergecpu());
+print({w, fov, res, tstart, scpu, smcpu});
+result(select w, res, fov, tstart, scpu, smcpu);
+sleep(stime);
+end;
+
+create function x_tos(stream s, integer fo, integer rrfo, function tosfn,
+                      number stime) ->
+<integer, vector of vector of number res, vector of integer, real tstart, 
+ real scpu, real smcpu>
+as begin
+reset_ipr();
+set tstart = rnow();
+set res = apply(tosfn, {s, fo, rrfo})[0];
+set scpu = psum(splitcpu());
+set smcpu = psum(splitmergecpu());
+print({fo, res, {rrfo, fo}, tstart, scpu, smcpu});
+result(select fo, res, {rrfo, fo}, tstart, scpu, smcpu);
+sleep(stime);
+end;
+
+/* scale-up experiments */
+
+create function scale_tos(integer rep, integer maxexp, integer bc, 
+                          function tosfn, number stime)
+ -> <integer cnt, integer w, integer, vector of vector of number res,
+     vector of integer fov, real tstart, real scpu, real smcpu>
+as select 1000*rep, w, bc, res, fov, tstart, scpu, smcpu
+from integer i
+where <w, res, fov, tstart, scpu, smcpu> = 
+   x_tos(i_hybrid_enumc(256, bc, rep), integer(power(2, i)), 2, tosfn, stime)
+and i in iota(1, maxexp);
+
+create function scale_exp(integer rep, integer maxexp, integer bc,
+                          number stime)
+ -> <integer cnt, integer w, integer, vector of vector of number res,
+     vector of integer fov, real tstart, real scpu, real smcpu>
+as select 1000*rep, w, bc, res, fov, tstart, scpu, smcpu
+from integer i
+where <w, res, fov, tstart, scpu, smcpu> = 
+   x_tree(i_hybrid(256, bc, rep), expv(power(2, i)), stime)
+and i in iota(1, maxexp);
+
+create function scale_fsplit(integer rep, integer maxexp, integer bc,
+                             number stime)
+ -> <integer cnt, integer w, integer, vector of vector of number res,
+     vector of integer fov, real tstart, real scpu, real smcpu>
+as select 1000*rep, w, bc, res, fov, tstart, scpu, smcpu
+from integer i
+where <w, res, fov, tstart, scpu, smcpu> = 
+   x_tree(i_hybrid(256, bc, rep), {integer(power(2, i))}, stime)
+and i in iota(1, maxexp);
+
+create function scale_max(integer rep, integer maxexp, integer bc,
+                          number stime)
+ -> <integer cnt, integer w, integer, vector of vector of number res,
+     vector of integer fov, real tstart, real scpu, real smcpu>
+as select 1000*rep, w, bc, res, fov, tstart, scpu, smcpu
+from integer i
+where <w, res, fov, tstart, scpu, smcpu> = 
+   x_maxtree(i_hybrid(256, bc, rep), integer(power(2, i)), bc, stime)
+and i in iota(1, maxexp);
+
+/* robustness experiments */
+
+create function robust_tos(integer rep, integer exp, function tosfn,
+                           number stime)
+ -> <integer cnt, integer w, integer bc, vector of vector of number res,
+     vector of integer fov, real tstart, real scpu, real smcpu>
+as select 1000*rep, w, bc, res, fov, tstart, scpu, smcpu
+where <w, res, fov, tstart, scpu, smcpu> = 
+   x_tos(i_hybrid_enumc(256, bc, rep), integer(power(2, exp)), 2, tosfn, stime)
+and bc in {0, 5, 10, 50, 100, 500, 1000};
+
+create function robust_exp(integer rep, integer exp, number stime)
+ -> <integer cnt, integer w, integer bc, vector of vector of number res,
+     vector of integer fov, real tstart, real scpu, real smcpu>
+as select 1000*rep, w, bc, res, fov, tstart, scpu, smcpu
+where <w, res, fov, tstart, scpu, smcpu> = 
+   x_tree(i_hybrid(256, bc, rep), expv(power(2, exp)), stime)
+and bc in {0, 5, 10, 50, 100, 500, 1000};
+
+create function robust_fsplit(integer rep, integer exp, number stime)
+ -> <integer cnt, integer w, integer bc, vector of vector of number res,
+     vector of integer fov, real tstart, real scpu, real smcpu>
+as select 1000*rep, w, bc, res, fov, tstart, scpu, smcpu
+where <w, res, fov, tstart, scpu, smcpu> = 
+   x_tree(i_hybrid(256, bc, rep), {integer(power(2, exp))}, stime)
+and bc in {0, 5, 10, 50, 100, 500, 1000};
+
+create function robust_max(integer rep, integer exp, number stime)
+ -> <integer cnt, integer w, integer bc, vector of vector of number res,
+     vector of integer fov, real tstart, real scpu, real smcpu>
+as select 1000*rep, w, bc, res, fov, tstart, scpu, smcpu
+where <w, res, fov, tstart, scpu, smcpu> = 
+   x_maxtree(i_hybrid(256, bc, rep), integer(power(2, exp)), bc, stime)
+and bc in {0, 5, 10, 50, 100, 500, 1000};
+
+create function report()->vector as
+select {experiment, w, bc, cnt/exetime, scpu, smcpu, fov}
+from charstring experiment, integer w, integer bc, integer cnt, real scpu,
+real smcpu, vector of vector of number times, vector fov, real stime,
+real exetime
+where <cnt, w, bc, times, fov, stime, scpu, smcpu>
+in tresult(experiment)
+and exetime = exectime(times);
+
+/*
+
+add tresult("exp") = scale_exp(100, 2, 5);
+add tresult("fsplit") = scale_fsplit(100, 2, 5);
+add tresult("max") = scale_max(100, 2, 5);
+add tresult("tosno") = scale_tos(100, 2, 5, #'tosno');
+add tresult("tos") = scale_tos(100, 2, 5, #'tos');
+add tresult("exp") = robust_exp(100, 2);
+
+*/

@@ -1,0 +1,18 @@
+/*****************************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2005 Ruslan Fomkin, UDBL
+ * $RCSfile: general.osql,v $
+ * $Revision: 1.1 $ $Date: 2005/03/18 15:55:12 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  
+ *
+ ****************************************************************************/
+load_lisp("../lsp/general.lsp");
+
+create function openreadfile(charstring file) -> boolean as foreign 
+	'open-readfile';
+create function readfile() -> charstring as foreign 'read-readfile';
+create function closereadfile() -> boolean as foreign 'close-readfile';

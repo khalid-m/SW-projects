@@ -1,0 +1,33 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: 2014 Tore Risch, UDBL
+ * $RCSfile: mydbdef.amosql,v $
+ * $Revision: 1.1 $ $Date: 2014/01/06 13:46:00 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Script to make database image 'mydb.dmp' containing foreign
+ *              function definitions in Foreign.java
+ *
+ ****************************************************************************/
+
+create function helloworld() -> Charstring
+   /* Returns the string "Hello world" */
+  as foreign "JAVA:Foreign/helloWorldF";
+
+create function mysqrt(Number x) -> Bag of Real
+  /* Returns the square roots of x if x >= 0 */
+  as foreign "JAVA:Foreign/mysqrtBF";
+
+create function myabs(Number x) -> Number 
+  /* Computes the absolute value of x and its inverse */
+  as multidirectional ("bf" foreign "JAVA:Foreign/myabsBF")
+                      ("fb" foreign "JAVA:Foreign/myabsFB");
+
+create function jota(Number l, Number u) -> Bag of Integer
+  /* Returns a bag of integers i from l to u rounded to integers */
+  as foreign "JAVA:Foreign/jotaBBF";
+
+save "mydb.dmp"; /* Save database image on disk */
+
+quit;

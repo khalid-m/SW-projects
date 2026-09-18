@@ -1,0 +1,295 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *s
+ * Author: (c) 2011 Silvia Stefanova, UDBL * $State: Exp $ $Locker:  $
+ *
+ * Description: Insert into tables of ebird RDB
+ *
+ ****************************************************************************
+ *
+ ****************************************************************************/
+
+lisp;
+(defun read-tok (stream)
+"Defines read-token as read-tok with new defaults"
+  (read-token stream "," "" "" ""))
+
+(defun read-ntuples-+ (fno filename r)
+"Redifines read-ntuples to use read-tok"
+  (with-input-file
+   s filename
+   (mapstream
+    s #'read-line
+    (f/l (row)
+       (with-textstream
+        tstr row
+        (let (v)
+         (mapstream
+          tstr #'read-tok
+          (f/l (o)
+               (setq v (push-vector v o))))
+         (osql-result filename v)))))))
+
+:osql	
+
+/*How to use it*/
+/*1) Create the database by using createTables.sql */
+/*2) Create the function (from createTables.sql) and the stored procedures in this file*/
+/*3) Connect to the created database */
+set :jd = jdbc("ebird2009","com.microsoft.jdbc.sqlserver.SQLServerDriver");
+set jdbcofDS("ebird2009")=:jd;
+connect(:jd, "jdbc:microsoft:sqlserver://localhost;DatabaseName=ebird2009", "ebird2009", "ebird2009");
+
+:osql	
+/*4) Run */
+call_procT_insertTaxon(:jd,"taxonomy.csv");
+call_procT_insertLocEvOcc(:jd,2007,"USA","checklists2007.csv");
+
+
+create function define_insertTaxon()-> Charstring
+/*Defines 'insertTaxon' stored procedure for MS SQL server
+ It inserts vals into the taxon table  */
+as
+ result "create procedure insertTaxon
+		@val0 varchar(255),
+		@val3 varchar(255),@val4 varchar(255),@val5 varchar(255),
+		@val7 varchar(255),@val8 varchar(255)
+		AS
+		  begin
+			DECLARE @taxon int;
+			SET @taxon = (SELECT tid FROM taxon WHERE scientificName=@val0);
+			if @taxon is null 
+	  	   		INSERT INTO taxon(scientificName,class,taxon_order,family,genus,acceptedNameUsage) 
+					VALUES(@val0,@val3,@val4,@val5,@val7,@val8);		
+                  end;";
+
+
+
+create function call_procT_insertTaxon(jdbc j,Charstring csvfile)->Boolean
+as
+  for each Charstring v0,Charstring v1,Charstring v2,Charstring v3,
+    Charstring v4,Charstring v5,Charstring v6,Charstring v7,Charstring v8,Vector vect
+    where read_ntuples(csvfile)=vect and vect={v0,v1,v2,v3,v4,v5,v6,v7,v8}
+	begin	   
+	    if like(v8,"?") then set v8="NULL";
+	    if like(v7,"?") then set v7="NULL";
+	    if like(v5,"?") then set v5="NULL";
+	      /* sql(j, "exec insertintoTabs \""+v0+"\","+v1+",\""+v2+"\",\""+v3+"\",\""+v4+"\",\""+v5+"\",\""+v7+"\",\""+v88+"\";");*/
+           sql(j, "exec insertTaxon \""+v0+"\",\""+v3+"\",\""+v4+"\",\""+v5+"\",\""+v7+"\",\""+v8+"\";");
+	  end;
+
+
+create function call_procT_insertLocEvOcc(jdbc j,integer yy,Charstring ccode,Charstring csvfile)->Boolean
+as
+ begin
+ declare Charstring datum,Charstring tid;
+  for each Charstring v0,Charstring v1,Charstring v2,Charstring v3,
+    Charstring v4,Charstring v5,Charstring v6,Charstring v7,Charstring v8,
+	Charstring v9,Charstring v10,Charstring v11,Charstring v12,Charstring v13,
+	Charstring v14,Charstring v15,Vector vect
+    where read_ntuples(csvfile)=vect and vect={v0,v1,v2,v3,v4,v5,v6,v7,v8,v9,v10,v11,v12,v13,v14,v15}
+	begin	   
+	     if ( notany(calc_mon_day(atoi(v3),atoi(v4),atoi(v5))) ) then
+		set datum='NULL'
+	    else 
+		set datum="'"+v3+"-"+v4+"-"+ itoa(calc_mon_day(atoi(v3),atoi(v4),atoi(v5)))+"'";
+	     if like (v6,"?") then set tid="NULL"
+ 		else set tid="'"+round_tominutes(atoi(v6))+"'";
+	   /* if like(v8,"?") then set v8="NULL";*/
+	  /*  if like(v10,"?") then set v10="NULL";	   */
+	    /*if like(v5,"?") then set v5="NULL";*/
+	  	 
+	/*result "exec insertLocEvOcc \""+v0+"\","+v1+","+v2+","+datum+","+tid+",\""+v7+"\",\""+v8+"\",\""+v9+"\","+v10+",\""+v13+"\","+yy+",\""+ccode+"\",'"+v15+"';"*/
+       sql(j,"exec insertLocEvOcc \""+v0+"\","+v1+","+v2+","+datum+","+tid+",\""+v7+"\",\""+v8+"\",\""+v9+"\","+v10+",\""+v13+"\","+yy+",\""+ccode+"\",'"+v15+"';") ;
+	  end;  
+  end;
+
+
+create function define_insertLocEvOcc()-> Charstring
+/*Defines 'insertLocEvOcc' stored procedure for MS SQL server.
+ It inserts vals into the location,event,occurrence tables. */
+as
+ result "create procedure [ebird2003].[insertLocEvOcc]
+		@val0 varchar(255),@val1 numeric(12,8),@val2 numeric(12,8),
+		@date date ,@time varchar(6),
+		@val7 varchar(64),@val8 varchar(255),@val9 text,
+		@val10 varchar(255),@val13 varchar(255),
+		@yy int,@ccode varchar(3),@val15 varchar(1000)
+		AS
+		  begin
+			DECLARE @location int;
+			DECLARE @event int;	
+			DECLARE @occurr int;		
+			declare specnum cursor for select spec,num from parseDocfun(@val15) ;
+			declare @spec varchar(30),@num int;
+			SET @location = (SELECT lid FROM location WHERE country=@val7 and stateProvince=@val8 
+					and decimalLatitude=@val1 and decimalLongitude=@val2);
+			if @location is null 
+			   begin
+	  	   		INSERT INTO location(decimalLatitude,decimalLongitude,country,countryCode,stateProvince) 
+					VALUES(@val1,@val2,@val7,@ccode,@val8);	
+				SET @location = (SELECT lid from location WHERE country=@val7 and stateProvince=@val8 
+					and decimalLatitude=@val1 and decimalLongitude=@val2); 
+			   end;
+			SET @event = (SELECT eid FROM event WHERE eventID=@val0 and eventDate=@date);
+			if @event is NULL
+			   begin
+	  	   		INSERT INTO event(eventID,eventDate,eventTime,samplingProtocol,samplingEffort,location) 
+					VALUES(@val0,@date,cast(@time as time),@val9,@val10,@location);		
+				SET @event = (SELECT eid FROM event WHERE eventID=@val0);
+			   end;
+			open specnum; 
+ 			FETCH NEXT FROM specnum INTO @spec, @num;
+ 			WHILE @@FETCH_STATUS = 0
+   			 begin
+  			 /* FETCH NEXT from specnum INTO @spec, @num;*/
+				SET @occurr=(select oid from occurrence,taxon where event=@event and taxon=tid and scientificName=@spec);
+				if @occurr is NULL 
+  					INSERT INTO occurrence(recordedBy,event,taxon,individualCount) select @val13,@event,tid,@num from taxon where scientificName=@spec;
+  				FETCH NEXT from specnum INTO @spec, @num;
+   			 end
+ 			close specnum; 
+ 			DEALLOCATE specnum 			 
+            end;";
+
+
+
+
+/*****************************************************/
+
+
+create function call_procT_insert(integer yy,Charstring ccode,Charstring csvfile) -> Charstring
+as
+ begin
+  declare Charstring datum,Real tid;
+  for each Charstring v0,Charstring v1,Charstring v2,Charstring v3,
+    Charstring v4,Charstring v5,Charstring v6,Charstring v7,Charstring v8,
+	Charstring v9,Charstring v10,Charstring v11,Charstring v12,Charstring v13,
+	Charstring v14,Charstring v15,Vector vect
+    where read_ntuples(csvfile)=vect and vect={v0,v1,v2,v3,v4,v5,v6,v7,v8,v9,v10,v11,v12,v13,v14,v15}
+	begin	   
+	    if like(v8,"?") then set v8="NULL";
+	    if like (v6,"?") then set tid="NULL"
+ 			     else set tid=round_tominutes(atoi(v6));
+	    /*if like(v5,"?") then set v5="NULL";*/
+	    set datum=v3+"-"+v4+"-"+ itoa(calc_mon_day(atoi(v3),atoi(v4),atoi(v5)));
+	    	 
+	/*result "exec insertLocEvOcc \""+v0+"\","+v1+","+v2+",\""+v3+"\","+tid+",\""+v7+"\",\""+v8+"\",\""+v9+"\","+v10+",\""+v13+"\","+yy+",\""+ccode+"\",\""+v15+"\";" ;*/
+         result "exec insertLocEvOcc \""+v0+"\","+v1+","+v2+",\""+datum+"\","+tid+",\""+v7+"\",\""+v8+"\",\""+v9+"\","+v10+",\""+v13+"\","+yy+",\""+ccode+"\",\""+v15+"\";" ;
+	  end;
+  end;
+
+
+
+
+create function taxonomy_tablesInsert()-> Charstring
+/*Defines 'insertintoTabs' stored procedure at MS SQL server*/
+ It inserts vals into the 3-NF normalized taxon tables  */
+as
+ result "create procedure insertintoTabs
+		@val0 varchar(50),@val1 int,@val2 varchar(50),
+		@val3 varchar(20),@val4 varchar(50),@val5 varchar(50),
+		@val7 varchar(50),@val8 varchar(25)
+		AS
+		  begin
+			DECLARE @category int;
+			DECLARE @ord int;
+			DECLARE @fam int;
+			DECLARE @genus int;
+			SET @category=(SELECT catid FROM category WHERE category=@val3);
+			if @category is null 
+	  	   	 BEGIN
+		    		INSERT INTO category(category) VALUES(@val3);		
+				SET @category=(SELECT catid FROM category WHERE category=@val3);				
+		   	 END
+			SET @ord=(SELECT orderid FROM ord WHERE order_name=@val4);
+			if @ord is null 
+	  	   	 BEGIN
+		    		INSERT INTO ord(categ,order_name) VALUES(@category,@val4);		
+				SET @ord=(SELECT orderid FROM ord WHERE order_name=@val4);				
+		   	 END
+			SET @fam=(SELECT familyid FROM family WHERE family_name=@val5);
+			if @fam is null 
+	  	   	 BEGIN
+		    		INSERT INTO family(ord,family_name) VALUES(@ord,@val5);		
+				SET @fam=(SELECT familyid FROM family WHERE family_name=@val5);				
+		   	 END
+			SET @genus=(SELECT gid FROM genus WHERE genus_name=@val7);
+			if @genus is null
+			 begin
+				INSERT into genus(fam,genus_name) VALUES(@fam,@val7);
+				SET @genus=(SELECT gid FROM genus WHERE genus_name=@val7);
+			 end;
+			INSERT into species(sci_name,taxon_order,primary_com_name,genus,species_name)
+				VALUES(@val0,@val1,@val2,@genus,@val8);	
+		end;";
+
+
+create function createInsertProcedures(jdbc j)-> Boolean
+/*Creates 'insertintoTabs' stored procedure on MS SQL server*/
+as
+  begin
+	if sql(j,taxonomy_tablesInsert()) then
+		print( "The procedure 'insertintoTabs' to insert values into taxonomy tables was created");
+  end;
+
+
+
+
+create procedure ebird2007.sepTables
+	@ccode varchar(3)
+		AS
+		  begin
+			DECLARE @location int;
+			DECLARE @event int;	
+			DECLARE @occurr int;
+			DECLARE @val0 varchar(255),@val1 numeric(12,8),@val2 numeric(12,8),
+			@val3 int ,@val4 int,@val5 varchar(3),@val6 varchar(10),
+			@val7 varchar(50),@val8 varchar(50),@val9 varchar((10),
+			@val10 varchar(10),@val13 varchar(100),
+			@val15 varchar(8000);
+			declare @spec varchar(30),@num int,@date varchar(10),@time varchar(10)
+			declare bigtable cursor for select SAMPLING_EVENT_ID,
+					LATITUDE,LONGITUDE,YEAR,MONTH,DAY,
+					TIME,COUNTRY,STATE_PROVINCE,COUNT_TYPE,
+					EFFORT_HRS,OBSERVER_ID,SPECIESLIST from checklist;	
+			open bigtable	
+			FETCH NEXT FROM bigtable INTO @val0, @val1,@val2,@val3
+					@val4,@val5,@val6,@val7,@val8,@val9,@val10,
+					@val13,@val15
+ 			WHILE @@FETCH_STATUS = 0
+   			 begin
+			   SET @location = (SELECT lid FROM location WHERE country=@val7 and stateProvince=@val8 
+					and decimalLatitude=@val1 and decimalLongitude=@val2);
+			if @location is null 
+			   begin
+	  	   		INSERT INTO location(decimalLatitude,decimalLongitude,country,countryCode,stateProvince) VALUES(@val1,@val2,@val7,@ccode,@val8);	
+				SET @location = (SELECT lid from location WHERE country=@val7 and stateProvince=@val8 
+					and decimalLatitude=@val1 and decimalLongitude=@val2); 
+			   end;
+			   set @date=calculate_mon_day(cast(@val3 as int),cast(@val4 as int),cast(@val5 as int));
+			   set @time=time_calc(@val6);
+			   SET @event = (SELECT eid FROM event WHERE eventID=@val0 and eventDate=@date );
+			if @event is NULL
+			   begin
+	  	   		INSERT INTO event(eventID,eventDate,eventTime,samplingProtocol,samplingEffort,location) 
+					VALUES(@val0,cast(@date as date),cast(@time as time),@val9,@val10,@location);		
+				SET @event = (SELECT eid FROM event WHERE eventID=@val0);
+			   end;
+			declare specnum cursor for select spec,num from parseDocfun(@val15) ;
+			open specnum; 
+ 			FETCH NEXT FROM specnum INTO @spec, @num;
+ 			WHILE @@FETCH_STATUS = 0
+   			 begin
+  			 /* FETCH NEXT from specnum INTO @spec, @num;*/
+				SET @occurr=(select oid from occurrence,taxon where event=@event and taxon=tid and scientificName=@spec);
+				if @occurr is NULL 
+  					INSERT INTO occurrence(recordedBy,event,taxon,individualCount) select @val13,@event,tid,@num from taxon where scientificName=@spec;
+  				FETCH NEXT from specnum INTO @spec, @num;
+   			 end
+ 			close specnum; 
+ 			DEALLOCATE specnum 	
+			end	
+			close bigtable;
+			DEALLOCATE bigtable	 
+            end;

@@ -1,0 +1,30 @@
+/* Some matrix convenience functions */
+
+/* + - */
+create function times (real x, matrix A)->matrix B
+             as times (A, x);
+
+create function plus (real x, matrix A)->matrix B
+             as plus (A, x);
+
+create function matrix (integer M)->matrix A
+             as matrix (M, M);
+
+create function tril (integer M, integer N)->lowertri L
+             as tril (matrix (M, N));
+
+create function tril (integer M)->lowertri L
+             as tril (M, M);
+
+create function triu (integer M, integer N)->uppertri U
+             as triu (matrix (M, N));
+
+create function triu (integer M)->uppertri U
+             as triu (M, M);
+
+create function symm (integer M, integer N)->symmetric S
+             as symm (matrix (M, N));
+
+create function symm (integer M)->symmetric S
+             as symm (M, M);
+

@@ -1,0 +1,231 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2009 Gyozo Gidofalvi, UDBL
+ * $RCSfile: NNet.osql,v $
+ * $Revision: 1.3 $ $Date: 2009/09/16 13:25:07 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: OSQL function definitions to initialize and evaluate
+ * a trained feed-forward neural network.  
+ *
+ ****************************************************************************
+ * $Log: NNet.osql,v $
+ * Revision 1.3  2009/09/16 13:25:07  zeitler
+ * removed declared variables that were not used
+ *
+ * Revision 1.2  2009/08/03 13:26:45  gyogi445
+ * Novelty detection via independently trained "compression" neural networks
+ *
+ * Revision 1.1  2009/05/11 14:18:08  gyogi445
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+
+create function sigmoid(Number x)-> Number
+/* Sigmoid transfer frunction used in NNs */  
+  as select 1/(1+x2y(e(),-x));
+
+create function sigmoid_prime(Number x)-> Number  
+/* First derivative of sigmoid functions used in NNs */
+   as x*(1-x);
+
+create function const1()-> Number 
+/* Function that returns a constant 1 */
+  as 1;
+
+create function vhead(Vector v)-> Object 
+/* Function to return the first element of vector v, i.e., head v[0] */
+  as select v[0];
+
+create function vlast(Vector v)-> Object 
+/* Function to return the last element of vector v, i.e., end v[n] */
+  as select v[dim(v)-1];
+
+create function vtail(Vector v)-> Vector 
+/* Function to return the tail elements of vector v, i.e., v[1]..v[n] */
+  as vselect v[i] from Integer i where i>0;
+
+create function vrep(Vector v, Integer k)-> Vector
+/* Function to generate a vector by repeating the input vector v k times */
+  as vselect v[i] from Integer i, Integer j where j in iota(1,k);
+
+create function urandmatNN(Integer i, Integer j)-> Vector of Vector of Number 
+/* Function to generate a j by i matrix of uniform real random numbers 
+   between -0.25 and + 0.25 */
+  as vselect (urandvecs(i,j)-0.5)/2;
+
+create function randNNweights(Vector of Integer nn) 
+                              -> Vector of Vector of Vector of Number
+/* Function that initializes a fully connected feed-forward neural 
+   network represented by a set of weight matrices. The structure
+   of the nn is specified by the vector argument where the consecutive
+   integer values represent the number of neurons in each layer. The 
+   first element in the vector specifies the number of neurons in the
+   input layer, the last element specifies the number of neurons in 
+   the output layer, and the rest of the elements in the vector in 
+   order specify the number of neurons in the consecutive hidden 
+   layers. The constructor function takes care of the bias (weights) 
+   automatically. */     
+  as vselect urandmatNN(nn[i]+1,nn[i+1])
+     from Integer i
+     where i < dim(nn)-1;
+
+create function eval_nn(Vector of Number si, 
+                        Vector of Vector of Vector of Number ws, 
+                        Vector of Function tfs)
+                        ->Vector of Number 
+/* Recursive stored procedure to evaluate a NN 
+   (si: input (signal) vector to the NN
+    ws: set of matrices representing layer weights, 
+    tfs: set of trasnfer functions) */
+  as if dim(ws) = 1 
+     /* bottom of recursion, output layer */
+     then result 
+          vselect in(apply(tfs[0], dp)) 
+          from Integer i, Vector of Number dp
+          where dp = {VECTOR.VECTOR.TIMES->NUMBER(concat(si,{1}), ws[0][i])}
+     else result 
+          eval_nn(cast(vselect in(apply(tfs[0], dp )) 
+                       from Integer i, Vector of Number dp
+                       where dp = {VECTOR.VECTOR.TIMES->NUMBER(concat(si,{1}), ws[0][i])}
+                       as Vector of Number), 
+                  cast(vtail(ws) as Vector of Vector of Vector of Number), 
+                  cast(vtail(tfs) as Vector of Function));
+  
+/* TO DO: One should really have a shorthand for element-wise vector 
+   operations to avoide ugly code */ 
+
+create function simrand_NN(Integer n, 
+                           Vector of Vector of Vector of Number w, 
+                           Function tf)
+                           -> Vector of Number
+/* Function to simulate a NN represented by w for i number of 
+   random input vectors */
+  as for each Integer k
+     where k in iota(1,n)
+     result eval_nn(randvec(dim(w[0][0])-1,'nrands'), w, 
+                    cast(vrep({tf}, dim(w)) as Vector of Function));
+
+create function eval_layer(Vector of Vector of Number WS,
+                           Vector of Number X,
+                           Function tfn)
+                           -> Vector of Number
+/* Function that calculates the output of a neuron layer 
+   of a ANN with tfn activation function. The dimensions
+   WS and X must agree: X[N] -> WS[K][N+1]. The (N+1)-th 
+   elements in WS represent the bias weights   */  
+  as vselect in(apply(tfn, {dp})) 
+     from Integer i, Number dp
+     where dp = VECTOR.VECTOR.TIMES->NUMBER(concat(X,{1}), WS[i]);
+  
+create function calc_delta_o(Vector of Number O,
+                             Vector of Number T,
+                             Function dfn)
+                             -> Vector of Number
+/* Function that calculates the delta, i.e., error
+   of the output layer of an ANN. It is not error safe,
+   i.e., assumes that O and T are of the same length. */   
+  as vselect drev*(T[k]-O[k])
+     from Integer k, Number drev
+     where drev = in(apply(dfn, {O[k]}));
+
+create function calc_delta_h(Vector of Number O,
+                             Vector of Number D,
+                             Vector of Vector of Number WS)
+                             -> Vector of Number
+/* Function that calculates the delta, i.e., error
+   of the hidden layer of an ANN. It is not error safe,
+   i.e., it assumes that the dimensions of O, T and WS 
+   agree, i.e., O[H], D[K] -> WS[K][H+1]. The (H+1)-th  
+   elements in WS represent the weights for the biases in 
+   next (output) layer. As such, since they are not connected 
+   to the hidden layer, they  should not and are not 
+   considered in the delta calculations for the hiden layer. */
+  as vselect O[h]*(1-O[h])*bpd
+     from Integer h, Number bpd
+     where bpd = sum(select D[k]*WS[k][h] from Integer k);   
+
+create function update_layer_weights(Vector of Vector of Number WS,
+                                     Vector of Number O,
+                                     Vector of Number Delta, 
+                                     Number gain)
+                                     -> Vector of Vector of Number
+/* Function that calculates the updated weights of a layer of neurons 
+   based on the inputs to it, its weights, the deltas and the gain */
+  as vselect WS[j] + (credit * gain) 
+     from Integer j, Vector of Number credit  
+     where credit = concat(O,{1}) * Delta[j];
+
+create function ffbp_ann2_tfn(Vector NNstate,
+                              Vector of Vector of Number XT)
+                              -> Vector
+/* Strored procedure that implements a transfer function 
+   that evaluates / trains a two-layer feed-forward 
+   backpropagation artificial neural network (ANN). 
+   The mode parameter controls wether the NN is active,
+   i.e., persforms LEARNing through backprop, or 2) passive
+   i.e., just EVALuates its output based on the input. 
+   The NNtaskType parameter specifies wether the NN is 
+   suited for function APPROXimation (sigmoid activation 
+   in hidden layer only with linear output layer), or 2) 
+   suited for 0-1 CLASSIFication (sigmoid activation in both 
+   hidden and output layers). The function is mainly 
+   to be used as a transfer function of a NN stream 
+   transducer */
+as 
+begin
+   declare Vector of Number prevX, 
+	   Vector of Number prevT,
+	   Vector of Vector of Number prevO, 
+           Vector of Vector of Vector of Number prevWS,
+           Vector of Vector of Number prevDelta,
+           Number gain,
+           Charstring mode,
+           Charstring NNtaskType,
+           Vector of Vector of Number nextO, 
+           Vector of Vector of Vector of Number nextWS,
+           Vector of Vector of Number nextDelta,
+           Vector of Number X,
+           Vector of Number T;            
+   /* Parse previous state (arg1) I/O+NN represenation (arg1) */
+   set prevX = NNstate[0];
+   set prevT = NNstate[1];
+   set prevO = NNstate[2];
+   set prevWS = NNstate[3];
+   set prevDelta = NNstate[4];
+   set gain = NNstate[5];
+   set mode = NNstate[6];
+   set NNtaskType = NNstate[7];
+   /* Parse input */
+   set X = XT[0];
+   set T = XT[1];
+   /************* Evaluate outputs of neurons ************/
+   /* Calculate the output of the hidden layer (layer 1) */
+   set nextO = {eval_layer(prevWS[0], X, #"sigmoid")};
+   /* Calculate the output of the output layer (layer 2) */ 
+   if (upper(NNtaskType) = "APPROX") then /* fn approx -> linear output */
+      set nextO = concat(nextO, {eval_layer(prevWS[1], nextO[0], #"id")})
+   else if (upper(NNtaskType) = "CLASSIF") then /* 0-1 classif -> sigmoid output */ 
+      set nextO = concat(nextO, {eval_layer(prevWS[1], nextO[0], #"sigmoid")});     
+   /********** Evaluate / backpropagate error ************/
+   /* Calculate the deltas of the neurons in the output layer */
+   if (upper(NNtaskType) = "APPROX") then /* fn approx -> linear output */
+      set nextDelta = {calc_delta_o(nextO[1], T, #"const1")}
+   else if (upper(NNtaskType) = "CLASSIF") then /* 0-1 classif -> sigmoid output */
+      set nextDelta = {calc_delta_o(nextO[1], T, #"sigmoid_prime")};
+   /* Calculate the deltas of the neurons in the hidden layer */
+   set nextDelta = concat({calc_delta_h(nextO[0], nextDelta[0], prevWS[1])}, nextDelta);
+   /****************** Update weights ********************/
+   /* Update the weights of the neurons in the output layer */
+   set nextWS = {update_layer_weights(prevWS[1], nextO[0], nextDelta[1], gain)};
+   /* Update the weights of the neurons in the hidden layer */
+   set nextWS = concat({update_layer_weights(prevWS[0], X, nextDelta[0], gain)}, nextWS);
+   /******************* Emit new state *******************/
+   /* Construct and emit next state */
+   if (upper(mode) = "LEARN") then /* active learning mode */
+      result {X, T, nextO, nextWS, nextDelta, gain, mode, NNtaskType}
+   else if (upper(mode) = "EVAL") then /* passive evaluation mode */
+      result {X, T, nextO, prevWS, nextDelta, gain, mode, NNtaskType};
+end;
+

@@ -1,0 +1,23 @@
+create function logdir(charstring dir) -> bag of charstring;
+/* as foreign 'JAVA:logdir.LogDir/logDirectory'; */
+
+create function filestream(charstring dir) -> bag of charstring
+ as remove_null(logdir(dir));
+
+
+create function order_stream(bag of object, function, function, function, number, object) -> bag of object
+ as foreign 'order-stream------+';
+
+create function order_stream(bag of object, function, function, function, number) -> bag of object
+ as foreign 'order-stream-----+';
+
+create function never(Object,Object) -> Boolean as False;
+
+create function order_stream(bag of object b, function orderfn, number timeout) -> bag of object
+ as order_stream(b, orderfn, #'never', #'identity', timeout);
+
+create function ordered_filestream(charstring dir, function fn, number timeout) -> bag of charstring
+ as remove_null(order_stream(logdir(dir),fn,timeout));
+
+create function ordered_filestream(charstring dir, number timeout) -> bag of charstring
+ as remove_null(order_stream(logdir(dir),#'<',timeout));

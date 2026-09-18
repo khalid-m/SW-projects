@@ -1,0 +1,162 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: profile-uppmax.osql,v $
+ * $Revision: 1.2 $ $Date: 2013/01/14 09:39:49 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: <description>
+ *
+ ****************************************************************************
+ * $Log: profile-uppmax.osql,v $
+ * Revision 1.2  2013/01/14 09:39:49  chexu484
+ * return vector
+ *
+ * Revision 1.1  2013/01/08 12:44:11  chexu484
+ * profile script
+ *
+ * Revision 1.2  2013/01/04 13:17:59  chexu484
+ * experiment
+ *
+ * Revision 1.1  2012/12/19 20:07:04  chexu484
+ * central vs paralell
+ *
+ * Revision 1.1  2006/02/12 20:01:08  torer
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+
+validation_profile(False);
+
+create function round() -> Integer as stored;
+create function factor() -> Integer as stored;
+
+set round() = 10;
+set factor() = 5;
+
+/*** total process time ***/
+
+for each Integer i where i in iota(1,round()) * factor()
+  begin
+    declare Number wallclock;
+    set wallclock = rnow();
+    count(centralValidationQ1(30, i));
+    print("centralValidationQ1 " + i + " machines total process time: " + (rnow() - wallclock));
+  end;
+print("/*****************************************************************************/");
+
+for each Integer i where i in iota(1,round()) * factor()
+  begin
+    declare Number wallclock;
+    set wallclock = rnow();
+    count(parallelValidationQ1(30, i));
+    print("parallelValidationQ1  " + i + " machines total process time: " + (rnow() - wallclock));
+  end;
+
+print("/*****************************************************************************/");
+
+for each Integer i where i in iota(1,round()) * factor()
+  begin
+    declare Number wallclock;
+    set wallclock = rnow();
+    count(centralValidationDiffRateQ1(30, i));
+    print("centralValidationDiffRateQ1 " + i + " machines total process time: " + (rnow() - wallclock));
+  end;
+
+print("/*****************************************************************************/");
+
+for each Integer i where i in iota(1,round()) * factor()
+  begin
+    declare Number wallclock;
+    set wallclock = rnow();
+    count(parallelValidationDiffRateQ1(30, i));
+    print("parallelValidationDiffRateQ1 " + i + " machines total process time: " + (rnow() - wallclock));
+  end;
+
+print("/*****************************************************************************/");
+
+/* Q2 */
+for each Integer i where i in iota(1,round()) * factor()
+  begin
+    declare Number wallclock;
+    set wallclock = rnow();
+    count(centralValidationQ2(30, i));
+    print("centralValidationQ2 " + i + " machines total process time: " + (rnow() - wallclock));
+  end;
+
+print("/*****************************************************************************/");
+
+for each Integer i where i in iota(1,round()) * factor()
+  begin
+    declare Number wallclock;
+    set wallclock = rnow();
+    count(parallelValidationQ2(30, i));
+    print("parallelValidationQ2 " + i + " machines total process time: " + (rnow() - wallclock));
+  end;
+
+print("/*****************************************************************************/");
+
+for each Integer i where i in iota(1,round()) * factor()
+  begin
+    declare Number wallclock;
+    set wallclock = rnow();
+    count(centralValidationDiffRateQ2(30, i));
+    print("centralValidationDiffRateQ2 " + i + " machines total process time: " + (rnow() - wallclock));
+  end;
+
+print("/*****************************************************************************/");
+
+for each Integer i where i in iota(1,round()) * factor()
+  begin
+    declare Number wallclock;
+    set wallclock = rnow();
+    count(parallelValidationDiffRateQ2(30, i));
+    print("parallelValidationDiffRateQ2 " + i + " machines total process time: " + (rnow() - wallclock));
+  end;
+
+print("/*****************************************************************************/");
+
+validation_profile(True);
+
+/*** average response time ***/
+
+/* Q1 */
+for each Integer i where i in iota(1,round()) * factor()
+  return centralAvgResponseQ1(30, i);
+
+print("/*****************************************************************************/");
+
+for each Integer i where i in iota(1,round()) * factor()
+  return parallelAvgResponseQ1(30, i);
+
+print("/*****************************************************************************/");
+
+for each Integer i where i in iota(1,round()) * factor()
+  return centralAvgResponseDiffRateQ1(30, i);
+
+for each Integer i where i in iota(1,round()) * factor()
+  return parallelAvgResponseDiffRateQ1(30, i);
+
+print("/*****************************************************************************/");
+
+/* Q2 */
+for each Integer i where i in iota(1,round()) * factor()
+  return centralAvgResponseQ2(30, i);
+
+print("/*****************************************************************************/");
+
+for each Integer i where i in iota(1,round()) * factor()
+  return parallelAvgResponseQ2(30, i);
+
+print("/*****************************************************************************/");
+
+for each Integer i where i in iota(1,round()) * factor()
+  return centralAvgResponseDiffRateQ2(30, i);
+
+print("/*****************************************************************************/");
+
+for each Integer i where i in iota(1,round()) * factor()
+  return parallelAvgResponseDiffRateQ2(30, i);
+
+q();

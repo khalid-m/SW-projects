@@ -1,0 +1,55 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2013 Sobhan, UDBL
+ * $RCSfile: q3_group_by.osql,v $
+ * $Revision: 1.1 $ $Date: 2013/10/31 15:10:01 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Group-by-based implementation of Q3
+ *
+ ****************************************************************************
+ * $Log: q3_group_by.osql,v $
+ * Revision 1.1  2013/10/31 15:10:01  sobso953
+ * Q3 a done & tested
+ *
+ *
+ ****************************************************************************/
+load_lisp('heatmap.lsp');
+
+create function flatten_Q3FE(Bag of (Vector, Object,Integer) b)->bag of Numarray
+as
+	select darray({v[0],v[1],v[2],lts,cnt})
+	from Vector of Number v, Number cnt, Number lts
+	where (v,lts,cnt) in b;
+	
+/*form 1 second tumbling windows over the input stream*/
+create function q3FEagg(Window w) -> Bag of Numarray
+  as flatten_Q3FE(
+	new_group_by(
+		(select {ts(w),playersensor(sid(tpl)),cellid(tpl, 128, 100)},floor(ts(tpl)),1
+		from Numarray tpl
+		where tpl in w)
+		,{#'maxagg',#'count'}));
+
+create function q3a_gb(Stream of Numarray s) -> stream of Numarray
+  as streamof(select q3FEagg(w)
+              from Window w
+              where w in temp(s));
+
+
+set :testQ3 = "data/testQ3.csv";
+
+count(in(q3a_gb(q3input(:testQ3))));
+
+count(in(q3a(q3input(:testQ3))));
+
+count(
+select v1,v2
+from Numarray v1, Numarray v2
+where
+	v1 in q3a_gb(q3input(:testQ3)) and 
+	v2 in q3a(q3input(:testQ3)) and
+	v1[0]=v2[0] and v1[1]=v2[1] and v1[2]=v2[2]
+	and v1[4]=v2[4])
+;

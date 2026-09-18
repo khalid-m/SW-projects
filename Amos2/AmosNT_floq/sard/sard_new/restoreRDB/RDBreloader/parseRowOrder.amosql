@@ -1,0 +1,184 @@
+
+
+/******************************************************************************************************/
+create function ret_pkVal1(Charstring baseURI,Charstring rowID)
+->Vector 
+/*Retrieve PK value with of the table for the given RowID*/
+as
+result str_exp3(substring(str_exp(clearURI(rowID,baseURI),'/'),1,char_length(str_exp(clearURI(rowID,baseURI),'/'))),'_');
+
+create function ret_tableNamefromrowID1(Charstring baseURI,Charstring rowID)
+->Charstring 
+/*Retrieves table name from the given rowID which is retrieved from the given file.*/
+as
+   result str_exp1(clearURI(rowID,baseURI),'/');
+
+
+create function ret_tableURIfromrowID1(Charstring baseURI,Charstring rowID)
+->Charstring 
+/*Retrieves table URI from the given rowID which is retrieved from the given file.*/
+as
+	result "<"+baseURI+'#'+ret_tableNamefromrowID1(baseURI,rowID)+">";
+
+
+create function ret_pkURIfromRowID1(Charstring baseURI,Charstring rowID)
+->Charstring
+/*Retrieve name of PK of the table for the given RowID*/
+as 
+select ret_pkURIs(t) from Charstring t where t= ret_tableURIfromRowID1(baseURI,rowID);
+
+create function sorting1(Vector cn,Vector t3,Vector t4)
+->Charstring
+as
+/*Sorting the values in the vector according to the original column order.*/
+begin
+	declare Charstring col1,Charstring c;
+	set col1="";
+	for each integer i where i in iota(1,dim(cn))
+	begin
+		if(cn[i-1] in t3) then 
+		begin 
+			for each integer j where j in iota(1,dim(t3))
+			begin
+				if cn[i-1]=t3[j-1] then 
+				begin
+					set c=t4[j-1];
+					set col1=col1+","+c;
+				end;
+			end;
+		end
+		else 
+		begin
+			set col1=col1+","+"NULL";
+		end;
+	end;
+	result substring(col1,1,char_length(col1));
+end;
+
+/******************************************************************************************************/
+create function vectorString(Vector v) -> Charstring  as select v[i] from Integer i;
+create function vectorBag(Vector v) -> Bag of object  as select v[i] from Integer i;
+
+
+create function InsertVal(Charstring filename2,Charstring baseURI)
+->(Charstring,Charstring)
+as
+begin
+ declare Vector v1, Vector v2,Vector cn,Charstring tableURI,Charstring pk,Charstring t,Charstring c1,Charstring c2,Charstring col1;
+ set t="";
+ set c1="";
+ set c2="";
+ set v1={};
+ set v2={};
+ 
+ for each charstring s, charstring p,charstring v, Charstring i where readtuples1(filename2)=<s,p,v,i>
+ begin 
+ 	if (p in ret_tableURIs_CT() ) then
+	/* Generating values for each column for connecting tables.*/
+  	begin 
+		/*Inserting the last record before parsing the connecting table.*/
+		if (t!="") then 
+		begin 	set v1=concat(v1,{ret_pkURIfromRowID1(baseURI,t)});
+		     	set v2=concat(v2,ret_pkVal1(baseURI,t));
+			set col1=sorting1(cn,v1,v2);
+			result (clearURI(tableURI,baseURI),col1);
+			
+		end;set t="";
+		/* Inserting values in connecting tables.*/
+		set c1=concatagg(inject(vectorbag(ret_pkVal1(baseURI,v)),","));
+		set c2=concatagg(inject(vectorbag(ret_pkVal1(baseURI,v)),","));
+   		result (clearURI(p,baseURI),c1+","+c2); 
+  	end
+  	else if(p!="<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>") then
+	/* Generating values for each column for regular tables.*/
+  	begin 
+		if(s!=t) then
+	        begin  
+		/* Concatinating the column and its values for inserting each record*/
+			if (t!="")then
+			begin   
+				set v1=concat(v1,{ret_pkURIfromRowID1(baseURI,t)});
+			     	set v2=concat(v2,ret_pkVal1(baseURI,t));
+				/* Sorting the column values in 'v2' as in actual table.*/
+				set col1=sorting1(cn,v1,v2);
+				result (clearURI(tableURI,baseURI),col1);	
+			end;
+			set v1={};
+			set v2={};
+    			set t=s;
+			
+			if(tableURI!=ret_tableURIfromRowID1(baseURI,t)) then 
+			begin 
+			/* Vector 'cn' contains columns with the same order as in actual table.*/
+				set cn={};
+				for each Charstring col,Charstring colURI where ret_columnURIs(ret_tableURIfromRowID1(baseUri,t),baseURI)=<colURI,col>
+				begin
+					set cn=concat(cn,{colURI});
+				end;
+			end; 	
+			set tableURI=ret_tableURIfromRowID1(baseURI,t);
+		end;
+	end;
+   	if(v!="" and p!="<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>") then
+	begin   
+		if p in ret_colURIs(tableURI,baseURI) then 
+		begin   
+			set v1=concat(v1,{p});
+			set v2=concat(v2,{v});
+   		end
+    		else 
+	    	begin  
+			set v1=concat(v1,{ret_fkMap(p)});
+			set v2=concat(v2,ret_pkVal1(baseURI,v)); 
+    		end;
+   	end;
+    end;
+end;
+
+
+
+create function print_to_file(Charstring x)->boolean
+as
+ begin
+     print(x);
+end;
+
+create function write_to_file(Charstring filename2, Charstring baseURI)
+->Boolean
+as
+begin
+	declare Charstring filename,Charstring tname1;
+	set tname1="";
+	for each Charstring ch1, Charstring ch2 where insertVal(filename2,baseURI)=(ch1,ch2)
+	begin
+		if ch1!=tname1 then 
+		begin
+		
+			set filename=ch1+".csv";
+			openwritefile(filename);
+		end;			
+		print_to_file(ch2);
+		set tname1=ch1;
+	end;
+	closewritefile();
+end;
+
+create function bulkload_data(JDBC jd,Charstring baseURI)
+->Boolean
+as
+begin
+	declare Charstring tname;
+	for each Charstring tableURI where ret_tableURIs()=tableURI
+	begin
+		set tname=clearURI(tableURI,baseURI);
+		sql(jd, "LOAD DATA LOCAL INFILE "+"'"+ tname+".csv'"+" INTO TABLE  "+ tname+" FIELDS TERMINATED BY  ',' LINES TERMINATED BY  '\\r\\n';");
+	end;	
+end;
+
+create function insertCSV(JDBC jd,Charstring filename2,Charstring baseURI)
+->Boolean
+as
+begin 
+	write_to_file(filename2,baseURI);
+	bulkload_data(jd,baseURI);
+end;

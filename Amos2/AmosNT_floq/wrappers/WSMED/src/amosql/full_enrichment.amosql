@@ -1,0 +1,84 @@
+
+
+lisp;
+
+(defun cc_ffff (fno ndb keyword descr groupcode)
+  (mapfunctionres 'foodDescr (list "" "") nil
+		  (f/l (row)
+		       (osql-result (nth 0 row) "" (nth 1 row)(nth 2 row)))))
+(defun cc_fffb (fno ndb keyword descr groupcode)
+  (mapfunctionres 'foodDescr (list "" groupcode) nil
+		  (f/l (row)
+		       (osql-result (nth 0 row) "" (nth 1 row)(nth 2 row)))))	
+(defun cc_fbff (fno ndb keyword descr groupcode)
+  (mapfunctionres 'foodDescr (list keyword "") nil
+		  (f/l (row)
+		       (osql-result (nth 0 row) keyword (nth 1 row)(nth 2 row)))))	
+(defun cc_fbfb (fno ndb keyword descr groupcode)
+  (mapfunctionres 'foodDescr (list keyword groupcode) nil
+		  (f/l (row)
+		       (osql-result (nth 0 row) keyword (nth 1 row)(nth 2 row)))))
+
+(defun cc_bb (fno groupcode groupdescr)
+  (mapfunctionres 'groupDescr nil nil
+		  (f/l (row)
+		       (osql-result (nth 0 row)(nth 1 row)))))	
+:osql
+/*helping function definition*/
+create function food_cc()-> <charstring ndb key ,charstring keyword,charstring descr, charstring groupcode>
+			    as multidirectional  
+						("ffff" foreign "cc_ffff" cost {5400,6661})
+						("fffb" foreign "cc_fffb" cost {1200,370}) 
+						("fbff" foreign "cc_fbff" cost {1200,370}) 
+						("fbfb" foreign "cc_fbfb" cost {1000,100});
+
+create function group_cc()-> <charstring groupcode key ,charstring groupdescr>
+			    as foreign "cc_bb";
+/*SQL view definition*/
+
+
+
+
+
+create function foodDescr(Charstring fkw, Charstring fgc)-><Charstring ndb, Charstring descr, Charstring fc>
+as select re[0],re[1],re[2]
+   from vector out, vector res,  vector re
+   where out = cwo("http://ws.strikeiron.com/USDAData?WSDL","USDAData",
+                            "SearchFoodByDescription",{"SearchFoodByDescription",{"FoodKeywords",fkw,"FoodGroupCode",fgc}},"test.xq") and
+         res = out[0] and 
+         re=elementof(res) and print(re);
+
+create function groupDescr()-><Charstring groupcode, Charstring groupdescr>
+as select re[0],re[1]
+   from vector out, vector res,  vector re
+   where out = cwo("http://ws.strikeiron.com/USDAData?WSDL","USDAData",
+                            "GetAllFoodGroupCodes",{},"test.xq") and
+         res = out[0] and
+         re=elementof(res);
+
+
+create function #food(charstring ndb)-> <charstring keyword,charstring descr,charstring groupcode> as
+ select keyword,descr,groupcode where food_cc()= <ndb,keyword,descr,groupcode>;
+
+create function #foodgroup(charstring groupcode)-> <charstring groupdescr> as
+ select groupdescr where group_cc()= <groupcode,groupdescr>;
+
+create function #foodclasses(charstring ndb)-><charstring keyword,charstring groupcode> as
+ select keyword,groupcode from charstring descr where food_cc()= <ndb,keyword,descr,groupcode>;
+
+
+create function #fooddescriptions(charstring ndb)-><charstring descr> as
+ select descr from charstring keyword, charstring groupcode where food_cc()= <ndb,keyword,descr,groupcode>;
+ 
+
+/*testsql("select longdescr from food where groupcode='1900'")*/;
+
+/*query plan*/
+lisp;
+;(sql-query-plan "select f2.descr from foodclasses f1, fooddescriptions f2 where f1.ndb=f2.ndb and f1.groupcode='1900'")
+;(sql-query-plan   "select f3.groupdescr,f2.descr from foodgroup f3, foodclasses f1, fooddescriptions f2 where f1.ndb=f2.ndb and f1.groupcode='1900'and f3.groupcode =f1.groupcode")
+
+;(quote(sql-query-plan "select f2.descr from foodclasses f1, fooddescriptions f2, 
+;group where f1.ndb=f2.ndb and f1.groupcode='1900'"))
+
+:osql;

@@ -1,0 +1,70 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Cheng Xu, UDBL
+ * $RCSfile: sandvik_drilling.osql,v $
+ *
+ * Description: window based processing drilling scenario
+ *
+ ****************************************************************************
+ * $Log: sandvik_drilling.osql,v $
+ * Revision 1.2  2012/01/16 13:58:14  chexu484
+ * simple test for record and validate
+ *
+ * Revision 1.1  2011/11/30 21:27:01  chexu484
+ * operators on window and drilling model
+ *
+ *
+ ****************************************************************************/
+
+/* function to poll out the relative differences */
+/* w.r.t. Statistik20111122.csv */
+create function power_difference(Vector v) -> Number as v[3];		                 
+
+create function enumerate(Bag b) -> Bag of Vector
+  as begin
+       declare Integer i;
+       set i = 0;
+       for each original Object o where o in b
+       begin
+         set i = i + 1;
+	 return {i, o};
+       end;
+     end;     
+
+/* raw data w.r.t. drill_raw.csv */
+create function drill_start0(Vector v) -> Boolean
+  as select v[1] = 0;
+
+create function drill_stop0(Boolean started, Vector v) -> Boolean
+  as select v[1] = 8.99 and started;
+
+/* the wear rate */
+create function power_sum(Window w) -> Number
+  as sum(select v[2]
+     	 from Vector of Number v
+	 where v in w); 
+
+create function wear_rate(Window reference, Window compare) -> Number
+  as select power_sum(compare) / power_sum(reference);
+
+create function power_difference1(Vector v) -> Number as v[1];
+
+create function drill_start(Vector v) -> Boolean
+  as select v[1] = 1; 
+
+create function drill_stop(Boolean started, Vector v) -> Boolean
+  as select v[1] = 0 and started;
+
+create function drill_record(Vector of Vector vv) -> Vector ref
+  as select vv[0];
+
+create function drill_validate(Vector ref, Vector v, Number threshold) -> (Integer isvalid, Vector orgin)
+  as begin
+       declare Integer avgref, Integer avgv;
+       set avgref = avg(select refe[3] from Vector of Number refe where refe in ref);
+       set avgv = avg(select ve[3] from Vector of Number ve where ve in v);
+       if abs(avgref - avgv) > threshold
+       then return (1, v)
+       else return (0, v);
+     end;

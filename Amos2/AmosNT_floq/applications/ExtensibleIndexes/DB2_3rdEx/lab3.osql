@@ -1,0 +1,392 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Thanh Truong, UDBL
+ * $RCSfile: lab3.osql,v $
+ * $Revision: 1.14 $ $Date: 2013/11/18 19:23:21 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description:  Test script for extending system with KDTree index
+ ****************************************************************************
+ * $Log: lab3.osql,v $
+ * Revision 1.14  2013/11/18 19:23:21  thatr500
+ * added mapping functions
+ *
+ * Revision 1.13  2013/08/01 13:05:44  thatr500
+ * refined regression test
+ *
+ * Revision 1.12  2013/01/30 13:35:28  thatr500
+ * removed files
+ *
+ * Revision 1.11  2012/01/05 16:57:26  thatr500
+ * signature changed!
+ *
+ * Revision 1.10  2012/01/04 14:54:39  thatr500
+ * fixed regression test
+ *
+ * Revision 1.9  2011/10/23 14:53:48  thatr500
+ * *** empty log message ***
+ *
+ * Revision 1.8  2011/02/27 18:34:55  torer
+ * Now less confusing
+ *
+ * Revision 1.7  2011/02/27 15:26:23  thatr500
+ * add comments
+ *
+ * Revision 1.6  2011/02/27 11:26:57  torer
+ * Added index scan example at the end
+ *
+ * Revision 1.5  2011/02/27 10:43:32  torer
+ * polish
+ *
+ * Revision 1.4  2011/02/27 10:37:57  torer
+ * Added xtree exercise
+ *
+ * Revision 1.3  2011/02/27 10:11:48  torer
+ * Polished
+ *
+ * Revision 1.2  2011/02/27 10:07:14  torer
+ * Updated lab. Use term 'proximity search'
+ *
+ * Revision 1.4  2011/02/26 15:20:54  torer
+ * changes to mace exercise more useful
+ *
+ * Revision 1.3  2011/02/26 14:51:14  thatr500
+ * add transparent index
+ *
+ * Revision 1.2  2011/02/26 14:02:37  torer
+ * New exercise order
+ *
+ * Revision 1.1  2011/02/26 13:25:06  torer
+ * Modified example
+ *
+ * Revision 1.4  2011/02/26 12:17:12  thatr500
+ * add wsId function, each winesample has an id
+ *
+ * Revision 1.2  2011/02/26 09:55:20  thatr500
+ * add comments
+ *
+ * Revision 1.1  2011/02/26 08:20:47  thatr500
+ * solution for manual index
+ *
+ * Revision 1.3  2011/02/25 18:13:33  thatr500
+ * remove similarity search and replace by distance search
+ *
+ * Revision 1.2  2011/02/25 16:56:23  thatr500
+ ****************************************************************************/
+
+/* --------------------------------------------------------------------------
+ Define a new data type WineSample
+ -------------------------------------------------------------------------- */
+
+create type WineSample;
+
+/* Each WineSample has an identifier number stored
+   in the function 'wsId' */
+create function wsId(WineSample ws) -> Number id as stored;
+
+/* Each WineSample has a feature vector of numbers 
+   stored in the function 'features': */
+create function features(WineSample ws) -> Vector of Number f as stored;
+
+/* -----------------------------------------------------------------------
+ Populate winsamples from a CSV file
+ ------------------------------------------------------------------------ */
+/* Attributes 2 to 12 in our CSV file are wine quality features */
+/* Attributes 0 in our CSV file is identifier of wine sample */
+set :csvpos = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+create function addwinesample(Vector of Number csvrow, Vector of Number csvpos)
+                            -> Boolean
+    /* Add one new wine sample to the database */
+    as begin
+        declare WineSample ws;
+	create WineSample(wsId, features) 
+ 	instances ws (csvrow[0], project(csvrow, csvpos));
+       end;
+
+/* Read all samples from the CVS file into the database */
+addwinesample(cast(read_ntuples('winequalitysample.csv') as Vector of Number),
+              :csvpos);
+
+count(select s from WineSample s);
+/* Should return 2939! */
+
+/* -----------------------------------------------------------------------
+ Database now populated
+ ------------------------------------------------------------------------ */
+/* -----------------------------------------------------------------------
+  Exercise 1 Execution plan of the function getSample
+ ------------------------------------------------------------------------ */
+/* Make derived function to get the wine sample for a given wsId */
+create function getSample(Number wsId) -> Winesample ws
+  as select ws where wsId(ws) = wsId;
+
+/* Test getSample: */
+getSample(37);
+
+/* Look at execution plan of getSample: */
+pc("getSample");
+/* How will it scale? Why? */
+
+/* Run getSample three times to see execution time: */
+getSample(37);
+
+getSample(37);
+
+getSample(37);
+/* Comments on speed? */
+
+/* Make hash index on WSID to speed up getSample: */
+create_index("wsId", "id", "hash", "unique");
+
+/* Reoptimize getSample: */
+recompile(#'getSample');
+
+/* Inspect execution plan of getSample: */
+pc("getSample");
+/* How will it scale? Why? */
+
+/* Run getSample three times to see execution time: */
+getSample(37);
+
+getSample(37);
+
+getSample(37);
+/* Comments on speed compared to before indexeing? Why this result? */
+
+/* -----------------------------------------------------------------------
+ Exercise 2: 
+   Make a function to find all wine samples whose feature vectors are
+   within distance from a given wine sample ws 
+ ------------------------------------------------------------------------ */
+
+create function closeWineSamples(WineSample ws, Number distance)
+                               -> Bag of WineSample
+  /* Find wine samples within distance from a give wine sample ws */
+  as select near
+     from WineSample near
+     where euclid(features(near),features(ws)) < distance;
+
+/* Test closeWineSamples: */
+set :ws = getSample(37);
+
+closeWineSamples(:ws, 3);
+
+/* Inspect the execution plan of closeWineSample: */
+pc("closeWineSamples");
+/* How will it scale? Why? */
+
+/* Run it three times to investigate speed */
+closeWineSamples(:ws, 3);
+
+closeWineSamples(:ws, 3);
+
+closeWineSamples(:ws, 3);
+/* Comments on speed? Why this result? */
+
+/* ----------------------------------------------------------------------
+  Exercise 3.a
+  Implement a foreign function in Java to speed up proximity search
+  using an unknown KD-tree package in Java found on the web: 
+  - kdtree_make to create a new index type KD-tree. The function
+    kdtree_make returns an id of KD-tree
+  Its signatures follows:
+ ------------------------------------------------------------------------ */
+create function kdtree_make() -> Integer xid
+  as foreign 'JAVA:KDTreeIndex/kdtree_make';
+  
+/* ---------------------------------------------------------------------
+  Create a new index of type KD-tree, and store it
+  in the function 'winesampleIndex'  
+ ------------------------------------------------------------------------ */
+create function winesampleIndex()-> Integer as stored;
+set winesampleIndex() = kdtree_make();
+
+/* ----------------------------------------------------------------------
+  Exercise 3.b
+  Implement a foreign function 
+  - kdtree_put to insert into a KD-tree a feature vector f 
+    for a given object o
+ ------------------------------------------------------------------------ */
+create function kdtree_put(Integer xid, Object fo, Object o) -> Object
+  as foreign 'JAVA:KDTreeIndex/kdtree_put';
+
+/* ----------------------------------------------------------------------
+  Exercise 3.c
+  Define a procedural function to add a winesample and its feature 
+  vector fv to the winesampleIndex using kdtree_put
+
+  Then go though the database and add all wine samples to the wineSampleIndex
+ ------------------------------------------------------------------------ */
+create function addWineSampleIndex(WineSample ws, Vector of Number fv)
+                                 -> WineSample
+  as kdtree_put(winesampleIndex(), fv, ws);
+
+for each Winesample ws addWineSampleIndex(ws, features(ws));
+
+/* ------------------------------------------------------------------------
+  Exercise 4.a
+  
+ Implement a foreign function kdtreeProximitySearch.
+
+ create function kdtreeProximitySearch(Integer xid, 
+           Vector of Number f, Number distance)-> Bag of Object
+  as foreign 'JAVA:KDTreeIndex/kdtreeProximitySearch';
+  
+  - Input : 
+     + kdId : an id of KD-tree index
+     + f    : a feature vector
+     + distance : a distance in feature space
+  - Output : a bag of objects stored in the KD-index xid whose 
+             feature vectors are within distance from f
+ ------------------------------------------------------------------------ */
+create function kdtreeProximitySearch(Integer xid, Vector of Number f, 
+                                      Number distance)
+                                    -> Bag of Object
+  as foreign 'JAVA:KDTreeIndex/kdtreeProximitySearch';
+
+/* ------------------------------------------------------------------------
+  Exercise 4.b  
+  Define a proximity search for features of winesample.
+  It calls the foreign function you have implemented in 4.a
+  It returns the bag of wine samples whose features are within distance from
+  the feature of ws using the KD-index. 
+ ------------------------------------------------------------------------ */
+create function closeWineSamples2(WineSample ws, Number distance) 
+                                -> Bag of WineSample
+  as kdtreeProximitySearch(winesampleIndex(), features(ws), distance);
+
+/* What are the wine samples within distance 5 from :ws? */
+closeWineSamples2(:ws, 3); /* New way */
+
+/* ------------------------------------------------------------------------
+  Exercise 4.c
+  Investigate the execution plans of 
+  closeWineSample and closeWineSample2
+  How do they scale? Why?
+ ------------------------------------------------------------------------ */
+
+/* Inspect execution plans of closeWinesample and closWinesamples2: */
+pc("closeWinesamples");
+
+pc("closeWinesamples2");
+/* Comments? Will it scale? Why? */
+
+/* Run proximity query three times for closeWinsamples (old way)
+   to investgate speed: */
+closeWineSamples(:ws, 3); /* Old way */
+
+closeWineSamples(:ws, 3); /* Old way */
+
+closeWineSamples(:ws, 3); /* Old way */
+
+/* Run proximity query three times for closeWinsamples2 (new way)
+   to investgate speed: */
+closeWineSamples2(:ws, 3); /* New way */
+
+closeWineSamples2(:ws, 3); /* New way */
+
+closeWineSamples2(:ws, 3); /* New way */
+/* Comments on result? Why? */
+
+/* -----------------------------------------------------------------------
+  Register a new index type KDTREE for transaparent proximity indexing
+ ----------------------------------------------------------------------- */
+register_exindextype('KDTREE', FALSE);
+
+/* -----------------------------------------------------------------------
+  Exercise 5
+  Implement the following foreign functions to manipulate KDTREE index:
+
+  - kdtree_make, 
+  - kdtree_put,  
+  - kdtree_get, 
+  - kdtree_delete, 
+  - kdtree_clear
+  Signatures follow:
+ ------------------------------------------------------------------------ */
+create function kdtree_make() -> Integer xid
+  as foreign 'JAVA:KDTreeIndex/kdtree_make';
+
+create function kdtree_put(Integer xid, Object fo, Object o) -> Object
+  as foreign 'JAVA:KDTreeIndex/kdtree_put';
+  
+create function kdtree_delete(Integer kdId, Object f) -> Boolean
+  as foreign 'JAVA:KDTreeIndex/kdtree_delete';
+
+create function kdtree_get(Integer kdId, Object o) ->Bag of Object
+  as foreign 'JAVA:KDTreeIndex/kdtree_get';
+
+ create function kdtree_clear(Integer kdId)-> Boolean
+  as foreign 'JAVA:KDTreeIndex/kdtree_clear';
+
+create function kdtree_map(Integer id) -> Bag of Object 
+  as foreign 'JAVA:KDTreeIndex/kdtree_map';
+
+/*Load rewrite rule to rewrite
+  Euclidean call ('euclid') to 'kdtreeDistanceSearch'
+  to transparently utilize KD-tree proximity search*/
+load_lisp('kdtree.lsp');
+
+/* ------------------------------------------------------------------------
+  Exercise 6.c:
+  Index the parameter 'f' of the table 'features' using KDTREE index
+ ------------------------------------------------------------------------ */
+create_index("features", "f", "KDTREE", "multiple"); 
+
+recompile(#'closeWineSamples');
+/* Now, you should see that the execution plan of 
+   'closeWinesamples' is transformed to ultize KD-tree
+   distance search. It is done transparently since we have 
+   declared a new index type of KD-tree on 'features'
+*/
+
+pc("closeWinesamples");
+
+/* Run it three times to investigate speed */
+closeWinesamples(:ws,3);
+
+closeWinesamples(:ws,3);
+
+closeWinesamples(:ws,3);
+
+/* ------------------------------------------------------------------------
+  Exercise 7:
+  Replace index on the parameter 'f' of the table 'features' 
+  using KDTREE index to one using XTREE instead
+ ------------------------------------------------------------------------ */
+create_index("features", "f", "XTREE", "multiple"); 
+
+/* Reoptimize closeWinesamples: */
+recompile(#'closeWinesamples');
+
+/* Look at execution plan of closeWinesamples: */
+pc("closeWinesamples");
+/* Comments? */
+
+/* Rune closeWineSamples three times to investigate speed: */
+closeWineSamples(:ws, 3); 
+
+closeWineSamples(:ws, 3); 
+
+closeWineSamples(:ws, 3);
+/* Comments? Explain why different from speed of closeWineSamples2 */
+
+/* Make function to find wine samples having a given wine sample: */
+create function featuredWineSamples(Vector of Number fv)->Bag of Winesample
+  as select ws from WineSample ws
+     where fv = features(ws);
+
+set :fv = {7,0.31,0.26,7.4,0.069,28,160,0.9954,3.13,0.46,9.8};
+/* Run it three times, look at execution plan, comment on scalability */
+
+featuredWineSamples(:fv);
+
+featuredWineSamples(:fv);
+
+featuredWineSamples(:fv);
+
+pc("featuredWineSamples");
+
+create function getSampleID(Vector of Number f)-> Number 
+ as select wsId(ws) from WineSample ws where features(ws) = f;

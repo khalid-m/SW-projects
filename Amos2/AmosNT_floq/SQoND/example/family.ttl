@@ -1,0 +1,131 @@
+# Our namespaces
+@prefix e: <http://udbl.uu.se/examples/family/> .
+@prefix person: <http://udbl.uu.se/examples/family/persons#> .
+
+# Standard namespaces
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+
+
+# (1) Name & Age
+
+person:Adam a foaf:Person ;
+            foaf:name 'Adam' ;
+            foaf:age 930 .
+
+person:Eve a foaf:Person ;
+           foaf:name 'Eve' ;
+           foaf:age 900 .
+
+# (2-3) Married
+
+# Define our 'married' property as subproperty of 'knows' in FOAF
+e:married rdfs:subPropertyOf foaf:knows .
+
+person:Adam e:married person:Eve .
+
+# (4) Children
+
+person:Cain a foaf:Person ;
+            foaf:name 'Cain' ;
+            foaf:age 913 ; #Fix!
+            e:childOf person:Adam ;
+            e:childOf person:Eve .
+
+person:Abel a foaf:Person ;
+            foaf:name 'Abel' ;
+            foaf:age 914 ; #Fix!
+            e:childOf person:Adam ;
+            e:childOf person:Eve .
+
+# (5) Criminals & crimes
+
+e:Criminal rdfs:subClassOf foaf:Person .
+
+e:Crime rdfs:subClassOf owl:Thing .
+
+# create a blank node for Cain's crime
+
+person:Cain a e:Criminal ;
+            foaf:made _:cc .
+_:cc a e:Crime ;
+     e:label "Murder" ;
+     e:victim person:Abel .
+
+# (6) Rest of the database
+
+person:Seth a foaf:Person ;
+            foaf:name 'Seth' ;
+            foaf:age 912 ; #Fix!
+            e:childOf person:Adam ;
+            e:childOf person:Eve ;
+            e:married person:Lilith .
+
+person:Lilith a foaf:Person ;
+              foaf:name 'Lilith' ;
+              foaf:age 840 .
+
+person:Noah a foaf:Person ;           
+            foaf:name 'Noah' ;
+            foaf:age 950 ; #Fix!
+            e:childOf person:Seth ;
+            e:childOf person:Lilith ;
+            e:married person:Ruth ;
+            a e:Seaman ;
+            e:rank 'Captain' .
+
+person:Ruth a foaf:Person ;           
+            foaf:name 'Ruth' ;
+            foaf:age 869 ; 
+            e:childOf person:Cain .
+
+person:Shem a foaf:Person ;
+            foaf:name 'Shem' ;
+            foaf:age 600 ; 
+            e:childOf person:Noah ;
+            e:childOf person:Ruth .
+
+person:Ham a foaf:Person ;
+           foaf:name 'Ham' ;
+           foaf:age 590 ; 
+           e:childOf person:Noah ;
+           e:childOf person:Ruth .
+
+person:Japheth a foaf:Person ;
+               foaf:name 'Japheth' ;
+               foaf:age 580 ; 
+               e:childOf person:Noah ;
+               e:childOf person:Ruth .
+
+person:Cush a foaf:Person ;
+            foaf:name 'Cush' ;
+            e:childOf person:Ham .
+
+person:Mizraim a foaf:Person ;
+               foaf:name 'Mizraim' ;
+               e:childOf person:Ham .
+
+person:Cush a foaf:Person ;
+            foaf:name 'Cush' ;
+            e:childOf person:Ham .
+
+person:Canaan a foaf:Person ;
+              foaf:name 'Canaan' ;
+              e:childOf person:Ham .
+
+person:Gomer a foaf:Person ;
+             foaf:name 'Gomer' ;
+             e:childOf person:Japheth .
+
+person:Ashkenaz a foaf:Person ;
+                foaf:name 'Ashkenaz' ;
+                e:childOf person:Gomer .
+
+person:Riphath a foaf:Person ;
+               foaf:name 'Riphath' ;
+               e:childOf person:Gomer .
+
+
+
+

@@ -1,0 +1,60 @@
+/*-*-sql-*-*******************************************************************/
+
+/* Array testcases */
+
+/*
+dropfunction(#'DEF',1);
+add DEF() = turtle('data/array/1.ttl');
+*/
+
+set :array_q1 = ' # filter by isArray predicate
+PREFIX  : <http://example.org/>
+SELECT ?s ?a
+WHERE {
+  ?s :a ?a .
+  FILTER (isArray(?a)) .
+}
+';
+
+set :array_q2 = '  # filter by 1d dereference
+PREFIX  : <http://example.org/>
+SELECT ?s ?a
+WHERE {
+  ?s :a ?a .
+  FILTER (?a[1] = 2) .
+}
+';
+
+set :array_q2a = ' # filter by 2d dereference
+PREFIX  : <http://example.org/>
+SELECT ?s ?a
+WHERE {
+  ?s :a ?a .
+  FILTER (?a[1,1] = 5) .
+}
+';
+
+set :array_q3 = ' #Project the array to 2nd column
+PREFIX  : <http://example.org/>
+SELECT ?s (?a[:,1] as ?a2)
+WHERE {
+  ?s :a ?a .
+}
+';
+
+set :array_q4 = ' #Select 2nd row and columns with step=2
+PREFIX  : <http://example.org/>
+SELECT ?s (?a[1,::2] as ?a2)
+WHERE {
+  ?s :a ?a .
+}
+';
+
+set :array_q5 = ' #Transpose each 2d array
+PREFIX  : <http://example.org/>
+SELECT ?s (transpose(?a) as ?at)
+WHERE {
+  ?s :a ?a .
+}
+';
+

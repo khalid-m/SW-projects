@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wsdl:definitions xmlns:s1="http://ws.strikeiron.com" xmlns:http="http://schemas.xmlsoap.org/wsdl/http/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:s="http://www.w3.org/2001/XMLSchema" xmlns:si="http://www.strikeiron.com" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:tns="http://innergears.com/WebServices3/CityStateByZip" xmlns:tm="http://microsoft.com/wsdl/mime/textMatching/" xmlns:mime="http://schemas.xmlsoap.org/wsdl/mime/" targetNamespace="http://innergears.com/WebServices3/CityStateByZip" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+  <wsdl:types>
+    <s:schema elementFormDefault="qualified" targetNamespace="http://innergears.com/WebServices3/CityStateByZip">
+      <s:element name="GetCityStateByZip">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="ZipCode" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetCityStateByZipResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="GetCityStateByZipResult" type="tns:ArrayOfString" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="ArrayOfString">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="string" nillable="true" type="s:string" />
+        </s:sequence>
+      </s:complexType>
+      <s:element name="GetCityStateByZipXml">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="ZipCode" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetCityStateByZipXmlResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="GetCityStateByZipXmlResult">
+              <s:complexType mixed="true">
+                <s:sequence>
+                  <s:any />
+                </s:sequence>
+              </s:complexType>
+            </s:element>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ArrayOfString" nillable="true" type="tns:ArrayOfString" />
+    </s:schema>
+    <s:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:tns1="http://ws.strikeiron.com" attributeFormDefault="unqualified" elementFormDefault="qualified" targetNamespace="http://ws.strikeiron.com">
+      <xs:element name="LicenseInfo" type="tns1:LicenseInfo" />
+      <xs:complexType name="LicenseInfo">
+        <xs:sequence>
+          <xs:element minOccurs="0" name="UnregisteredUser" type="tns1:UnregisteredUser" />
+          <xs:element minOccurs="0" name="RegisteredUser" type="tns1:RegisteredUser" />
+        </xs:sequence>
+      </xs:complexType>
+      <xs:complexType name="UnregisteredUser">
+        <xs:sequence>
+          <xs:element minOccurs="0" name="EmailAddress" type="xs:string" />
+        </xs:sequence>
+      </xs:complexType>
+      <xs:complexType name="RegisteredUser">
+        <xs:sequence>
+          <xs:element minOccurs="0" name="UserID" type="xs:string" />
+          <xs:element minOccurs="0" name="Password" type="xs:string" />
+        </xs:sequence>
+      </xs:complexType>
+      <xs:element name="SubscriptionInfo" type="tns1:SubscriptionInfo" />
+      <xs:complexType name="SubscriptionInfo">
+        <xs:sequence>
+          <xs:element name="LicenseStatusCode" type="xs:int" />
+          <xs:element minOccurs="0" name="LicenseStatus" type="xs:string" />
+          <xs:element name="LicenseActionCode" type="xs:int" />
+          <xs:element minOccurs="0" name="LicenseAction" type="xs:string" />
+          <xs:element name="RemainingHits" type="xs:int" />
+          <xs:element name="Amount" type="xs:decimal" />
+        </xs:sequence>
+      </xs:complexType>
+      <xs:element name="GetRemainingHits">
+        <xs:complexType />
+      </xs:element>
+      <xs:element name="GetRemainingHitsResponse">
+        <xs:complexType />
+      </xs:element>
+    </s:schema>
+  </wsdl:types>
+  <wsdl:message name="GetCityStateByZipSoapIn">
+    <wsdl:part name="parameters" element="tns:GetCityStateByZip" />
+  </wsdl:message>
+  <wsdl:message name="GetCityStateByZipSoapOut">
+    <wsdl:part name="parameters" element="tns:GetCityStateByZipResponse" />
+  </wsdl:message>
+  <wsdl:message name="GetCityStateByZipXmlSoapIn">
+    <wsdl:part name="parameters" element="tns:GetCityStateByZipXml" />
+  </wsdl:message>
+  <wsdl:message name="GetCityStateByZipXmlSoapOut">
+    <wsdl:part name="parameters" element="tns:GetCityStateByZipXmlResponse" />
+  </wsdl:message>
+  <wsdl:message name="GetCityStateByZipHttpGetIn">
+    <wsdl:part name="ZipCode" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="GetCityStateByZipHttpGetOut">
+    <wsdl:part name="Body" element="tns:ArrayOfString" />
+  </wsdl:message>
+  <wsdl:message name="GetCityStateByZipXmlHttpGetIn">
+    <wsdl:part name="ZipCode" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="GetCityStateByZipXmlHttpGetOut">
+    <wsdl:part name="Body" />
+  </wsdl:message>
+  <wsdl:message name="GetCityStateByZipHttpPostIn">
+    <wsdl:part name="ZipCode" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="GetCityStateByZipHttpPostOut">
+    <wsdl:part name="Body" element="tns:ArrayOfString" />
+  </wsdl:message>
+  <wsdl:message name="GetCityStateByZipXmlHttpPostIn">
+    <wsdl:part name="ZipCode" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="GetCityStateByZipXmlHttpPostOut">
+    <wsdl:part name="Body" />
+  </wsdl:message>
+  <wsdl:message name="GetRemainingHitsSoapIn">
+    <wsdl:part name="parameters" element="s1:GetRemainingHits" />
+  </wsdl:message>
+  <wsdl:message name="GetRemainingHitsSoapOut">
+    <wsdl:part name="parameters" element="s1:GetRemainingHitsResponse" />
+  </wsdl:message>
+  <wsdl:message name="LicenseInfoMessage">
+    <wsdl:part name="LicenseInfo" element="s1:LicenseInfo" />
+  </wsdl:message>
+  <wsdl:message name="SubscriptionInfoMessage">
+    <wsdl:part name="SubscriptionInfo" element="s1:SubscriptionInfo" />
+  </wsdl:message>
+  <wsdl:portType name="CityStateByZipSoap">
+    <wsdl:operation name="GetCityStateByZip">
+      <wsdl:input message="tns:GetCityStateByZipSoapIn" />
+      <wsdl:output message="tns:GetCityStateByZipSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetCityStateByZipXml">
+      <wsdl:input message="tns:GetCityStateByZipXmlSoapIn" />
+      <wsdl:output message="tns:GetCityStateByZipXmlSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetRemainingHits">
+      <wsdl:input message="tns:GetRemainingHitsSoapIn" />
+      <wsdl:output message="tns:GetRemainingHitsSoapOut" />
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="CityStateByZipSoap" type="tns:CityStateByZipSoap">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" style="document" />
+    <wsdl:operation name="GetCityStateByZip">
+      <soap:operation soapAction="http://innergears.com/WebServices3/CityStateByZip/GetCityStateByZip" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+        <soap:header message="tns:LicenseInfoMessage" part="LicenseInfo" use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+        <soap:header message="tns:SubscriptionInfoMessage" part="SubscriptionInfo" use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetCityStateByZipXml">
+      <soap:operation soapAction="http://innergears.com/WebServices3/CityStateByZip/GetCityStateByZipXml" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+        <soap:header message="tns:LicenseInfoMessage" part="LicenseInfo" use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+        <soap:header message="tns:SubscriptionInfoMessage" part="SubscriptionInfo" use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetRemainingHits">
+      <soap:operation soapAction="http://ws.strikeiron.com/InnerGears/CityStateByZip2/CityStateByZip/GetRemainingHits" />
+      <wsdl:input>
+        <soap:body use="literal" />
+        <soap:header message="tns:LicenseInfoMessage" part="LicenseInfo" use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+        <soap:header message="tns:SubscriptionInfoMessage" part="SubscriptionInfo" use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="CityStateByZip">
+    <wsdl:port name="CityStateByZipSoap" binding="tns:CityStateByZipSoap">
+      <soap:address location="http://ws.strikeiron.com/InnerGears/CityStateByZip2/CityStateByZip" />
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

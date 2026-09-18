@@ -1,0 +1,34 @@
+set :a = jdbc("myds", "com.mysql.jdbc.Driver");
+set :dburl = "jdbc:mysql://localhost:3306/";
+
+connect(:a, :dburl + "example", "sard", "sard");
+
+sql(:a, 'drop table if exists RELATEDSERVICES');
+sql(:a, 'drop table if exists AUTHORS');
+
+
+sql(:a, 'create table RELATEDSERVICES (EID varchar(25) not null,
+				       SERVICENR integer not null,
+				       NAME varchar(50),
+				       constraint eid_pk primary key (EID))');
+
+sql(:a, 'CREATE TABLE AUTHORS(AUTHOR_ID INTEGER NOT NULL, 
+			      NAME VARCHAR(50),
+			      SURNAME VARCHAR(50),
+			      constraint id_pk PRIMARY KEY(AUTHOR_ID) )');
+
+sql(:a, "insert into RELATEDSERVICES  
+	(EID, SERVICENR, NAME) 
+	values
+	('ABC1234H', 1, 'Issuing a birth certificate');");
+
+sql(:a, "insert into RELATEDSERVICES  
+	(EID, SERVICENR, NAME) 
+	values
+	('ABC1234I', 2, 'Online payment');");
+
+
+sql(:a, "INSERT INTO AUTHORS(AUTHOR_ID,NAME, SURNAME) VALUES(1,'GREG', 'BARISH');");
+sql(:a, "INSERT INTO AUTHORS(AUTHOR_ID,NAME,SURNAME) VALUES(2,'TIMOTHY', 'BUDD');");
+
+quit;

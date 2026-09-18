@@ -1,0 +1,177 @@
+/*-*-sql-*-******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2009 Fredrik Edemar, UDBL
+ *
+ * Description: Linear Road implementation with MySQL
+ ****************************************************************************/
+
+create function init_lr()->vector
+  as sql( my_jdbc(), "CALL prepare_start();" );
+
+/* keep track of the current simulation second */
+create function query_counter()->Integer
+  as stored;
+set query_counter()=0;
+
+/* fetch results from MySQL server and then return it */
+create function flush_mysql_result()->Vector of Integer
+  as begin
+       return concat({1}, sql( my_jdbc(), 
+                              "SELECT * FROM output_accident_alert;"));
+       return concat({2}, sql( my_jdbc(), 
+                              "SELECT * FROM output_account_balance;"));
+       return concat({3}, sql( my_jdbc(), 
+                              "SELECT * FROM output_daily_exp;"));
+       return concat({0}, sql( my_jdbc(), 
+                              "SELECT vid, time, emit_time, vavg, toll 
+                               FROM output_toll_alert;"));
+       sql( my_jdbc(), "TRUNCATE output_accident_alert;");
+       sql( my_jdbc(), "TRUNCATE output_account_balance;");
+       sql( my_jdbc(), "TRUNCATE output_daily_exp;");
+       sql( my_jdbc(), "TRUNCATE output_toll_alert;");
+     end;
+
+/* send event to MySQL and fetch result every second*/
+create function callLR0( vector of integer x) -> Vector of Integer
+  as begin
+     select sql( my_jdbc(), "CALL lr0(?,?,?,?,?,?,?,?,?,?,?)",
+                {x[0],x[1],x[2],x[3],x[4],x[5],x[6],x[7],x[8],x[9],x[14]} );
+     if x[1] > query_counter() then
+      begin set query_counter()=x[1];
+            return flush_mysql_result();
+      end;
+     end;
+
+create function stream_to_vector(Stream s) -> Vector of Integer
+  as select v
+     from Vector of Integer v
+     where v in s;
+
+create function mysql_nodes(Integer connection_id) -> 
+                           (Charstring host, Charstring dbname, 
+                            Charstring dbuser, Charstring dbpass, 
+                            Integer port) 
+  as stored;
+
+create function daily_exp_node()
+  -> (Charstring host, Charstring dbname, Charstring dbuser, 
+      Charstring dbpass, Integer port)
+  as stored;
+      
+/* connect, initialize, start simulation and fetch the remaining result */
+create function scsqMySQLStart(Stream of Vector of Integer s, 
+                               Integer connection_id)
+                    -> Vector
+  as begin
+     set my_jdbc() = jdbc("lrdb"+ connection_id, "com.mysql.jdbc.Driver");
+     select connect(my_jdbc(), "jdbc:mysql://" + host + ":" + port + "/"
+                    + dbname, dbuser, dbpass ) 
+       from Charstring host, Charstring dbname, Charstring dbuser, 
+            Charstring dbpass, Integer port 
+       where mysql_nodes( connection_id) = 
+             (host, dbname, dbuser, dbpass, port);
+     init_lr();
+     return callLR0( stream_to_vector(s) );
+     return flush_mysql_result();
+     end;
+
+/* entry function for work nodes */
+create function my_run_lr(Stream of Vector of Integer indata,
+                          Integer connection_id)
+                          -> Stream of Vector
+   as streamof( scsqMySQLStart(indata, connection_id));
+
+/* handles daily exp queries. query_mysql() in ../src/myhistory.osql */
+create function scsqMySQLExp( Stream s)
+                            -> Vector
+  as begin
+     set my_jdbc() = jdbc("myds", "com.mysql.jdbc.Driver");
+     select connect(my_jdbc(), "jdbc:mysql://" + host + ":" + port + "/"
+                    + dbname, dbuser, dbpass ) 
+       from Charstring host, Charstring dbname, Charstring dbuser, 
+            Charstring dbpass, Integer port 
+       where daily_exp_node() = (host, dbname, dbuser, dbpass, port);
+     return tslrhoho( query_mysql(vector_in(s)) );
+     end;
+
+/* entry function for daily exp node */
+create function lr_dailyexp( Stream s)
+                           -> Stream
+  as streamof( scsqMySQLExp( s ) );
+
+/* merges the nodes from distr_run_lr()
+and write the output streams into files */
+create function write_distr_to_file( Charstring targethost, Charstring ofname,
+                                     Vector of Stream so_hist,
+                                     Vector of stream postproc )
+                                     -> Vector
+ as select in( mergestreams( {t3, t2, t1, t0} ) )
+    from Stream t0, Stream t1, Stream t2, Stream t3
+    /* daily expenditure */
+    where t3 = ostream(newspflex( streamof(
+                        writefiles(ofname + "-ib-3-", 10000000,
+                        tslr(cast(in(mergestreams(so_hist))
+                        as vector of integer)))),
+                      make_record({'hostname', targethost})), 0)
+    /* account balance */
+		and t2 = ostream(newspflex( streamof(
+                        writefiles(ofname + "-ib-2-", 10000000,
+                        tslr(cast(mylrf0(in(zipstreams(
+                              vectorize(select i, postproc[i*3 + 2]
+                                  from integer i 
+                                  where i in iota(0, dim(postproc)/3)))))
+                        as vector of integer)))),
+                    make_record({'hostname', targethost})), 0)
+    /* accident alerts */
+		and t1 = ostream(newspflex( streamof(
+                        writefiles(ofname + "-ib-1-", 10000000,
+                        tslr(cast(in(mergestreams(
+                              vectorize(select i, postproc[i*3 + 1]
+                                  from integer i 
+                                  where i in iota(0, dim(postproc)/3))))
+                              as vector of integer)))),
+                    make_record({'hostname', targethost})), 0)
+    /* toll alerts */
+		and t0 = ostream(newspflex( streamof(
+                        writefiles( ofname + "-ib-0-", 10000000,
+                        tslr(cast(in(mergestreams(
+                              vectorize( select i, postproc[i*3]
+                                from integer i
+                                where i in iota(0, dim(postproc)/3))))
+                              as vector of integer)))),
+                    make_record({'hostname', targethost})), 0);
+ 
+/* run SCSQ-MySQL parallelized */
+create function distr_run_lr( Charstring filename, Charstring targethost,
+                              Charstring targetpath)
+                              -> Vector 
+ as select write_distr_to_file(targethost, ofname, so_hist, postproc)
+    from Vector of Stream postproc, Charstring ofname,
+         Vector of Stream si, Vector of Stream so_hist,
+         Vector of Stream si_xpart, Vector of Stream so_xpart, 
+         Integer nr_nodes
+    where postproc = splitstreams(so_xpart, 3, #'myoesplit')
+          and so_xpart = mapflexv((vselect {si_xpart[i], i}
+                                   from integer i 
+                                   where i=iota(0,nr_nodes-1)),
+                                  #'my_run_lr', make_record({}))
+          and si_xpart = splitstream(si[0], nr_nodes, #'myxpartition')
+          and so_hist = mapstreams( {si[1]}, #'lr_dailyexp')
+          and nr_nodes = count( select mysql_nodes(i) from integer i )
+          and ofname = targetpath + stringify(nr_nodes/2)
+          and si = splitstream( lread(filename, 1), 2, #'dpartition');
+    
+/* run SCSQ-MySQL in one node */
+create function run_single_node(Charstring filename, Charstring dbname, 
+                                Charstring host, Charstring dbuser, 
+                                Charstring dbpass, Integer port)
+                                -> Vector of Integer
+  as begin
+     set my_jdbc() = jdbc("lrdb", "com.mysql.jdbc.Driver");
+     connect(my_jdbc(), "jdbc:mysql://" + host + ":" + port + "/"
+             + dbname, dbuser, dbpass );
+     init_lr();
+     return tslr(callLR0(stream_to_vector( lread(filename, 1) ) ));
+     return tslr(flush_mysql_result());
+     end;

@@ -1,0 +1,941 @@
+ scsq
+
+ Timestamp is 52864c7f (Fri Nov 15 17:31:59 2013)
+
+ Preferred load address is 00400000
+
+ Start         Length     Name                   Class
+ 0001:00000000 0000eb70H .text                   CODE
+ 0002:00000000 000000d4H .rdata                  DATA
+ 0002:000000e0 000000b5H .edata                  DATA
+ 0003:00000000 00000004H .CRT$XCA                DATA
+ 0003:00000004 00000004H .CRT$XCZ                DATA
+ 0003:00000008 00000004H .CRT$XIA                DATA
+ 0003:0000000c 00000004H .CRT$XIZ                DATA
+ 0003:00000010 00001024H .data                   DATA
+ 0003:00001034 00c565a0H .bss                    DATA
+ 0004:00000000 00000050H .idata$2                DATA
+ 0004:00000050 00000014H .idata$3                DATA
+ 0004:00000064 000002bcH .idata$4                DATA
+ 0004:00000320 000002bcH .idata$5                DATA
+ 0004:000005dc 000008beH .idata$6                DATA
+
+  Address         Publics by Value              Rva+Base     Lib:Object
+
+ 0001:00000000       _main                      00401000 f   scsq.obj
+ 0001:0000004a       _amos_toploop              0040104a f   scsqlib:amos2.dll
+ 0001:00000050       _init_scsq_functions       00401050 f   scsqlib:init_scsq.obj
+ 0001:000000c0       _scsq_initialize           004010c0 f   scsqlib:init_scsq.obj
+ 0001:000000f0       _init_scsq                 004010f0 f   scsqlib:init_scsq.obj
+ 0001:00000120       _bitwise_and               00401120 f   scsqlib:bitwise.obj
+ 0001:000001e0       _bitwise_or                004011e0 f   scsqlib:bitwise.obj
+ 0001:000002a0       _bitwise_not               004012a0 f   scsqlib:bitwise.obj
+ 0001:00000310       _register_bitwise          00401310 f   scsqlib:bitwise.obj
+ 0001:00000350       _make_swin2fn              00401350 f   scsqlib:swin.obj
+ 0001:00000510       _make_swinfn               00401510 f   scsqlib:swin.obj
+ 0001:000005f0       _free_swin                 004015f0 f   scsqlib:swin.obj
+ 0001:000006b0       _swin_getincrefn           004016b0 f   scsqlib:swin.obj
+ 0001:000006f0       _swin_getheadlfn           004016f0 f   scsqlib:swin.obj
+ 0001:00000730       _swin_gettaillfn           00401730 f   scsqlib:swin.obj
+ 0001:00000770       _swin_setincrefn           00401770 f   scsqlib:swin.obj
+ 0001:00000800       _swin_setheadlfn           00401800 f   scsqlib:swin.obj
+ 0001:00000890       _swin_settaillfn           00401890 f   scsqlib:swin.obj
+ 0001:00000920       _swin_getsizeCounterfn     00401920 f   scsqlib:swin.obj
+ 0001:00000960       _swin_gettimeCounterfn     00401960 f   scsqlib:swin.obj
+ 0001:000009a0       _swin_increasesizefn       004019a0 f   scsqlib:swin.obj
+ 0001:00000a40       _swin_settimefn            00401a40 f   scsqlib:swin.obj
+ 0001:00000ad0       _swin_set_flags            00401ad0 f   scsqlib:swin.obj
+ 0001:00000b60       _swin_get_flags            00401b60 f   scsqlib:swin.obj
+ 0001:00000ba0       _register_swincell         00401ba0 f   scsqlib:swin.obj
+ 0001:00000c80       _inwindowbf                00401c80 f   scsqlib:swin.obj
+ 0001:00000e80       _register_swinfns          00401e80 f   scsqlib:swin.obj
+ 0001:00000eb0       _euclid                    00401eb0 f   scsqlib:mathfns.obj
+ 0001:00000ee0       _a_cosched_e               00401ee0 f   scsqlib:mathfns.obj
+ 0001:00001070       _register_mathfns          00402070 f   scsqlib:mathfns.obj
+ 0001:00001090       _a_readlofardata           00402090 f   scsqlib:lofardata.obj
+ 0001:00001270       _register_lofardata        00402270 f   scsqlib:lofardata.obj
+ 0001:00001290       _dealloc_udpq              00402290 f   scsqlib:udpq.obj
+ 0001:00001300       _new_udpq                  00402300 f   scsqlib:udpq.obj
+ 0001:00001340       _make_udpqfn               00402340 f   scsqlib:udpq.obj
+ 0001:000013a0       _udpq_stopfn               004023a0 f   scsqlib:udpq.obj
+ 0001:000013e0       _udpq_scalefn              004023e0 f   scsqlib:udpq.obj
+ 0001:00001490       _udpq_showfn               00402490 f   scsqlib:udpq.obj
+ 0001:00001500       _udpq_getaddr              00402500 f   scsqlib:udpq.obj
+ 0001:00001510       _udpq_getaddrfn            00402510 f   scsqlib:udpq.obj
+ 0001:00001560       _init_priv_udpqs           00402560 f   scsqlib:udpq.obj
+ 0001:000016a0       _start_udpq_thread         004026a0 f   scsqlib:udpq.obj
+ 0001:000017b0       _stop_udpq_thread          004027b0 f   scsqlib:udpq.obj
+ 0001:000017e0       _start_udpqs               004027e0 f   scsqlib:udpq.obj
+ 0001:000017f0       _stop_udpqs                004027f0 f   scsqlib:udpq.obj
+ 0001:00001800       _init_priv_udpq            00402800 f   scsqlib:udpq.obj
+ 0001:000018c0       _udp_msleep                004028c0 f   scsqlib:udpq.obj
+ 0001:00001920       _udp_startstop             00402920 f   scsqlib:udpq.obj
+ 0001:000019a0       _udp_identusr              004029a0 f   scsqlib:udpq.obj
+ 0001:00001a10       _udp_scale                 00402a10 f   scsqlib:udpq.obj
+ 0001:00001ba0       _udp_setfreq               00402ba0 f   scsqlib:udpq.obj
+ 0001:00001c30       _UdpRadioEncoder           00402c30 f   scsqlib:udpq.obj
+ 0001:00001e60       _udp_bind_listensocket     00402e60 f   scsqlib:udpq.obj
+ 0001:00001f40       _getqnum                   00402f40 f   scsqlib:udpq.obj
+ 0001:00001f70       _udp_thread_proc           00402f70 f   scsqlib:udpq.obj
+ 0001:000020c0       _get_udp_carray            004030c0 f   scsqlib:udpq.obj
+ 0001:000022c0       _register_udpq             004032c0 f   scsqlib:udpq.obj
+ 0001:00002390       _udp_sleep                 00403390 f   scsqlib:udp_src.obj
+ 0001:000023f0       _identusr                  004033f0 f   scsqlib:udp_src.obj
+ 0001:00002460       _startstop                 00403460 f   scsqlib:udp_src.obj
+ 0001:000024e0       _scale                     004034e0 f   scsqlib:udp_src.obj
+ 0001:00002680       _setfreq                   00403680 f   scsqlib:udp_src.obj
+ 0001:00002740       _RadioEncoder              00403740 f   scsqlib:udp_src.obj
+ 0001:00002970       _connecttoserv             00403970 f   scsqlib:udp_src.obj
+ 0001:00002ab0       _ThreadProc                00403ab0 f   scsqlib:udp_src.obj
+ 0001:00002b90       _start_udp_consumer        00403b90 f   scsqlib:udp_src.obj
+ 0001:00002c00       _stop_udp_consumer         00403c00 f   scsqlib:udp_src.obj
+ 0001:00002c30       _change_udp_scale          00403c30 f   scsqlib:udp_src.obj
+ 0001:00002c60       _get_udp_packet            00403c60 f   scsqlib:udp_src.obj
+ 0001:00002e30       _register_udp_packet_functions 00403e30 f   scsqlib:udp_src.obj
+ 0001:00002e70       _a_realfftbf               00403e70 f   scsqlib:a_fft.obj
+ 0001:00002ee0       _a_realfftfb               00403ee0 f   scsqlib:a_fft.obj
+ 0001:00002f50       _a_fftbf                   00403f50 f   scsqlib:a_fft.obj
+ 0001:00003000       _a_fftpartbf               00404000 f   scsqlib:a_fft.obj
+ 0001:000030d0       _a_ifftbf                  004040d0 f   scsqlib:a_fft.obj
+ 0001:00003180       _register_fft              00404180 f   scsqlib:a_fft.obj
+ 0001:000031d0       _add_vid_qid_x             004041d0 f   scsqlib:lrmultiply.obj
+ 0001:00003240       _lrmul                     00404240 f   scsqlib:lrmultiply.obj
+ 0001:000034c0       _lrmulf                    004044c0 f   scsqlib:lrmultiply.obj
+ 0001:00003880       _register_lrmultiply       00404880 f   scsqlib:lrmultiply.obj
+ 0001:000038b0       _ma_mapper                 004048b0 f   scsqlib:multiarray.obj
+ 0001:00003a40       _mabbf                     00404a40 f   scsqlib:multiarray.obj
+ 0001:00003cc0       _splitna                   00404cc0 f   scsqlib:multiarray.obj
+ 0001:00003ea0       _new_emitarrfn             00404ea0 f   scsqlib:multiarray.obj
+ 0001:00004040       _dest_read_somefn          00405040 f   scsqlib:multiarray.obj
+ 0001:000041d0       _register_multina          004051d0 f   scsqlib:multiarray.obj
+ 0001:00004250       _new_numarray              00405250 f   scsqlib:numarray.obj
+ 0001:00004290       _make_numarray             00405290 f   scsqlib:numarray.obj
+ 0001:000042d0       _inspect_numarray          004052d0 f   scsqlib:numarray.obj
+ 0001:00004310       _numarray_elemsize         00405310 f   scsqlib:numarray.obj
+ 0001:00004350       _numarry_copyfn            00405350 f   scsqlib:numarray.obj
+ 0001:00004490       _na_new_iarray             00405490 f   scsqlib:numarray.obj
+ 0001:000044b0       _make_iarrayfn             004054b0 f   scsqlib:numarray.obj
+ 0001:000044f0       _na_new_darray             004054f0 f   scsqlib:numarray.obj
+ 0001:00004510       _make_darrayfn             00405510 f   scsqlib:numarray.obj
+ 0001:00004550       _make_carrayfn             00405550 f   scsqlib:numarray.obj
+ 0001:00004590       _make_farrayfn             00405590 f   scsqlib:numarray.obj
+ 0001:000045d0       _init_iarrayfn             004055d0 f   scsqlib:numarray.obj
+ 0001:000046b0       _init_darrayfn             004056b0 f   scsqlib:numarray.obj
+ 0001:00004800       _init_farrayfn             00405800 f   scsqlib:numarray.obj
+ 0001:00004950       _init_carrayfn             00405950 f   scsqlib:numarray.obj
+ 0001:00004a90       _init_ccarrayfn            00405a90 f   scsqlib:numarray.obj
+ 0001:00004b20       _bulkprint_numarray        00405b20 f   scsqlib:numarray.obj
+ 0001:00004bb0       _bulkread_numarray         00405bb0 f   scsqlib:numarray.obj
+ 0001:00004c90       _numarray_hr_printer       00405c90 f   scsqlib:numarray.obj
+ 0001:00004f80       _type_of_numarrayfn        00405f80 f   scsqlib:numarray.obj
+ 0001:00005010       _na_csv_float_readfn       00406010 f   scsqlib:numarray.obj
+ 0001:00005410       _na_csv_double_readfn      00406410 f   scsqlib:numarray.obj
+ 0001:00005830       _na_csv_printfn            00406830 f   scsqlib:numarray.obj
+ 0001:00005bb0       _numarray_sizefn           00406bb0 f   scsqlib:numarray.obj
+ 0001:00005c00       _dealloc_numarray          00406c00 f   scsqlib:numarray.obj
+ 0001:00005c10       _numarray_dimfn            00406c10 f   scsqlib:numarray.obj
+ 0001:00005c50       _a_numvrefbbf              00406c50 f   scsqlib:numarray.obj
+ 0001:00005dd0       _naeltfn                   00406dd0 f   scsqlib:numarray.obj
+ 0001:00005ea0       _naselt                    00406ea0 f   scsqlib:numarray.obj
+ 0001:00005ec0       _namin                     00406ec0 f   scsqlib:numarray.obj
+ 0001:00006150       _nasetafn                  00407150 f   scsqlib:numarray.obj
+ 0001:00006240       _nasmashfn                 00407240 f   scsqlib:numarray.obj
+ 0001:00006370       _naprojectfn               00407370 f   scsqlib:numarray.obj
+ 0001:000064d0       _enumerate_numarrayfn      004074d0 f   scsqlib:numarray.obj
+ 0001:000065d0       _na_enum_resetfn           004075d0 f   scsqlib:numarray.obj
+ 0001:000065f0       _a_numvrefbff              004075f0 f   scsqlib:numarray.obj
+ 0001:000067c0       _a_numoddevenbbbf          004077c0 f   scsqlib:numarray.obj
+ 0001:000069c0       _a_namaxbf                 004079c0 f   scsqlib:numarray.obj
+ 0001:00006b80       _a_enormbf                 00407b80 f   scsqlib:numarray.obj
+ 0001:00006cd0       _a_radix2combf             00407cd0 f   scsqlib:numarray.obj
+ 0001:00006eb0       _a_nascalarmulbbf          00407eb0 f   scsqlib:numarray.obj
+ 0001:000070e0       _a_navplusbf               004080e0 f   scsqlib:numarray.obj
+ 0001:00007370       _equal_numarrayfn          00408370 f   scsqlib:numarray.obj
+ 0001:000073d0       _numarray_absfn            004083d0 f   scsqlib:numarray.obj
+ 0001:000074c0       _numarray_refn             004084c0 f   scsqlib:numarray.obj
+ 0001:000075b0       _numarray_imfn             004085b0 f   scsqlib:numarray.obj
+ 0001:000076a0       _numarray_ilfn             004086a0 f   scsqlib:numarray.obj
+ 0001:000078b0       _numarray_hash             004088b0 f   scsqlib:numarray.obj
+ 0001:000078f0       _register_numarray         004088f0 f   scsqlib:numarray.obj
+ 0001:00007ba0       _pffn                      00408ba0 f   scsqlib:sproc.obj
+ 0001:00007bd0       _stream_generator_mapper   00408bd0 f   scsqlib:sproc.obj
+ 0001:00007fe0       _sproc                     00408fe0 f   scsqlib:sproc.obj
+ 0001:00008b50       _add_subscriber            00409b50 f   scsqlib:sproc.obj
+ 0001:00008c40       _a_sproc                   00409c40 f   scsqlib:sproc.obj
+ 0001:00008e10       _register_sproc            00409e10 f   scsqlib:sproc.obj
+ 0001:00008e40       _hashfn                    00409e40 f   scsqlib:sproc.obj
+ 0001:00008e60       _shiftfn                   00409e60 f   scsqlib:sproc.obj
+ 0001:00008e80       _mpi_mergebbff             00409e80 f   scsqlib:sproc.obj
+ 0001:00008e90       _mpi_smergebf              00409e90 f   scsqlib:sproc.obj
+ 0001:00008ea0       _mpi_revalfn               00409ea0 f   scsqlib:sproc.obj
+ 0001:00008eb0       _mpi_sendfn                00409eb0 f   scsqlib:sproc.obj
+ 0001:00008ec0       _open_mpifn                00409ec0 f   scsqlib:sproc.obj
+ 0001:00008ed0       _mpi_send_blockfn          00409ed0 f   scsqlib:sproc.obj
+ 0001:00008ee0       _instrum_printfn           00409ee0 f   scsqlib:sproc.obj
+ 0001:00008fd0       _instr_commstatfn          00409fd0 f   scsqlib:sproc.obj
+ 0001:000091a0       _modrandbf                 0040a1a0 f   scsqlib:sproc.obj
+ 0001:00009230       _register_scsq_functions   0040a230 f   scsqlib:sproc.obj
+ 0001:00009330       _is_errorfn                0040a330 f   scsqlib:bgcommon.obj
+ 0001:00009370       _get_varstring             0040a370 f   scsqlib:bgcommon.obj
+ 0001:000093d0       _ez_randfn                 0040a3d0 f   scsqlib:bgcommon.obj
+ 0001:00009410       _acc_tv                    0040a410 f   scsqlib:bgcommon.obj
+ 0001:00009480       _register_bgcommon         0040a480 f   scsqlib:bgcommon.obj
+ 0001:000094a0       _port_bf                   0040a4a0 f   scsqlib:port.obj
+ 0001:00009c50       _extract_bf                0040ac50 f   scsqlib:port.obj
+ 0001:0000a460       _connecttoportfn           0040b460 f   scsqlib:port.obj
+ 0001:0000a680       _register_port             0040b680 f   scsqlib:port.obj
+ 0001:0000a690       _init_bgs                  0040b690 f   scsqlib:bgextract.obj
+ 0001:0000a700       _tslreadfn                 0040b700 f   scsqlib:bgextract.obj
+ 0001:0000a930       _bgextractbf               0040b930 f   scsqlib:bgextract.obj
+ 0001:0000ac40       _bgezreadfn                0040bc40 f   scsqlib:bgextract.obj
+ 0001:0000ae70       _bguallbbf                 0040be70 f   scsqlib:bgextract.obj
+ 0001:0000b320       _register_bgextract        0040c320 f   scsqlib:bgextract.obj
+ 0001:0000b360       _instrum_tsreadfn          0040c360 f   scsqlib:extract.obj
+ 0001:0000b5b0       _instrum_ezreadfn          0040c5b0 f   scsqlib:extract.obj
+ 0001:0000b810       _instrum_ezreadsfn         0040c810 f   scsqlib:extract.obj
+ 0001:0000bb60       _tsread                    0040cb60 f   scsqlib:extract.obj
+ 0001:0000bda0       _csixtractbf               0040cda0 f   scsqlib:extract.obj
+ 0001:0000c040       _uallcbbf                  0040d040 f   scsqlib:extract.obj
+ 0001:0000c570       _smjnacbbbf                0040d570 f   scsqlib:extract.obj
+ 0001:0000cd10       _register_extract          0040dd10 f   scsqlib:extract.obj
+ 0001:0000ce40       _readlofarvectorfile       0040de40 f   scsqlib:fileaccess.obj
+ 0001:0000cf70       _readtextvectorfile        0040df70 f   scsqlib:fileaccess.obj
+ 0001:0000d050       _readbinaryvectorfile      0040e050 f   scsqlib:fileaccess.obj
+ 0001:0000d140       _register_fileaccess       0040e140 f   scsqlib:fileaccess.obj
+ 0001:0000d170       _bgsubmitbf                0040e170 f   scsqlib:bgsubmit.obj
+ 0001:0000d6a0       _register_bgsubmit         0040e6a0 f   scsqlib:bgsubmit.obj
+ 0001:0000d6d0       _compare_tv                0040e6d0 f   scsqlib:twinagg.obj
+ 0001:0000d720       _twinaggbf_mapper          0040e720 f   scsqlib:twinagg.obj
+ 0001:0000d860       _twin_get_timestamp        0040e860 f   scsqlib:twinagg.obj
+ 0001:0000d8d0       _twin_realloc_buf          0040e8d0 f   scsqlib:twinagg.obj
+ 0001:0000d970       _twin_emit                 0040e970 f   scsqlib:twinagg.obj
+ 0001:0000db60       _twin_set_ends             0040eb60 f   scsqlib:twinagg.obj
+ 0001:0000dc40       _twinaggbf                 0040ec40 f   scsqlib:twinagg.obj
+ 0001:0000de40       _tsamapper                 0040ee40 f   scsqlib:twinagg.obj
+ 0001:0000df00       _tsattrbf                  0040ef00 f   scsqlib:twinagg.obj
+ 0001:0000dfb0       _register_twinagg          0040efb0 f   scsqlib:twinagg.obj
+ 0001:0000dfe0       _a_initialize              0040efe0 f   scsqlib:amos2.dll
+ 0001:0000dfe6       _init_amos                 0040efe6 f   scsqlib:amos2.dll
+ 0001:0000dfec       _a_init_connection         0040efec f   scsqlib:amos2.dll
+ 0001:0000dff2       _lerror                    0040eff2 f   scsqlib:amos2.dll
+ 0001:0000dff8       _new_integer               0040eff8 f   scsqlib:amos2.dll
+ 0001:0000dffe       _a_round                   0040effe f   scsqlib:amos2.dll
+ 0001:0000e004       _getreal                   0040f004 f   scsqlib:amos2.dll
+ 0001:0000e00a       _extfunction1              0040f00a f   scsqlib:amos2.dll
+ 0001:0000e010       _extfunction2              0040f010 f   scsqlib:amos2.dll
+ 0001:0000e016       _new_object                0040f016 f   scsqlib:amos2.dll
+ 0001:0000e01c       _dealloc_object            0040f01c f   scsqlib:amos2.dll
+ 0001:0000e022       _release                   0040f022 f   scsqlib:amos2.dll
+ 0001:0000e028       _extfunctionn              0040f028 f   scsqlib:amos2.dll
+ 0001:0000e02e       _a_definetype              0040f02e f   scsqlib:amos2.dll
+ 0001:0000e034       _a_result                  0040f034 f   scsqlib:amos2.dll
+ 0001:0000e03a       _resetfn                   0040f03a f   scsqlib:amos2.dll
+ 0001:0000e040       _clearstack                0040f040 f   scsqlib:amos2.dll
+ 0001:0000e046       _a_extimpl                 0040f046 f   scsqlib:amos2.dll
+ 0001:0000e04c       _a_emit                    0040f04c f   scsqlib:amos2.dll
+ 0001:0000e052       _a_setdoubleelem           0040f052 f   scsqlib:amos2.dll
+ 0001:0000e058       _a_elt                     0040f058 f   scsqlib:amos2.dll
+ 0001:0000e05e       _a_getelem                 0040f05e f   scsqlib:amos2.dll
+ 0001:0000e064       _a_extfunction             0040f064 f   scsqlib:amos2.dll
+ 0001:0000e06a       _a_setelem                 0040f06a f   scsqlib:amos2.dll
+ 0001:0000e070       _a_getstringelem           0040f070 f   scsqlib:amos2.dll
+ 0001:0000e076       _a_getelemsize             0040f076 f   scsqlib:amos2.dll
+ 0001:0000e07c       _new_symbol                0040f07c f   scsqlib:amos2.dll
+ 0001:0000e082       _call_lisp                 0040f082 f   scsqlib:amos2.dll
+ 0001:0000e088       _new_real                  0040f088 f   scsqlib:amos2.dll
+ 0001:0000e08e       _a_list                    0040f08e f   scsqlib:amos2.dll
+ 0001:0000e094       _interror                  0040f094 f   scsqlib:amos2.dll
+ 0001:0000e09a       _a_error                   0040f09a f   scsqlib:amos2.dll
+ 0001:0000e0a0       _a_length                  0040f0a0 f   scsqlib:amos2.dll
+ 0001:0000e0a6       _new_string                0040f0a6 f   scsqlib:amos2.dll
+ 0001:0000e0ac       _sockerror                 0040f0ac f   scsqlib:amos2.dll
+ 0001:0000e0b2       _a_register_error          0040f0b2 f   scsqlib:amos2.dll
+ 0001:0000e0b8       _a_getdoubleelem           0040f0b8 f   scsqlib:amos2.dll
+ 0001:0000e0be       _free_tuple                0040f0be f   scsqlib:amos2.dll
+ 0001:0000e0c4       _a_setseqelem              0040f0c4 f   scsqlib:amos2.dll
+ 0001:0000e0ca       _new_complex               0040f0ca f   scsqlib:amos2.dll
+ 0001:0000e0d0       _a_newtuple                0040f0d0 f   scsqlib:amos2.dll
+ 0001:0000e0d6       _a_init_tuple              0040f0d6 f   scsqlib:amos2.dll
+ 0001:0000e0e0       _realfft                   0040f0e0 f   scsqlib:realfft.obj
+ 0001:0000e1d0       _realrft                   0040f1d0 f   scsqlib:realfft.obj
+ 0001:0000e2f0       _fft                       0040f2f0 f   scsqlib:ft.obj
+ 0001:0000e380       _fftpart                   0040f380 f   scsqlib:ft.obj
+ 0001:0000e3b0       _rft                       0040f3b0 f   scsqlib:ft.obj
+ 0001:0000e3e0       _a_getintelem              0040f3e0 f   scsqlib:amos2.dll
+ 0001:0000e3e6       _a_mapbag                  0040f3e6 f   scsqlib:amos2.dll
+ 0001:0000e3ec       _a_seta                    0040f3ec f   scsqlib:amos2.dll
+ 0001:0000e3f2       _new_array                 0040f3f2 f   scsqlib:amos2.dll
+ 0001:0000e3f8       _a_sleep                   0040f3f8 f   scsqlib:amos2.dll
+ 0001:0000e3fe       _a_arraysize               0040f3fe f   scsqlib:amos2.dll
+ 0001:0000e404       _extfunction3              0040f404 f   scsqlib:amos2.dll
+ 0001:0000e40a       _new_aligned_object        0040f40a f   scsqlib:amos2.dll
+ 0001:0000e410       _a_putc                    0040f410 f   scsqlib:amos2.dll
+ 0001:0000e416       _a_writebytes              0040f416 f   scsqlib:amos2.dll
+ 0001:0000e41c       _a_puts                    0040f41c f   scsqlib:amos2.dll
+ 0001:0000e422       _a_readbytes               0040f422 f   scsqlib:amos2.dll
+ 0001:0000e428       _a_getc                    0040f428 f   scsqlib:amos2.dll
+ 0001:0000e42e       _a_stringify               0040f42e f   scsqlib:amos2.dll
+ 0001:0000e434       _a_file_getch              0040f434 f   scsqlib:amos2.dll
+ 0001:0000e43a       _add_CSV_times             0040f43a f   scsqlib:amos2.dll
+ 0001:0000e440       _dealloc_aligned_object    0040f440 f   scsqlib:amos2.dll
+ 0001:0000e450       _W_init                    0040f450 f   scsqlib:w.obj
+ 0001:0000e500       _type_reader_function      0040f500 f   scsqlib:amos2.dll
+ 0001:0000e506       _flushfn                   0040f506 f   scsqlib:amos2.dll
+ 0001:0000e50c       _printfn                   0040f50c f   scsqlib:amos2.dll
+ 0001:0000e512       _callfunction1fn           0040f512 f   scsqlib:amos2.dll
+ 0001:0000e518       _run_time                  0040f518 f   scsqlib:amos2.dll
+ 0001:0000e51e       _a_resultarray             0040f51e f   scsqlib:amos2.dll
+ 0001:0000e524       _new_adjarray              0040f524 f   scsqlib:amos2.dll
+ 0001:0000e52a       _equal                     0040f52a f   scsqlib:amos2.dll
+ 0001:0000e530       _a_print                   0040f530 f   scsqlib:amos2.dll
+ 0001:0000e536       _readfn                    0040f536 f   scsqlib:amos2.dll
+ 0001:0000e53c       _accept_socket_blockfn     0040f53c f   scsqlib:amos2.dll
+ 0001:0000e542       _push_vectorfn             0040f542 f   scsqlib:amos2.dll
+ 0001:0000e548       _compute_hash_key          0040f548 f   scsqlib:amos2.dll
+ 0001:0000e54e       _lprintfn                  0040f54e f   scsqlib:amos2.dll
+ 0001:0000e554       _make_recordfn             0040f554 f   scsqlib:amos2.dll
+ 0001:0000e55a       _proctimefn                0040f55a f   scsqlib:amos2.dll
+ 0001:0000e560       _extfunction0              0040f560 f   scsqlib:amos2.dll
+ 0001:0000e566       _make_portfn               0040f566 f   scsqlib:amos2.dll
+ 0001:0000e56c       _port_getsubfn             0040f56c f   scsqlib:amos2.dll
+ 0001:0000e572       _open_socket_blockfn       0040f572 f   scsqlib:amos2.dll
+ 0001:0000e578       _port_gethostnamefn        0040f578 f   scsqlib:amos2.dll
+ 0001:0000e57e       _port_getportnofn          0040f57e f   scsqlib:amos2.dll
+ 0001:0000e584       _port_getprotofn           0040f584 f   scsqlib:amos2.dll
+ 0001:0000e58a       _a_nth                     0040f58a f   scsqlib:amos2.dll
+ 0001:0000e590       _close_socketfn            0040f590 f   scsqlib:amos2.dll
+ 0001:0000e596       _error_qfn                 0040f596 f   scsqlib:amos2.dll
+ 0001:0000e59c       _lreadfn                   0040f59c f   scsqlib:amos2.dll
+ 0001:0000e5a2       _poll_sockets_blockfn      0040f5a2 f   scsqlib:amos2.dll
+ 0001:0000e5a8       _memqfn                    0040f5a8 f   scsqlib:amos2.dll
+ 0001:0000e5ae       _set_differencefn          0040f5ae f   scsqlib:amos2.dll
+ 0001:0000e5b4       _arraytolistfn             0040f5b4 f   scsqlib:amos2.dll
+ 0001:0000e5ba       _listtoarrayfn             0040f5ba f   scsqlib:amos2.dll
+ 0001:0000e5c0       _cons                      0040f5c0 f   scsqlib:amos2.dll
+ 0001:0000e5c6       _a_read_from_string        0040f5c6 f   scsqlib:amos2.dll
+ 0001:0000e5cc       _DoInterrupt               0040f5cc f   scsqlib:amos2.dll
+ 0001:0000e5d2       _a_message                 0040f5d2 f   scsqlib:amos2.dll
+ 0001:0000e5d8       _add_duration              0040f5d8 f   scsqlib:amos2.dll
+ 0001:0000e5de       _new_timeval               0040f5de f   scsqlib:amos2.dll
+ 0001:0000e5e4       _add_duration2             0040f5e4 f   scsqlib:amos2.dll
+ 0001:0000e5f0       _Fourier                   0040f5f0 f   scsqlib:fourier.obj
+ 0001:0000e640       _radix                     0040f640 f   scsqlib:fourier.obj
+ 0001:0000e8b0       _mainCRTStartup            0040f8b0 f   MSVCRT:crtexe.obj
+ 0001:0000e9c0       __ftol                     0040f9c0 f   MSVCRT:MSVCRT.dll
+ 0001:0000e9c6       __setjmp3                  0040f9c6 f   MSVCRT:MSVCRT.dll
+ 0001:0000e9cc       _fclose                    0040f9cc f   MSVCRT:MSVCRT.dll
+ 0001:0000e9d2       _fread                     0040f9d2 f   MSVCRT:MSVCRT.dll
+ 0001:0000e9d8       _free                      0040f9d8 f   MSVCRT:MSVCRT.dll
+ 0001:0000e9de       _fopen                     0040f9de f   MSVCRT:MSVCRT.dll
+ 0001:0000e9e4       _malloc                    0040f9e4 f   MSVCRT:MSVCRT.dll
+ 0001:0000e9f0       __alloca_probe             0040f9f0 f   MSVCRT:chkstk.obj
+ 0001:0000e9f0       __chkstk                   0040f9f0 f   MSVCRT:chkstk.obj
+ 0001:0000ea20       _clock                     0040fa20 f   MSVCRT:MSVCRT.dll
+ 0001:0000ea26       _ceil                      0040fa26 f   MSVCRT:MSVCRT.dll
+ 0001:0000ea2c       __CIpow                    0040fa2c f   MSVCRT:MSVCRT.dll
+ 0001:0000ea32       _printf                    0040fa32 f   MSVCRT:MSVCRT.dll
+ 0001:0000ea38       _floor                     0040fa38 f   MSVCRT:MSVCRT.dll
+ 0001:0000ea3e       _fflush                    0040fa3e f   MSVCRT:MSVCRT.dll
+ 0001:0000ea44       _sprintf                   0040fa44 f   MSVCRT:MSVCRT.dll
+ 0001:0000ea4a       _atof                      0040fa4a f   MSVCRT:MSVCRT.dll
+ 0001:0000ea50       _strncpy                   0040fa50 f   MSVCRT:MSVCRT.dll
+ 0001:0000ea56       _exit                      0040fa56 f   MSVCRT:MSVCRT.dll
+ 0001:0000ea5c       _rand                      0040fa5c f   MSVCRT:MSVCRT.dll
+ 0001:0000ea62       __pclose                   0040fa62 f   MSVCRT:MSVCRT.dll
+ 0001:0000ea68       _fgets                     0040fa68 f   MSVCRT:MSVCRT.dll
+ 0001:0000ea6e       __popen                    0040fa6e f   MSVCRT:MSVCRT.dll
+ 0001:0000ea74       _fgetc                     0040fa74 f   MSVCRT:MSVCRT.dll
+ 0001:0000ea7a       _system                    0040fa7a f   MSVCRT:MSVCRT.dll
+ 0001:0000ea80       __exit                     0040fa80 f   MSVCRT:MSVCRT.dll
+ 0001:0000ea86       __XcptFilter               0040fa86 f   MSVCRT:MSVCRT.dll
+ 0001:0000ea8c       ___p___initenv             0040fa8c f   MSVCRT:MSVCRT.dll
+ 0001:0000ea92       ___getmainargs             0040fa92 f   MSVCRT:MSVCRT.dll
+ 0001:0000ea98       __initterm                 0040fa98 f   MSVCRT:MSVCRT.dll
+ 0001:0000ea9e       __setdefaultprecision      0040fa9e f   MSVCRT:fp8.obj
+ 0001:0000eab0       ___setusermatherr          0040fab0 f   MSVCRT:MSVCRT.dll
+ 0001:0000eab6       __matherr                  0040fab6 f   MSVCRT:merr.obj
+ 0001:0000eab9       __setargv                  0040fab9 f   MSVCRT:dllargv.obj
+ 0001:0000eaba       ___p__commode              0040faba f   MSVCRT:MSVCRT.dll
+ 0001:0000eac0       ___p__fmode                0040fac0 f   MSVCRT:MSVCRT.dll
+ 0001:0000eac6       __onexit                   0040fac6 f   MSVCRT:atonexit.obj
+ 0001:0000eaf2       _atexit                    0040faf2 f   MSVCRT:atonexit.obj
+ 0001:0000eb04       ___set_app_type            0040fb04 f   MSVCRT:MSVCRT.dll
+ 0001:0000eb0a       __except_handler3          0040fb0a f   MSVCRT:MSVCRT.dll
+ 0001:0000eb10       __controlfp                0040fb10 f   MSVCRT:MSVCRT.dll
+ 0001:0000eb16       ___dllonexit               0040fb16 f   MSVCRT:MSVCRT.dll
+ 0001:0000eb1c       _CreateThread@24           0040fb1c f   kernel32:KERNEL32.dll
+ 0001:0000eb22       _WaitForSingleObject@8     0040fb22 f   kernel32:KERNEL32.dll
+ 0001:0000eb28       _WSACleanup@0              0040fb28 f   Ws2_32:WS2_32.dll
+ 0001:0000eb2e       _htons@4                   0040fb2e f   Ws2_32:WS2_32.dll
+ 0001:0000eb34       _gethostbyname@4           0040fb34 f   Ws2_32:WS2_32.dll
+ 0001:0000eb3a       _sendto@24                 0040fb3a f   Ws2_32:WS2_32.dll
+ 0001:0000eb40       _send@16                   0040fb40 f   Ws2_32:WS2_32.dll
+ 0001:0000eb46       _bind@12                   0040fb46 f   Ws2_32:WS2_32.dll
+ 0001:0000eb4c       _socket@12                 0040fb4c f   Ws2_32:WS2_32.dll
+ 0001:0000eb52       _WSAStartup@8              0040fb52 f   Ws2_32:WS2_32.dll
+ 0001:0000eb58       _closesocket@4             0040fb58 f   Ws2_32:WS2_32.dll
+ 0001:0000eb5e       _inet_ntoa@4               0040fb5e f   Ws2_32:WS2_32.dll
+ 0001:0000eb64       _recvfrom@24               0040fb64 f   Ws2_32:WS2_32.dll
+ 0001:0000eb6a       _inet_addr@4               0040fb6a f   Ws2_32:WS2_32.dll
+ 0002:0000001c       ??_C@_06BEAG@?$FLscsq?$FN?$AA@ 0041001c     scsq.obj
+ 0002:00000024       ??_C@_08MPAG@scsq?4dmp?$AA@ 00410024     scsq.obj
+ 0002:00000030       __real@8@40059600000000000000 00410030     scsqlib:udpq.obj
+ 0002:00000038       __real@8@400384ccccccccccc800 00410038     scsqlib:udpq.obj
+ 0002:00000040       __real@8@400e8000000000000000 00410040     scsqlib:udpq.obj
+ 0002:00000048       __real@8@400384e08aefb2aae000 00410048     scsqlib:udpq.obj
+ 0002:00000050       __real@8@40008000000000000000 00410050     scsqlib:udpq.obj
+ 0002:00000058       __real@8@4002c000000000000000 00410058     scsqlib:udpq.obj
+ 0002:00000060       __real@8@4001c800000000000000 00410060     scsqlib:udpq.obj
+ 0002:00000068       __real@8@4009a7c60ad5f45dd800 00410068     scsqlib:udpq.obj
+ 0002:00000070       __real@8@3fff8000000000000000 00410070     scsqlib:udpq.obj
+ 0002:00000078       __real@8@400cc34c000000000000 00410078     scsqlib:udpq.obj
+ 0002:00000080       __real@8@00000000000000000000 00410080     scsqlib:numarray.obj
+ 0002:00000088       __real@8@3ff583126e978d4fe000 00410088     scsqlib:sproc.obj
+ 0002:00000090       __real@8@4008fa00000000000000 00410090     scsqlib:sproc.obj
+ 0002:00000098       __real@8@3ff08000000000000000 00410098     scsqlib:bgcommon.obj
+ 0002:000000a0       __real@8@3feb8637bd05af6c6800 004100a0     scsqlib:twinagg.obj
+ 0002:000000a8       __real@8@c0008000000000000000 004100a8     scsqlib:realfft.obj
+ 0002:000000b0       __real@8@bffe8000000000000000 004100b0     scsqlib:realfft.obj
+ 0002:000000b8       __real@8@3ffe8000000000000000 004100b8     scsqlib:realfft.obj
+ 0002:000000c0       __real@8@4001c90fdaa22168c000 004100c0     scsqlib:w.obj
+ 0003:00000000       ___xc_a                    00411000     MSVCRT:cinitexe.obj
+ 0003:00000004       ___xc_z                    00411004     MSVCRT:cinitexe.obj
+ 0003:00000008       ___xi_a                    00411008     MSVCRT:cinitexe.obj
+ 0003:0000000c       ___xi_z                    0041100c     MSVCRT:cinitexe.obj
+ 0003:00000010       ??_C@_04FACE@bnot?$AA@     00411010     scsqlib:bitwise.obj
+ 0003:00000018       ??_C@_03MDNK@bor?$AA@      00411018     scsqlib:bitwise.obj
+ 0003:0000001c       ??_C@_04MBCK@band?$AA@     0041101c     scsqlib:bitwise.obj
+ 0003:00000024       ??_C@_0P@IAFP@swin?9set?9flags?$AA@ 00411024     scsqlib:swin.obj
+ 0003:00000034       ??_C@_0P@KNPN@swin?9get?9flags?$AA@ 00411034     scsqlib:swin.obj
+ 0003:00000044       ??_C@_0P@COJA@swin?9set?9timec?$AA@ 00411044     scsqlib:swin.obj
+ 0003:00000054       ??_C@_0P@DDC@swin?9get?9timec?$AA@ 00411054     scsqlib:swin.obj
+ 0003:00000064       ??_C@_0P@NKIH@swin?9inc?9sizec?$AA@ 00411064     scsqlib:swin.obj
+ 0003:00000074       ??_C@_0P@PMMD@swin?9get?9sizec?$AA@ 00411074     scsqlib:swin.obj
+ 0003:00000084       ??_C@_0O@DNLG@swin?9set?9tail?$AA@ 00411084     scsqlib:swin.obj
+ 0003:00000094       ??_C@_0O@JPOF@swin?9get?9tail?$AA@ 00411094     scsqlib:swin.obj
+ 0003:000000a4       ??_C@_0O@HOPJ@swin?9set?9head?$AA@ 004110a4     scsqlib:swin.obj
+ 0003:000000b4       ??_C@_0O@NMKK@swin?9get?9head?$AA@ 004110b4     scsqlib:swin.obj
+ 0003:000000c4       ??_C@_0P@HPKN@swin?9set?9incre?$AA@ 004110c4     scsqlib:swin.obj
+ 0003:000000d4       ??_C@_0P@FCAP@swin?9get?9incre?$AA@ 004110d4     scsqlib:swin.obj
+ 0003:000000e4       ??_C@_0M@IDOI@make?9swin?9c?$AA@ 004110e4     scsqlib:swin.obj
+ 0003:000000f0       ??_C@_04BMIH@swin?$AA@     004110f0     scsqlib:swin.obj
+ 0003:000000f8       ??_C@_0L@NJKM@make?9swin2?$AA@ 004110f8     scsqlib:swin.obj
+ 0003:00000104       ??_C@_07GMNC@swin?9in?$AA@ 00411104     scsqlib:swin.obj
+ 0003:0000010c       ??_C@_09BPLJ@COSCHED_E?$AA@ 0041110c     scsqlib:mathfns.obj
+ 0003:00000118       ??_C@_01LHO@r?$AA@         00411118     scsqlib:lofardata.obj
+ 0003:0000011c       ??_C@_0O@IFHN@READLOFARDATA?$AA@ 0041111c     scsqlib:lofardata.obj
+ 0003:0000012c       ??_C@_05BOEP@sleep?$AA@    0041112c     scsqlib:udpq.obj
+ 0003:00000134       ??_C@_0N@BICG@_sensor?9ids_?$AA@ 00411134     scsqlib:udpq.obj
+ 0003:00000144       ??_C@_0CC@BPOF@WinSock?5DLL?5does?5not?5support?52?42@ 00411144     scsqlib:udpq.obj
+ 0003:00000168       ??_C@_0BG@IDEB@Binding?5server?5socket?$AA@ 00411168     scsqlib:udpq.obj
+ 0003:00000180       ??_C@_0BF@GLPK@Create?5socket?5error?6?$AA@ 00411180     scsqlib:udpq.obj
+ 0003:00000198       ??_C@_0CF@MLMA@Could?5not?5find?5a?5usable?5WinSock?5@ 00411198     scsqlib:udpq.obj
+ 0003:000001c0       ??_C@_0BA@LMBI@Recvfrom?5error?6?$AA@ 004111c0     scsqlib:udpq.obj
+ 0003:000001d0       ??_C@_0P@DHGN@get_udp_carray?$AA@ 004111d0     scsqlib:udpq.obj
+ 0003:000001e0       ??_C@_0L@MMKP@stop_udpqs?$AA@ 004111e0     scsqlib:udpq.obj
+ 0003:000001ec       ??_C@_0M@PIDB@start_udpqs?$AA@ 004111ec     scsqlib:udpq.obj
+ 0003:000001f8       ??_C@_09MIKD@udpq?9addr?$AA@ 004111f8     scsqlib:udpq.obj
+ 0003:00000204       ??_C@_09IBKJ@udpq?9show?$AA@ 00411204     scsqlib:udpq.obj
+ 0003:00000210       ??_C@_0L@PMMM@udpq?9scale?$AA@ 00411210     scsqlib:udpq.obj
+ 0003:0000021c       ??_C@_09CNMJ@udpq?9stop?$AA@ 0041121c     scsqlib:udpq.obj
+ 0003:00000228       ??_C@_09HLOM@make?9udpq?$AA@ 00411228     scsqlib:udpq.obj
+ 0003:00000234       ??_C@_04HFEA@udpq?$AA@     00411234     scsqlib:udpq.obj
+ 0003:0000023c       ??_C@_0BG@ENMH@Could?5not?5bind?5socket?$AA@ 0041123c     scsqlib:udpq.obj
+ 0003:00000254       ??_C@_0BE@PBEC@Unknown?5sensor?5host?$AA@ 00411254     scsqlib:udpq.obj
+ 0003:00000268       ??_C@_0N@KPO@Unknown?5host?$AA@ 00411268     scsqlib:udpq.obj
+ 0003:00000278       _Freq                      00411278     scsqlib:udp_src.obj
+ 0003:00000280       _red                       00411280     scsqlib:udp_src.obj
+ 0003:00000288       _msTimout                  00411288     scsqlib:udp_src.obj
+ 0003:0000028c       ??_C@_0BK@DKAN@start?5the?5consumer?5first?6?$AA@ 0041128c     scsqlib:udp_src.obj
+ 0003:000002a8       ??_C@_0P@EOOM@get_udp_packet?$AA@ 004112a8     scsqlib:udp_src.obj
+ 0003:000002b8       ??_C@_0BB@LBML@change_udp_scale?$AA@ 004112b8     scsqlib:udp_src.obj
+ 0003:000002cc       ??_C@_0BC@NLLJ@stop_udp_consumer?$AA@ 004112cc     scsqlib:udp_src.obj
+ 0003:000002e0       ??_C@_0BD@HJAP@start_udp_consumer?$AA@ 004112e0     scsqlib:udp_src.obj
+ 0003:000002f4       ??_C@_06CDJC@IFFTBF?$AA@   004112f4     scsqlib:a_fft.obj
+ 0003:000002fc       ??_C@_09LDDP@FFTPARTBF?$AA@ 004112fc     scsqlib:a_fft.obj
+ 0003:00000308       ??_C@_05HDDK@FFTBF?$AA@    00411308     scsqlib:a_fft.obj
+ 0003:00000310       ??_C@_09MKJB@REALFFTFB?$AA@ 00411310     scsqlib:a_fft.obj
+ 0003:0000031c       ??_C@_09DKGH@REALFFTBF?$AA@ 0041131c     scsqlib:a_fft.obj
+ 0003:00000328       ??_C@_0M@JCMJ@clrfmulbbbf?$AA@ 00411328     scsqlib:lrmultiply.obj
+ 0003:00000334       ??_C@_0L@JHCM@clrmulbbbf?$AA@ 00411334     scsqlib:lrmultiply.obj
+ 0003:00000340       ??_C@_06KIJK@?$CKBUSY?$CK?$AA@ 00411340     scsqlib:multiarray.obj
+ 0003:00000348       ??_C@_08HLCN@MZIPREAD?$AA@ 00411348     scsqlib:multiarray.obj
+ 0003:00000354       ??_C@_0BJ@FJNF@Multiarray?5size?5mismatch?$AA@ 00411354     scsqlib:multiarray.obj
+ 0003:00000370       ??_C@_0L@CHNL@splitnabbf?$AA@ 00411370     scsqlib:multiarray.obj
+ 0003:0000037c       ??_C@_0L@HDBP@multinabbf?$AA@ 0041137c     scsqlib:multiarray.obj
+ 0003:00000388       ??_C@_0O@HHJF@dest?9readsome?$AA@ 00411388     scsqlib:multiarray.obj
+ 0003:00000398       ??_C@_0M@JIHA@new?9emitarr?$AA@ 00411398     scsqlib:multiarray.obj
+ 0003:000003a4       ??_C@_0DD@CBEE@?5inspect_numarray?3?5kind?$DN?$CFd?0?5byte@ 004113a4     scsqlib:numarray.obj
+ 0003:000003d8       ??_C@_02GLLI@?$FN?5?$AA@   004113d8     scsqlib:numarray.obj
+ 0003:000003dc       ??_C@_02MECO@?$CFd?$AA@    004113dc     scsqlib:numarray.obj
+ 0003:000003e0       ??_C@_05LHIA@?$CD?$FLNA?5?$AA@ 004113e0     scsqlib:numarray.obj
+ 0003:000003e8       ??_C@_01JAP@i?$AA@         004113e8     scsqlib:numarray.obj
+ 0003:000003ec       ??_C@_03GNJA@i?0?5?$AA@    004113ec     scsqlib:numarray.obj
+ 0003:000003f0       ??_C@_01PJOB@?$CL?$AA@     004113f0     scsqlib:numarray.obj
+ 0003:000003f4       ??_C@_01KCD@?$HN?$AA@      004113f4     scsqlib:numarray.obj
+ 0003:000003f8       ??_C@_02GIEM@?0?5?$AA@     004113f8     scsqlib:numarray.obj
+ 0003:000003fc       ??_C@_01PFFB@?$HL?$AA@     004113fc     scsqlib:numarray.obj
+ 0003:00000400       ??_C@_08GJHK@_farray_?$AA@ 00411400     scsqlib:numarray.obj
+ 0003:0000040c       ??_C@_08PNLJ@_carray_?$AA@ 0041140c     scsqlib:numarray.obj
+ 0003:00000418       ??_C@_08DEFB@_darray_?$AA@ 00411418     scsqlib:numarray.obj
+ 0003:00000424       ??_C@_08NEDP@_iarray_?$AA@ 00411424     scsqlib:numarray.obj
+ 0003:00000430       ??_C@_02DLJH@?$CFg?$AA@    00411430     scsqlib:numarray.obj
+ 0003:00000434       ??_C@_0N@CMIA@pos?$DO?$DNstride?6?$AA@ 00411434     scsqlib:numarray.obj
+ 0003:00000444       ??_C@_0O@GJJK@numarray_il?9?$CL?$AA@ 00411444     scsqlib:numarray.obj
+ 0003:00000454       ??_C@_0O@DLIM@numarray_im?9?$CL?$AA@ 00411454     scsqlib:numarray.obj
+ 0003:00000464       ??_C@_0O@LLHO@numarray_re?9?$CL?$AA@ 00411464     scsqlib:numarray.obj
+ 0003:00000474       ??_C@_0P@HKCD@numarray_abs?9?$CL?$AA@ 00411474     scsqlib:numarray.obj
+ 0003:00000484       ??_C@_07HLDP@NAMAXBF?$AA@  00411484     scsqlib:numarray.obj
+ 0003:0000048c       ??_C@_09GBNJ@NAVPLUSBF?$AA@ 0041148c     scsqlib:numarray.obj
+ 0003:00000498       ??_C@_09ELPM@NASMULBBF?$AA@ 00411498     scsqlib:numarray.obj
+ 0003:000004a4       ??_C@_0BA@LKJC@RADIX2COMBINEBF?$AA@ 004114a4     scsqlib:numarray.obj
+ 0003:000004b4       ??_C@_0P@DOHN@NUMODDEVENBBBF?$AA@ 004114b4     scsqlib:numarray.obj
+ 0003:000004c4       ??_C@_0L@EHEP@NUMVREFBFF?$AA@ 004114c4     scsqlib:numarray.obj
+ 0003:000004d0       ??_C@_0L@BNOF@NUMVREFBBF?$AA@ 004114d0     scsqlib:numarray.obj
+ 0003:000004dc       ??_C@_07HIPG@ENORMBF?$AA@  004114dc     scsqlib:numarray.obj
+ 0003:000004e4       ??_C@_0N@CCEO@na?9csv?9print?$AA@ 004114e4     scsqlib:numarray.obj
+ 0003:000004f4       ??_C@_0BC@FDPJ@na?9csv?9float?9read?$AA@ 004114f4     scsqlib:numarray.obj
+ 0003:00000508       ??_C@_0BD@JHLN@na?9csv?9double?9read?$AA@ 00411508     scsqlib:numarray.obj
+ 0003:0000051c       ??_C@_0O@HGHB@na?9enum?9reset?$AA@ 0041151c     scsqlib:numarray.obj
+ 0003:0000052c       ??_C@_07IHPM@na?9enum?$AA@ 0041152c     scsqlib:numarray.obj
+ 0003:00000534       ??_C@_0L@MPBD@na?9project?$AA@ 00411534     scsqlib:numarray.obj
+ 0003:00000540       ??_C@_08OPFB@na?9smash?$AA@ 00411540     scsqlib:numarray.obj
+ 0003:0000054c       ??_C@_07IDPB@na?9seta?$AA@ 0041154c     scsqlib:numarray.obj
+ 0003:00000554       ??_C@_06CIOJ@na?9elt?$AA@  00411554     scsqlib:numarray.obj
+ 0003:0000055c       ??_C@_0M@OJAK@init?9farray?$AA@ 0041155c     scsqlib:numarray.obj
+ 0003:00000568       ??_C@_0M@CKCK@init?9carray?$AA@ 00411568     scsqlib:numarray.obj
+ 0003:00000574       ??_C@_0N@JOID@init?9ccarray?$AA@ 00411574     scsqlib:numarray.obj
+ 0003:00000584       ??_C@_0M@MCEK@init?9darray?$AA@ 00411584     scsqlib:numarray.obj
+ 0003:00000590       ??_C@_0M@KMGL@init?9iarray?$AA@ 00411590     scsqlib:numarray.obj
+ 0003:0000059c       ??_C@_0N@OKIB@dim?9numarray?$AA@ 0041159c     scsqlib:numarray.obj
+ 0003:000005ac       ??_C@_0BB@KIPA@type?9of?9numarray?$AA@ 004115ac     scsqlib:numarray.obj
+ 0003:000005c0       ??_C@_0M@NMDP@make?9farray?$AA@ 004115c0     scsqlib:numarray.obj
+ 0003:000005cc       ??_C@_0M@JJFO@make?9iarray?$AA@ 004115cc     scsqlib:numarray.obj
+ 0003:000005d8       ??_C@_0M@BPBP@make?9carray?$AA@ 004115d8     scsqlib:numarray.obj
+ 0003:000005e4       ??_C@_0M@PHHP@make?9darray?$AA@ 004115e4     scsqlib:numarray.obj
+ 0003:000005f0       ??_C@_0O@GDLL@copy?9numarray?$AA@ 004115f0     scsqlib:numarray.obj
+ 0003:00000600       ??_C@_0BH@OCOF@Numarray?5type?5mismatch?$AA@ 00411600     scsqlib:numarray.obj
+ 0003:00000618       ??_C@_0BG@IPIO@Unknown?5numarray?5type?$AA@ 00411618     scsqlib:numarray.obj
+ 0003:00000630       ??_C@_0BE@FPCJ@Not?5implemented?5yet?$AA@ 00411630     scsqlib:numarray.obj
+ 0003:00000644       ??_C@_0CH@GCIK@Real?9imaginary?5dimensionality?5mi@ 00411644     scsqlib:numarray.obj
+ 0003:0000066c       ??_C@_0BJ@JOPE@Argument?5is?5not?5an?5array?$AA@ 0041166c     scsqlib:numarray.obj
+ 0003:00000688       ??_C@_0BN@HKH@Numarray?5index?5out?5of?5bounds?$AA@ 00411688     scsqlib:numarray.obj
+ 0003:000006a8       ??_C@_08IIOD@NUMARRAY?$AA@ 004116a8     scsqlib:numarray.obj
+ 0003:000006b4       ??_C@_02GHFJ@NA?$AA@       004116b4     scsqlib:numarray.obj
+ 0003:000006b8       ??_C@_08IAAO@numarray?$AA@ 004116b8     scsqlib:numarray.obj
+ 0003:000006c4       ??_C@_0O@KGHB@numarray?9size?$AA@ 004116c4     scsqlib:numarray.obj
+ 0003:000006d4       _stopsymbol                004116d4     scsqlib:sproc.obj
+ 0003:000006d8       _emitsymbol                004116d8     scsqlib:sproc.obj
+ 0003:000006dc       _eofsym                    004116dc     scsqlib:sproc.obj
+ 0003:000006e0       ??_C@_0BF@KLLN@?$DN?$DN?5We?5will?5return?51?6?$AA@ 004116e0     scsqlib:sproc.obj
+ 0003:000006f8       ??_C@_0BL@PPMA@sproc?$FL?$CFs?$FN?5in?5unwind_reset?3?$AA@ 004116f8     scsqlib:sproc.obj
+ 0003:00000714       ??_C@_01BJG@?6?$AA@        00411714     scsqlib:sproc.obj
+ 0003:00000718       ??_C@_0CJ@DAJ@globval?$CImksymbol?$CI?$CC_error?9conditi@ 00411718     scsqlib:sproc.obj
+ 0003:00000744       ??_C@_0BC@OCPD@_error?9condition_?$AA@ 00411744     scsqlib:sproc.obj
+ 0003:00000758       ??_C@_0EA@CCBF@sproc?$FL?$CFs?$FN?5in?5unwind_reset?3?5Error@ 00411758     scsqlib:sproc.obj
+ 0003:00000798       ??_C@_0BI@ONMF@sproc?$FL?$CFs?$FN?3?5after?5mapfn?6?$AA@ 00411798     scsqlib:sproc.obj
+ 0003:000007b0       ??_C@_0BL@BCDO@sproc?$FL?$CFs?$FN?3?5entering?5mapfn?6?$AA@ 004117b0     scsqlib:sproc.obj
+ 0003:000007cc       ??_C@_0O@LCOJ@subscribers?3?6?$AA@ 004117cc     scsqlib:sproc.obj
+ 0003:000007dc       ??_C@_08MIAO@sub_id?3?5?$AA@ 004117dc     scsqlib:sproc.obj
+ 0003:000007e8       ??_C@_0N@OCGN@Connected?5to?$AA@ 004117e8     scsqlib:sproc.obj
+ 0003:000007f8       ??_C@_0EP@MDPF@stream_generator_mapper?$FL?$CFs?$FN?3?5Wai@ 004117f8     scsqlib:sproc.obj
+ 0003:00000848       ??_C@_0BC@JBEB@Unknown?5protocol?6?$AA@ 00411848     scsqlib:sproc.obj
+ 0003:0000085c       ??_C@_0CJ@FJOD@stream_generator_mapper?$FL?$CFs?$FN?3?5fir@ 0041185c     scsqlib:sproc.obj
+ 0003:00000888       ??_C@_0CE@KC@mapperstate?4postfilter?5remains?5n@ 00411888     scsqlib:sproc.obj
+ 0003:000008ac       ??_C@_0CF@BAPA@rcvd_pfilter?5?$CIpostfilter?5functio@ 004118ac     scsqlib:sproc.obj
+ 0003:000008d4       ??_C@_0EA@MFBG@sproc?$FL?$CFs?$FN?3?5total_runtime?5?$CFf?5comm@ 004118d4     scsqlib:sproc.obj
+ 0003:00000914       ??_C@_0BD@DFIF@_prep?9listen?9sock_?$AA@ 00411914     scsqlib:sproc.obj
+ 0003:00000928       ??_C@_0BF@CKJB@sproc?$FL?$CFs?$FN?3?5Starting?6?$AA@ 00411928     scsqlib:sproc.obj
+ 0003:00000940       ??_C@_05HDAD@?$CFs?3?$CFd?$AA@ 00411940     scsqlib:sproc.obj
+ 0003:00000948       ??_C@_0N@DHMK@_my?9mpirank_?$AA@ 00411948     scsqlib:sproc.obj
+ 0003:00000958       ??_C@_08FOMG@_amosid_?$AA@ 00411958     scsqlib:sproc.obj
+ 0003:00000964       ??_C@_0BG@NBKM@_continuation?9period_?$AA@ 00411964     scsqlib:sproc.obj
+ 0003:0000097c       ??_C@_03HOJH@eof?$AA@      0041197c     scsqlib:sproc.obj
+ 0003:00000980       ??_C@_04CLFO@emit?$AA@     00411980     scsqlib:sproc.obj
+ 0003:00000988       ??_C@_04JPPJ@stop?$AA@     00411988     scsqlib:sproc.obj
+ 0003:00000990       ??_C@_0BI@MPHN@sproc?$FL?$CFs?$FN?3?5returned?5?$CFd?6?$AA@ 00411990     scsqlib:sproc.obj
+ 0003:000009a8       ??_C@_07BBMN@PROFILE?$AA@  004119a8     scsqlib:sproc.obj
+ 0003:000009b0       ??_C@_0O@HFKI@START?9PROFILE?$AA@ 004119b0     scsqlib:sproc.obj
+ 0003:000009c0       ??_C@_0N@BJLO@STOP?9PROFILE?$AA@ 004119c0     scsqlib:sproc.obj
+ 0003:000009d0       ??_C@_0BG@FMOF@Illegal?5subscriber?5ID?$AA@ 004119d0     scsqlib:sproc.obj
+ 0003:000009e8       ??_C@_05MOPK@SPROC?$AA@    004119e8     scsqlib:sproc.obj
+ 0003:000009f0       ??_C@_0O@LLCM@_flush?9count_?$AA@ 004119f0     scsqlib:sproc.obj
+ 0003:00000a00       ??_C@_0BA@BBPL@interrupt?9flush?$AA@ 00411a00     scsqlib:sproc.obj
+ 0003:00000a10       ??_C@_09NGEP@readcalls?$AA@ 00411a10     scsqlib:sproc.obj
+ 0003:00000a1c       ??_C@_0N@MMK@forced?5flush?$AA@ 00411a1c     scsqlib:sproc.obj
+ 0003:00000a2c       ??_C@_0BA@PHDN@proactive?5flush?$AA@ 00411a2c     scsqlib:sproc.obj
+ 0003:00000a3c       ??_C@_0L@KEDJ@printcalls?$AA@ 00411a3c     scsqlib:sproc.obj
+ 0003:00000a48       ??_C@_08HBCA@readtime?$AA@ 00411a48     scsqlib:sproc.obj
+ 0003:00000a54       ??_C@_09HGD@printtime?$AA@ 00411a54     scsqlib:sproc.obj
+ 0003:00000a60       ??_C@_08HBPE@proctime?$AA@ 00411a60     scsqlib:sproc.obj
+ 0003:00000a6c       ??_C@_0P@PHEK@instr?9commstat?$AA@ 00411a6c     scsqlib:sproc.obj
+ 0003:00000a7c       ??_C@_0M@LECA@instr?9print?$AA@ 00411a7c     scsqlib:sproc.obj
+ 0003:00000a88       ??_C@_05MCEL@shift?$AA@    00411a88     scsqlib:sproc.obj
+ 0003:00000a90       ??_C@_04MMAH@hash?$AA@     00411a90     scsqlib:sproc.obj
+ 0003:00000a98       ??_C@_0P@LMDH@mpi?9send?9block?$AA@ 00411a98     scsqlib:sproc.obj
+ 0003:00000aa8       ??_C@_08JLHF@open?9mpi?$AA@ 00411aa8     scsqlib:sproc.obj
+ 0003:00000ab4       ??_C@_0O@ENJP@mpi?9send?9form?$AA@ 00411ab4     scsqlib:sproc.obj
+ 0003:00000ac4       ??_C@_09BCLP@mpi?9reval?$AA@ 00411ac4     scsqlib:sproc.obj
+ 0003:00000ad0       ??_C@_08BIME@SMERGEBF?$AA@ 00411ad0     scsqlib:sproc.obj
+ 0003:00000adc       ??_C@_09CIMJ@MERGEBBFF?$AA@ 00411adc     scsqlib:sproc.obj
+ 0003:00000ae8       ??_C@_09KGJN@modrandbf?$AA@ 00411ae8     scsqlib:sproc.obj
+ 0003:00000af4       ??_C@_0BE@CMBJ@Not?5a?5list?5OR?5array?$AA@ 00411af4     scsqlib:sproc.obj
+ 0003:00000b0c       ??_C@_06JKOD@error?$DP?$AA@ 00411b0c     scsqlib:bgcommon.obj
+ 0003:00000b14       ??_C@_0O@KADB@get?9varstring?$AA@ 00411b14     scsqlib:bgcommon.obj
+ 0003:00000b24       ??_C@_07FLPP@EZ?9RAND?$AA@ 00411b24     scsqlib:bgcommon.obj
+ 0003:00000b2c       ??_C@_05NDE@bgout?$AA@     00411b2c     scsqlib:port.obj
+ 0003:00000b34       ??_C@_0P@NMJC@request?9bgport?$AA@ 00411b34     scsqlib:port.obj
+ 0003:00000b44       ??_C@_0CG@ICCE@port_bf?3?5rank?5array?5is?5of?5wrong?5@ 00411b44     scsqlib:port.obj
+ 0003:00000b6c       ??_C@_0CF@LBOI@port_bf?3?5rank?5array?5is?5not?5an?5ar@ 00411b6c     scsqlib:port.obj
+ 0003:00000b94       ??_C@_03FBNH@mpi?$AA@      00411b94     scsqlib:port.obj
+ 0003:00000b98       ??_C@_0BA@FFBE@request?9tcpport?$AA@ 00411b98     scsqlib:port.obj
+ 0003:00000ba8       ??_C@_03LEBH@tcp?$AA@      00411ba8     scsqlib:port.obj
+ 0003:00000bac       ??_C@_0CK@HPJI@port_bf?3?5params?5argument?5is?5not?5@ 00411bac     scsqlib:port.obj
+ 0003:00000bd8       ??_C@_0CN@IDIN@port_bf?3?5generator?5argument?5is?5n@ 00411bd8     scsqlib:port.obj
+ 0003:00000c08       ??_C@_0BA@PFJI@symbol?9setvalue?$AA@ 00411c08     scsqlib:port.obj
+ 0003:00000c18       ??_C@_0M@CNBA@_heartbeat_?$AA@ 00411c18     scsqlib:port.obj
+ 0003:00000c24       ??_C@_02GIKN@hb?$AA@       00411c24     scsqlib:port.obj
+ 0003:00000c28       ??_C@_08MCCG@?3ERRCOND?$AA@ 00411c28     scsqlib:port.obj
+ 0003:00000c34       ??_C@_0L@BOHH@_readtime_?$AA@ 00411c34     scsqlib:port.obj
+ 0003:00000c40       ??_C@_0CA@EIOL@port_bf?3?5Not?5an?5array?5argument?6?$AA@ 00411c40     scsqlib:port.obj
+ 0003:00000c60       ??_C@_0CJ@BHHF@connecttoportfn?3?5Unknown?5port?5pr@ 00411c60     scsqlib:port.obj
+ 0003:00000c8c       ??_C@_0O@OBGH@accept?9socket?$AA@ 00411c8c     scsqlib:port.obj
+ 0003:00000c9c       ??_C@_0N@CJFG@start?9bgport?$AA@ 00411c9c     scsqlib:port.obj
+ 0003:00000cac       ??_C@_09FBHK@localhost?$AA@ 00411cac     scsqlib:port.obj
+ 0003:00000cc0       ??_C@_05DEEE@bgsep?$AA@    00411cc0     scsqlib:bgextract.obj
+ 0003:00000cc8       ??_C@_07JICO@tslread?$AA@  00411cc8     scsqlib:bgextract.obj
+ 0003:00000cd0       ??_C@_0M@BMMF@bgextractbf?$AA@ 00411cd0     scsqlib:bgextract.obj
+ 0003:00000cdc       ??_C@_09BODE@bguallbbf?$AA@ 00411cdc     scsqlib:bgextract.obj
+ 0003:00000ce8       ??_C@_0CD@EJPK@instrum_tsdreadfn?3?5got?5error?5tpl@ 00411ce8     scsqlib:extract.obj
+ 0003:00000d0c       ??_C@_0CC@INMC@instrum_ezreadfn?3?5got?5error?5tpl?3@ 00411d0c     scsqlib:extract.obj
+ 0003:00000d30       ??_C@_0L@HEDB@smjnacbbbf?$AA@ 00411d30     scsqlib:extract.obj
+ 0003:00000d3c       ??_C@_08LOBN@uallcbbf?$AA@ 00411d3c     scsqlib:extract.obj
+ 0003:00000d48       ??_C@_0M@COAG@csixtractbf?$AA@ 00411d48     scsqlib:extract.obj
+ 0003:00000d54       ??_C@_0O@GCBA@instr?9ezreads?$AA@ 00411d54     scsqlib:extract.obj
+ 0003:00000d64       ??_C@_0N@PJKA@instr?9ezread?$AA@ 00411d64     scsqlib:extract.obj
+ 0003:00000d74       ??_C@_0N@JHAN@instr?9tsread?$AA@ 00411d74     scsqlib:extract.obj
+ 0003:00000d84       ??_C@_0N@ILJO@get?$CGstart?9sp?$AA@ 00411d84     scsqlib:extract.obj
+ 0003:00000d94       ??_C@_04MLBK@memq?$AA@     00411d94     scsqlib:extract.obj
+ 0003:00000d9c       ??_C@_0P@HGOD@set?9difference?$AA@ 00411d9c     scsqlib:extract.obj
+ 0003:00000dac       ??_C@_07BFMF@pollist?$AA@  00411dac     scsqlib:extract.obj
+ 0003:00000db4       ??_C@_0BA@GIJF@remove?9producer?$AA@ 00411db4     scsqlib:extract.obj
+ 0003:00000dc4       ??_C@_0N@LMIP@init?9extract?$AA@ 00411dc4     scsqlib:extract.obj
+ 0003:00000dd4       ??_C@_0BA@HEEK@merge?9proctimes?$AA@ 00411dd4     scsqlib:extract.obj
+ 0003:00000de4       ??_C@_04PANM@STOP?$AA@     00411de4     scsqlib:extract.obj
+ 0003:00000dec       ??_C@_0N@EENM@stop?9sockets?$AA@ 00411dec     scsqlib:extract.obj
+ 0003:00000dfc       ??_C@_06KEDB@derror?$AA@   00411dfc     scsqlib:extract.obj
+ 0003:00000e04       ??_C@_03LLPA@EOF?$AA@      00411e04     scsqlib:extract.obj
+ 0003:00000e08       ??_C@_0P@NPFN@add2delaytimes?$AA@ 00411e08     scsqlib:extract.obj
+ 0003:00000e18       ??_C@_0L@BAAI@async?9read?$AA@ 00411e18     scsqlib:extract.obj
+ 0003:00000e24       ??_C@_02OOBN@ts?$AA@       00411e24     scsqlib:extract.obj
+ 0003:00000e28       ??_C@_05LOOA@?$CD?$CI?$CFs?$CJ?$AA@ 00411e28     scsqlib:fileaccess.obj
+ 0003:00000e30       ??_C@_09MKPM@od?5?9t?5d2?5?$AA@ 00411e30     scsqlib:fileaccess.obj
+ 0003:00000e3c       ??_C@_0BF@DFMN@READBINARYVECTORFILE?$AA@ 00411e3c     scsqlib:fileaccess.obj
+ 0003:00000e54       ??_C@_0BE@DJC@READLOFARVECTORFILE?$AA@ 00411e54     scsqlib:fileaccess.obj
+ 0003:00000e68       ??_C@_0BD@HJLG@READTEXTVECTORFILE?$AA@ 00411e68     scsqlib:fileaccess.obj
+ 0003:00000e7c       ??_C@_0BE@PIMH@errcond?9raise?9error?$AA@ 00411e7c     scsqlib:bgsubmit.obj
+ 0003:00000e90       ??_C@_07NMG@from?9bg?$AA@  00411e90     scsqlib:bgsubmit.obj
+ 0003:00000e98       ??_C@_0BG@MEM@unwind_protect_catch?6?$AA@ 00411e98     scsqlib:bgsubmit.obj
+ 0003:00000eb0       ??_C@_01PJCK@?4?$AA@       00411eb0     scsqlib:bgsubmit.obj
+ 0003:00000eb4       ??_C@_0BE@IPOB@_front?9listen?9sock_?$AA@ 00411eb4     scsqlib:bgsubmit.obj
+ 0003:00000ec8       ??_C@_01FBAH@1?$AA@        00411ec8     scsqlib:bgsubmit.obj
+ 0003:00000ecc       ??_C@_0BJ@DDPG@?$FLWaiting?5for?5result?5?4?4?4?5?$AA@ 00411ecc     scsqlib:bgsubmit.obj
+ 0003:00000ee8       ??_C@_0BE@BKCK@Submission?5failed?$CB?6?$AA@ 00411ee8     scsqlib:bgsubmit.obj
+ 0003:00000efc       ??_C@_0N@BPPN@bgsubmission?$AA@ 00411efc     scsqlib:bgsubmit.obj
+ 0003:00000f0c       ??_C@_08NGBG@bghostid?$AA@ 00411f0c     scsqlib:bgsubmit.obj
+ 0003:00000f18       ??_C@_06NGPN@bghome?$AA@   00411f18     scsqlib:bgsubmit.obj
+ 0003:00000f20       ??_C@_0BH@IDJG@?$FLSubmitting?5to?5BG?5?4?4?4?5?$AA@ 00411f20     scsqlib:bgsubmit.obj
+ 0003:00000f38       ??_C@_0N@LNEC@save?9bgstate?$AA@ 00411f38     scsqlib:bgsubmit.obj
+ 0003:00000f48       ??_C@_0BD@CLMB@?$FLSaving?5state?5?4?4?4?5?$AA@ 00411f48     scsqlib:bgsubmit.obj
+ 0003:00000f5c       ??_C@_04FPEB@OK?$FN?6?$AA@ 00411f5c     scsqlib:bgsubmit.obj
+ 0003:00000f64       ??_C@_08NAEK@open?9fls?$AA@ 00411f64     scsqlib:bgsubmit.obj
+ 0003:00000f70       ??_C@_0BO@PLID@?$FLOpening?5response?5socket?5?4?4?4?5?$AA@ 00411f70     scsqlib:bgsubmit.obj
+ 0003:00000f90       ??_C@_0P@BAMF@_currentquery_?$AA@ 00411f90     scsqlib:bgsubmit.obj
+ 0003:00000fa0       ??_C@_0BJ@LNIJ@Already?5inside?5bg?$CI?$CJ?5call?$AA@ 00411fa0     scsqlib:bgsubmit.obj
+ 0003:00000fbc       ??_C@_0L@LKDD@BGSUBMITBF?$AA@ 00411fbc     scsqlib:bgsubmit.obj
+ 0003:00000fc8       ??_C@_05IAMB@NILt?6?$AA@   00411fc8     scsqlib:twinagg.obj
+ 0003:00000fd0       ??_C@_04KHIC@NIL3?$AA@     00411fd0     scsqlib:twinagg.obj
+ 0003:00000fd8       ??_C@_04NBF@NIL2?$AA@      00411fd8     scsqlib:twinagg.obj
+ 0003:00000fe0       ??_C@_04PCKM@NIL1?$AA@     00411fe0     scsqlib:twinagg.obj
+ 0003:00000fe8       ??_C@_05KFME@value?$AA@    00411fe8     scsqlib:twinagg.obj
+ 0003:00000ff0       ??_C@_03FBAH@?$CFf?6?$AA@  00411ff0     scsqlib:twinagg.obj
+ 0003:00000ff4       ??_C@_05JPPG@?$DL?5ts?5?$AA@ 00411ff4     scsqlib:twinagg.obj
+ 0003:00000ffc       ??_C@_0O@NKJB@mapfcn?3?5tpl?$DN?5?$AA@ 00411ffc     scsqlib:twinagg.obj
+ 0003:0000100c       ??_C@_09DDOI@getelem?3?5?$AA@ 0041200c     scsqlib:twinagg.obj
+ 0003:00001018       ??_C@_06NBJA@TSATTR?$AA@   00412018     scsqlib:twinagg.obj
+ 0003:00001020       ??_C@_09GIHH@TWINAGGBF?$AA@ 00412020     scsqlib:twinagg.obj
+ 0003:00001030       ___defaultmatherr          00412030     MSVCRT:merr.obj
+ 0003:00001034       ??_C@_00A@?$AA@            00412034     scsqlib:sproc.obj
+ 0003:00001038       _W_factors                 00412038     scsqlib:w.obj
+ 0003:0000103c       _Nfactors                  0041203c     scsqlib:w.obj
+ 0003:00001040       __dowildcard               00412040     MSVCRT:wildcard.obj
+ 0003:00001044       __newmode                  00412044     MSVCRT:_newmode.obj
+ 0003:00001048       __commode                  00412048     MSVCRT:xncommod.obj
+ 0003:0000104c       __fmode                    0041204c     MSVCRT:xtxtmode.obj
+ 0003:00001050       _inside_bgsubmitbf_errcode 00412050     <common>
+ 0003:00001054       _inside_bgsubmitbf         00412054     <common>
+ 0003:00001058       _EOFS                      00412058     <common>
+ 0003:0000105c       _GS_SP                     0041205c     <common>
+ 0003:00001060       _POLLIST                   00412060     <common>
+ 0003:00001064       _MERGEPROC                 00412064     <common>
+ 0003:00001068       _ASYNCREAD                 00412068     <common>
+ 0003:0000106c       _ADD2DELAYS                0041206c     <common>
+ 0003:00001070       _TS                        00412070     <common>
+ 0003:00001074       _MEMQ                      00412074     <common>
+ 0003:00001078       _IEXTRACT                  00412078     <common>
+ 0003:0000107c       _REMPROD                   0041207c     <common>
+ 0003:00001080       _readtime                  00412080     <common>
+ 0003:00001088       _STOPSYM                   00412088     <common>
+ 0003:0000108c       _STOPSOCKS                 0041208c     <common>
+ 0003:00001090       _SETDIFF                   00412090     <common>
+ 0003:00001094       _DERR                      00412094     <common>
+ 0003:00001098       _BGS                       00412098     <common>
+ 0003:0000109c       _proactive_flush           0041209c     <common>
+ 0003:000010a0       _NO_LIST_ARRAY             004120a0     <common>
+ 0003:000010a4       _illegal_subid             004120a4     <common>
+ 0003:000010a8       _run_c                     004120a8     <common>
+ 0003:000010ac       _pcs                       004120ac     <common>
+ 0003:000010b0       _comm_acc_c                004120b0     <common>
+ 0003:000010b4       _pts                       004120b4     <common>
+ 0003:000010b8       _commtime_acc              004120b8     <common>
+ 0003:000010c0       _commtime                  004120c0     <common>
+ 0003:000010c8       _forced_flush              004120c8     <common>
+ 0003:000010cc       _printcalls                004120cc     <common>
+ 0003:000010e0       _prstr                     004120e0     <common>
+ 0003:00001148       _printtime                 00412148     <common>
+ 0003:00001150       _runtime                   00412150     <common>
+ 0003:00001158       _comm_c                    00412158     <common>
+ 0003:0000115c       _readcalls                 0041215c     <common>
+ 0003:00001160       _NUMNARR_ERROR             00412160     <common>
+ 0003:00001164       _nannotator                00412164     <common>
+ 0003:00001168       _NUMARRAYTYPE              00412168     <common>
+ 0003:0000116c       _NUMNOTIMP_ERROR           0041216c     <common>
+ 0003:00001170       _NUMTMISMATCH_ERROR        00412170     <common>
+ 0003:00001174       _NUMDMIS_ERROR             00412174     <common>
+ 0003:00001178       _NUMUNKNOWN_ERROR          00412178     <common>
+ 0003:0000117c       _NUMOOB_ERROR              0041217c     <common>
+ 0003:00001180       _MAMISMATCH_ERROR          00412180     <common>
+ 0003:00001184       _mzipread                  00412184     <common>
+ 0003:00001188       _busy                      00412188     <common>
+ 0003:00001190       _their_addr                00412190     <common>
+ 0003:000011a0       _threadID                  004121a0     <common>
+ 0003:000011a4       _he                        004121a4     <common>
+ 0003:000011c0       _hostname                  004121c0     <common>
+ 0003:000011f4       _hThread                   004121f4     <common>
+ 0003:00001200       _queue                     00412200     <common>
+ 0003:00bbb150       _my_addr                   00fcc150     <common>
+ 0003:00bbb160       _DFreq                     00fcc160     <common>
+ 0003:00bbb180       _Q                         00fcc180     <common>
+ 0003:00bbb198       _UDPQTYPE                  00fcc198     <common>
+ 0003:00bbb19c       _unknown_host              00fcc19c     <common>
+ 0003:00bbb1a0       _unknown_sensor_host       00fcc1a0     <common>
+ 0003:00bbb1a4       _sock_nobind               00fcc1a4     <common>
+ 0003:00bbb1a8       _swintype                  00fcc1a8     <common>
+ 0003:00bbb1c0       _rcv                       00fcc1c0     <common>
+ 0003:00c575c0       _VDIM_DISAGREE             010685c0     <common>
+ 0003:00c575c4       _recv_thread_id            010685c4     <common>
+ 0003:00c575c8       ___onexitend               010685c8     <common>
+ 0003:00c575cc       ___onexitbegin             010685cc     <common>
+ 0003:00c575d0       __adjust_fdiv              010685d0     <common>
+ 0004:00000000       __IMPORT_DESCRIPTOR_amos2  01069000     scsqlib:amos2.dll
+ 0004:00000014       __IMPORT_DESCRIPTOR_MSVCRT 01069014     MSVCRT:MSVCRT.dll
+ 0004:00000028       __IMPORT_DESCRIPTOR_KERNEL32 01069028     kernel32:KERNEL32.dll
+ 0004:0000003c       __IMPORT_DESCRIPTOR_WS2_32 0106903c     Ws2_32:WS2_32.dll
+ 0004:00000050       __NULL_IMPORT_DESCRIPTOR   01069050     scsqlib:amos2.dll
+ 0004:00000320       __imp__CreateThread@24     01069320     kernel32:KERNEL32.dll
+ 0004:00000324       __imp__WaitForSingleObject@8 01069324     kernel32:KERNEL32.dll
+ 0004:00000328       \177KERNEL32_NULL_THUNK_DATA 01069328     kernel32:KERNEL32.dll
+ 0004:0000032c       __imp__fread               0106932c     MSVCRT:MSVCRT.dll
+ 0004:00000330       __imp__free                01069330     MSVCRT:MSVCRT.dll
+ 0004:00000334       __imp__fopen               01069334     MSVCRT:MSVCRT.dll
+ 0004:00000338       __imp__malloc              01069338     MSVCRT:MSVCRT.dll
+ 0004:0000033c       __imp__fclose              0106933c     MSVCRT:MSVCRT.dll
+ 0004:00000340       __imp__ceil                01069340     MSVCRT:MSVCRT.dll
+ 0004:00000344       __imp___CIpow              01069344     MSVCRT:MSVCRT.dll
+ 0004:00000348       __imp__printf              01069348     MSVCRT:MSVCRT.dll
+ 0004:0000034c       __imp__floor               0106934c     MSVCRT:MSVCRT.dll
+ 0004:00000350       __imp___setjmp3            01069350     MSVCRT:MSVCRT.dll
+ 0004:00000354       __imp__clock               01069354     MSVCRT:MSVCRT.dll
+ 0004:00000358       __imp____p___initenv       01069358     MSVCRT:MSVCRT.dll
+ 0004:0000035c       __imp___onexit             0106935c     MSVCRT:MSVCRT.dll
+ 0004:00000360       __imp____dllonexit         01069360     MSVCRT:MSVCRT.dll
+ 0004:00000364       __imp___controlfp          01069364     MSVCRT:MSVCRT.dll
+ 0004:00000368       __imp___except_handler3    01069368     MSVCRT:MSVCRT.dll
+ 0004:0000036c       __imp____set_app_type      0106936c     MSVCRT:MSVCRT.dll
+ 0004:00000370       __imp____p__fmode          01069370     MSVCRT:MSVCRT.dll
+ 0004:00000374       __imp____p__commode        01069374     MSVCRT:MSVCRT.dll
+ 0004:00000378       __imp___adjust_fdiv        01069378     MSVCRT:MSVCRT.dll
+ 0004:0000037c       __imp____setusermatherr    0106937c     MSVCRT:MSVCRT.dll
+ 0004:00000380       __imp___initterm           01069380     MSVCRT:MSVCRT.dll
+ 0004:00000384       __imp____getmainargs       01069384     MSVCRT:MSVCRT.dll
+ 0004:00000388       __imp___ftol               01069388     MSVCRT:MSVCRT.dll
+ 0004:0000038c       __imp___XcptFilter         0106938c     MSVCRT:MSVCRT.dll
+ 0004:00000390       __imp___exit               01069390     MSVCRT:MSVCRT.dll
+ 0004:00000394       __imp__system              01069394     MSVCRT:MSVCRT.dll
+ 0004:00000398       __imp__fgetc               01069398     MSVCRT:MSVCRT.dll
+ 0004:0000039c       __imp___popen              0106939c     MSVCRT:MSVCRT.dll
+ 0004:000003a0       __imp__fgets               010693a0     MSVCRT:MSVCRT.dll
+ 0004:000003a4       __imp___pclose             010693a4     MSVCRT:MSVCRT.dll
+ 0004:000003a8       __imp__rand                010693a8     MSVCRT:MSVCRT.dll
+ 0004:000003ac       __imp__exit                010693ac     MSVCRT:MSVCRT.dll
+ 0004:000003b0       __imp__strncpy             010693b0     MSVCRT:MSVCRT.dll
+ 0004:000003b4       __imp__atof                010693b4     MSVCRT:MSVCRT.dll
+ 0004:000003b8       __imp__sprintf             010693b8     MSVCRT:MSVCRT.dll
+ 0004:000003bc       __imp___iob                010693bc     MSVCRT:MSVCRT.dll
+ 0004:000003c0       __imp__fflush              010693c0     MSVCRT:MSVCRT.dll
+ 0004:000003c4       \177MSVCRT_NULL_THUNK_DATA 010693c4     MSVCRT:MSVCRT.dll
+ 0004:000003c8       __imp__WSACleanup@0        010693c8     Ws2_32:WS2_32.dll
+ 0004:000003cc       __imp__htons@4             010693cc     Ws2_32:WS2_32.dll
+ 0004:000003d0       __imp__gethostbyname@4     010693d0     Ws2_32:WS2_32.dll
+ 0004:000003d4       __imp__sendto@24           010693d4     Ws2_32:WS2_32.dll
+ 0004:000003d8       __imp__send@16             010693d8     Ws2_32:WS2_32.dll
+ 0004:000003dc       __imp__bind@12             010693dc     Ws2_32:WS2_32.dll
+ 0004:000003e0       __imp__socket@12           010693e0     Ws2_32:WS2_32.dll
+ 0004:000003e4       __imp__WSAStartup@8        010693e4     Ws2_32:WS2_32.dll
+ 0004:000003e8       __imp__closesocket@4       010693e8     Ws2_32:WS2_32.dll
+ 0004:000003ec       __imp__inet_ntoa@4         010693ec     Ws2_32:WS2_32.dll
+ 0004:000003f0       __imp__recvfrom@24         010693f0     Ws2_32:WS2_32.dll
+ 0004:000003f4       __imp__inet_addr@4         010693f4     Ws2_32:WS2_32.dll
+ 0004:000003f8       \177WS2_32_NULL_THUNK_DATA 010693f8     Ws2_32:WS2_32.dll
+ 0004:000003fc       __imp__a_seta              010693fc     scsqlib:amos2.dll
+ 0004:00000400       __imp__new_array           01069400     scsqlib:amos2.dll
+ 0004:00000404       __imp__a_sleep             01069404     scsqlib:amos2.dll
+ 0004:00000408       __imp__a_arraysize         01069408     scsqlib:amos2.dll
+ 0004:0000040c       __imp__extfunction3        0106940c     scsqlib:amos2.dll
+ 0004:00000410       __imp__new_aligned_object  01069410     scsqlib:amos2.dll
+ 0004:00000414       __imp__a_putc              01069414     scsqlib:amos2.dll
+ 0004:00000418       __imp__a_writebytes        01069418     scsqlib:amos2.dll
+ 0004:0000041c       __imp__IntegerToStringBuff 0106941c     scsqlib:amos2.dll
+ 0004:00000420       __imp__a_puts              01069420     scsqlib:amos2.dll
+ 0004:00000424       __imp__stderrstream        01069424     scsqlib:amos2.dll
+ 0004:00000428       __imp__stdoutstream        01069428     scsqlib:amos2.dll
+ 0004:0000042c       __imp__a_readbytes         0106942c     scsqlib:amos2.dll
+ 0004:00000430       __imp__a_getc              01069430     scsqlib:amos2.dll
+ 0004:00000434       __imp__a_stringify         01069434     scsqlib:amos2.dll
+ 0004:00000438       __imp__row_too_long        01069438     scsqlib:amos2.dll
+ 0004:0000043c       __imp__buffer_overflow     0106943c     scsqlib:amos2.dll
+ 0004:00000440       __imp__eofsymbol           01069440     scsqlib:amos2.dll
+ 0004:00000444       __imp__a_file_getch        01069444     scsqlib:amos2.dll
+ 0004:00000448       __imp__typefns             01069448     scsqlib:amos2.dll
+ 0004:0000044c       __imp__stdinstream         0106944c     scsqlib:amos2.dll
+ 0004:00000450       __imp__t                   01069450     scsqlib:amos2.dll
+ 0004:00000454       __imp__add_CSV_times       01069454     scsqlib:amos2.dll
+ 0004:00000458       __imp__dealloc_aligned_object 01069458     scsqlib:amos2.dll
+ 0004:0000045c       __imp__type_reader_function 0106945c     scsqlib:amos2.dll
+ 0004:00000460       __imp__flushfn             01069460     scsqlib:amos2.dll
+ 0004:00000464       __imp__printfn             01069464     scsqlib:amos2.dll
+ 0004:00000468       __imp__callfunction1fn     01069468     scsqlib:amos2.dll
+ 0004:0000046c       __imp__run_time            0106946c     scsqlib:amos2.dll
+ 0004:00000470       __imp__a_resultarray       01069470     scsqlib:amos2.dll
+ 0004:00000474       __imp__new_adjarray        01069474     scsqlib:amos2.dll
+ 0004:00000478       __imp__equal               01069478     scsqlib:amos2.dll
+ 0004:0000047c       __imp__a_mapbag            0106947c     scsqlib:amos2.dll
+ 0004:00000480       __imp__readfn              01069480     scsqlib:amos2.dll
+ 0004:00000484       __imp__accept_socket_blockfn 01069484     scsqlib:amos2.dll
+ 0004:00000488       __imp__push_vectorfn       01069488     scsqlib:amos2.dll
+ 0004:0000048c       __imp__compute_hash_key    0106948c     scsqlib:amos2.dll
+ 0004:00000490       __imp__lprintfn            01069490     scsqlib:amos2.dll
+ 0004:00000494       __imp__sockettype          01069494     scsqlib:amos2.dll
+ 0004:00000498       __imp__make_recordfn       01069498     scsqlib:amos2.dll
+ 0004:0000049c       __imp__proctimefn          0106949c     scsqlib:amos2.dll
+ 0004:000004a0       __imp__extfunction0        010694a0     scsqlib:amos2.dll
+ 0004:000004a4       __imp__make_portfn         010694a4     scsqlib:amos2.dll
+ 0004:000004a8       __imp__port_getsubfn       010694a8     scsqlib:amos2.dll
+ 0004:000004ac       __imp__open_socket_blockfn 010694ac     scsqlib:amos2.dll
+ 0004:000004b0       __imp__port_gethostnamefn  010694b0     scsqlib:amos2.dll
+ 0004:000004b4       __imp__port_getportnofn    010694b4     scsqlib:amos2.dll
+ 0004:000004b8       __imp__port_getprotofn     010694b8     scsqlib:amos2.dll
+ 0004:000004bc       __imp__a_nth               010694bc     scsqlib:amos2.dll
+ 0004:000004c0       __imp__close_socketfn      010694c0     scsqlib:amos2.dll
+ 0004:000004c4       __imp__error_qfn           010694c4     scsqlib:amos2.dll
+ 0004:000004c8       __imp__lreadfn             010694c8     scsqlib:amos2.dll
+ 0004:000004cc       __imp__poll_sockets_blockfn 010694cc     scsqlib:amos2.dll
+ 0004:000004d0       __imp__memqfn              010694d0     scsqlib:amos2.dll
+ 0004:000004d4       __imp__set_differencefn    010694d4     scsqlib:amos2.dll
+ 0004:000004d8       __imp__arraytolistfn       010694d8     scsqlib:amos2.dll
+ 0004:000004dc       __imp__listtoarrayfn       010694dc     scsqlib:amos2.dll
+ 0004:000004e0       __imp__cons                010694e0     scsqlib:amos2.dll
+ 0004:000004e4       __imp__a_read_from_string  010694e4     scsqlib:amos2.dll
+ 0004:000004e8       __imp__DoInterrupt         010694e8     scsqlib:amos2.dll
+ 0004:000004ec       __imp__InterruptHasOccurred 010694ec     scsqlib:amos2.dll
+ 0004:000004f0       __imp__a_message           010694f0     scsqlib:amos2.dll
+ 0004:000004f4       __imp__add_duration        010694f4     scsqlib:amos2.dll
+ 0004:000004f8       __imp__new_timeval         010694f8     scsqlib:amos2.dll
+ 0004:000004fc       __imp__add_duration2       010694fc     scsqlib:amos2.dll
+ 0004:00000500       __imp__a_getintelem        01069500     scsqlib:amos2.dll
+ 0004:00000504       __imp__a_init_tuple        01069504     scsqlib:amos2.dll
+ 0004:00000508       __imp__a_newtuple          01069508     scsqlib:amos2.dll
+ 0004:0000050c       __imp__new_complex         0106950c     scsqlib:amos2.dll
+ 0004:00000510       __imp__a_setseqelem        01069510     scsqlib:amos2.dll
+ 0004:00000514       __imp__free_tuple          01069514     scsqlib:amos2.dll
+ 0004:00000518       __imp__a_getdoubleelem     01069518     scsqlib:amos2.dll
+ 0004:0000051c       __imp__a_register_error    0106951c     scsqlib:amos2.dll
+ 0004:00000520       __imp__sockerror           01069520     scsqlib:amos2.dll
+ 0004:00000524       __imp__new_string          01069524     scsqlib:amos2.dll
+ 0004:00000528       __imp__a_length            01069528     scsqlib:amos2.dll
+ 0004:0000052c       __imp__a_error             0106952c     scsqlib:amos2.dll
+ 0004:00000530       __imp__interror            01069530     scsqlib:amos2.dll
+ 0004:00000534       __imp_____                 01069534     scsqlib:amos2.dll
+ 0004:00000538       __imp__a_list              01069538     scsqlib:amos2.dll
+ 0004:0000053c       __imp____str__             0106953c     scsqlib:amos2.dll
+ 0004:00000540       __imp__new_real            01069540     scsqlib:amos2.dll
+ 0004:00000544       __imp__call_lisp           01069544     scsqlib:amos2.dll
+ 0004:00000548       __imp__varstack            01069548     scsqlib:amos2.dll
+ 0004:0000054c       __imp__new_symbol          0106954c     scsqlib:amos2.dll
+ 0004:00000550       __imp__a_getelemsize       01069550     scsqlib:amos2.dll
+ 0004:00000554       __imp__a_getstringelem     01069554     scsqlib:amos2.dll
+ 0004:00000558       __imp__a_setelem           01069558     scsqlib:amos2.dll
+ 0004:0000055c       __imp__a_extfunction       0106955c     scsqlib:amos2.dll
+ 0004:00000560       __imp__a_getelem           01069560     scsqlib:amos2.dll
+ 0004:00000564       __imp__a_elt               01069564     scsqlib:amos2.dll
+ 0004:00000568       __imp__a_setdoubleelem     01069568     scsqlib:amos2.dll
+ 0004:0000056c       __imp__a_emit              0106956c     scsqlib:amos2.dll
+ 0004:00000570       __imp__a_extimpl           01069570     scsqlib:amos2.dll
+ 0004:00000574       __imp__topenv              01069574     scsqlib:amos2.dll
+ 0004:00000578       __imp__resetlabelp         01069578     scsqlib:amos2.dll
+ 0004:0000057c       __imp__clearstack          0106957c     scsqlib:amos2.dll
+ 0004:00000580       __imp__resetfn             01069580     scsqlib:amos2.dll
+ 0004:00000584       __imp__a_result            01069584     scsqlib:amos2.dll
+ 0004:00000588       __imp__a_definetype        01069588     scsqlib:amos2.dll
+ 0004:0000058c       __imp__extfunctionn        0106958c     scsqlib:amos2.dll
+ 0004:00000590       __imp__release             01069590     scsqlib:amos2.dll
+ 0004:00000594       __imp__dealloc_object      01069594     scsqlib:amos2.dll
+ 0004:00000598       __imp__new_object          01069598     scsqlib:amos2.dll
+ 0004:0000059c       __imp__extfunction2        0106959c     scsqlib:amos2.dll
+ 0004:000005a0       __imp__extfunction1        010695a0     scsqlib:amos2.dll
+ 0004:000005a4       __imp__begin_image         010695a4     scsqlib:amos2.dll
+ 0004:000005a8       __imp__getreal             010695a8     scsqlib:amos2.dll
+ 0004:000005ac       __imp__a_round             010695ac     scsqlib:amos2.dll
+ 0004:000005b0       __imp__new_integer         010695b0     scsqlib:amos2.dll
+ 0004:000005b4       __imp__lerror              010695b4     scsqlib:amos2.dll
+ 0004:000005b8       __imp__a_init_connection   010695b8     scsqlib:amos2.dll
+ 0004:000005bc       __imp__delay_emit          010695bc     scsqlib:amos2.dll
+ 0004:000005c0       __imp__init_amos           010695c0     scsqlib:amos2.dll
+ 0004:000005c4       __imp__a_initialize        010695c4     scsqlib:amos2.dll
+ 0004:000005c8       __imp__materialized_remote_scan 010695c8     scsqlib:amos2.dll
+ 0004:000005cc       __imp__a_default_image     010695cc     scsqlib:amos2.dll
+ 0004:000005d0       __imp__a_print             010695d0     scsqlib:amos2.dll
+ 0004:000005d4       __imp__amos_toploop        010695d4     scsqlib:amos2.dll
+ 0004:000005d8       \177amos2_NULL_THUNK_DATA  010695d8     scsqlib:amos2.dll
+
+ entry point at        0001:0000e8b0
+
+ Static symbols
+
+ 0001:0000e670       _split                     0040f670 f   scsqlib:fourier.obj
+ 0001:0000e730       _join                      0040f730 f   scsqlib:fourier.obj
+
+FIXUPS: faa9 fffffe71 1a f 33 19 1e ffff204d a0 90 1fc fffff434 46 7a 46
+FIXUPS: 12e0 fffffd71 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 30 3a e9d5 d
+FIXUPS: 2542 51 bb 9d 3d 36 83 10 169 1d 58 1d 78 5 54 b 2f 3e a5 39c 63
+FIXUPS: 308c af 6d ffffeef4 c4 fffffe59 3d 2c fffff38b 3e 3b 33a8 fffff6d3
+FIXUPS: 3ebd 54 1c 54 48 78 53 6d 48 fffff2d6 1d 5e 1d 92 5 54 b 2f 3f
+FIXUPS: 36e0 3d6 e 8 6 8 76 1d ffffe817 e 136 5cef 72 8e 15c f5 f0 11d
+FIXUPS: 8758 49 5e ffffc12a 167 41 70 1cf 19 8c 13b 6c fffff333 3e 26 ad
+FIXUPS: 43fa 110 59 a9 23 5a aa 24 23 d20 43 1d 43 44 40 47 ec 14c 196
+FIXUPS: 5ad2 cd 7a 777 407 4ff 220 558 a f9 32c 52 58 64 3f8 13 1d9 51
+FIXUPS: 7fb0 52 67 db 6d54 fffff461 d d 123 14c ffffe91f 35 2ef c7 1bf
+FIXUPS: d6fd a7 352 71 88 ffffdd6d 10b 35 3fc 1ae 6e 1ae ffffeb32 fffff661
+FIXUPS: 8d9b 8a8 6e7 2b7 ffffb2be 137 56 ffffbbf1 e5dd 20 12 e0 fffffc08
+FIXUPS: f331 55 1f 12 1c fffffd81 155 fffff4ff 44 18 d 7 7 2e 346 36 b
+FIXUPS: ebfc b d9 82 d 17 10 d d

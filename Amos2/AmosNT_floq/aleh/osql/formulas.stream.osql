@@ -1,0 +1,159 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2006 Ruslan Fomkin, UDBL
+ * $RCSfile: formulas.stream.osql,v $
+ * $Revision: 1.20 $ $Date: 2008/02/11 12:51:04 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Load formulas, which then are used in cuts. It takes in account the type
+ * hierarchy of stream implementation with struct. The difference is Particle
+ * type instead of AbstractParticle type.
+ ****************************************************************************
+ * $Log: formulas.stream.osql,v $
+ * Revision 1.20  2008/02/11 12:51:04  ruslan
+ * key declarations
+ *
+ * Revision 1.19  2008/02/07 09:45:16  ruslan
+ * uncache Pt and Eta
+ *
+ * Revision 1.18  2008/02/07 08:34:31  ruslan
+ * caching Pt and Eta for particles
+ *
+ * Revision 1.17  2008/02/02 10:15:28  ruslan
+ * invmass over tuples of particles
+ *
+ * Revision 1.16  2008/02/01 13:53:39  ruslan
+ * invmass over vector has own implementation
+ *
+ * Revision 1.15  2008/02/01 10:11:19  ruslan
+ * assertions on vector elements types are removed
+ *
+ * Revision 1.14  2007/12/13 14:54:43  ruslan
+ * some performance improvent, gives 7%
+ *
+ * Revision 1.13  2007/12/11 12:51:14  ruslan
+ * removing cost hints from the file, since they are available in cost model file
+ *
+ * Revision 1.12  2007/11/23 11:10:32  ruslan
+ * rewriting in with vrefbff. Gives significant improvement in performance
+ *
+ * Revision 1.11  2007/11/16 08:12:13  ruslan
+ * cost hint for correct sqrt function
+ *
+ * Revision 1.10  2007/11/09 15:08:11  ruslan
+ * using C implementation of UDFs available through ROOTWrap
+ *
+ * Revision 1.9  2007/09/12 08:45:55  ruslan
+ * ineqrewrite loading is moved from formulas to master scripts installing approaches, where inequality rewrite works, i.e. where no disjunction.
+ *
+ * Revision 1.8  2007/09/12 08:19:39  ruslan
+ * inequality rewrite works in stream case
+ *
+ * Revision 1.7  2007/07/27 07:27:22  ruslan
+ * cost model for UDFs in according their execution time. cheapest operations have cost 1
+ *
+ * Revision 1.6  2007/06/19 07:34:16  ruslan
+ * typo bug is fixed
+ *
+ * Revision 1.5  2007/06/18 13:08:47  ruslan
+ * new cost models are in comments
+ *
+ * Revision 1.4  2007/03/01 14:56:52  ruslan
+ * system sqrt makes problems in stream aproach
+ *
+ * Revision 1.2  2006/12/18 14:31:59  ruslan
+ * Loading operation.lsp is moved from formulas.osql to stream.osql
+ *
+ * Revision 1.1  2006/12/13 13:25:50  ruslan
+ * stream implementation of ALEH with structs
+ *
+ ****************************************************************************/
+
+create function vin(vector v) -> object o as
+	select o
+	from object o, integer i
+	where o=v[i];
+
+/*
+ * Formulas over abstact particles
+ */
+/* 3D vector of momentum */
+create function momentum(Particle p key) -> vector as
+	select {Px(p),Py(p),Pz(p)};
+
+/* Invariant mass calculation of several particles*/
+create function invMass(bag of Particle vl) -> real as
+	select r from real e, real r, vector m
+	where e=sum(Ee(in(vl))) and	m=sum(momentum(in(vl))) 
+		and r=sqrt_pos(abs(e*e-m*m));
+
+create function invMass(vector vl key) -> real as
+	select r from real e, real r, vector m
+	where e=sum(select Ee(p) from particle p where p=vin(vl)) and	
+		m=sum(select momentum(p) from particle p where p=vin(vl))
+		and r=sqrt_pos(abs(e*e-m*m));
+
+create function invMass(particle p key) -> real as
+	select r from real e, real r, vector m
+	where e=Ee(p) and	
+		m=momentum(p)
+		and r=sqrt_pos(abs(e*e-m*m));
+
+create function invMass(particle p1, particle p2) -> real as
+	select r from real e, real r, vector m
+	where e=plus(Ee(p1),Ee(p2)) and	
+		m=plus(momentum(p1),momentum(p2))
+		and r=sqrt_pos(abs(e*e-m*m));
+declare_key(functionnamed("PARTICLE.PARTICLE.INVMASS->REAL"),{"p1","p2"});
+
+create function invMass(particle p1, particle p2, particle p3) -> real as
+	select r from real e, real r, vector m
+	where e=plus(Ee(p1),Ee(p2),Ee(p3)) and	
+		m=plus(momentum(p1),momentum(p2),momentum(p3))
+		and r=sqrt_pos(abs(e*e-m*m));
+declare_key(functionnamed("PARTICLE.PARTICLE.PARTICLE.INVMASS->REAL"),
+		{"p1","p2","p3"});
+
+/* Absolute value of difference between invariant mass of vector and
+   constant */
+create function absInvMass(bag of Particle vs, real cMass)
+-> real as
+	select abs(invMass(vs)-cMass);
+create function absInvMass(vector vs, real cMass) -> real as
+	select abs(invMass(vs)-cMass);
+
+create function absInvMass(particle p, real cMass) -> real as
+	select abs(invMass(p)-cMass);
+create function absInvMass(particle p1, particle p2, real cMass) -> real as
+	select abs(invMass(p1,p2)-cMass);
+declare_key(functionnamed("PARTICLE.PARTICLE.REAL.ABSINVMASS->REAL"),
+	{"p1","p2","cmass"});
+create function absInvMass(particle p1, particle p2, particle p3, 
+				real cMass) -> real as
+	select abs(invMass(p1,p2,p3)-cMass);
+declare_key(functionnamed("PARTICLE.PARTICLE.PARTICLE.REAL.ABSINVMASS->REAL"),
+	{"p1","p2","p3","cmass"});
+
+/* Magnitude */
+create function magnitude(Particle p key) -> real as
+	select magnitude(px(p),py(p),pz(p));
+
+/* Eta */
+create function eta(Particle p key) -> real r as 
+	select eta(px(p),py(p),pz(p));
+
+/* Pt */
+create function pt(Particle p key) -> real as
+	select pt(px(p),py(p));
+
+create function Pairs(bag of object obs) -> bag of vector pair as
+select {o1,o2}
+from object o1, object o2
+where o1>o2 and o1=in(obs) and o2=in(obs);
+
+create function Pairs(vector obs) -> bag of vector pair as
+select {o1,o2}
+from object o1, object o2
+where o1>o2 and o1=vin(obs) and o2=vin(obs);

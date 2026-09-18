@@ -1,0 +1,31 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010 Lars Melander, UDBL
+ * $RCSfile: defs.osql,v $
+ * $Revision: 1.2 $ $Date: 2010/06/21 16:58:48 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Test functions for localThreads
+ *
+ ****************************************************************************
+ * $Log: defs.osql,v $
+ * Revision 1.2  2010/06/21 16:58:48  larme597
+ * Linux localThreads test.
+ *
+ * Revision 1.1  2010/06/16 17:20:18  larme597
+ * Copying defs from $(AMOS_HOME)/Java/javadefs.osql
+ *
+ ****************************************************************************/
+
+lisp;
+(load "defs.lsp")
+:osql
+
+create function niota(Number n)->Number as iota(1, n);
+
+create function cciota(Integer n)->Integer as count(ciota(n));
+
+create function background(Integer w)->Real as foreign 'backgroundbf';
+
+create function zbg(Integer s)->Real as zip(background(s), background(s));

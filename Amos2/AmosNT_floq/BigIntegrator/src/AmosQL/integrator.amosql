@@ -1,0 +1,112 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year>Minpeng Zhu <author>, UDBL
+ * $RCSfile: integrator.amosql,v $
+ * $Revision: 1.12 $ $Date: 2013/05/01 15:16:21 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Generic functions of integrator avaiable for wrappers.
+ *              Each wrapper has a absorber and finalizer, and the  
+ *              absorbability defines what kind of query can be handled
+ *              by the specific kind of datasource.  
+ ****************************************************************************/
+
+create function absorber(Type wrapper)->Charstring 
+  /* The absorber of a wrapper */
+  as stored;
+
+create function finalizer(Type wrapper)->Charstring 
+  /* The finalizer of a wrapper */
+  as stored;
+
+create function absorbability(Type wrapper)->Bag of Function
+  /* Generic absorbability for a wrapper */
+  as stored;
+
+create function absorbability(Datasource dsinst)->Bag of Function
+  /* Specific absorbability for a datasource instance */
+  as stored;
+
+create function datasource(Function sp)->Bag of Datasource
+  /* relation from a source predicate to a data source */
+  as stored;
+
+create function wrapper(Datasource ds) -> Type w
+  /* A wrapper is a type w under type Datasource */
+  as typeof(ds); 
+
+create function location(Datasource ds)->Charstring 
+  /* The location of a datasource instance */
+  as stored;
+
+
+/************************  setter functions ***************************/
+
+create function set_absorber(Charstring wrapper, Charstring absorber)->Boolean
+  /* set absorber for a wrapper */
+  as begin
+     set absorber(typenamed(wrapper))=absorber;
+     end;
+
+create function set_finalizer(Charstring wrapper, Charstring finalizer)->Boolean
+  /* set finalizer for a wrapper */
+  as begin
+     set finalizer(typenamed(wrapper))=finalizer;
+     end;
+
+create function create_wrapper_absorbability(Charstring wrapper, 
+					     Charstring resolvent)->Boolean
+  /* create absorbability for a wrapper */
+  as begin 
+     add absorbability(typenamed(wrapper))=theresolvent(resolvent);
+     end;
+
+/************************ getter functions ****************************/
+
+create function get_superty_absorber(Type wrapper)->Charstring 
+  /* get absorber on wrapper's supertype */
+  as select absorber
+     from Charstring absorber, Type superty
+     where absorber=absorber(superty) and
+           superty in supertypes(wrapper);
+
+create function get_superty_finalizer(Type wrapper)->Charstring 
+  /* get finalizer on wrapper's supertype */
+  as select finalizer
+     from Charstring finalizer, Type superty
+     where finalizer=finalizer(superty) and
+           superty in supertypes(wrapper);
+
+create function get_absorber(Type wrapper)->Charstring 
+  /* get absorber either from wrapper or wrapper's super type */
+  as if(some(absorber(wrapper)))
+     then return absorber(wrapper)
+     else
+     return get_superty_absorber(wrapper);
+
+create function get_finalizer(Type wrapper)->Charstring 
+  /* get finalizer either from wrapper or wrapper's super type */
+  as if(some(finalizer(wrapper)))
+     then return finalizer(wrapper)
+     else
+     return get_superty_finalizer(wrapper);     
+
+create function get_superty_absorbability(Datasource ds)
+					->Bag of Function
+  /* get absorbability on relational type for a data source instance */
+  as select fn
+     from Function fn, Type superty
+     where fn in absorbability(superty) and
+           superty in supertypes(typeof(ds));
+
+create function get_absorbability(Datasource ds)->Bag of Function
+  /* get absorbability from data source instance's absorbability and 
+   from its data source type or data source's super type */
+  as select distinct fn
+     from Function fn
+     where fn in absorbability(ds) or
+           fn in absorbability(typeof(ds)) or
+           fn in get_superty_absorbability(ds);
+
+

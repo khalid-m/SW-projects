@@ -1,0 +1,169 @@
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Johan Petrini, UDBL
+ * 
+ * Description: Master regression test of SWARD system exporting and querying 
+ * the eGovernment relational database with strategy END-P.
+ *
+ * The following queries are tested:
+ *
+ *  Schema queries accessing the relational database schema.
+ *  1. Give me all properties, except for the property
+ *     http://purl.org/dc/elements/1.1/Identifier, of a life event.
+ *
+ *  Content queries accessing the relational database content.
+ *  1. Give me the names and descriptions of all life events.
+ *
+ *  Hybrid queries joining schema and content data. 
+ *  1. Give me all life event forms about moving and their properties 
+ *     except for the properties http://udbl.it.uu.se/schemas/eGovern#FormID,
+ *     http://udbl.it.uu.se/schemas/eGovern#LifeEventID and
+ *     http://udbl.it.uu.se/schemas/eGovern#Concern.     
+ ******************************************************************************/
+/* Load SWARD master regression setup  
+ */		
+<'egov_setup.amosql';
+
+/* Generate the UPV according to END-P
+ */
+dispatch("END","EGov");
+
+/* SPARQL queries 
+ */
+set :sparql_schema_1 = 
+"SELECT ?lifeeventprop
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {?lifeeventprop <http://www.w3.org/2000/01/rdf-schema#domain> 
+		<http://udbl.it.uu.se/schemas/eGovern#LifeEvent> .
+ FILTER	(?lifeeventprop != <http://purl.org/dc/elements/1.1/identifier>) .}";
+
+set :sparql_content_1 = 
+"SELECT ?val1 ?val2
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {?s1 <http://purl.org/dc/elements/1.1/title> ?val1 .
+        ?s1 <http://purl.org/dc/elements/1.1/description> ?val2 .}";
+
+set :sparql_hybrid_1 = 
+"SELECT ?s2 ?p ?val3
+ FROM <http://udbl.it.uu.se/upv/eGov/>
+ WHERE {?s1 <http://purl.org/dc/elements/1.1/description> ?val1 .
+        ?s2 <http://udbl.it.uu.se/schemas/eGovern#Concern> ?s1 .
+        ?p <http://www.w3.org/2000/01/rdf-schema#domain> 
+         <http://udbl.it.uu.se/schemas/eGovern#Form> .
+        ?s2 ?p ?val3 .
+ FILTER (?p != <http://udbl.it.uu.se/schemas/eGovern#FormID>) .
+ FILTER (?p != <http://udbl.it.uu.se/schemas/eGovern#LifeEventID>) .
+ FILTER (?p != <http://udbl.it.uu.se/schemas/eGovern#Concern>) .
+ FILTER REGEX (?val1, '.*move.*') .}";
+
+/* SQL queries 
+ */
+set :sql_schema_1 = 
+"SELECT t1.s
+ FROM EGov t1
+ WHERE t1.p = 'http://www.w3.org/2000/01/rdf-schema#domain' and
+       t1.val = 'http://udbl.it.uu.se/schemas/eGovern#LifeEvent' and
+       t1.s <> 'http://purl.org/dc/elements/1.1/identifier'";
+
+set :sql_content_1 =	
+"SELECT t1.val, t2.val
+ FROM EGov AS t1, EGov AS t2
+ WHERE t1.p = 'http://purl.org/dc/elements/1.1/title' AND
+       t2.p = 'http://purl.org/dc/elements/1.1/description' AND
+       t1.s = t2.s";
+
+set :sql_hybrid_1 = 
+"SELECT t5.s, t5.p, t5.val
+ FROM EGov AS t1,
+      EGov AS t3,
+      EGov AS t4,
+      EGov AS t5
+ WHERE t1.p = 'http://purl.org/dc/elements/1.1/description' AND
+       t1.s = t3.val AND
+       t3.p = 'http://udbl.it.uu.se/schemas/eGovern#Concern' AND
+       t4.p = 'http://www.w3.org/2000/01/rdf-schema#domain' AND
+       t4.val = 'http://udbl.it.uu.se/schemas/eGovern#Form' AND
+       t5.p = t4.s AND
+       t5.s = t3.s AND
+       t5.p <> 'http://udbl.it.uu.se/schemas/eGovern#FormID' AND
+       t5.p <> 'http://udbl.it.uu.se/schemas/eGovern#LifeEventID' AND
+       t5.p <> 'http://udbl.it.uu.se/schemas/eGovern#Concern' AND
+       t1.val LIKE '%move%'";
+
+/* Defining the results of and evaluating the example queries
+ */
+lisp;
+(defglobal _schema_1_res_ 
+ (list 
+  (list (listtoarray 
+	(list "http://purl.org/dc/elements/1.1/description")))
+  (list (listtoarray 
+	(list "http://udbl.it.uu.se/schemas/eGovern#LifeEventID")))
+  (list (listtoarray 
+	(list "http://purl.org/dc/elements/1.1/title")))))
+
+(defglobal _content_1_res_ 
+ (list (list (listtoarray 
+  (list "Moving House" "A citizen intends to move from one EU country to another."))))) 
+
+(defglobal _hybrid_1_res_ 
+ (list 
+  (list (listtoarray 
+   (list "http://udbl.it.uu.se/schemas/eGovern#Form/fid_0" "http://udbl.it.uu.se/schemas/eGovern#NumberOfFields" "25")))
+
+  (list (listtoarray 
+   (list "http://udbl.it.uu.se/schemas/eGovern#Form/fid_1" "http://udbl.it.uu.se/schemas/eGovern#NumberOfFields" "129")))
+
+  (list (listtoarray 
+   (list "http://udbl.it.uu.se/schemas/eGovern#Form/fid_2" "http://udbl.it.uu.se/schemas/eGovern#NumberOfFields" "59")))
+
+  (list (listtoarray 
+   (list "http://udbl.it.uu.se/schemas/eGovern#Form/fid_0" "http://www.egov_project.org/GovMLSchema#Creator" "National Tax Board of Sweden")))
+
+  (list (listtoarray 
+   (list "http://udbl.it.uu.se/schemas/eGovern#Form/fid_1" "http://www.egov_project.org/GovMLSchema#Creator" "National Tax Board of Sweden")))
+
+  (list (listtoarray 
+   (list "http://udbl.it.uu.se/schemas/eGovern#Form/fid_2" "http://www.egov_project.org/GovMLSchema#Creator" "http://www.workpermit.com")))
+
+  (list (listtoarray 
+   (list "http://udbl.it.uu.se/schemas/eGovern#Form/fid_0" "http://udbl.it.uu.se/schemas/eGovern#URL" "http://www.skatteverket.se/etjanster/skrivutpersonbevis.4.18e1b10334ebe8bc80001262.html")))
+
+  (list (listtoarray 
+   (list "http://udbl.it.uu.se/schemas/eGovern#Form/fid_1" "http://udbl.it.uu.se/schemas/eGovern#URL" "http://www.skatteverket.se/download/18.3dfca4f410f4fc63c86800010627/7665B5.pdf")))
+
+  (list (listtoarray 
+   (list "http://udbl.it.uu.se/schemas/eGovern#Form/fid_2" "http://udbl.it.uu.se/schemas/eGovern#URL" "http://www.workpermit.com/uk/employer_form.htm")))))
+
+:osql
+/* Regression test
+ */
+lisp;
+(checkequal "SparQL schema query 1 with END-P"
+	    ((sorttuples (osql "sparql(:sparql_schema_1);"))
+	     (sorttuples _schema_1_res_)))
+
+(checkequal "SparQL content query 1 with END-P"
+	    ((osql "sparql(:sparql_content_1);")
+	     _content_1_res_))
+
+(quote (checkequal "SparQL hybrid query 1 with END-P"
+	    ((osql "sparql(:sparql_hybrid_1);")
+	     _hybrid_1_res_)))
+
+(checkequal "SQL schema query 1 with END-P"
+	    ((sorttuples (osql "sql(:sql_schema_1);"))
+		 (sorttuples _schema_1_res_)))
+
+(checkequal "SQL content query 1 with END-P"
+	    ((osql "sql(:sql_content_1);")
+		 _content_1_res_))
+
+(quote (checkequal "SQL hybrid query 1 with END-P"
+	    ((osql "sql(:sql_hybrid_1);")
+		 _hybrid_1_res_)))
+
+:osql
+
+DSDisconnect("eGov");

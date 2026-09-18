@@ -1,0 +1,24 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2008 Ruslan Fomkin, UDBL
+ * $RCSfile: Signal.2005.MAN.osql,v $
+ * $Revision: 1.1 $ $Date: 2008/01/29 11:10:45 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Experiments to measure performance of cuts over signal file. 
+ * For simple (ranksort) optimization on default AMOS cost model (i.e. without
+ * cost model for aggregates and udfs).
+ * Cut query based on 2005 in best effort order, which is the paper order.
+ * Run this script in ALEH started by run.current.limited.2005.sh.
+ ****************************************************************************
+ * $Log: 
+ ****************************************************************************/
+
+cd('osql');
+<'../experiments/stream.osql';
+
+openwritefile('../experiments/Signal.2005.MAN.txt');
+MANsignal(5);
+closewritefile();

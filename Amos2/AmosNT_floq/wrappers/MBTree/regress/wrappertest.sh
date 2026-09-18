@@ -1,0 +1,1 @@
+../../../bin/amos2 mbt.osql

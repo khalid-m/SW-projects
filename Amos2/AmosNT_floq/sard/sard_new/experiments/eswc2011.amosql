@@ -1,0 +1,103 @@
+SARD
+----------------
+defineDS("producer10milDS",
+         "jdbc:microsoft:sqlserver://localhost;DatabaseName=producer10mil",
+        "com.microsoft.jdbc.sqlserver.SQLServerDriver",
+         "producer10mil",
+         "producer10mil",
+         "product10mil",
+         "product10mil");
+
+
+defineUPV("producer10milDS","prod10mil", "http://user.it.uu.se/~udbl/sard/producer10mil");
+
+DSConnect("prod10mil");	
+
+wrapRDB(jdbcOfDS("producer10milDS"), "producer10mil", "producer10mil", "producer10mil");
+
+assignIDs("prod10mil","producer10mil", "producer10mil");
+
+ViewRDB("prod10mil");
+
+parteval('pmap');
+parteval('cmap');
+parteval('rowid');
+parteval('vector');
+parteval('rmap1');
+parteval('rmmmap');
+
+lisp;
+(setq  _el-corcl_ t)
+(setq _unif_ t)
+(setq _gct_ t)
+
+:osql
+
+
+
+set :q="SELECT ?s ?p ?val
+	FROM <http://user.it.uu.se/~udbl/sard/producer10mil>
+	WHERE {?s ?p ?val.}";
+
+eval("create function exec_q()-><Charstring,Charstring,Literal> as " + parse_sparql(:q)); 
+
+create function count_q()->Integer as count(exec_q());
+
+
+Query 2:
+.........
+Query 11 (Berlin): Get all info about an offer having URI  <http://user.it.uu.se/~udbl/sard/producer10mil#offer/_100>
+
+set :q11="PREFIX dd: <http://user.it.uu.se/~udbl/sard/producer10mil>
+	SELECT ?property ?hasValue ?isValueOf
+	FROM  <http://user.it.uu.se/~udbl/sard/producer10mil>
+	WHERE {
+     	{ <http://user.it.uu.se/~udbl/sard/producer10mil#offer/_100> ?property ?hasValue. }
+     	UNION
+     	{ ?isValueOf ?property  <http://user.it.uu.se/~udbl/sard/producer10mil#offer/_100>.} }";
+
+eval("create function exec_q11()-><Literal,Charstring,Literal> as " + parse_sparql(:q11)); 
+
+Result:
+----------
+
+<"http://www.w3.org/1999/02/22-rdf-syntax-ns#type","http://user.it.uu.se/~udbl/sard/producer10mil#offer","">
+<"http://user.it.uu.se/~udbl/sard/producer10mil#offer/offer_producer","http://user.it.uu.se/~udbl/sard/producer10mil#producer/_614","">
+<"http://user.it.uu.se/~udbl/sard/producer10mil#offer/offer_product","http://user.it.uu.se/~udbl/sard/producer10mil#product/_30246","">
+<"http://user.it.uu.se/~udbl/sard/producer10mil#offer/offer_vendor","http://user.it.uu.se/~udbl/sard/producer10mil#vendor/_1","">
+<"http://user.it.uu.se/~udbl/sard/producer10mil#offer/offer_price",8238.78,"">
+<"http://user.it.uu.se/~udbl/sard/producer10mil#offer/offer_validFrom","2008-01-08 00:00:00.0","">
+<"http://user.it.uu.se/~udbl/sard/producer10mil#offer/offer_validTo","2008-05-24 00:00:00.0","">
+<"http://user.it.uu.se/~udbl/sard/producer10mil#offer/offer_deliveryDays",2,"">
+<"http://user.it.uu.se/~udbl/sard/producer10mil#offer/offer_offerWebpage","http://www4.wiwiss.fu-berlin.de/bizer/bsbm/v01/instances/dataFromVendor1/Offer100/","">
+<"http://user.it.uu.se/~udbl/sard/producer10mil#offer/offer_publisher",1,"">
+<"http://user.it.uu.se/~udbl/sard/producer10mil#offer/offer_publishDate","2008-03-17 00:00:00.0","">
+
+
+sql query:
+----
+select OFFER_PRODUCT,OFFER_PRODUCER,OFFER_VENDOR,OFFER_PRICE,OFFER_VALIDFROM,OFFER_VALIDTO,OFFER_DELIVERYDAYS,OFFER_OFFERWEBPAGE,OFFER_PUBLISHER,OFFER_PUBLISHDATE from OFFER where OFFER_NR = 100'
+
+
+Query 3:  Retrieve all the info about offers that have deliver days = 5
+	and the vendor country is GB
+:::::::::::
+set :q3="SELECT ?s1 ?p1 ?val1
+	FROM <http://user.it.uu.se/~udbl/sard/producer10mil>
+	WHERE {	?s1 <http://user.it.uu.se/~udbl/sard/producer10mil#offer/offer_deliveryDays> '5'.
+		?s1 ?p1 ?val1.
+		?s2 <http://user.it.uu.se/~udbl/sard/producer10mil#vendor/vendor_country> 'GB'.
+		?s1 <http://user.it.uu.se/~udbl/sard/producer10mil#offer/offer_vendor> ?s2.}";
+
+eval("create function exec_q3()-><Charstring,Charstring,Literal> as " + parse_sparql(:q3)); 
+
+create function count_q3()->Integer as count(exec_q3());
+
+Num of results:
+...............
+180 059 (= 11 * 16 369)
+
+sql : (16 369 results)
+........
+select VENDOR_NR,OFFER_NR,OFFER_PRODUCT,OFFER_PRODUCER,OFFER_PRICE,OFFER_VALIDFROM,OFFER_VALIDTO,OFFER_OFFERWEBPAGE,OFFER_PUBLISHER,OFFER_PUBLISHDATE from VENDOR V_,OFFER O_ where VENDOR_COUNTRY = 'GB' and OFFER_VENDOR = VENDOR_NR and OFFER_DELIVERYDAYS = '5'
+

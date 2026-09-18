@@ -1,0 +1,25 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2006 Ruslan Fomkin, UDBL
+ * $RCSfile: master.basic.osql,v $
+ * $Revision: 1.2 $ $Date: 2006/08/17 07:14:05 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Master AmosQL file to create image file for ALEH implementation without
+ * ontology (streaming and applying cuts on vector results of ROOT wrapper.
+ *
+ ****************************************************************************
+ * $Log: master.basic.osql,v $
+ * Revision 1.2  2006/08/17 07:14:05  ruslan
+ * regression test reflects changes of moving parameters schema
+ *
+ * Revision 1.1  2006/03/21 13:56:23  ruslan
+ * Streamed without ontology implementation is added
+ *
+ ****************************************************************************/
+
+<"parameters.osql";
+<"cuts.basic.osql";
+save "../aleh_basic.dmp";

@@ -1,0 +1,17 @@
+/* RDQL Parser removed 2011-01-25
+create function rdql(charstring query)->object 
+  as foreign "JAVA:Start/RDQL";
+
+create function parse_rdql(charstring query)->charstring 
+  as foreign "JAVA:Start/parseRDQL";
+*/
+
+create function loadXTM(charstring)->charstring 
+  as foreign "JAVA:TMWrapper/load";
+
+create function extract_nickname(charstring URI)-> charstring nm 
+    as foreign "JAVA:AmosStmt/extractName";
+
+create function extract_prefix(charstring URI)-> charstring nm 
+    as foreign "JAVA:AmosStmt/extractPrefix";
+

@@ -1,0 +1,34 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2006 Ruslan Fomkin, UDBL
+ * $RCSfile: materialized.load.osql,v $
+ * $Revision: 1.1 $ $Date: 2006/03/21 11:02:31 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Regression test for ALEH project for materialized ontology 
+ * loading entire file. 
+ * Tests that some cut queries over entire file t.root located in ROOT wrapper
+ * home directory.
+ ****************************************************************************
+ * $Log: materialized.load.osql,v $
+ * Revision 1.1  2006/03/21 11:02:31  ruslan
+ * Updated instruction for compiling and running ALEH. Added scripts for compiling ALEH and for testing projects depending on ROOT library
+ *
+ ****************************************************************************/
+
+lisp;
+(checkequal "Loading t.root file"
+	    ((osql "load_root_file(\"../wrappers/ROOTWrap/t.root\");")
+	     '((25000))))
+
+(checkequal "3 lepton cut"
+	    ((osql "count(select e from event e, parameters g 
+where e=threeleptoncut(e,g));")
+	     '((475))))
+
+(checkequal "Opt all cuts"
+	    ((osql "sort(select id(e) from event e, parameters g
+where e=optallcuts(e,g));")
+	     '((#(19015 24455)))))
+:osql

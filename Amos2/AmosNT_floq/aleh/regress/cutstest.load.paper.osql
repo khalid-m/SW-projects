@@ -1,0 +1,112 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Ruslan Fomkin, UDBL
+ * $RCSfile: cutstest.load.paper.osql,v $
+ * $Revision: 1.16 $ $Date: 2012/05/21 20:29:31 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Regression test for ALEH project presented in paper,
+ * when data are loaded to memory. Tests that cut queries
+ * are compiled and executable on small sample.
+ ****************************************************************************
+ * $Log: cutstest.load.paper.osql,v $
+ * Revision 1.16  2012/05/21 20:29:31  torer
+ * Updated cost model
+ *
+ * Revision 1.15  2008/11/28 07:19:25  torer
+ * Adjusted cost in regression
+ *
+ * Revision 1.14  2008/08/18 10:14:00  ruslan
+ * names are corrected according the schema in the thesis
+ *
+ * Revision 1.13  2008/05/19 15:02:02  ruslan
+ * removing type check affects costs
+ *
+ * Revision 1.12  2008/05/13 09:32:32  ruslan
+ * improvement in the schema
+ *
+ * Revision 1.11  2008/03/16 15:50:21  ruslan
+ * corrected
+ *
+ * Revision 1.10  2007/12/12 08:58:18  ruslan
+ * cost model for aggregates is revisited. cases, when partial information for cost model is only known, are updated.
+ *
+ * Revision 1.9  2007/09/27 11:50:01  ruslan
+ * according better randomopt
+ *
+ * Revision 1.8  2007/09/11 08:08:29  ruslan
+ * regression test is up to date with new changes in aleh
+ *
+ * Revision 1.7  2007/07/27 07:39:12  ruslan
+ * tests correspond to recent changes
+ *
+ * Revision 1.6  2007/06/16 07:51:03  ruslan
+ * the regression test is corrected
+ *
+ * Revision 1.5  2007/06/15 12:22:09  ruslan
+ * regression test reflects the change on abs, which affected costs of plans
+ *
+ * Revision 1.4  2007/02/15 13:04:35  ruslan
+ * randomopt test is rollbacked, because implementation of randomopt is rollbacked
+ *
+ * Revision 1.2  2007/01/26 10:39:38  ruslan
+ * a bug is fixed
+ *
+ * Revision 1.1  2007/01/26 10:21:18  ruslan
+ * regression tests for optimizations presented in the paper
+ *
+ ****************************************************************************/
+
+cd("../osql");
+<"schema.osql";
+<"../regress/test_data.const.osql";
+load_lisp("../lsp/cost_model.populated.lsp");
+load_lisp('../lsp/grouping.lsp');
+load_lisp('../lsp/dyngroups.lsp');
+commit;
+<"cuts.const.osql";
+
+/* Static cost model and greedy optimization */
+lisp;
+(checkequal "Greedy optimization with the static cost model"
+	    ((lr2i10nl 
+	      (exec-cost-of-fn (getfunctionnamed 'expcuts->event)) '(2 10))
+	     '(353982 0))
+	    ((osql "eventid(expcuts());")
+	     '((24455))))
+:osql
+
+optmethod('randomopt');
+optlevel(100,100);
+create function expid()-> bag of integer as
+select eventid(expcuts());
+
+lisp;
+(checkequal "Random optimization with the static cost model"
+	    ((lr2i10nl
+	      (exec-cost-of-fn (getfunctionnamed 'expid->integer)) '(2 10))
+	     '(353782 0))
+	    ((osql "expid();")
+	     '((24455))))
+:osql
+
+lisp;
+(setq *enable-parteval* nil)
+:osql
+optmethod("ranksort");
+grouping(true);
+reoptimize0("expid");
+grouping(false);
+
+lisp;
+(checkequal "Greedy optimization with the profiled group cost model"
+	    ((osql "count(select print_aggstat());")
+	     '((10)))
+	    ((r2i10n (second 
+		      (exec-cost-of-fn (getfunctionnamed 'expid->integer)))
+		      '10)
+	     '2191107)
+	    ((osql "expid();")
+	     '((24455))))
+:osql

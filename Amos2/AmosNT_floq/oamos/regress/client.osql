@@ -1,0 +1,121 @@
+/*****************************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 1999 Vanja Josifovski, Timour Katchaounov, EDSLAB
+ * $RCSfile: client.osql,v $
+ * $Revision: 1.1 $Date: 1999/07/22 15:37:17 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Advanced test of the Amos II ODBC wrapper.
+ *              Test Derived and IU types over a mixture of an AMOS databse
+ *              and an Access databse wrapped by an ODBC AMOS wrapper.
+ ****************************************************************************/
+
+latebinding("OR");
+normalization(TRUE);
+register("m");
+
+/* from an AMOS2 database */
+import_db("isydb");
+import_type("isyemp", "isydb");
+import_func("CHARSTRING.ID_TO_SSN->INTEGER", "isydb");
+
+/* from the ODBC wrapper */
+import_db("idadb");
+import_type("idaemp_ds", "idadb");
+
+create derived type isyemp1 
+  subtype of isyemp@isydb ie
+  where wplace(ie) = 1;
+
+
+/* c) */
+
+select name(idae), ssn(idae) 
+  from idaemp_ds@idadb idae, isyemp1 isye
+  where id_to_ssn(id(isye)) = ssn(idae);
+
+
+/* d) */
+create derived type both_dept_person
+subtype of idaemp_ds@idadb idae, isyemp1 isye
+where
+ id_to_ssn(id(isye)) = ssn(idae);
+
+/* BUG:
+select  idaemp_idadb.name->charstring(bdp), ssn(bdp) 
+from BOTH_DEPT_PERSON  bdp;
+--> No object found named IDAEMP_IDADB.NAME->CHARSTRING of type FUNCTION
+*/
+
+/* e) */
+/* does not work because of the previous bug
+select  idaemp_idadb.name->charstring(bdp), salary(bdp)+pay(bdp)
+from BOTH_DEPT_PERSON  bdp;
+*/
+
+select name(idae), salary(idae)
+from idaemp_ds@idadb idae, integer s
+where s=ssn(idae) and
+      notany(select name(isye) from isyemp1 isye where id_to_ssn(id(isye))=s);
+
+select name(isye), pay(isye)
+from isyemp1 isye, integer s
+where s = id_to_ssn(id(isye)) and
+      notany(select name(idae) from idaemp_ds@idadb idae where s = ssn(idae));
+
+
+/* BUG: The parser does NOT accept this. why?
+select n, sal from charstring n, integer sal
+where
+  <n, sal>=in(
+select name(idae), salary(idae) 
+from idaemp_ds@idadb idae, integer s
+where s=ssn(idae) and
+      notany(select name(isye) from isyemp1 isye where id_to_ssn(id(isye))=s))
+  or
+
+  <n, sal>=in(
+select name(isye), pay(isye)
+from isyemp1 isye, integer s
+where s = id_to_ssn(id(isye)) and
+      notany(select name(idae) from idaemp_ds@idadb idae where s = ssn(idae)))
+
+   or
+ <n, sal>=in(
+  select  idaemp_idadb.name->charstring(bdp), pay(bdp)+salary(bdp)
+   from BOTH_DEPT_PERSON  bdp);
+*/
+
+/* f */
+select distinct name
+from charstring name
+where name = in(select name(idae) from idaemp_ds@idadb idae)
+      or
+      name = in(select name(isye) from isyemp1 isye);
+
+
+/* g */
+create derived type Allemp
+  key integer ssn
+  supertype of
+    idaemp_ds@idadb idae = ssn(idae),
+    isyemp1 isye = id_to_ssn(id(isye))
+  functions
+    (real_name charstring, real_ssn integer, real_salary integer)
+    case idae:
+       real_name   = name(idae);
+       real_ssn    = ssn(idae);
+       real_salary = salary(idae);
+    case isye:
+       real_name   = name(isye);
+       real_ssn    = id_to_ssn(id(isye));
+       real_salary = pay(isye);
+    case idae, isye:
+       real_name   = name(idae);
+       real_ssn    = ssn(idae);
+       real_salary = salary(idae) + pay(isye);
+  end functions
+  properties (room charstring);
+
+select real_name(ae), real_salary(ae), real_ssn(ae) from Allemp ae;

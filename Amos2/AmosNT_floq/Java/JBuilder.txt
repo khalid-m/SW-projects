@@ -1,0 +1,19 @@
+The file AmosNT/bin/javaamos.jar is made using JBuilder4. We have CD
+and licence for JBuilder4 installation. If you use other version of
+JBuilder there will probably be incompatibilities.
+
+Settings for JBuilder4:
+
+Project file: JavaAMOS.jpr
+
+Required Libraries:
+
+  name                            source
+-------------------------------------------
+  JBCL                            JBuilder whatever
+  KLgroup JClass Field 4.5        JBuilder whatever
+  kcg                             AmosNT/java/lib/*.jar
+
+Since library definittions are NOT saved in the .jpr file you need to
+configure kcg yourself by clicking:
+   Project - Project Properties - Required Libraries - kcg - Edit

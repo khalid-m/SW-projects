@@ -1,0 +1,47 @@
+			How to compile Edutella:
+
+1.  Download ARP2 as part of Jena2 from
+http://jena.sourceforge.net/downloads.html or from
+http://user.it.uu.se/~udbl/software/Jena-2.1.zip
+
+2. Set environment variable ARP2_HOME to point to Jena 2 root directory,
+   e.g. C:\Program\Jena-2.1
+
+3. Make sure your javac compiler has version 1.4 or later!
+
+   In your default Java is 1.3 or earlier it is possible to override
+   the default setting by assigning the interface variable JAVA_HOME
+   to the directory where javac.exe etc. are defined, e.g.  
+     set java_home=C:\Program\Java\jdk1.5.0_01\bin\
+
+4. Make pselo.dmp by running
+     mkdmp.cmd
+
+6. Test Edutella by
+     test.cmd
+
+7. Run Edutella by
+     run.cmd
+
+Note! Edutella can also be tested in PSELO  mode,that is, 
+QEL queries are executed over union of statement sources defined in stmt() fn.
+
+For this to work the user machine must have the right to penetrate the firewall of Museifönstret. 
+Also MSSQL 2000 JDBC driver must be downloaded from 
+http://udbl.it.uu.se/software/MSSQL 2000 driver SP1.zip
+
+Environment variable MSSQL_HOME should point to MSSQL 2000 JDBC driver root directory,
+e.g. C:\Program\MSSQL 2000 driver SP1
+
+Now Edutella could be run or tested with argument 'pselo' for this more advanced mode of execution. 
+e.g. 
+C:\data\AmosNT\embeddings\Edutella>run pselo
+
+
+
+
+
+
+
+    
+   

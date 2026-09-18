@@ -1,0 +1,262 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Ekta Shrestha, 
+ * $RCSfile: NoBaseURISchema.amosql,v $
+ * $Revision: 1.4 $ $Date: 2012/06/29 14:50:09 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Functions for restoring
+	relational schema and data from NT archives
+ *
+ ****************************************************************************
+ * $Log: NoBaseURISchema.amosql,v $
+ * Revision 1.4  2012/06/29 14:50:09  eksh8896
+ * 29th June.. Everything working for prod1 and person (prob with cleanS())
+ *
+ * Revision 1.3  2012/06/08 13:29:22  torer
+ * *** empty log message ***
+ *
+ * Revision 1.3  2012/04/18 11:23:17  eksh8896
+ * Final: Edited with the minor adjustment.
+ *
+ * Revision 1.2  2012/04/18 08:32:07  eksh8896
+ * Modified Version. Works Fine with row and column order
+ *
+ * Revision 1.1  2012/03/30 14:02:58  eksh8896
+ * *** empty log message ***
+ *
+ * Revision 1.3  2012/03/29 18:39:36  eksh8896
+ * Updates amosql files on 30th March.
+ *
+ * Revision 1.2  2012/03/27 08:51:41  eksh8896
+ * *** empty log message ***
+ *
+ * Revision 1.1  2012/02/28 14:01:25  eksh8896
+ * Restoring RDF data files taking consideration of primary and foreign key.
+ *
+ * Revision 1.1  2011/12/07 13:21:43  eksh8896
+ * Updated functions for parsing 'nt' schema and data files.
+ *
+ *  
+ * 
+ *
+ ****************************************************************************/
+
+
+/**********************************GENERAL FUNCTIONS**************************************************************************/
+
+create function ret_tableName()->Charstring
+as begin
+	declare Integer i;
+	set i=0;
+	for each Charstring ch where ret_tableURIs()=ch
+	begin 	set i=i+1;return "Table"+i;end;
+end;
+
+create function ret_tableNameURIs()->(Charstring ,Charstring)
+/*Retrieve URI  of the table in the file*/
+as begin
+	declare Integer i;
+	set i=0;
+	for each Charstring ch where ret_tableURIs()=ch
+	begin 	set i=i+1;return (ch,"Table"+i);end;
+end;
+
+create function ret_tabNameNoURI(Charstring tableURI)->Charstring
+/*Retrieves the Table Name for the given Table URI.*/
+as begin
+	for each Charstring ch1,Charstring ch2 where ret_tableNameURIs()=(ch1,ch2)
+	begin if ch1=tableURI then 
+		return ch2;
+	end;
+end;
+
+
+/************************************************************************************************************************/
+			/*** RETRIEVING COLUMNS FROM GIVEN FILE***/
+/************************************************************************************************************************/
+create function ret_columnNameURIs(Charstring tableURI,Charstring tname)->(Charstring,Charstring)
+as begin 
+	declare Integer i;
+	set i=0;
+	for each Charstring ch where ret_columnURIs1(tableURI)=ch
+	begin	set i=i+1;return (ch,tname+"_Col"+i);
+	end;
+end;
+/************************************************************************************************************************/
+			/*** Mapping info for Tables and columns for Data archive with different RDF annotation***/
+/************************************************************************************************************************/
+
+/*Stored table holding all Mapped name for table URIs along with its columnURIs .*/
+create function Map_info(Integer id key, Charstring tableURI,Charstring tName,Charstring colURI,Charstring col)->Boolean  as stored;
+
+/*Creating index on the stored table.*/
+create_index('Integer.Charstring.Charstring.Charstring.Charstring.map_info->Boolean',"colURI","hash","multiple");	
+
+/*Add Mapped names of the Tables, its columns.*/
+create function addMapVal()->Boolean
+as 
+begin declare Integer i;
+	set i=1;
+        for each Charstring tableURI,Charstring tableName where (tableURI,tableName) in ret_tableNameURIs() 
+        begin   for each Charstring colURI,Charstring colName where (colURI,colName) in ret_columnNameURIs(tableURI,tableName)
+		begin	set map_info(i,tableURI,tableName,colURI,colName)=true;
+			set i=i+1;
+		end;
+	end;
+end;
+
+create function mapTableName(Charstring tableURI)->Charstring as
+select distinct t2 from Charstring t1,Charstring t2, Charstring c1, Charstring c2, Integer id where map_info( id,t1,t2,c1,c2)=true and t1=tableURI;
+
+create function mapColumnName(Charstring tableURI,Charstring colURI)->Charstring as
+select distinct c2 from Charstring t1,Charstring t2, Charstring c1, Charstring c2, Integer id where map_info( id,t1,t2,c1,c2)=true and t1=tableURI and c1=colURI;
+
+/************************************************************************************************************************/
+			/***RETRIEVING PRIMARY KEY FROM GIVEN FILE ***/
+/************************************************************************************************************************/
+create function ret_pkNameNoURI(Charstring tableURI)->Charstring
+/*Retrieve the name of the PK of the table represented by tableURI*/
+as begin 
+	for each Charstring ch where ret_pkURIs(tableURI)=ch
+	begin	return mapColumnName(tableURI,ch);
+	end;
+end;
+
+create function ret_pkNameURIs(Charstring tableURI)->(Charstring,Charstring)
+/*Retrieve the URI and the name of the PK of the table represented by tableURI*/
+as begin 
+	for each Charstring ch where ret_pkURIs(tableURI)=ch
+	begin	
+		return (ch,mapColumnName(tableURI,ch));
+	end;
+
+end;
+
+create function ret_NameNoURI(Charstring tableURI,Charstring URI)->Charstring
+/*Retrieve the name for the given URI*/
+as select distinct c2 from Charstring t1,Charstring t2, Charstring c1, Charstring c2, Integer id where map_info( id,t1,t2,c1,c2)=true and c1=URI and t1=tableURI;
+
+/************************************************************************************************************************/
+			/***RETRIEVING FOREIGN KEY FROM GIVEN FILE ***/
+/************************************************************************************************************************/
+create function ret_fkNoURI(Charstring tableURI)->Charstring
+/*Retrieve the name of the FK of the table represented by tableURI*/
+as begin 
+	for each Charstring ch where ret_fkURI(tableURI)=ch
+	begin return mapColumnName(tableURI,ch);
+	end;
+
+end;
+
+
+create function ret_fkRefNoURI(Charstring tableURI,Charstring tname)->(Charstring,Charstring,Charstring,Charstring,Charstring)
+/*Generates INSERT INTO statements to insert column and data into the table while scanning the NT-file (containing only Charstring data) row by row*/
+as begin
+	declare Vector v1, Vector v2,Vector v3, Vector v4, Vector tab1, Vector tab2,Charstring t1, charstring t2,Charstring t1a, charstring t2a,charstring t2b,charstring t3,charstring t, charstring tname_ref;
+	set t="";set t1="";set t2="";set t3="";set tname_ref="";
+	for each Charstring ch1,Charstring ch2 where ret_tableNameURIs()=<ch1,ch2>
+	begin 	set tab1=concat(tab1,{ch1}); set tab2=concat(tab2,{ch2});   
+		for each Charstring ch3,Charstring ch4 where ret_columnNameURIs(ch1,ch2)=<ch3,ch4>
+		begin 	set v1=concat(v1,{ch3});set v2=concat(v2,{ch4});
+       			set v3=concat(v3,{ch1});set v4=concat(v4,{ch2});
+		end;
+	end;
+	if (tableURI in ret_tableURIs_CT()) then
+	begin	for each charstring s,charstring v where ret_fkURI11(tableURI)=<s,v>
+		begin	if(s!=t) then
+	        	begin if (t!="")then return (t1,tname,t3,t2,tname_ref);	
+    	 			set t1="";set t2="";set t3="";set t=s;
+			end;	
+			if(v!="") then
+			begin	for each Integer i where i in iota (1,dim(tab1))
+					 if v=tab1[i-1] then set tname_ref=tab2[i-1];
+				for each Integer i where i in iota(1, dim(v1))
+				begin if s=v1[i-1] and tableURI=v3[i-1] then set t1a=v2[i-1];
+					if s=v1[i-1] and tname_ref=v4[i-1] then set t2a=v2[i-1];
+				end;
+				set t2=t2a+","+t2;set t3=t3+"_"+t1a;set t1=t1a+" ,"+t1;
+			end; 
+			set t1=substring(t1,0,char_length(t1)-2);set t2=substring(t2,0,char_length(t2)-2);set t3=substring(t3,0,char_length(t3));
+		end;
+	end
+        else	begin
+		for each charstring s,charstring v where ret_fkURI11(tableURI)=<s,v>
+		begin	if(s!=t) then begin
+		 		if (t!="")then return (t1,tname,t3,t2,tname_ref);
+					set t1="";set t2="";set t3="";set t=s;
+			end;	
+			if(v!="") then
+			begin	set t2b=ret_fkref(v);set t1a=v;
+		 		for each Integer i where i in iota(1,dim(v1))
+				begin if t2b=v1[i-1] then set t2a=v2[i-1];
+					if t1a=v1[i-1] then set t1a=v2[i-1];
+				end;
+				set t2=t2a+" ,"+t2;set t3=t3+"_"+t1a;set t1=t1a+" ,"+t1;
+			end; 	
+                	set t1=substring(t1,0,char_length(t1)-2); set t2=substring(t2,0,char_length(t2)-2);set t3=substring(t3,0,char_length(t3));
+			for each Integer i where i in iota (1,dim(v1))
+				if t2b=v1[i-1] then set tname_ref=v4[i-1]; 
+  		end;
+	end;
+	return (t1,tname,t3,t2,tname_ref);
+
+end;
+
+/*************************************************************************************************/
+	/*Retrieving column informations taking consideration of foreign key*/
+/************************************************************************************************/
+create function colInfo_modNoURI(Charstring tableURI,Charstring tname)
+->(Charstring,Charstring,Charstring,Charstring)
+as begin
+ for each Charstring ch1,Charstring ch2 where ret_columnNameURIs(tableURI,tname)=(ch1,ch2)
+	if(ret_ColSize(ch1)!="") then return (ch1,ch2,ret_ColdataType(ch1),ret_ColSize(ch1))
+	else return (ch1,ch2,ret_ColdataType(ch1),"")
+end;
+/***********************************************************************************************/
+	/*Retrieving the information of the column taking account of primary key and mapping datatype for foreign key.*/
+/**********************************************************************************************/
+create function get_infoPkNoURI(Charstring tableURI,Charstring tname)->Charstring
+as begin 
+	declare charstring temp;
+	set temp="";
+	for each Charstring dsize,Charstring colURI, Charstring colname, Charstring dtype 
+	 where <colURI,colname,dtype,dsize> = colInfo_modNoURI(tableURI,tname)
+		if dsize="" then set temp = temp + colname + " " + dtype +","
+     		else set temp = temp + colname + " " + dtype +"("+ dsize+")"+",";	
+	 return substring(temp,0,char_length(temp)-2);
+end;
+/*******************************************************************************************/
+	/*Retrieving CREATE TABLE script for the given file*/
+/*******************************************************************************************/
+create function makeTableNoURI(Charstring tableURI,Charstring tname)->Charstring
+as begin
+	declare charstring t1;
+	set t1="";
+	for each Charstring ch1,Charstring ch2 where ret_pkNameURIs(tableURI)=<ch1,ch2>
+		set t1=t1+","+ch2;
+	 return "(" + get_infopkNoURI(tableURI,tname) +",PRIMARY KEY(" +substring(t1,1,char_length(t1))+"));"
+end;
+
+create function makeAllTableNoURI(JDBC jd)->Boolean 
+as for each Charstring ch1,Charstring ch2 where ret_tableNameURIs()=<ch1,ch2>
+		sql(jd,"CREATE TABLE " +ch2+makeTableNoURI(ch1,ch2));
+/********************************************************************************************/
+	/*Retrieving Constraints info to produce ALTER TABLE script*/
+/*******************************************************************************************/
+	
+create function makeConstraintNoURI(Charstring tableURI,Charstring tname)->Charstring
+as for each Charstring ch1,Charstring ch2,Charstring ch3,Charstring ch4,Charstring ch5 where ret_fkRefNoURI(tableURI,tname)=<ch1,ch2,ch3,ch4,ch5>
+              if(ch1!="") then	return "ALTER TABLE " + ch2+ " ADD CONSTRAINT FK_"+ch2+ch3+" FOREIGN KEY("+ch1+") REFERENCES "+ch5+"("+ch4+");";
+	
+create function makeAllConstraintNoURI(JDBC jd)->Boolean 
+as for each Charstring ch1, Charstring ch2 where ret_tableNameURIs()=<ch1,ch2> 
+		sql(jd,makeConstraintNoURI(ch1,ch2));
+/*********************************************************************************************/
+
+create function dropAllTable(jdbc jd)-> Charstring as 
+/*Retrieves all table created on mysql*/
+	for each Charstring ch1,Charstring ch2, Charstring ch3, Charstring ch4 where tables(jd)=(ch1, ch2, ch3 , ch4)
+		sql(jd,"DROP TABLE if exists "+ ch1+ ";"); 
+/*********************************************************************************************/

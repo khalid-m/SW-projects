@@ -1,0 +1,32 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Mårten Svensson, UDBL
+ * $RCSfile: mkdmp.osql,v $
+ * $Revision: 1.2 $ $Date: 2011/08/15 12:41:59 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Master file for creating lr.dmp. given historylr.dmp
+ *
+ ****************************************************************************
+ * $Log: mkdmp.osql,v $
+ * Revision 1.2  2011/08/15 12:41:59  chexu484
+ * *** empty log message ***
+ *
+ * Revision 1.1  2010/04/01 11:38:58  torer
+ * Original lr version
+ *
+ * Revision 1.2  2007/11/05 15:08:55  masv3245
+ * Removed some of the vectors
+ *
+ * Revision 1.1  2007/10/19 11:30:02  torer
+ * New directory 'src' contains all Linear Road source code
+ * Master files cleaned up
+ *
+ ****************************************************************************/
+
+loadsystem("src","master.osql");
+
+save "../lrVali/lr.dmp";
+
+quit;

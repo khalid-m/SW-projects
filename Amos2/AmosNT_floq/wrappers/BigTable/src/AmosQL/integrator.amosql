@@ -1,0 +1,23 @@
+
+create function location(datasource ds)->Charstring 
+  /* uniform function to store the location of a datasource */
+  as foreign 'abstract-function';
+
+create function absorber(datasource ds)->Charstring 
+  /* uniform function to store the absorber of a datasource */
+  as foreign 'abstract-function';
+
+create function finalizer(datasource ds)->Charstring 
+  /* uniform function to store the finalizer of a datasource */
+  as foreign 'abstract-function';
+
+create function source(Charstring dsn, Charstring dstype)->object 
+  /* receives charstring data source name and type, to attach the data 
+   source type to the generated data source object and returns 
+   the data source object */
+  as foreign 'source--+';
+
+create function wrap(datasource ds, Charstring url, Vector params)->object 
+  /* uniform function to wrap a datasource according to its url 
+   and possible params, such as driver name, user name and password*/
+  as foreign 'abstract-function';

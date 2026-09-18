@@ -1,0 +1,20 @@
+version: 2
+
+#
+# filter: (|(objectclass=nordugrid-cluster)(norudgird-cluster-name=sg-ingrid.hpc2n.umu.se))
+# requesting: nordugrid-cluster-queuedjobs nordugrid-cluster-totaljobs nordugrid-cluster-usedcpus nordugrid-cluster-totalcpus 
+#
+
+# ingrid.hpc2n.umu.se, local, grid
+dn: nordugrid-cluster-name=ingrid.hpc2n.umu.se,Mds-Vo-name=local,o=grid
+nordugrid-cluster-totalcpus: 96
+nordugrid-cluster-usedcpus: 96
+nordugrid-cluster-queuedjobs: 39
+nordugrid-cluster-totaljobs: 121
+
+# search result
+search: 2
+result: 0 Success
+
+# numResponses: 2
+# numEntries: 1

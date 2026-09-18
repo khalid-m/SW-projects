@@ -1,0 +1,1610 @@
+
+/*-*-sql-*-********************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2012 Silvia Stefanova UDBL
+ * $RCSfile: berlinA.amosql,v 
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Archiving queries  
+		inferred from the BSBM queries:1,2,3,4,6,7,8,9,10,11
+ ******************************************************************************/
+
+/* Use MS SQL server to make 'DISTINCT' */
+
+set :id_a="archiveDS";
+set :url_a="jdbc:microsoft:sqlserver://localhost;DatabaseName=archive";
+set :driver_a="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :a=jdbc("arch", :driver_a);
+set :usern_a="archiver";
+set :passw_a="archiver2012";
+set :catalog_a="archive";
+set :schema_a="archive";
+
+defineDS(:id_a,
+         :url_a,
+         :driver_a,
+         :catalog_a,
+         :schema_a,
+         :usern_a,
+         :passw_a);
+
+set jdbcOfDS(:id_a)=:a;
+connect(:a, :url_a, :usern_a, :passw_a);
+
+/***********************************************************/
+
+
+/*nr triples (with NULL) : , no NULLs:  ; schema : 384 triples  */
+/* MS SQL server */
+
+set :id="producer1DS";
+set :url="jdbc:microsoft:sqlserver://localhost;DatabaseName=producer1";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="producer1";
+set :catalog="producer1";
+set :schema="producer1";
+set :usern="product1";
+set :passw="product1";
+
+
+/*nr triples (with NULL) : , no NULLs :2255  ; schema : 384 triples  */
+/* MS SQL server */
+
+set :id="producer90mDS";
+set :url="jdbc:microsoft:sqlserver://localhost;DatabaseName=producer90m";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="producer90m";
+set :catalog="producer90m";
+set :schema="producer90m";
+set :usern="product90m";
+set :passw="product90m";
+
+
+
+/*nr triples (with NULL) :4 343 718, no NULLs: 4 188 875 ; schema : 352 triples */
+/* MS SQL server */
+
+set :id="producer180mDS";
+set :url="jdbc:microsoft:sqlserver://localhost;DatabaseName=producer180m";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="producer180m";
+set :catalog="producer180m";
+set :schema="producer180m";
+set :usern="product180m";
+set :passw="product180m";
+
+
+/* MS SQL server on udblserver1 */
+/*nr triples (with NULL) :4 343 750, no NULLs: 4 188 523 ; schema : 384 triples */
+
+set :id="producer180mDS";
+set :url="jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=producer180m";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="producer180m";
+set :catalog="producer180m";
+set :schema="producer180m";
+set :usern="product180m";
+set :passw="product180m";
+
+/* MySQL */
+/*key_buffer = 3000M, nnodb_buffer_pool_size = 5120M */
+
+set :id="producer180mDS";
+set :url="jdbc:mysql://localhost:3306/producer180m";
+set :driver ="com.mysql.jdbc.Driver";
+set :dbname="producer180m";
+set :catalog="producer180m";
+set :schema="";
+set :usern="product180m";
+set :passw="product180m";
+
+
+/* nr triples (no NULLs): 41 713 529 ; 352 */
+/* MS SQL server */
+
+set :id="producer20milDS";
+set :url="jdbc:microsoft:sqlserver://localhost;DatabaseName=producer20mil";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="producer20mil";
+set :catalog="producer20mil";
+set :schema="producer20mil";
+set :usern="product20mil";
+set :passw="product20mil";
+
+
+/* MS SQL server on udblserver1 */
+set :id="producer20milDS";
+set :url="jdbc:microsoft:sqlserver://udblserver1.it.uu.se;DatabaseName=producer20mil";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="producer20mil";
+set :catalog="producer20mil";
+set :schema="producer20mil";
+set :usern="product20mil";
+set :passw="product20mil";
+
+
+
+/* MySQL */
+/*key_buffer = 3000M, nnodb_buffer_pool_size = 5120M */
+set :id="producer20milDS";
+set :url="jdbc:mysql://localhost:3306/producer20mil";
+set :driver ="com.mysql.jdbc.Driver";
+set :dbname="producer20mil";
+set :catalog="producer20mil";
+set :schema="";#[OID 2206 "EXEC2->CHARSTRING.CHARSTRING"]
+set :usern="product20mil";
+set :passw="product20mil";
+
+
+/* nr triples (no NULLs):  ; 352 */
+/* MS SQL server */
+
+set :id="producer500MDS";
+set :url="jdbc:microsoft:sqlserver://localhost;DatabaseName=producer500M";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="producer500M";
+set :catalog="producer500M";
+set :schema="producer500M";
+set :usern="product500m";
+set :passw="product500m";
+
+
+/* nr triples (no NULLs): */
+/* MS SQL server */
+
+set :id="producer1000MDS";
+set :url="jdbc:microsoft:sqlserver://localhost;DatabaseName=producer1000M";
+set :driver="com.microsoft.jdbc.sqlserver.SQLServerDriver";
+set :dbname="producer1000M";
+set :catalog="producer1000M";
+set :schema="producer1000M";
+set :usern="product1000m";
+set :passw="product1000m";
+
+
+
+
+set :upv="prod";
+set :uriOfupv="http://user.it.uu.se/~udbl/sard/prod";
+/*set :upv_fn="prod_fn";*/
+/*set :uriOfupv_fn="http://user.it.uu.se/~udbl/sard/prod_fn";*/
+
+
+defineDS(:id,
+         :url,
+         :driver,
+         :catalog,
+         :schema,
+         :usern,
+         :passw);
+
+
+defineUPV(:id,:upv, :uriofupv);
+/*defineUPV(:id,:upv_fn, :uriofupv_fn);*/
+
+DSConnect(:upv);	
+
+wrapRDB(jdbcOfDS(:id), :dbname, :catalog, :schema);
+assignIDs(:upv,:catalog, :schema);
+/*assignIDs(:upv_fn,:catalog, :schema);*/
+
+
+ViewRDB(:upv);
+/*FunRDB(:upv);*/
+/*make_def(:upv);*/
+
+lisp;
+(setq _gct_ t)
+(setq _unif_ t);;to normalize variable names in a DNF RDB predicate 
+(setq _sch_ t);;rewrite congunction of schema view with pred to NIL
+(setq _elcon_ifnounif_ t);; to rewrite { <URI> ?p1 ?s. ?s ?p ?o }
+(setq _rewrite_row_and_like_ t);;to rewrite a FILTER on subject/object
+
+;;(setq _el-corcl_ t);;rewrite core-cluster fn to NIL, needed for (?s ?p <URI>)
+;;(setq _subjects_ nil);;push subjects
+
+(setq _enable-proptables_ nil) ;;doesn't work together with OPTIONAL
+(memo-function 'get-columns)
+
+:osql 
+
+setURIofUPV("sprod","http://user.it.uu.se/~udbl/sard/");
+
+set :q =
+"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+ CONSTRUCT
+	{?s ?p ?o }
+  FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE {?s rdf:type <http://user.it.uu.se/~udbl/sard/prod#offer> .
+	?s ?p ?o } ";
+
+/*It has to 3 sql queries <- mapping + rewrite */
+set :q=
+"
+ PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ CONSTRUCT {?object ?property1 ?value1 }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE 
+         { product:_2549 ?property   ?object .
+	   ?object       ?property1  ?value1 } ";
+
+/*producer1 */
+/*Without rewrites, comp time: 213.376 s, count:127, SQL qs:1287 , exec:~0.3 */
+/*Only _elcon_ifnounif_ rewrite:  comp time:147, count:127, SQL qs: 39, exec:~0.014 */ 
+/*_elcon_ifnounif_, _sch_, comp time:74 s, count:127, SQL qs: 36, exec: :~0.013 */
+
+
+set :q=
+"
+ CONSTRUCT {?subject ?property ?value }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE 
+         { ?subject ?property ?value .
+	   FILTER REGEX (?value, '%elbows%') } ";
+
+/* no rewrite: 70 SQL qs (70 disjuncts+1); exec w: ~ 0.05 */
+/* FILTER rewr: 59 SQL qs(59 disjuncts +1); exec w: ~ 0.018  */
+
+
+/*!!! It doesn't work */
+set :q=
+"
+ CONSTRUCT {?subject ?property ?value }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE 
+         { ?subject ?property ?value .
+	   FILTER (?value > '348') } ";
+
+
+set :q=
+"
+ PREFIX producer: <http://user.it.uu.se/~udbl/sard/prod#producer/>
+ CONSTRUCT { producer:_1 ?property   ?hasValue . 
+	    ?isValueOf  ?property   producer:_1 }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE 
+        { { producer:_1 ?property   ?hasValue .}
+	UNION
+	{  ?isValueOf  ?property   producer:_1 } }";
+
+create function q()->(Charstring,Charstring,Charstring)
+as
+select _ss_, _pp_, _oo_
+  from Charstring hasvalue, Charstring isvalueof, Charstring property, Charstring _ss_, Charstring _pp_, Charstring _oo_
+ where  ( ('http://user.it.uu.se/~udbl/sard/prod#producer/_1', property, hasvalue) in prod()) 
+    or  ((isvalueof, property, 'http://user.it.uu.se/~udbl/sard/prod#producer/_1') in prod()) 
+      and ((_ss_ = 'http://user.it.uu.se/~udbl/sard/prod#producer/_1' and _pp_ = property and _oo_ = hasvalue )
+        or (_ss_ = isvalueof and _pp_ = property and _oo_ = 'http://user.it.uu.se/~udbl/sard/prod#producer/_1' ));
+
+/**without _el_coerc_ rewrite: sql qs:72 , exec:~0.017*/
+/*with _el_coerc_ rewrite: sql qs: 36,      exec:0.0045*/
+
+create function countq()-> Integer as count(q());
+
+
+set :q =
+"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+ CONSTRUCT
+	{?s ?p ?o }
+  FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE {?s rdf:type <http://user.it.uu.se/~udbl/sard/prod#product> .
+	?s ?p ?o } ";
+
+set :q =
+"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+ CONSTRUCT
+	{?s ?p ?o }
+  FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE {?s ?p ?o } ";
+
+
+set :q =
+"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+ CONSTRUCT {?s ?p ?o }
+  FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE {{?s rdf:type <http://user.it.uu.se/~udbl/sard/prod#product> .
+	 ?s ?p ?o . }
+	UNION
+	{?s rdf:type <http://user.it.uu.se/~udbl/sard/prod#person> .
+	 ?s ?p ?o .}
+	UNION
+	{?s rdf:type <http://user.it.uu.se/~udbl/sard/prod#producttype> .
+	 ?s ?p ?o .
+	 FILTER (?p != <http://user.it.uu.se/~udbl/sard/prod#producttype_to_product> ) .}
+	UNION
+	{?s rdf:type <http://user.it.uu.se/~udbl/sard/prod#vendor> .
+	 ?s ?p ?o .}
+	UNION
+	{ ?s rdf:type <http://user.it.uu.se/~udbl/sard/prod#review> .
+	?s ?p ?o .}
+	UNION
+	{?s rdf:type <http://user.it.uu.se/~udbl/sard/prod#producer> .
+	?s ?p ?o .}
+	UNION
+	{?s rdf:type <http://user.it.uu.se/~udbl/sard/prod#productfeature> .
+	?s ?p ?o .
+	FILTER (?p != <http://user.it.uu.se/~udbl/sard/prod#productfeature_to_product>). }
+	UNION
+	{?s rdf:type <http://user.it.uu.se/~udbl/sard/prod#offer> .
+	?s ?p ?o } }";	
+
+
+
+set :q =
+"PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+ CONSTRUCT {?s ?p ?o }
+  FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE {{?s rdf:type <http://user.it.uu.se/~udbl/sard/prod#product> .
+	 ?s ?p ?o . }
+	UNION
+	{?s rdf:type <http://user.it.uu.se/~udbl/sard/prod#producttype> .
+	 ?s ?p ?o .
+	 FILTER (?p != <http://user.it.uu.se/~udbl/sard/prod#producttype_to_product> ) .}
+	UNION
+	{?s rdf:type <http://user.it.uu.se/~udbl/sard/prod#vendor> .
+	 ?s ?p ?o .}
+	UNION
+	{?s rdf:type <http://user.it.uu.se/~udbl/sard/prod#producer> .
+	?s ?p ?o .}
+	UNION
+	{?s rdf:type <http://user.it.uu.se/~udbl/sard/prod#productfeature> .
+	?s ?p ?o .
+	FILTER (?p != <http://user.it.uu.se/~udbl/sard/prod#productfeature_to_product>). }
+	UNION
+	{?s rdf:type <http://user.it.uu.se/~udbl/sard/prod#offer> .
+	?s ?p ?o } }";	
+
+
+eval("create function exec()->(Charstring,Charstring,Literal) as " + parse_sparql(:q)); 
+
+create function count()-> Integer as count(exec());
+
+
+
+create function arch()->(Charstring,Charstring,Charstring)
+	as remove_null(select s,p,o from Charstring s, Charstring p, Charstring o where (s,p,o) in exec());
+
+create function count()-> Integer as count(arch());
+
+setURIofUPV("sprod","http://user.it.uu.se/~udbl/sard/");
+
+archive_content_old(#'arch',"offerD.nt","offerS.NT");
+/*With statistics about the extracted properties*/
+
+archive_content_new(#'arch',"offerD.nt","offerS.NT","offer_stat.txt");
+
+
+sql(jdbcOfDS(:id_a),"delete from  MyTriple;");
+archive_schemaNT_contentNT(:id_a,#'arch','C:/AmosNT/sard/sard_new/data.nt','schema.nt');
+
+
+/* RDB on Udblserver1 */
+archive_content_old(#'arch',"product180mD2.nt","product180mS2.NT");
+/* 384.355 s to write the GCT file  (~ 7.8 M ); 10 SQL queries */
+archive_content_old(#'arch_noGCT',"product180mD_col.nt","product180mS_col.NT");
+/* 490.302 s to write the non-GCT file (~ 7.8 M );; 76 SQL queries */
+
+
+sql(jdbcOfDS(:id_a),"delete from  MyTriple;");
+archive_schemaNT_contentNT(:id_a,#'arch','C:/AmosNT/sard/sard_new/producer180m.nt','producer180mS.nt');
+
+
+archive_content_old(#'arch',"product20milD.nt","product20milS.NT");
+/* 3773.44 s to write the GCT (~ 7.9 G ) file; 10 SQL queries */
+/* count : 39 270 984 :   1596.36 s */
+archive_content_old(#'arch_nog',"product20milD_col.nt","product20milS_col.NT");
+/* 4822.41 s to write the column-order file (~ 7.9 G );76 SQL queries  */
+/*count : 39 270 984: 1940.25 s */
+
+ 
+archive_content_old(#'arch',"product180.nt","product180S.nt",:upv);
+
+/********Strategy Process the view using PE ****************************************/
+
+/*Berlin 1 Archive as CONSTRUCT query */
+
+set :q1a =
+"PREFIX db: <http://user.it.uu.se/~udbl/sard/prod#>
+ PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ PREFIX producttype: <http://user.it.uu.se/~udbl/sard/prod#producttype/>
+ PREFIX productfeature: <http://user.it.uu.se/~udbl/sard/prod#productfeature/>
+ CONSTRUCT {?product ?property ?value }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE
+	{?product	 ?property 				?value .
+	 ?product	product:product_label			?label .
+	 ?product	db:product_to_producttype	 	producttype:_1 .
+	 ?product	db:product_to_productfeature	 	productfeature:_3 .
+	 ?product	db:product_to_productfeature	 	productfeature:_4 .
+	 ?product 	product:product_propertyNum1		?value1 .
+	 FILTER (?value1 > '348') 						 } ";
+
+eval("create function exec_q1a()->(Charstring,Charstring,Literal) as " + parse_sparql(:q1a)); 
+
+create function q1_arch()->(Charstring,Charstring,Charstring)
+	as remove_null(select distinct s,p,o from Charstring s, Charstring p, Charstring o 
+	where (s,p,o) in exec_q1a());
+
+create function count1a()-> Integer as count(q1_arch());
+
+/* 3660 */
+archive_content_old(#'q1_arch',"berlin1aD.NT","berlin1aS.NT",:upv);
+
+/******************************************************************************/
+lisp;
+(setq _repl_literal_ t)
+:osql
+
+
+set :q02 =
+"PREFIX db: <http://user.it.uu.se/~udbl/sard/prod#>
+ PREFIX offer: <http://user.it.uu.se/~udbl/sard/prod#offer/>
+ PREFIX producer: <http://user.it.uu.se/~udbl/sard/prod#producer/>
+ PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ PREFIX vendor: <http://user.it.uu.se/~udbl/sard/prod#vendor/>
+ PREFIX review: <http://user.it.uu.se/~udbl/sard/prod#review/>
+ PREFIX productfeature: <http://user.it.uu.se/~udbl/sard/prod#productfeature/>
+ PREFIX person: <http://user.it.uu.se/~udbl/sard/prod#person/>
+ CONSTRUCT
+	{product:_5	product:product_label			?label .
+	 product:_5	product:product_comment 		?comment .
+         ?p 		producer:producer_label			?producer .
+ 	product:_5 	db:product_to_productfeature 		?f .
+	?f 		productfeature:productfeature_label 	?productfeature . }
+FROM <http://user.it.uu.se/~udbl/sard/prod>
+WHERE {
+	product:_5	product:product_label			?label .
+        product:_5	product:product_comment 		?comment .
+        product:_5     	db:product_of_producer 			?p .
+   	?p 		producer:producer_label 		?producer . 
+ 	product:_5 	db:product_to_productfeature 		?f .
+	?f 		productfeature:productfeature_label 	?productfeature .} ";
+
+eval("create function exec_q02()->(Charstring,Charstring,Literal) as " + parse_sparql(:q02)); 
+
+
+
+/*Berlin 2a - CONSTRUCT query */
+/*Retrive a list of properties of a specific product identified by 'http://user.it.uu.se/~udbl/sard/prod#product/_5'
+ where the properties 'propertyTex4', 'propertyTex5' and 'propertyNum4' are retrieved if they exist */
+
+/*Distinct needed because for the NON-OPTIONAL part 2 sql queries are executed instead of 1 */
+/*Best plan: GCT with optional   or no DNF*/
+/* ??? GCT with optional and rowid needs better normalization*/
+
+/*
+1)GCT (old): 
+2)GCT with optional: 0.01
+3)GCT with optional and rowid : needs better normalization
+4)no DNF: good enough plan ~ GCT with optional : 0.01
+*/
+
+
+/*The OPTIONAL query*/
+set :q2a =
+"PREFIX db: <http://user.it.uu.se/~udbl/sard/prod#>
+ PREFIX offer: <http://user.it.uu.se/~udbl/sard/prod#offer/>
+ PREFIX producer: <http://user.it.uu.se/~udbl/sard/prod#producer/>
+ PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ PREFIX vendor: <http://user.it.uu.se/~udbl/sard/prod#vendor/>
+ PREFIX review: <http://user.it.uu.se/~udbl/sard/prod#review/>
+ PREFIX productfeature: <http://user.it.uu.se/~udbl/sard/prod#productfeature/>
+ PREFIX person: <http://user.it.uu.se/~udbl/sard/prod#person/>
+ CONSTRUCT
+	{product:_5	product:product_label			?label .
+	 product:_5	product:product_comment 		?comment .
+         ?p 		producer:producer_label			?producer .
+	 ?f 		productfeature:productfeature_label 	?productfeature .
+	 product:_5 	product:product_propertyTex1 		?propertytextual1 .
+	 product:_5	product:product_propertyTex2 		?propertytextual2 .
+	 product:_5 	product:product_propertyTex3 		?propertytextual3 .
+	 product:_5 	product:product_propertyNum1 		?propertynumeric1 .
+         product:_5 	product:product_propertyNum2 		?propertynumeric2 .
+	 product:_5 	product:product_propertyTex4		?propertytextual4 .
+	 product:_5	product:product_propertyTex5		?propertytextual5 .
+	 product:_5 	product:product_propertyNum4 		?propertynumeric4    }
+FROM <http://user.it.uu.se/~udbl/sard/prod>
+WHERE {
+	product:_5	product:product_label			?label .
+        product:_5	product:product_comment 		?comment .
+        product:_5     	db:product_of_producer 			?p .
+   	?p 		producer:producer_label 		?producer .
+	product:_5 	product:product_publisher 		?publ .
+       	product:_5 	db:product_to_productfeature 		?f .
+	?f 		productfeature:productfeature_label 	?productfeature .
+        product:_5 	product:product_propertyTex1 		?propertytextual1 .
+	product:_5	product:product_propertyTex2 		?propertytextual2 .
+	product:_5 	product:product_propertyTex3 		?propertytextual3 .
+	product:_5 	product:product_propertyNum1 		?propertynumeric1 .
+        product:_5 	product:product_propertyNum2 		?propertynumeric2 .
+  OPTIONAL { product:_5 	product:product_propertyTex4		?propertytextual4 . }
+  OPTIONAL { product:_5		product:product_propertyTex5		?propertytextual5 . }
+  OPTIONAL { product:_5 	product:product_propertyNum4 		?propertynumeric4 . } }" ;
+
+
+eval("create function exec_q2a()->(Charstring,Charstring,Literal) as " + parse_sparql(:q2a)); 
+
+create function q2_arch()->(Charstring,Charstring,Charstring)
+	as remove_null(select s,p,o from Charstring s, Charstring p, Charstring o where (s,p,o) in exec_q2a());
+
+create function count2a()-> Integer as count(q2_arch());
+
+archive_content("q2_arch","berlin2aD.NT","berlin2aS.NT","berlin2D_stat.txt");
+
+archive_content_old(#'q2_arch',"berlin2aD.NT","berlin2aS.NT");
+
+sql(jdbcOfDS(:id_a),"delete from  MyTriple;");
+archive_schemaNT_contentNT(:id_a,#'q2_arch','C:/AmosNT/sard/sard_new/b2aD.nt','b2aS.nt');
+archive_schemaNT_contentNT_ver2(:id_a,#'q2_arch','C:/AmosNT/sard/sard_new/b2aD.nt','b2aS.nt');
+
+/*The UNION query 1*/
+set :q2au =
+"PREFIX db: <http://user.it.uu.se/~udbl/sard/prod#>
+ PREFIX offer: <http://user.it.uu.se/~udbl/sard/prod#offer/>
+ PREFIX producer: <http://user.it.uu.se/~udbl/sard/prod#producer/>
+ PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ PREFIX vendor: <http://user.it.uu.se/~udbl/sard/prod#vendor/>
+ PREFIX review: <http://user.it.uu.se/~udbl/sard/prod#review/>
+ PREFIX productfeature: <http://user.it.uu.se/~udbl/sard/prod#productfeature/>
+ PREFIX person: <http://user.it.uu.se/~udbl/sard/prod#person/>
+ CONSTRUCT
+	{product:_5	product:product_label			?label .
+	 product:_5	product:product_comment 		?comment .
+         ?p 		producer:producer_label			?producer .
+	 ?f 		productfeature:productfeature_label 	?productfeature .
+	 product:_5 	product:product_propertyTex1 		?propertytextual1 .
+	 product:_5	product:product_propertyTex2 		?propertytextual2 .
+	 product:_5 	product:product_propertyTex3 		?propertytextual3 .
+	 product:_5 	product:product_propertyNum1 		?propertynumeric1 .
+         product:_5 	product:product_propertyNum2 		?propertynumeric2 .
+	 product:_5 		product:product_propertyTex4		?propertytextual4 .
+	 product:_5		product:product_propertyTex5		?propertytextual5 .
+	 product:_5 		product:product_propertyNum4 		?propertynumeric4    }
+FROM <http://user.it.uu.se/~udbl/sard/prod>
+WHERE {{
+	product:_5	product:product_label			?label .
+        product:_5	product:product_comment 		?comment .
+        product:_5     	db:product_of_producer 			?p .
+   	?p 		producer:producer_label 		?producer .
+	product:_5 	product:product_publisher 		?publ .
+       	product:_5 	db:product_to_productfeature 		?f .
+	?f 		productfeature:productfeature_label 	?productfeature .
+        product:_5 	product:product_propertyTex1 		?propertytextual1 .
+	product:_5	product:product_propertyTex2 		?propertytextual2 .
+	product:_5 	product:product_propertyTex3 		?propertytextual3 .
+	product:_5 	product:product_propertyNum1 		?propertynumeric1 .
+        product:_5 	product:product_propertyNum2 		?propertynumeric2 . }
+  UNION
+	{
+	product:_5	product:product_label			?label .
+        product:_5	product:product_comment 		?comment .
+        product:_5     	db:product_of_producer 			?p .
+   	?p 		producer:producer_label 		?producer .
+	product:_5 	product:product_publisher 		?publ .
+       	product:_5 	db:product_to_productfeature 		?f .
+	?f 		productfeature:productfeature_label 	?productfeature .
+        product:_5 	product:product_propertyTex1 		?propertytextual1 .
+	product:_5	product:product_propertyTex2 		?propertytextual2 .
+	product:_5 	product:product_propertyTex3 		?propertytextual3 .
+	product:_5 	product:product_propertyNum1 		?propertynumeric1 .
+        product:_5 	product:product_propertyNum2 		?propertynumeric2 .
+	product:_5 	product:product_propertyTex4		?propertytextual4 . }
+  UNION
+	{product:_5	product:product_label			?label .
+        product:_5	product:product_comment 		?comment .
+        product:_5     	db:product_of_producer 			?p .
+   	?p 		producer:producer_label 		?producer .
+	product:_5 	product:product_publisher 		?publ .
+       	product:_5 	db:product_to_productfeature 		?f .
+	?f 		productfeature:productfeature_label 	?productfeature .
+        product:_5 	product:product_propertyTex1 		?propertytextual1 .
+	product:_5	product:product_propertyTex2 		?propertytextual2 .
+	product:_5 	product:product_propertyTex3 		?propertytextual3 .
+	product:_5 	product:product_propertyNum1 		?propertynumeric1 .
+        product:_5 	product:product_propertyNum2 		?propertynumeric2 . 
+	product:_5	product:product_propertyTex5		?propertytextual5 . }
+  UNION
+	{product:_5	product:product_label			?label .
+        product:_5	product:product_comment 		?comment .
+        product:_5     	db:product_of_producer 			?p .
+   	?p 		producer:producer_label 		?producer .
+	product:_5 	product:product_publisher 		?publ .
+       	product:_5 	db:product_to_productfeature 		?f .
+	?f 		productfeature:productfeature_label 	?productfeature .
+        product:_5 	product:product_propertyTex1 		?propertytextual1 .
+	product:_5	product:product_propertyTex2 		?propertytextual2 .
+	product:_5 	product:product_propertyTex3 		?propertytextual3 .
+	product:_5 	product:product_propertyNum1 		?propertynumeric1 .
+        product:_5 	product:product_propertyNum2 		?propertynumeric2 .
+	 product:_5 	product:product_propertyNum4 		?propertynumeric4 . } } ";
+
+lisp;
+(setq _repl_literal_ nil)
+:osql
+
+eval("create function exec_q2au()->(Charstring,Charstring,Literal) as " + parse_sparql(:q2au)); 
+
+create function q2u_arch()->(Charstring,Charstring,Charstring)
+	as remove_null(select distinct s,p,o from Charstring s, Charstring p, Charstring o where (s,p,o) in exec_q2au());
+
+create function count2au()-> Integer as count(q2u_arch());
+
+/*
+count2a() --> 0.245/0.03 s (4 SQL queries = 1 + 3 simple for each OPTIONAL )
+count2aug() ---> 0.362/0.064 s (4 SQL queries =1 + 3 join for the OPTIONAL )
+
+*/
+
+
+/*The UNION query 2*/
+set :q2au2 =
+"PREFIX db: <http://user.it.uu.se/~udbl/sard/prod#>
+ PREFIX producer: <http://user.it.uu.se/~udbl/sard/prod#producer/>
+ PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ PREFIX o1: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ PREFIX o2: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ PREFIX o3: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ PREFIX productfeature: <http://user.it.uu.se/~udbl/sard/prod#productfeature/>
+ CONSTRUCT
+	{product:_5	product:product_label			?label .
+	 product:_5	product:product_comment 		?comment .
+         ?p 		producer:producer_label			?producer .
+	 ?f 		productfeature:productfeature_label 	?productfeature .
+	 product:_5 	product:product_propertyTex1 		?propertytextual1 .
+	 product:_5	product:product_propertyTex2 		?propertytextual2 .
+	 product:_5 	product:product_propertyTex3 		?propertytextual3 .
+	 product:_5 	product:product_propertyNum1 		?propertynumeric1 .
+         product:_5 	product:product_propertyNum2 		?propertynumeric2 .
+	 o1:_5 		product:product_propertyTex4		?propertytextual4 .
+	 o2:_5		product:product_propertyTex5		?propertytextual5 .
+	 o3:_5 		product:product_propertyNum4 		?propertynumeric4    }
+FROM <http://user.it.uu.se/~udbl/sard/prod>
+WHERE {{
+	product:_5	product:product_label			?label .
+        product:_5	product:product_comment 		?comment .
+        product:_5     	db:product_of_producer 			?p .
+   	?p 		producer:producer_label 		?producer .
+	product:_5 	product:product_publisher 		?publ .
+       	product:_5 	db:product_to_productfeature 		?f .
+	?f 		productfeature:productfeature_label 	?productfeature .
+        product:_5 	product:product_propertyTex1 		?propertytextual1 .
+	product:_5	product:product_propertyTex2 		?propertytextual2 .
+	product:_5 	product:product_propertyTex3 		?propertytextual3 .
+	product:_5 	product:product_propertyNum1 		?propertynumeric1 .
+        product:_5 	product:product_propertyNum2 		?propertynumeric2 . }
+  UNION
+	{
+	o1:_5		product:product_label			?label .
+        o1:_5		product:product_comment 		?comment .
+        o1:_5     	db:product_of_producer 			?p .
+   	?p 		producer:producer_label 		?producer .
+	o1:_5 		product:product_publisher 		?publ .
+       	o1:_5 		db:product_to_productfeature 		?f .
+	?f 		productfeature:productfeature_label 	?productfeature .
+        o1:_5 		product:product_propertyTex1 		?propertytextual1 .
+	o1:_5		product:product_propertyTex2 		?propertytextual2 .
+	o1:_5 		product:product_propertyTex3 		?propertytextual3 .
+	o1:_5 		product:product_propertyNum1 		?propertynumeric1 .
+        o1:_5 		product:product_propertyNum2 		?propertynumeric2 .
+	o1:_5 		product:product_propertyTex4		?propertytextual4 . }
+  UNION
+	{o2:_5		product:product_label			?label .
+        o2:_5		product:product_comment 		?comment .
+        o2:_5     	db:product_of_producer 			?p .
+   	?p 		producer:producer_label 		?producer .
+	o2:_5 		product:product_publisher 		?publ .
+       	o2:_5 		db:product_to_productfeature 		?f .
+	?f 		productfeature:productfeature_label 	?productfeature .
+        o2:_5 		product:product_propertyTex1 		?propertytextual1 .
+	o2:_5		product:product_propertyTex2 		?propertytextual2 .
+	o2:_5 		product:product_propertyTex3 		?propertytextual3 .
+	o2:_5 		product:product_propertyNum1 		?propertynumeric1 .
+        o2:_5 		product:product_propertyNum2 		?propertynumeric2 . 
+	o2:_5		product:product_propertyTex5		?propertytextual5 . }
+  UNION
+	{o3:_5		product:product_label			?label .
+        o3:_5		product:product_comment 		?comment .
+        o3:_5     	db:product_of_producer 			?p .
+   	?p 		producer:producer_label 		?producer .
+	o3:_5 		product:product_publisher 		?publ .
+       	o3:_5 		db:product_to_productfeature 		?f .
+	?f 		productfeature:productfeature_label 	?productfeature .
+        o3:_5 		product:product_propertyTex1 		?propertytextual1 .
+	o3:_5		product:product_propertyTex2 		?propertytextual2 .
+	o3:_5 		product:product_propertyTex3 		?propertytextual3 .
+	o3:_5 		product:product_propertyNum1 		?propertynumeric1 .
+        o3:_5 		product:product_propertyNum2 		?propertynumeric2 .
+	o3:_5 		product:product_propertyNum4 		?propertynumeric4 . } } ";
+
+eval("create function exec_q2au2()->(Charstring,Charstring,Literal) as " + parse_sparql(:q2au2)); 
+create function q2au2_arch()->(Charstring,Charstring,Charstring)
+	as remove_null(select s,p,o from Charstring s, Charstring p, Charstring o where (s,p,o) in exec_q2au2());
+create function count_2au2()-> Integer as count(q2au2_arch());
+
+
+archive_content(#'berlin2_arch',"berlin2_data.nt","berlin2_schema.nt");
+
+/************************************************************************************************/
+
+/*Berlin 2al - less selective CONSTRUCT query */
+/*Retrive a list of properties of all products 
+ where the properties 'propertyTex4', 'propertyTex5' and 'propertyNum4' are retrieved if they exist */
+
+/*Distinct needed because for the NON-OPTIONAL part 2 sql queries are executed instead of 1 */
+/*Best plan: GCT with optional   or no DNF*/
+/* ??? GCT with optional and rowid needs better normalization*/
+
+
+
+
+/*The OPTIONAL query*/
+set :q2al =
+"PREFIX db: <http://user.it.uu.se/~udbl/sard/prod#>
+ PREFIX offer: <http://user.it.uu.se/~udbl/sard/prod#offer/>
+ PREFIX producer: <http://user.it.uu.se/~udbl/sard/prod#producer/>
+ PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ PREFIX vendor: <http://user.it.uu.se/~udbl/sard/prod#vendor/>
+ PREFIX review: <http://user.it.uu.se/~udbl/sard/prod#review/>
+ PREFIX productfeature: <http://user.it.uu.se/~udbl/sard/prod#productfeature/>
+ PREFIX person: <http://user.it.uu.se/~udbl/sard/prod#person/>
+ CONSTRUCT
+	{?product	product:product_label			?label .
+	 ?product	product:product_comment 		?comment .
+         ?p 		producer:producer_label			?producer .
+	 ?f 		productfeature:productfeature_label 	?productfeature .
+	 ?product 	product:product_propertyTex1 		?propertytextual1 .
+	 ?product	product:product_propertyTex2 		?propertytextual2 .
+	 ?product 	product:product_propertyTex3 		?propertytextual3 .
+	 ?product 	product:product_propertyNum1 		?propertynumeric1 .
+         ?product 	product:product_propertyNum2 		?propertynumeric2 .
+	 ?product 	product:product_propertyTex4		?propertytextual4 .
+	 ?product	product:product_propertyTex5		?propertytextual5 .
+	 ?product 	product:product_propertyNum4 		?propertynumeric4    }
+FROM <http://user.it.uu.se/~udbl/sard/prod>
+WHERE {
+	?product	product:product_label			?label .
+        ?product	product:product_comment 		?comment .
+        ?product     	db:product_of_producer 			?p .
+   	?p 		producer:producer_label 		?producer .
+	?product 	product:product_publisher 		?publ .
+       	?product 	db:product_to_productfeature 		?f .
+	?f 		productfeature:productfeature_label 	?productfeature .
+        ?product 	product:product_propertyTex1 		?propertytextual1 .
+	?product	product:product_propertyTex2 		?propertytextual2 .
+	?product 	product:product_propertyTex3 		?propertytextual3 .
+	?product 	product:product_propertyNum1 		?propertynumeric1 .
+        ?product 	product:product_propertyNum2 		?propertynumeric2 .
+  OPTIONAL { ?product	 	product:product_propertyTex4		?propertytextual4 . }
+  OPTIONAL { ?product		product:product_propertyTex5		?propertytextual5 . }
+  OPTIONAL { ?product	 	product:product_propertyNum4 		?propertynumeric4 . } }" ;
+
+
+eval("create function exec_q2al()->(Charstring,Charstring,Literal) as " + parse_sparql(:q2al)); 
+
+create function q2_arch_l()->(Charstring,Charstring,Charstring)
+	as remove_null(select distinct s,p,o from Charstring s, Charstring p, Charstring o where (s,p,o) in exec_q2al());
+
+create function count2al()-> Integer as count(q2_arch_l());
+
+archive_content("q2_arch","berlin2aD.NT","berlin2aS.NT","berlin2D_stat.txt");
+
+
+
+
+
+/******************************************************************************/
+
+/*Berlin 3a - CONSTRUCT) */
+/* Archive query:Find products (and their properties) having some features and not having one feature ('label')*/ 
+
+lisp;
+(setq _optional_ t)
+(setq _subjects_ t)
+:osql
+
+set :q3a =
+"PREFIX db: <http://user.it.uu.se/~udbl/sard/prod#>
+ PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ PREFIX producttype: <http://user.it.uu.se/~udbl/sard/prod#producttype/>
+ PREFIX productfeature: <http://user.it.uu.se/~udbl/sard/prod#productfeature/>
+ CONSTRUCT { ?product ?property ?value }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE { 
+	?product	product:product_label		?label .
+	?product	db:product_to_producttype	producttype:_1 .
+	?product	db:product_to_productfeature	productfeature:_3 .
+	?product	product:product_propertyNum1	?p1 .
+	FILTER (?p1 > '214').
+	?product	product:product_propertyNum3	?p3 .
+	FILTER (?p3 < '698').
+        OPTIONAL {
+		?product	db:product_to_productfeature	productfeature:_20 .
+		?product	product:product_label		?testvar .		}
+	FILTER (!bound(?testvar)).
+	?product ?property ?value								}";
+
+eval("create function exec_q3a()->(Charstring,Charstring,Literal) as " + parse_sparql(:q3a)); 
+
+create function q3_arch()->(Charstring,Charstring,Charstring)
+	as remove_null(select distinct s,p,o from Charstring s, Charstring p, Charstring o where (s,p,o) in exec_q3a());
+
+create function count3a()-> Integer as count(q3_arch());
+
+/* 5920 */
+archive_content("q3_arch","berlin3aD.NT","berlin3aS.NT","berlin3D_stat.txt");
+
+
+/*5920 SAQ, D2RQ */
+
+lisp;
+(setq _optional_ nil)
+(setq _subjects_ nil)
+:osql
+
+
+
+/******************************************************************************/
+
+/*Berlin 4 Archive q - CONSTRUCT query */
+/* Find products (and their properties and values) matching two different sets of features */
+
+
+set :q4a =
+"PREFIX db: <http://user.it.uu.se/~udbl/sard/prod#>
+ PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ PREFIX producttype: <http://user.it.uu.se/~udbl/sard/prod#producttype/>
+ PREFIX productfeature: <http://user.it.uu.se/~udbl/sard/prod#productfeature/>
+ CONSTRUCT { ?product ?property ?value }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE { 
+	?product	product:product_label		?label .
+
+
+create function berlin4a()->(Charstring,Charstring,Charstring)
+as select ss,pp,oo from Charstring p1, Charstring product, Charstring p2, Charstring label,
+			Charstring ss, Charstring pp, Charstring oo, Charstring pred, Charstring obj
+	where (prod()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product/product_label', label)
+     and prod()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_producttype', 'http://user.it.uu.se/~udbl/sard/prod#producttype/_1')
+     and prod()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_productfeature', 'http://user.it.uu.se/~udbl/sard/prod#productfeature/_3')
+     and prod()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_productfeature', 'http://user.it.uu.se/~udbl/sard/prod#productfeature/_4')
+     and prod()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyNum1', p1)
+     and p1 > '348' and p2 = ''
+     and (prod()=(product,pred,obj) and (ss=product and pp=pred and oo=obj)))  or
+        (prod()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product/product_label', label)
+     and prod()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_producttype', 'http://user.it.uu.se/~udbl/sard/prod#producttype/_1')
+     and prod()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_productfeature', 'http://user.it.uu.se/~udbl/sard/prod#productfeature/_3')
+     and prod()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_productfeature', 'http://user.it.uu.se/~udbl/sard/prod#productfeature/_200')
+     and prod()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyNum2', p2)
+     and p2 > '759' and p1 = '' 
+     and (prod()=(product,pred,obj) and (ss=product and pp=pred and oo=obj)));
+
+
+create function count_berlin4a()->integer as select count(remove_null(berlin4a()));
+/* 5126  */
+/* 5520 (with the duplicates)*/
+
+create function berlin4a_arch()->(Charstring,Charstring,Charstring) as select remove_null(berlin4a());
+
+archive_content(#'berlin4a_arch',"berlin4_data.nt","berlin4_schema.nt");
+
+archive_schemaNT_contentCSV(#'berlin4a_arch',"berlin4_data.csv","berlin4_schema.nt");
+
+
+/******************************************************************************/
+
+/*Berlin 6 Archive - CONSTRUCT */
+/* Find products and their properties having a label that contains a specific string */
+
+
+set :q6a =
+"PREFIX db: <http://user.it.uu.se/~udbl/sard/prod#>
+ PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ PREFIX producttype: <http://user.it.uu.se/~udbl/sard/prod#producttype/>
+ PREFIX productfeature: <http://user.it.uu.se/~udbl/sard/prod#productfeature/>
+ PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+ CONSTRUCT { ?product ?property  ?value }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE { 
+	?product	product:product_label		?label .
+	?product	rdf:type 			product .
+	FILTER REGEX (?label, ) ";
+
+create function berlin6a()->(Charstring,Charstring, Charstring)
+as select ss,pp,oo
+  from Charstring product, Charstring label,Charstring ss, Charstring pp,Charstring oo,
+	Charstring pred, Charstring obj
+  where prod()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product/product_label', label)
+   and prod()=(product, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://user.it.uu.se/~udbl/sard/prod#product')
+   and like(label,'%r%') and (prod()=(product,pred,obj) and ss=product and pp=pred and oo=obj);
+
+create function count_berlin6a()->integer as select count(remove_null(berlin6a())); 
+/* Amos crash */
+
+create function berlin6a_arch()->(Charstring,Charstring,Charstring) as select remove_null(berlin6a());
+archive_content(#'berlin6a_arch',"berlin6_data.nt","berlin6_schema.nt");
+
+/* 281 961 */
+
+
+/******************************************************************************/
+
+/*Berlin 7a Archive query - CONSTRUCT */
+/* Archive info about a product including offers and reviews */
+/*Best plan: GCT with optional and rowid - 0.23 */
+/*duplicates from the non optional query */
+
+/*
+1)GCT (old): 1.96 s
+2)GCT with optional:0.23  
+3)GCT with optional and rowid : 0.235 (the same plan as in 2)
+4) no DNF: (the idea of 3): 0.304  
+results 22 (no duplicates; 26 -duplicates of the non optional query)
+5)late old GCT : result ~ GCT : 2.05
+6) no GCT :2.01
+*/
+
+
+/*The CONSTRUCT OPTIONAL query*/
+set :q7a =
+"PREFIX db: <http://user.it.uu.se/~udbl/sard/prod#>
+ PREFIX offer: <http://user.it.uu.se/~udbl/sard/prod#offer/>
+ PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ PREFIX vendor: <http://user.it.uu.se/~udbl/sard/prod#vendor/>
+ PREFIX review: <http://user.it.uu.se/~udbl/sard/prod#review/>
+ PREFIX person: <http://user.it.uu.se/~udbl/sard/prod#person/>
+CONSTRUCT 
+	{product:_5 product:product_label ?productlabel .
+	 ?offer     offer:offer_price     ?price .
+	 ?offer     db:offer_of_vendor    ?vendor .
+	 ?vendor    vendor:vendor_label   ?vendortitle .
+	 ?review    db:review_of_person   ?reviewer .
+	 ?review    review:review_title  ?revtitle .
+	 ?reviewer  person:person_name    ?revname .
+       	 ?review    review:review_rating1 ?rating1 .
+	 ?review    review:review_rating2 ?rating2 . }
+FROM <http://user.it.uu.se/~udbl/sard/prod>
+WHERE
+	{ product:_5  product:product_label ?productlabel .
+ OPTIONAL { ?offer     db:offer_of_product   product:_5 .
+	    ?offer     offer:offer_price     ?price .
+	    ?offer     db:offer_of_vendor    ?vendor .
+            ?vendor    vendor:vendor_label   ?vendortitle .
+	    ?vendor    vendor:vendor_country 'DE' .
+	    ?offer     offer:offer_publisher ?vend .
+	    ?offer     offer:offer_validTo   ?date .
+	    FILTER (?date >  '2001-09-16' ) }
+ OPTIONAL
+	  { ?review    db:review_of_product  product:_5 .
+	    ?review    db:review_of_person   ?reviewer .
+	    ?reviewer  person:person_name    ?revname .
+	    ?review    review:review_title  ?revtitle .
+	OPTIONAL {  ?review    review:review_rating1 ?rating1  }
+	OPTIONAL {  ?review    review:review_rating2 ?rating2  } } } ";
+
+eval("create function exec_q7a()->(Charstring,Charstring,Literal) as " + parse_sparql(:q7a)); 
+
+create function q7_arch()->(Charstring,Charstring,Charstring)
+	as remove_null(select distinct s,p,o from Charstring s, Charstring p, Charstring o where (s,p,o) in exec_q7a());
+
+create function count7a()-> Integer as count(q7_arch());
+
+
+lisp;
+(setq _repl_literal_ t)
+:osql
+
+
+
+/*The UNION query*/
+set :q7au =
+"PREFIX db: <http://user.it.uu.se/~udbl/sard/prod#>
+ PREFIX offer: <http://user.it.uu.se/~udbl/sard/prod#offer/>
+ PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ PREFIX vendor: <http://user.it.uu.se/~udbl/sard/prod#vendor/>
+ PREFIX review: <http://user.it.uu.se/~udbl/sard/prod#review/>
+ PREFIX person: <http://user.it.uu.se/~udbl/sard/prod#person/>
+CONSTRUCT 
+	{product:_5 product:product_label ?productlabel .
+	 ?offer     offer:offer_price     ?price .
+	 ?offer     db:offer_of_vendor    ?vendor .
+	 ?vendor    vendor:vendor_label   ?vendortitle .
+	 ?review    db:review_of_person   ?reviewer .
+	 ?review    review:review_title  ?revtitle .
+	 ?reviewer  person:person_name    ?revname .
+       	 ?review    review:review_rating1 ?rating1 .
+	 ?review    review:review_rating2 ?rating2 . }
+FROM <http://user.it.uu.se/~udbl/sard/prod>
+WHERE{ { product:_5 product:product_label ?productlabel .}
+	UNION
+	{product:_5 product:product_label ?productlabel .
+	 ?offer     db:offer_of_product   product:_5 .
+	 ?offer     offer:offer_price     ?price .
+	 ?offer     db:offer_of_vendor    ?vendor .
+         ?vendor    vendor:vendor_label   ?vendortitle .
+	 ?vendor    vendor:vendor_country 'DE' .
+	 ?offer     offer:offer_publisher ?vend .
+	 ?offer     offer:offer_validTo   ?date .
+	 FILTER (?date >  '2001-09-16' ) 		}
+	UNION
+	{product:_5 product:product_label ?productlabel .
+ 	 ?review    db:review_of_product  product:_5 .
+	 ?review    db:review_of_person   ?reviewer .
+	 ?reviewer  person:person_name    ?revname .
+	 ?review    review:review_title  ?revtitle . }
+	UNION
+	{product:_5 product:product_label ?productlabel .
+ 	 ?review    db:review_of_product  product:_5 .
+	 ?review    db:review_of_person   ?reviewer .
+	 ?reviewer  person:person_name    ?revname .
+	 ?review    review:review_title  ?revtitle . 
+	 ?review    review:review_rating1 ?rating1 . }
+	union
+	{product:_5 product:product_label ?productlabel .
+ 	 ?review    db:review_of_product  product:_5 .
+	 ?review    db:review_of_person   ?reviewer .
+	 ?reviewer  person:person_name    ?revname .
+	 ?review    review:review_title  ?revtitle . 
+	 ?review    review:review_rating1 ?rating1 .
+	 ?review    review:review_rating2 ?rating2 . } } ";
+
+eval("create function exec_q7au()->(Charstring,Charstring,Literal) as " + parse_sparql(:q7au)); 
+
+
+create function q7u_arch()->(Charstring,Charstring,Charstring)
+	as remove_null(select distinct s,p,o from Charstring s, Charstring p, Charstring o where (s,p,o) in exec_q7au());
+
+create function count7au()-> Integer as count(q7u_arch());
+	
+	 
+/*26 ; no duplicates 22  */
+
+
+/******************************************************************************/
+
+/*Berlin 8a Archive - CONSTRUCT query */
+/* Give me recent English language reviews for a specific product */
+/*Best plan :GCT with optional and rowid, no DNF */
+
+/*
+1)GCT (old): 1.37
+2)GCT with optional:not good enough
+3)GCT with optional and rowid : 0.175
+4)GCT old late: 0.177 (same result but not plan) as no DNF
+5)no DNF : 0.177
+6)no GCT: 0.33
+*/
+
+/*The OPTIONAL query */
+set :q8a =
+"PREFIX db: <http://user.it.uu.se/~udbl/sard/prod#>
+ PREFIX offer: <http://user.it.uu.se/~udbl/sard/prod#offer/>
+ PREFIX producer: <http://user.it.uu.se/~udbl/sard/prod#producer/>
+ PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ PREFIX vendor: <http://user.it.uu.se/~udbl/sard/prod#vendor/>
+ PREFIX review: <http://user.it.uu.se/~udbl/sard/prod#review/>
+ PREFIX productfeature: <http://user.it.uu.se/~udbl/sard/prod#productfeature/>
+ PREFIX person: <http://user.it.uu.se/~udbl/sard/prod#person/>
+ CONSTRUCT
+	{?review		review:review_title		?title .
+	 ?review		review:review_text		?text .
+	 ?review		review:review_reviewDate	?reviewdate .
+	 ?review		db:review_of_person		?reviewer .
+	 ?reviewer 		person:person_name		?reviewername .
+	 ?review		review:review_rating1		?rating1 .
+	 ?review		review:review_rating2		?rating2 .
+	 ?review		review:review_rating3		?rating3 .
+	 ?review		review:review_rating4		?rating4 . }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE
+	{?review		db:review_of_product		product:_6 .
+	 ?review		review:review_title		?title .
+	 ?review		review:review_text		?text .
+	 ?review		review:review_language		'en' .
+  	 ?review		review:review_reviewDate	?reviewdate .
+	 ?review		db:review_of_person		?reviewer .
+	 ?reviewer 		person:person_name		?reviewername .
+  OPTIONAL { ?review		review:review_rating1		?rating1 . }
+  OPTIONAL { ?review		review:review_rating2		?rating2 . }	
+  OPTIONAL { ?review		review:review_rating3		?rating3 . }
+  OPTIONAL { ?review		review:review_rating4		?rating4 . } }";
+
+
+eval("create function exec_q8a()->(Charstring,Charstring,Charstring) as " + parse_sparql(:q8a)); 
+
+create function q8_arch()->(Charstring,Charstring,Charstring)
+	as remove_null(select distinct s,p,o from Charstring s, Charstring p, Charstring o where (s,p,o) in exec_q8a());
+
+create function count8a()-> Integer as count(q8_arch());
+
+
+
+/*The UNION query*/
+
+set :q8au =
+"PREFIX db: <http://user.it.uu.se/~udbl/sard/prod#>
+ PREFIX offer: <http://user.it.uu.se/~udbl/sard/prod#offer/>
+ PREFIX producer: <http://user.it.uu.se/~udbl/sard/prod#producer/>
+ PREFIX product: <http://user.it.uu.se/~udbl/sard/prod#product/>
+ PREFIX vendor: <http://user.it.uu.se/~udbl/sard/prod#vendor/>
+ PREFIX review: <http://user.it.uu.se/~udbl/sard/prod#review/>
+ PREFIX productfeature: <http://user.it.uu.se/~udbl/sard/prod#productfeature/>
+ PREFIX person: <http://user.it.uu.se/~udbl/sard/prod#person/>
+ CONSTRUCT
+	{?review		review:review_title		?title .
+	 ?review		review:review_text		?text .
+	 ?review		review:review_reviewDate	?reviewdate .
+	 ?review		db:review_of_person		?reviewer .
+	 ?review		review:review_rating1		?rating1 .
+	 ?review		review:review_rating2		?rating2 .
+	 ?review		review:review_rating3		?rating3 .
+	 ?review		greview:review_rating4		?rating4 .
+	 ?reviewer 		person:person_name		?reviewername  }
+ FROM <http://user.it.uu.se/~udbl/sard/prod>
+ WHERE {
+	{?review		db:review_of_product		product:_6 .
+	 ?review		review:review_title		?title .
+	 ?review		review:review_text		?text .
+	 ?review		review:review_language		'en' .
+  	 ?review		review:review_reviewDate	?reviewdate .
+	 ?review		db:review_of_person		?reviewer .
+	 ?reviewer 		person:person_name		?reviewername 	}
+	UNION
+	{?review		db:review_of_product		product:_6 .
+	 ?review		review:review_title		?title .
+	 ?review		review:review_text		?text .
+	 ?review		review:review_language		'en' .
+  	 ?review		review:review_reviewDate	?reviewdate .
+	 ?review		db:review_of_person		?reviewer .
+	 ?reviewer 		person:person_name		?reviewername .
+  	 ?review		review:review_rating1		?rating1 	}
+	UNION
+	{?review		db:review_of_product		product:_6 .
+	 ?review		review:review_title		?title .
+	 ?review		review:review_text		?text .
+	 ?review		review:review_language		'en' .
+  	 ?review		review:review_reviewDate	?reviewdate .
+	 ?review		db:review_of_person		?reviewer .
+	 ?reviewer 		person:person_name		?reviewername .
+	 ?review		review:review_rating2		?rating2 . 	}	
+	UNION
+	{?review		db:review_of_product		product:_6 .
+	 ?review		review:review_title		?title .
+	 ?review		review:review_text		?text .
+	 ?review		review:review_language		'en' .
+  	 ?review		review:review_reviewDate	?reviewdate .
+	 ?review		db:review_of_person		?reviewer .
+	 ?reviewer 		person:person_name		?reviewername .
+	 ?review		review:review_rating3		?rating3 . 	}
+	UNION
+	{?review		db:review_of_product		product:_6 .
+	 ?review		review:review_title		?title .
+	 ?review		review:review_text		?text .
+	 ?review		review:review_language		'en' .
+  	 ?review		review:review_reviewDate	?reviewdate .
+	 ?review		db:review_of_person		?reviewer .
+	 ?reviewer 		person:person_name		?reviewername .
+	 ?review		review:review_rating4		?rating4 . 	} }";
+
+
+eval("create function exec_q8au()->(Charstring,Charstring,Charstring) as " + parse_sparql(:q8au)); 
+
+create function q8_archu()->(Charstring,Charstring,Charstring)
+	as remove_null(select distinct s,p,o from Charstring s, Charstring p, Charstring o where (s,p,o) in exec_q8au());
+
+create function count8au()-> Integer as count(q8_archu());
+
+
+/* 15 results */
+
+
+
+/*Berlin 10a Archive -Archives the cheap offers which fulfill the consumer's delivery requirements*/
+/*CONSTRUCT query */
+
+create function berlin10a()->(Charstring,Charstring,Charstring) 
+as select distinct ss, pp, oo
+  from Charstring price, Charstring deliverydays, Charstring ve, Charstring vendor, Charstring date, 
+	Charstring obj, Charstring pred, Charstring offer,
+	Charstring ss, Charstring pp, Charstring oo
+ where prod()=(offer, 'http://user.it.uu.se/~udbl/sard/prod#offer_of_product', 'http://user.it.uu.se/~udbl/sard/prod#product/_5')
+   and prod()=(offer, 'http://user.it.uu.se/~udbl/sard/prod#offer_of_vendor', vendor)
+   and prod()=(offer, 'http://user.it.uu.se/~udbl/sard/prod#offer/offer_publisher', ve)
+   and prod()=(vendor, 'http://user.it.uu.se/~udbl/sard/prod#vendor/vendor_country', 'US')
+   and prod()=(offer, 'http://user.it.uu.se/~udbl/sard/prod#offer/offer_deliveryDays', deliverydays)
+   and deliverydays <= '3'
+   and prod()=(offer, 'http://user.it.uu.se/~udbl/sard/prod#offer/offer_price', price)
+   and prod()=(offer, 'http://user.it.uu.se/~udbl/sard/prod#offer/offer_validTo', date)
+   and date > '2008-01-01T00:00:00'
+   and (prod()=(offer, pred, obj) and ss=offer and pp=pred and oo=obj);
+
+
+
+create function count_berlin10a()->integer as select count(remove_null(berlin10a()));
+
+/* 11 */
+archive_content(#'berlin10a',"berlin10_data.nt","berlin10_schema.nt");
+
+
+/******************************************************************************/
+
+/*Berlin 11a - Archive all information about an offer (as CONSTRUCT )*/
+
+set :q11a_1= "
+CONSTRUCT  {?isvalueof ?property <http://user.it.uu.se/~udbl/sard/prod#offer/_1> }
+FROM <http://user.it.uu.se/~udbl/sard/prod>
+WHERE{ ?isvalueof ?property <http://user.it.uu.se/~udbl/sard/prod#offer/_1> } ";
+
+eval("create function exec_q11a_1()->(Charstring,Charstring,Literal) as " + parse_sparql(:q11a_1)); 
+
+/*without rewrite: sql qs :27  */
+/*with rewrite: no sql query */
+
+
+create function q11_arch()->(Charstring,Charstring,Charstring)
+	as remove_null(select distinct s,p,o from Charstring s, Charstring p, Charstring o 
+	where (s,p,o) in exec_q11a());
+
+create function count11a()-> Integer as count(q11_arch());
+
+archive_content_old(#'q11_arch',"berlin11aD.NT","berlin11aS.NT",:upv);
+
+
+create function berlin11a()-><Charstring,Charstring,Literal> 
+as select ss, pp, oo
+  from Charstring hasvalue, Charstring property, Charstring isvalueof, Charstring ss, Charstring pp, Charstring oo
+ where (prod()=('http://user.it.uu.se/~udbl/sard/prod#offer/_1', property, hasvalue) or  
+	prod()=(isvalueof, property, 'http://user.it.uu.se/~udbl/sard/prod#offer/_1') ) and
+	((ss ='http://user.it.uu.se/~udbl/sard/prod#offer/_1' and pp= property and oo= hasvalue) or
+	 (ss=isvalueof and pp= property and oo= 'http://user.it.uu.se/~udbl/sard/prod#offer/_1'));
+
+create function count_berlin11a()->integer as select count(remove_null(berlin11a()));    
+
+/* 11 */
+
+
+set :q_1= "
+CONSTRUCT  {?isvalueof ?property <http://user.it.uu.se/~udbl/sard/prod#producer/_1> }
+FROM <http://user.it.uu.se/~udbl/sard/prod>
+WHERE{ ?isvalueof ?property <http://user.it.uu.se/~udbl/sard/prod#producer/_1> } ";
+
+eval("create function exec_q1()->(Charstring,Charstring,Literal) as " + parse_sparql(:q_1)); 
+
+
+
+/***************Strategy DPS *************************************/
+
+
+
+/*Berlin 1 Archive as CONSTRUCT query */
+
+create function berlin1a()->(Charstring, Charstring, Charstring)
+as select distinct product, pred, obj
+  from Charstring label, Charstring value1, Charstring obj, Charstring pred, Charstring product,
+	Charstring ss, Charstring pp, Charstring oo
+ where prod_fn()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product/product_label_fn', label)
+   and prod_fn()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_producttype_fn', 'http://user.it.uu.se/~udbl/sard/prod#producttype/_2')
+   and prod_fn()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_productfeature_fn', 'http://user.it.uu.se/~udbl/sard/prod#productfeature/_12')
+   and prod_fn()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_productfeature_fn', 'http://user.it.uu.se/~udbl/sard/prod#productfeature/_20')
+   and prod_fn()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyNum1_fn', value1)
+   and value1 > '348'
+   and (prod_fn()=(product, pred, obj) and ss=product and pp=pred and oo=obj);
+
+create function berlin1a_count()-> Integer as count(remove_null(berlin1a()));
+/* 3544 */
+create function berlin1_arch()->(Charstring,Charstring,Charstring) as remove_null(berlin1a());
+archive_content(#'berlin1_arch',"berlin1_data.nt","berlin1_schema.nt");
+
+/******************************************************************************/
+
+/*Berlin 2a - CONSTRUCT query */
+
+create function berlin2a()->(Charstring,Charstring,Charstring)
+as select distinct ss,pp,oo from Charstring ss,Charstring pp,Charstring oo, Charstring propertynumeric2, Charstring propertytextual3, Charstring propertytextual1, 
+Charstring p, Charstring producer, Charstring comment, Charstring label, Charstring publ, Charstring productfeature, Charstring f, Charstring propertytextual2, 
+Charstring propertynumeric1, Charstring propertytextual4, Charstring propertytextual5, Charstring propertynumeric4
+ where prod_fn()=('http://user.it.uu.se/~udbl/sard/prod#product/_5', 'http://user.it.uu.se/~udbl/sard/prod#product/product_label_fn', label)
+   and prod_fn()=('http://user.it.uu.se/~udbl/sard/prod#product/_5', 'http://user.it.uu.se/~udbl/sard/prod#product/product_comment_fn', comment)
+   and prod_fn()=('http://user.it.uu.se/~udbl/sard/prod#product/_5', 'http://user.it.uu.se/~udbl/sard/prod#product_of_producer_fn', p)
+   and prod_fn()=(p, 'http://user.it.uu.se/~udbl/sard/prod#producer/producer_label', producer)
+   and prod_fn()=('http://user.it.uu.se/~udbl/sard/prod#product/_5', 'http://user.it.uu.se/~udbl/sard/prod#product/product_publisher_fn', publ)
+   and prod_fn()=('http://user.it.uu.se/~udbl/sard/prod#product/_5', 'http://user.it.uu.se/~udbl/sard/prod#product_to_productfeature_fn', f)
+   and prod_fn()=(f, 'http://user.it.uu.se/~udbl/sard/prod#productfeature/productfeature_label', productfeature)
+   and prod_fn()=('http://user.it.uu.se/~udbl/sard/prod#product/_5', 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyTex1_fn', propertytextual1)
+   and prod_fn()=('http://user.it.uu.se/~udbl/sard/prod#product/_5', 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyTex2_fn', propertytextual2)
+   and prod_fn()=('http://user.it.uu.se/~udbl/sard/prod#product/_5', 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyTex3_fn', propertytextual3)
+   and prod_fn()=('http://user.it.uu.se/~udbl/sard/prod#product/_5', 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyNum1_fn', propertynumeric1)
+   and prod_fn()=('http://user.it.uu.se/~udbl/sard/prod#product/_5', 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyNum2_fn', propertynumeric2)
+   and propertytextual4=optional((select propertytextual4_o from Charstring propertytextual4_o
+                      where prod_fn()=('http://user.it.uu.se/~udbl/sard/prod#product/_5', 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyTex4_fn', propertytextual4_o)),'')
+   and propertytextual5=optional((select propertytextual5_o from Charstring propertytextual5_o
+                      where prod_fn()=('http://user.it.uu.se/~udbl/sard/prod#product/_5', 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyTex5_fn', propertytextual5_o)),'')
+   and propertynumeric4=optional((select propertynumeric4_o from Charstring propertynumeric4_o
+                      where prod_fn()=('http://user.it.uu.se/~udbl/sard/prod#product/_5', 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyNum4_fn', propertynumeric4_o)),'')
+   and ((ss='http://user.it.uu.se/~udbl/sard/prod#product/_5' and pp='http://user.it.uu.se/~udbl/sard/prod#product/product_label_fn' and oo= label) or
+	(ss='http://user.it.uu.se/~udbl/sard/prod#product/_5' and pp= 'http://user.it.uu.se/~udbl/sard/prod#product/product_comment_fn' and oo=comment) or
+	(ss=p and pp= 'http://user.it.uu.se/~udbl/sard/prod#producer/producer_label_fn' and oo= producer) or
+	(ss=f and pp= 'http://user.it.uu.se/~udbl/sard/prod#productfeature/productfeature_label_fn' and oo= productfeature) or
+	(ss='http://user.it.uu.se/~udbl/sard/prod#product/_5' and pp='http://user.it.uu.se/~udbl/sard/prod#product/product_propertyTex1_fn' and oo=propertytextual1) or
+	(ss='http://user.it.uu.se/~udbl/sard/prod#product/_5' and pp='http://user.it.uu.se/~udbl/sard/prod#product/product_propertyTex2_fn'and oo=propertytextual2) or
+	(ss='http://user.it.uu.se/~udbl/sard/prod#product/_5' and pp='http://user.it.uu.se/~udbl/sard/prod#product/product_propertyTex3_fn'and oo= propertytextual3) or
+	(ss='http://user.it.uu.se/~udbl/sard/prod#product/_5' and pp='http://user.it.uu.se/~udbl/sard/prod#product/product_propertyNum1_fn' and oo= propertynumeric1) or
+	(ss='http://user.it.uu.se/~udbl/sard/prod#product/_5' and pp='http://user.it.uu.se/~udbl/sard/prod#product/product_propertyNum2_fn' and oo=propertynumeric2) or
+	(ss='http://user.it.uu.se/~udbl/sard/prod#product/_5' and pp='http://user.it.uu.se/~udbl/sard/prod#product/product_propertyTex4_fn' and oo=propertytextual4) or
+	(ss='http://user.it.uu.se/~udbl/sard/prod#product/_5' and pp='http://user.it.uu.se/~udbl/sard/prod#product/product_propertyTex5_fn' and oo= propertytextual5) or
+	(ss='http://user.it.uu.se/~udbl/sard/prod#product/_5' and pp='http://user.it.uu.se/~udbl/sard/prod#product/product_propertyNum4_fn'and oo= propertynumeric4));
+
+create function berlin2a_count()-> Integer as count(remove_null(berlin2a()));
+/* 28 */
+
+create function berlin2_arch()->(Charstring,Charstring,Charstring)
+	as remove_null(berlin2a());
+
+archive_content(#'berlin2_arch',"berlin2_data.nt","berlin2_schema.nt");
+
+/******************************************************************************/
+
+*Berlin 3a - CONSTRUCT) */
+/* Archive query:find products with their properties having some features and not having one feature */ 
+
+create function berlin3a()->(Charstring,Charstring,Charstring)
+as select distinct ss,pp,oo
+  from Charstring label, Charstring p1, Charstring p3, Charstring product, Charstring testvar,Charstring ss,Charstring pp, Charstring oo,
+	Charstring pred, Charstring obj
+ where prod_fn()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product/product_label', label)
+   and prod_fn()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_producttype', 'http://user.it.uu.se/~udbl/sard/prod#producttype/_2')
+   and prod_fn()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_productfeature', 'http://user.it.uu.se/~udbl/sard/prod#productfeature/_12')
+   and prod_fn()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyNum1', p1)
+   and p1 > '214'
+   and prod_fn()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyNum3', p3)
+   and p3 < '698'
+   and testvar=optional((select testvar_o
+                           from Charstring testvar_o
+                          where prod_fn()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_productfeature', 'http://user.it.uu.se/~udbl/sard/prod#productfeature/_20')
+                            and prod_fn()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product/product_label', testvar_o)),'') and testvar="" 
+  and prod_fn()=(product,pred,obj) and (ss=product and pp=pred and oo=obj);
+
+create function berlin3a_count()-> Integer as count(remove_null(berlin3a()));
+
+/*5993 SAQ, D2RQ */
+
+create function berlin3_arch()->(Charstring,Charstring,Charstring)
+	as remove_null(berlin3a());
+
+archive_content(#'berlin3_arch',"berlin3_data.nt","berlin3_schema.nt");
+
+
+/******************************************************************************/
+
+/*Berlin 4 Archive q - CONSTRUCT query */
+/* Find products (and their properties and values) matching two different sets of features */
+
+
+create function berlin4a()->(Charstring,Charstring,Charstring)
+as select distinct ss,pp,oo from Charstring p1, Charstring product, Charstring p2, Charstring label,
+			Charstring ss, Charstring pp, Charstring oo, Charstring pred, Charstring obj
+	where (prod_fn()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product/product_label', label)
+     and prod_fn()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_producttype', 'http://user.it.uu.se/~udbl/sard/prod#producttype/_2')
+     and prod_fn()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_productfeature', 'http://user.it.uu.se/~udbl/sard/prod#productfeature/_12')
+     and prod_fn()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_productfeature', 'http://user.it.uu.se/~udbl/sard/prod#productfeature/_20')
+     and prod_fn()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyNum1', p1)
+     and p1 > '348' and p2 = ''
+     and (prod_fn()=(product,pred,obj) and (ss=product and pp=pred and oo=obj)))  or
+        (prod_fn()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product/product_label', label)
+     and prod_fn()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_producttype', 'http://user.it.uu.se/~udbl/sard/prod#producttype/_1')
+     and prod_fn()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_productfeature', 'http://user.it.uu.se/~udbl/sard/prod#productfeature/_12')
+     and prod_fn()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product_to_productfeature', 'http://user.it.uu.se/~udbl/sard/prod#productfeature/_8')
+     and prod_fn()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product/product_propertyNum2', p2)
+     and p2 > '759' and p1 = '' 
+     and (prod_fn()=(product,pred,obj) and (ss=product and pp=pred and oo=obj)));
+
+
+create function count_berlin4a()->integer as select count(remove_null(berlin4a()));
+/* 5126  */
+/* 5520 (with the duplicates)*/
+
+create function berlin4a_arch()->(Charstring,Charstring,Charstring) as select remove_null(berlin4a());
+archive_content(#'berlin4a_arch',"berlin4_data.nt","berlin4_schema.nt");
+
+
+/******************************************************************************/
+
+/*Berlin 6 Archive - CONSTRUCT */
+/* Find products and their properties having a label that contains a specific string */
+
+create function berlin6a()->(Charstring,Charstring, Charstring)
+as select distinct ss,pp,oo
+  from Charstring product, Charstring label,Charstring ss, Charstring pp,Charstring oo,
+	Charstring pred, Charstring obj
+  where prod_fn()=(product, 'http://user.it.uu.se/~udbl/sard/prod#product/product_label', label)
+   and prod_fn()=(product, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://user.it.uu.se/~udbl/sard/prod#product')
+   and like(label,'%r%') and (prod_fn()=(product,pred,obj) and ss=product and pp=pred and oo=obj);
+
+create function count_berlin6a()->integer as select count(remove_null(berlin6a())); 
+/* Amos crash */
+
+create function berlin6a_arch()->(Charstring,Charstring,Charstring) as select remove_null(berlin6a());
+archive_content(#'berlin6a_arch',"berlin6_data.nt","berlin6_schema.nt");
+
+/* 281 961 */
+
+
+/******************************************************************************/
+
+/*Berlin 7a Archive query - CONSTRUCT */
+/* Archive info about a product including offers and reviews */
+
+
+create function berlin7a()->(Charstring,Charstring,Charstring)
+as select distinct ss,pp,oo
+  from Charstring productlabel, Charstring offer, Charstring price, Charstring vendor, Charstring vendortitle, Charstring review, Charstring revtitle, Charstring reviewer, Charstring revname, Charstring rating1, Charstring rating2,Charstring ss, Charstring pp, Charstring oo
+ where prod_fn()=('http://user.it.uu.se/~udbl/sard/prod#product/_5', 'http://user.it.uu.se/~udbl/sard/prod#product/product_label', productlabel)
+   and {vendortitle,price,vendor,offer}=optional((select {vendortitle_o, price_o, vendor_o, offer_o}
+                                                    from Charstring offer_o, Charstring date, Charstring vendor_o, Charstring price_o, Charstring vendortitle_o, Charstring vend
+                                                   where prod_fn()=(offer_o, 'http://user.it.uu.se/~udbl/sard/prod#offer_of_product', 'http://user.it.uu.se/~udbl/sard/prod#product/_5')
+                                                     and prod_fn()=(offer_o, 'http://user.it.uu.se/~udbl/sard/prod#offer/offer_price', price_o)
+                                                     and prod_fn()=(offer_o, 'http://user.it.uu.se/~udbl/sard/prod#offer_of_vendor', vendor_o)
+                                                     and prod_fn()=(vendor_o, 'http://user.it.uu.se/~udbl/sard/prod#vendor/vendor_label', vendortitle_o)
+                                                     and prod_fn()=(vendor_o, 'http://user.it.uu.se/~udbl/sard/prod#vendor/vendor_country', 'DE')
+                                                     and prod_fn()=(offer_o, 'http://user.it.uu.se/~udbl/sard/prod#offer/offer_publisher', vend)
+                                                     and prod_fn()=(offer_o, 'http://user.it.uu.se/~udbl/sard/prod#offer/offer_validTo', date)
+                                                     and date > '2001-09-16'),{'','','',''})
+   and {review,rating2,revtitle,revname,reviewer,rating1}=optional((select {review_o, rating2_o, revtitle_o, revname_o, reviewer_o, rating1_o}
+                                                                      from Charstring reviewer_o, Charstring revname_o, Charstring revtitle_o, Charstring review_o, Charstring rating2_o, Charstring rating1_o
+                                                                     where prod_fn()=(review_o, 'http://user.it.uu.se/~udbl/sard/prod#review_of_product', 'http://user.it.uu.se/~udbl/sard/prod#product/_5')
+                                                                       and prod_fn()=(review_o, 'http://user.it.uu.se/~udbl/sard/prod#review_of_person', reviewer_o)
+                                                                       and prod_fn()=(reviewer_o, 'http://user.it.uu.se/~udbl/sard/prod#person/person_name', revname_o)
+                                                                       and prod_fn()=(review_o, 'http://user.it.uu.se/~udbl/sard/prod#review/review_title', revtitle_o)
+                                                                       and rating1_o=optional((select rating1_oo
+                                                                                                 from Charstring rating1_oo
+                                                                                                where prod_fn()=(review_o, 'http://user.it.uu.se/~udbl/sard/prod#review/review_rating1', rating1_oo)),'')
+                                                                       and rating2_o=optional((select rating2_oo
+                                                                                                 from Charstring rating2_oo
+                                                                                                where prod_fn()=(review_o, 'http://user.it.uu.se/~udbl/sard/prod#review/review_rating2', rating2_oo)),'')),{'','','','','',''})
+ and
+	((ss='http://user.it.uu.se/~udbl/sard/prod#product/_5' and pp='http://user.it.uu.se/~udbl/sard/prod#product/product_label' and oo=productlabel) or
+	 (ss=offer and pp='http://user.it.uu.se/~udbl/sard/prod#offer/offer_price' and oo=price) or
+	(ss=offer and pp='http://user.it.uu.se/~udbl/sard/prod#offer_of_vendor' and oo=vendor) or
+	(ss=vendor and pp='http://user.it.uu.se/~udbl/sard/prod#vendor/vendor_label' and oo= vendortitle) or
+	(ss=review and pp='http://user.it.uu.se/~udbl/sard/prod#review_of_person' and oo= reviewer) or
+ 	(ss=review and pp='http://user.it.uu.se/~udbl/sard/prod#review/review_title' and oo= revtitle) or
+	(ss=reviewer and pp='http://user.it.uu.se/~udbl/sard/prod#person/person_name' and oo= revname) or
+	(ss=review and pp='http://user.it.uu.se/~udbl/sard/prod#review/review_rating1' and oo=rating1) or
+	(ss=review and pp='http://user.it.uu.se/~udbl/sard/prod#review/review_rating2' and oo=rating2));
+
+
+create function berlin7_arch()->(Charstring,Charstring,Charstring)
+	as remove_null(berlin7a());
+
+archive_content(#'berlin7_arch',"berlin7_data.nt","berlin7_schema.nt");
+ 
+
+/*5 result sets */
+
+
+/******************************************************************************/
+
+/*Berlin 8a Archive - CONSTRUCT query */
+/* Give me recent English language reviews for a specific product */
+
+create function berlin8a()->(Charstring,Charstring,Charstring)
+as select distinct ss, pp, oo    
+  from Charstring title, Charstring text, Charstring reviewdate, Charstring reviewername, Charstring reviewer, Charstring review, Charstring rating1, Charstring rating2, Charstring rating3, Charstring rating4, Charstring oo, Charstring pp, Charstring ss
+ where prod_fn()=(review, 'http://user.it.uu.se/~udbl/sard/prod#review_of_product', 'http://user.it.uu.se/~udbl/sard/prod#product/_6')
+   and prod_fn()=(review, 'http://user.it.uu.se/~udbl/sard/prod#review/review_title', title)
+   and prod_fn()=(review, 'http://user.it.uu.se/~udbl/sard/prod#review/review_text', text)
+   and prod_fn()=(review, 'http://user.it.uu.se/~udbl/sard/prod#review/review_language', 'en')
+   and prod_fn()=(review, 'http://user.it.uu.se/~udbl/sard/prod#review/review_reviewDate', reviewdate)
+   and prod_fn()=(review, 'http://user.it.uu.se/~udbl/sard/prod#review_of_person', reviewer)
+   and prod_fn()=(reviewer, 'http://user.it.uu.se/~udbl/sard/prod#person/person_name', reviewername)
+   and rating1=optional((select rating1_o
+                           from Charstring rating1_o
+                          where prod_fn()=(review, 'http://user.it.uu.se/~udbl/sard/prod#review/review_rating1', rating1_o)),'')
+   and rating2=optional((select rating2_o
+                           from Charstring rating2_o
+                          where prod_fn()=(review, 'http://user.it.uu.se/~udbl/sard/prod#review/review_rating2', rating2_o)),'')
+   and rating3=optional((select rating3_o
+                           from Charstring rating3_o
+                          where prod_fn()=(review, 'http://user.it.uu.se/~udbl/sard/prod#review/review_rating3', rating3_o)),'')
+   and rating4=optional((select rating4_o
+                           from Charstring rating4_o
+                          where prod_fn()=(review, 'http://user.it.uu.se/~udbl/sard/prod#review/review_rating4', rating4_o)),'')
+	and ( (oo=title and pp='http://user.it.uu.se/~udbl/sard/prod#review/review_title' and ss=review) or 
+	      (ss=review and pp='http://user.it.uu.se/~udbl/sard/prod#review/review_text' and oo=text) or
+	      (ss=review and pp='http://user.it.uu.se/~udbl/sard/prod#review/review_reviewDate' and oo= reviewdate) or
+	      (ss=review and pp='http://user.it.uu.se/~udbl/sard/prod#review_of_person' and oo= reviewer) or
+	      (ss=reviewer and pp= 'http://user.it.uu.se/~udbl/sard/prod#person/person_name' and oo= reviewername) or
+	      (ss=review and pp= 'http://user.it.uu.se/~udbl/sard/prod#review/review_rating1' and oo= rating1) or
+	      (ss=review and pp= 'http://user.it.uu.se/~udbl/sard/prod#review/review_rating2' and oo= rating2) or
+	      (ss=review and pp= 'http://user.it.uu.se/~udbl/sard/prod#review/review_rating3' and oo= rating3) or
+	      (ss=review and pp= 'http://user.it.uu.se/~udbl/sard/prod#review/review_rating4' and oo= rating4));
+	       
+
+create function count_berlin8a()->integer as select count(remove_null(berlin8a()));
+
+/* 2 results */
+
+
+
+
+/******************************************************************************/
+
+/*Berlin9 (originally DESCRIBE)- (is already archive q)- Get information about a reviewer*/
+set :berlin9a="SELECT ?x ?pred ?obj
+	       FROM  <http://user.it.uu.se/~udbl/sard/prod>
+	       WHERE {
+		      <http://user.it.uu.se/~udbl/sard/prod#review/_4> <http://user.it.uu.se/~udbl/sard/prod#review_of_person> ?x.
+			?x ?pred ?obj }";
+
+eval("create function berlin9a()->(Charstring,Charstring,Charstring) as " + parse_sparql(:berlin9a)); 
+create function count_berlin9a()->integer as select count(remove_null(berlin9a()));
+
+archive_content(#'berlin9a',"berlin9_data.nt","berlin9_schema.nt");
+
+/******************************************************************************/
+
+/*Berlin 10a Archive -Archives the cheap offers which fulfill the consumer's delivery requirements*/
+/*CONSTRUCT query */
+
+create function berlin10a()->(Charstring,Charstring,Charstring) 
+as select distinct ss, pp, oo
+  from Charstring price, Charstring deliverydays, Charstring ve, Charstring vendor, Charstring date, 
+	Charstring obj, Charstring pred, Charstring offer,
+	Charstring ss, Charstring pp, Charstring oo
+ where prod_fn()=(offer, 'http://user.it.uu.se/~udbl/sard/prod#offer_of_product', 'http://user.it.uu.se/~udbl/sard/prod#product/_1')
+   and prod_fn()=(offer, 'http://user.it.uu.se/~udbl/sard/prod#offer_of_vendor', vendor)
+   and prod_fn()=(offer, 'http://user.it.uu.se/~udbl/sard/prod#offer/offer_publisher', ve)
+   and prod_fn()=(vendor, 'http://user.it.uu.se/~udbl/sard/prod#vendor/vendor_country', 'GB')
+   and prod_fn()=(offer, 'http://user.it.uu.se/~udbl/sard/prod#offer/offer_deliveryDays', deliverydays)
+   and deliverydays <= '3'
+   and prod_fn()=(offer, 'http://user.it.uu.se/~udbl/sard/prod#offer/offer_price', price)
+   and prod_fn()=(offer, 'http://user.it.uu.se/~udbl/sard/prod#offer/offer_validTo', date)
+   and date > '2008-04-19T00:00:00'
+   and (prod_fn()=(offer, pred, obj) and prod_fn()=(ss,pp,oo));
+
+create function count_berlin10a()->integer as select count(remove_null(berlin10a()));
+
+/* 11 */
+archive_content(#'berlin10a',"berlin10_data.nt","berlin10_schema.nt");
+
+
+/******************************************************************************/
+
+/*Berlin 11a - Archive all information about an offer (as CONSTRUCT )*/
+
+create function berlin11a()-><Charstring,Charstring,Literal> 
+as select distinct ss, pp, oo
+  from Charstring hasvalue, Charstring property, Charstring isvalueof, Charstring ss, Charstring pp, Charstring oo
+ where (prod_fn()=('http://user.it.uu.se/~udbl/sard/prod#offer/_1', property, hasvalue) or  
+	prod_fn()=(isvalueof, property, 'http://user.it.uu.se/~udbl/sard/prod#offer/_1') ) and
+	((ss ='http://user.it.uu.se/~udbl/sard/prod#offer/_1' and pp= property and oo= hasvalue) or
+	 (ss=isvalueof and pp= property and oo= 'http://user.it.uu.se/~udbl/sard/prod#offer/_1'));
+
+create function count_berlin11a()->integer as select count(remove_null(berlin11a()));    
+
+/* 11 */
+
+
+
+
+select PRODUCT_LABEL from producer180m.PRODUCT where PRODUCT_NR = 5
+
+create view producer180m.berlin7 as
+select VENDOR_NR,VENDOR_LABEL,OFFER_NR,offer_product,OFFER_PRICE,OFFER_VALIDTO,OFFER_PUBLISHER
+from producer180m.VENDOR V_,producer180m.OFFER O_ where VENDOR_COUNTRY = 'DE' and OFFER_PRODUCT = 5 and 
+OFFER_VENDOR = VENDOR_NR and OFFER_VALIDTO > '2001-09-16'
+
+select PRODUCT_LABEL,t2.VENDOR_LABEL from producer180m.PRODUCT left outer join 
+(select VENDOR_NR,VENDOR_LABEL,OFFER_NR,offer_product,OFFER_PRICE,OFFER_VALIDTO,OFFER_PUBLISHER
+from producer180m.VENDOR V_,producer180m.OFFER O_ where VENDOR_COUNTRY = 'DE' and OFFER_PRODUCT = 3418 and 
+OFFER_VENDOR = VENDOR_NR and OFFER_VALIDTO > '2001-09-16') AS t2 on t2.offer_product=product_nr
+where PRODUCT_NR = 5
+
+
+select distinct PERSON_NR,PERSON_NAME,REVIEW_NR,REVIEW_TITLE from producer180m.PERSON P_,producer180m.REVIEW R_ 
+where REVIEW_PRODUCT = 3418 and REVIEW_PERSON = PERSON_NR
+
+
+select product_label,VENDOR_NR,VENDOR_LABEL,OFFER_NR,offer_product,OFFER_PRICE,OFFER_VALIDTO,OFFER_PUBLISHER
+from producer180m.PRODUCT
+left outer join producer180m.berlin7 on offer_product=product_nr;

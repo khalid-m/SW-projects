@@ -1,0 +1,142 @@
+/*-*-sql-*-*******************************************************************/
+
+
+create function knownclasses(Vector of Number x) -> Bag of Number v
+  as stored;
+
+create function testclasses(Vector of Number x) -> Bag of Number v
+  as stored;
+
+create function readnumfile(Charstring f) -> Vector of Number w
+  as read_ntuples(f);
+
+create function add_kc(Vector of number w) -> Boolean
+ as set knownclasses({w[0], w[1], w[2], w[3], w[4], w[5], w[6], w[7], w[8]}) 
+                  = w[9];
+
+add_kc(readnumfile("../data/glassdata.nt"));
+
+create function unknown() -> vector of number as stored;
+add unknown() = readnumfile("../data/testdata.nt");
+
+create function trueclasses(vector of Number) -> number as stored;
+create function add_tc(Vector of Number w) -> Boolean as
+add trueclasses({w[0], w[1], w[2], w[3], w[4], w[5], w[6], w[7], w[8]}) = w[9];
+
+add_tc(readnumfile("../data/truth.nt"));
+
+
+create function all_knownclasses()->bag of (vector of number, number)
+  as select ww, cc
+     from vector of number ww, number cc
+     where cc in knownclasses(ww);
+
+create function knowncoordinates()->bag of vector of number
+  as select ww
+     from vector of number ww, number cc
+     where cc in knownclasses(ww);
+
+create function all_but_this(vector of number x)
+  -> bag of (vector of number, number)
+  as select ww, cc
+     from vector of number ww, number cc
+     where (ww, cc) in all_knownclasses()
+     and ww != x;
+
+/* Students will implement the following functionality
+   (4 functions, 31 lines reference implementation) */
+
+create function classdistances(Vector of Number x, Function dfn, object par,
+                               Bag of (Vector of Number, Number) known)
+                               -> Bag of (Number distance, Number class)
+  as select apply(dfn, {x, v, par})[0], class
+     from Vector of Number v
+     where (v, class) in known;
+
+create function k_nearest(Vector of Number x, Integer k, Function dfn, 
+                          object par, Bag of (Vector of Number, Number) known)
+  -> Bag of (Object, Object)
+  as leastk(classdistances(x, dfn, par, known), k);
+
+create function k_votes(Vector of Number x, Integer k, Function dfn,
+                        object par, Bag of (Vector of Number, Number) known)
+  -> Bag of (Integer class, Number count)
+  as groupby((select cl 
+              from Number cl, Real dist
+              where (dist, cl) in k_nearest(x, k, dfn, par, known)), 
+             #'count');
+
+create function knnclassify(Vector of Number x, Integer k, Function dfn,
+                            Object par, 
+                            Bag of (Vector of Number, Number) known)
+  -> (Number, Number, Integer)
+  as select cl, round(100*confidence/k), k
+     from Number cl, Integer confidence
+     where (confidence, cl) in
+       topk((select cnt, class
+             from Integer cnt, Number class
+             where (class, cnt) in k_votes(x, k, dfn, par, known)), 1);
+
+create function knn(Vector of Number x, Integer k, Function dfn, Object par,
+                    Bag known)
+  -> Number
+  as select cl
+     from Number cl, Real conf, Integer co
+     where (cl, conf, co) = knnclassify(x, k, dfn, par, 
+             cast(known as Bag of (Vector of Number,Number)));
+
+/* Subtract and divide all vectors by constants */
+
+create function classdistancesn(Vector of Number x, Function dfn, object par,
+                                Vector of Number subtract,
+                                Vector of Number divide,
+                                Bag of (Vector of Number, Number) known)
+                                -> Bag of (Number distance, Number class)
+  as select apply(dfn, {(x - subtract) ./ divide, (v - subtract) ./ divide, 
+                  par})[0], class
+     from Vector of Number v
+     where (v, class) in known;
+
+create function k_nearestn(Vector of Number x, Integer k, Function dfn, 
+                           object par, Vector of Number subtract,
+                           Vector of Number divide,
+                           Bag of (Vector of Number, Number) known)
+  -> Bag of (Object, Object)
+  as leastk(classdistancesn(x, dfn, par, subtract, divide, known), k);
+
+create function k_votesn(Vector of Number x, Integer k, Function dfn,
+                         object par, Vector of Number subtract,
+                         Vector of Number divide,
+                         Bag of (Vector of Number, Number) known)
+  -> Bag of (Integer class, Number count)
+  as groupby((select cl 
+              from Number cl, Real dist
+              where (dist, cl) in k_nearestn(x, k, dfn, par, subtract, divide,
+                                             known)),
+             #'count');
+
+create function knnclassifyn(Vector of Number x, Integer k, Function dfn,
+                            Object par, 
+                            Vector of Number subtract,
+                            Vector of Number divide,
+                            Bag of (Vector of Number, Number) known)
+  -> (Number, Number, Integer)
+  as select cl, round(100*co/k), k
+     from Number cl, Integer co
+     where (co, cl) in
+       topk((select count, class
+             from Integer count, Number class
+             where (class, count) in k_votesn(x, k, dfn, par, subtract, divide,
+                                              known)), 1);
+
+create function knnn(Vector of Number x, Integer k, Function dfn, Object par,
+                     Vector of Number subtract,
+                     Vector of Number divide,
+                     Bag of (Vector of Number, Number) known)
+  -> Number
+  as select cl
+     from Number cl, Real conf, Integer co
+     where (cl, conf, co) in knnclassifyn(x, k, dfn, par, subtract, divide,
+                                         known);
+
+load_lisp("knntest.lsp");

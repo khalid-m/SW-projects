@@ -1,0 +1,38 @@
+/****************************************************/
+/* Global Schema */
+/****************************************************/
+create type Service properties (name charstring, 
+                                namespaceuri charstring, wsdluri charstring);
+create type Operation properties(name charstring, soapactionuri charstring, 
+                                style charstring, encodingstyle charstring, 
+                                targeturl charstring);
+
+create function port(Service)-> bag of Operation;
+
+create type Element properties(name charstring,mappedtype charstring,minoccurs Integer, maxoccurs Integer);
+
+create function input( Operation)-> vector of Element;
+create function output( Operation)-> vector of Element;
+/*create function input( Operation)->  Element;
+create function output( Operation)-> Element;*/
+
+
+create function subelements(Element)->vector of Element;
+
+create type WSMEDView properties (name charstring);
+create function view_of(WSMEDView)->bag of Operation;
+create type Attribute properties (name charstring,type charstring,is_key boolean);
+create function attributes(WSMEDView)->bag of Attribute;
+create type Template properties (name charstring,co Integer,fanout Integer,searchdef charstring,bindingpattern charstring);
+create function templates(WSMEDView)->bag of Template;
+/****************************************************/
+/* Generic Functions*/
+/****************************************************/
+create function generate_wsdl_metadata(charstring wsdlurl)-> boolean  as foreign  "JAVA:intiateSchema/initoperation"; 
+
+create function importwsdl(charstring wsdlurl) -> boolean as
+begin
+  generate_wsdl_metadata(wsdlurl);
+  load_amosql("populatewsdl.amosql");
+  result true;
+end;

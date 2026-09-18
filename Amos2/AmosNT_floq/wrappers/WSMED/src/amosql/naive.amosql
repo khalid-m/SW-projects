@@ -1,0 +1,52 @@
+load_lisp("C:/amosnt/wrappers/wsmed/src/patch.lsp");
+load_lisp("C:/amosnt/wrappers/wsmed/src/qplan.lsp");
+create function SearchFoodByDescription(charstring foodkeywords,charstring foodgroupcode)-><charstring ndbnumber,charstring longdescr,charstring foodcode>
+as select v[0],v[1],v[2]
+   from vector of vector r, integer i, vector v
+   where r = callwebservice("http://ws.strikeiron.com/USDAData?WSDL",
+                            "SearchFoodByDescription",{foodkeywords,foodgroupcode}) and
+         v = r[0][i];
+lisp;
+
+(defun cc_ffff (fno ndbnumber foodkeywords longdescr foodcode)
+	(mapfunctionres 'SearchFoodByDescription (list "" "") nil
+		  (f/l (row)
+		       (osql-result (nth 0 row) "" (nth 1 row)(nth 2 row)))))
+(defun cc_fffb (fno ndbnumber  foodkeywords longdescr foodcode)
+	(mapfunctionres 'SearchFoodByDescription (list "" foodcode) nil
+		  (f/l (row)
+		       (osql-result (nth 0 row) "" (nth 1 row)(nth 2 row)))))	
+(defun cc_fbff (fno ndbnumber  foodkeywords longdescr foodcode)
+	(mapfunctionres 'SearchFoodByDescription (list foodkeywords "") nil
+		  (f/l (row)
+		       (osql-result (nth 0 row) foodkeywords (nth 1 row)(nth 2 row)))))	
+(defun cc_fbfb (fno ndbnumber  foodkeywords longdescr foodcode)
+	(mapfunctionres 'SearchFoodByDescription (list foodkeywords foodcode) nil
+		  (f/l (row)
+		       (osql-result (nth 0 row) foodkeywords (nth 1 row)(nth 2 row)))))	
+
+:osql
+/*helping function definition*/
+create function food_cc()-> <charstring ndbnumber ,charstring foodkeywords,charstring longdescriptions, charstring foodcode>
+			    as multidirectional  
+						("ffff" foreign "cc_ffff" )
+						("fffb" foreign "cc_fffb" ) 
+						("fbff" foreign "cc_fbff" ) 
+						("fbfb" foreign "cc_fbfb" );
+
+/*SQL view definition*/
+create function #food(charstring ndbnumber)-> <charstring foodkeywords,charstring longdescr,charstring foodcode> as
+ select foodkeywords,longdescr,foodcode where food_cc()= <ndbnumber,foodkeywords,longdescr,foodcode>;
+
+create function #foodclasses(charstring ndbnumber)-><charstring foodkeywords,charstring foodcode> as
+ select foodkeywords,foodcode from charstring longdescr where food_cc()= <ndbnumber,foodkeywords,longdescr,foodcode>;
+
+create function #fooddescriptions(charstring ndbnumber)-><charstring longdescr> as
+ select longdescr from charstring foodkeywords, charstring foodcode where food_cc()= <ndbnumber,foodkeywords,longdescr,foodcode>;
+
+/*testsql("select longdescr from food where foodcode='1900'")*/;
+
+/*query plan*/
+lisp;
+(sql-query-plan "select f2.longdescr from foodclasses f1, fooddescriptions f2 where f1.ndbnumber=f2.ndbnumber and f1.foodcode='1900'")
+:osql;

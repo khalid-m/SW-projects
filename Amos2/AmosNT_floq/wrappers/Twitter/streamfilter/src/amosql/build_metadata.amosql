@@ -1,0 +1,165 @@
+create function vref(Object o, Charstring k)->Object 
+  as select r[k] from Record r where r=o;
+
+create function vref(Object o, Number k)->Object 
+  as select v[k] from Vector v where v=o; 
+
+
+/*get attributes from an object*/
+create function attrs1(Object v)->Bag of charstring
+  as select p from Charstring p, Object v1,Record r where  r=v and r[p]=v1;
+  
+create function attrs(Object v)-> Vector of charstring as vectorof(attrs1(v));
+
+/*get attributes from a record*/     
+create function attrs2(Record r)->Bag of charstring
+  as select p from Charstring p, Object v where r[p]=v;
+    
+create function attrs(Record o)-> Vector of charstring as vectorof(attrs2(o));
+
+/*get the subrecord in a record at given position*/
+create function subrecord(charstring s,Record r)->Record t
+as begin
+   declare Object v;
+   select r1 into t from Record r1
+         where r[s]=r1;
+   set v=attrs(t);
+   if (v != {}) then result t;  
+   end;     
+   
+ 
+/*get sample*/
+create function queryresult(Stream s,Integer x,Integer y)->Bag of Record
+as in(section(s,x,y));
+
+/*select v from Vector v where v in section(s,x,y);*/
+
+/*define JsonStream data type*/
+create type JsonStream;
+
+create function kind(Jsonstream)-> charstring as stored;
+create function url(Jsonstream)-> charstring as stored;
+create function sample(JsonStream)->Bag of Record as stored;
+
+create function createjsonstream(charstring kind)->Jsonstream j
+as begin
+     select s into j
+     from JsonStream S
+     where kind(S)=kind;
+     if j=NIL then create JsonStream instances j;
+     set kind(j)=kind;
+     result j;
+   end;
+
+create function getjsonstream()->charstring
+as for each JsonStream j 
+begin 
+   result kind(j);
+end;
+
+/*super class of EProperty and SubProperty*/
+create type Property;
+
+create function kind(property p)->charstring as stored;
+create function name(property p)->charstring as stored;
+
+/*define EProperty*/
+create type EProperty under Property;
+
+create function kind(Eproperty e)->charstring as stored;
+create function name(Eproperty e)->charstring as stored;
+
+create function createproperty(JsonStream j,charstring name)->Eproperty ep
+as begin 
+     select e into ep
+     from EProperty E
+     where name(E)=name and kind(E)=kind(j);
+     if ep=NIL then create EProperty instances ep;
+     set name(ep)=name;
+     set kind(ep)=kind(j);
+     result ep;
+   end;
+
+create function getproperties(charstring kind)->charstring c
+as select name(e) 
+   from Eproperty E
+   where kind(e)=kind;
+   
+/*define SubProperty*/
+create type SubProperty under Property;
+
+create function kind(SubProperty sp)->charstring as stored;
+create function name(SubProperty sp)->charstring as stored;
+
+create function createsubproperty(Property e,charstring name)->SubProperty sp
+as begin 
+     select s into sp
+     from SubProperty S
+     where name(S)=name and kind(S)=name(e);
+     if sp=NIL then create SubProperty instances sp;
+     set name(sp)=name;
+     set kind(sp)=name(e);
+     result sp;
+   end;
+   
+create function getsubproperties(charstring kind)->charstring c
+as select name(e) 
+   from SubProperty E
+   where kind(e)=kind;
+   
+/*build metadata for subproperties*/   
+create function build_subproperties(Property e,Record r)->Boolean
+as begin
+     declare Vector of charstring v1,SubProperty sp,Record r1;
+     set v1=attrs(r);
+     for each Integer i where i in iota(0,(record_length(r)-1))
+     begin         
+       set sp=createsubproperty(e,v1[i]);
+       set r1=subrecord(v1[i],r);
+       if (r1!=nil) then build_subproperties(sp,r1);
+       
+     end;
+   end;
+   
+/*build metadata for properties*/   
+create function build_properties(JsonStream j,Record r)->Boolean
+as begin
+     declare Vector of charstring v1,EProperty ep,Record r1;
+     set v1=attrs(r);
+     for each Integer i where i in iota(0,(record_length(r)-1))
+     begin              
+       set ep=createproperty(j,v1[i]);
+       set r1=subrecord(v1[i],r);
+       if (r1!=nil) then       
+       build_subproperties(ep,r1);
+     end;  
+   end;
+
+/*create metadata*/   
+create function build_metadata(charstring kind,charstring url,Stream s)->Boolean 
+as 
+begin
+   
+   declare JsonStream thisstream;
+   set thisstream=createjsonstream(kind);
+   set url(thisstream)=url;
+   set sample(thisstream)=queryresult(s,0,100);
+   
+   build_properties(thisstream,sample(thisstream));
+        
+end;
+
+
+/*build metadata for twitter stream*/ 
+create function build_twittermetadata(Integer conn)->Boolean
+as 
+begin
+   
+   declare JsonStream thisstream;
+   set thisstream=createjsonstream("twitter");
+   set url(thisstream)="http://stream.twitter.com/1/statuses/filter.json";
+   set sample(thisstream)=in(trackstream(conn,"a",100));
+   
+   build_properties(thisstream,sample(thisstream));
+        
+end;

@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!--
+  RDF Query Exchange Language Schema
+
+  Version: 1.0 (06/2003)
+
+  authors:
+  Wolfgang Nejdl
+  Wolf Siberski   
+  Boris Wolf
+  Mikael Nilsson
+-->
+<!DOCTYPE rdf:RDF [
+<!ENTITY rdf 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'>
+<!ENTITY rdfs 'http://www.w3.org/2000/01/rdf-schema#'>
+<!ENTITY xsd 'http://www.w3.org/2001/XMLSchema#'>
+<!ENTITY qel 'http://www.edutella.org/qel#'>
+]>
+<rdf:RDF xmlns:rdf="&rdf;" xmlns:rdfs="&rdfs;"
+xmlns:qel="&qel;" xmlns:xsd="&xsd;">
+<!-- QUERY CLASSES AND PROPERTIES -->
+  <rdfs:Class rdf:about="&qel;VariableContainer">
+    <rdfs:label xml:lang="en">Variable Container</rdfs:label>
+    <rdfs:comment xml:lang="en">Instances of this class can hold a
+    list of variables. Subclasses are qel:Query and
+    qel:ResultSet.</rdfs:comment>
+  </rdfs:Class>
+  <rdfs:Class rdf:about="&qel;QueryLiteralContainer">
+    <rdfs:label xml:lang="en">Query Literal Container</rdfs:label>
+    <rdfs:comment xml:lang="en">Instances of this class can have a
+    body. Subclasses are qel:Query and qel:Rule.</rdfs:comment>
+  </rdfs:Class>
+  <rdfs:Class rdf:about="&qel;Query">
+    <rdfs:subClassOf rdf:resource="&qel;VariableContainer" />
+    <rdfs:subClassOf
+    rdf:resource="&qel;QueryLiteralContainer" />
+    <rdfs:label xml:lang="en">QEL Query</rdfs:label>
+    <rdfs:comment xml:lang="en">Instances of this class are QEL
+    queries.</rdfs:comment>
+  </rdfs:Class>
+  <rdfs:Class rdf:about="&qel;Variable">
+    <rdfs:label xml:lang="en">Variable</rdfs:label>
+    <rdfs:comment xml:lang="en">Instances of this class are
+    variables in a query.</rdfs:comment>
+  </rdfs:Class>
+  <rdf:Property rdf:about="&qel;resultVariables">
+    <rdfs:domain rdf:resource="&qel;VariableContainer" />
+    <rdfs:range rdf:resource="&rdf;Seq" />
+    <rdfs:label xml:lang="en">Result variables</rdfs:label>
+    <rdfs:comment xml:lang="en">A list of variables that are used
+    in a result.</rdfs:comment>
+  </rdf:Property>
+  <rdf:Property rdf:about="&qel;literal">
+    <rdfs:domain rdf:resource="&qel;QueryLiteralContainer" />
+    <rdfs:range rdf:resource="&qel;QueryLiteral" />
+    <rdfs:label xml:lang="en">Literal</rdfs:label>
+    <rdfs:comment xml:lang="en">A non-outer join query literal in
+    the body of a rule or a query.</rdfs:comment>
+  </rdf:Property>
+  <rdf:Property rdf:about="&qel;outerJoinLiteral">
+    <rdfs:domain rdf:resource="&qel;QueryLiteralContainer" />
+    <rdfs:range rdf:resource="&qel;QueryLiteral" />
+    <rdfs:label xml:lang="en">Outer join literal</rdfs:label>
+    <rdfs:comment xml:lang="en">An outer join query literal in the
+    body of a rule or a query.</rdfs:comment>
+  </rdf:Property>
+  <rdf:Property rdf:about="&qel;rule">
+    <rdfs:domain rdf:resource="&qel;Query" />
+    <rdfs:range rdf:resource="&qel;Rule" />
+    <rdfs:label xml:lang="en">Rule</rdfs:label>
+    <rdfs:comment xml:lang="en">The rules of a
+    query.</rdfs:comment>
+  </rdf:Property>
+<!-- QUERY LITERALS -->
+  <rdfs:Class rdf:about="&qel;QueryLiteral">
+    <rdfs:label xml:lang="en">Query Literal</rdfs:label>
+    <rdfs:comment xml:lang="en">Instances of this class are query
+    literals.</rdfs:comment>
+  </rdfs:Class>
+  <rdfs:Class rdf:about="&qel;StatementLiteral">
+    <rdfs:subClassOf rdf:resource="&rdf;Statement" />
+    <rdfs:subClassOf rdf:resource="&qel;QueryLiteral" />
+    <rdfs:label xml:lang="en">Statement Literal</rdfs:label>
+    <rdfs:comment xml:lang="en">Instances of this class are RDF
+    statement literals, using the 's' datalog
+    predicate.</rdfs:comment>
+  </rdfs:Class>
+  <rdf:Property rdf:about="&qel;predicate">
+    <rdfs:domain rdf:resource="&qel;QueryLiteral" />
+    <rdfs:range rdf:resource="&qel;Predicate" />
+    <rdfs:label xml:lang="en">Predicate</rdfs:label>
+    <rdfs:comment xml:lang="en">The predicate of a
+    rule.</rdfs:comment>
+  </rdf:Property>
+  <rdf:Property rdf:about="&qel;arguments">
+    <rdfs:domain rdf:resource="&qel;QueryLiteral" />
+    <rdfs:range rdf:resource="&rdf;Seq" />
+    <rdfs:label xml:lang="en">Arguments</rdfs:label>
+    <rdfs:comment xml:lang="en">The arguments of a query
+    literal.</rdfs:comment>
+  </rdf:Property>
+  <rdfs:Class rdf:about="&qel;Predicate">
+    <rdfs:label xml:lang="en">Predicate</rdfs:label>
+    <rdfs:comment xml:lang="en">Instances of this class are
+    predicates.</rdfs:comment>
+  </rdfs:Class>
+  <rdfs:Class rdf:about="&qel;BuiltinPredicate">
+    <rdfs:subClassOf rdf:resource="&qel;Predicate" />
+    <rdfs:label xml:lang="en">Built-in predicate</rdfs:label>
+    <rdfs:comment xml:lang="en">Instances of this class are
+    built-in predicates.</rdfs:comment>
+  </rdfs:Class>
+<!-- RULES -->
+  <rdfs:Class rdf:about="&qel;Rule">
+    <rdfs:label xml:lang="en">Rule</rdfs:label>
+    <rdfs:comment xml:lang="en">Instances of this class are
+    rules.</rdfs:comment>
+  </rdfs:Class>
+  <rdf:Property rdf:about="&qel;head">
+    <rdfs:domain rdf:resource="&qel;Rule" />
+    <rdfs:range rdf:resource="&qel;QueryLiteral" />
+    <rdfs:label xml:lang="en">Rule head</rdfs:label>
+    <rdfs:comment xml:lang="en">The head of a rule.</rdfs:comment>
+  </rdf:Property>
+<!-- BUILTIN PREDICATES -->
+  <rdf:Property rdf:about="&qel;negated">
+    <rdfs:domain rdf:resource="&qel;QueryLiteral" />
+    <rdfs:range rdf:datatype="&xsd;boolean" />
+    <rdfs:label xml:lang="en">Negated</rdfs:label>
+    <rdfs:comment xml:lang="en">Whether a query literal is negated
+    or not. Note that only built-in predicates can be
+    negated.</rdfs:comment>
+  </rdf:Property>
+  <qel:BuiltinPredicate rdf:about="&qel;equals">
+    <rdfs:label xml:lang="en">Equals</rdfs:label>
+    <rdfs:comment xml:lang="en">Predicate used to compare two
+    strings.</rdfs:comment>
+  </qel:BuiltinPredicate>
+  <qel:BuiltinPredicate rdf:about="&qel;like">
+    <rdfs:label xml:lang="en">Like</rdfs:label>
+    <rdfs:comment xml:lang="en">Predicate used to test if a string
+    contains another string as a substring.</rdfs:comment>
+  </qel:BuiltinPredicate>
+  <qel:BuiltinPredicate rdf:about="&qel;lessThan">
+    <rdfs:label xml:lang="en">Less than</rdfs:label>
+    <rdfs:comment xml:lang="en">Predicate to compare two strings
+    numerically.</rdfs:comment>
+  </qel:BuiltinPredicate>
+  <qel:BuiltinPredicate rdf:about="&qel;greaterThan">
+    <rdfs:label xml:lang="en">Greater than</rdfs:label>
+    <rdfs:comment xml:lang="en">Predicate to compare two strings
+    numerically.</rdfs:comment>
+  </qel:BuiltinPredicate>
+  <qel:BuiltinPredicate rdf:about="&qel;nodeType">
+    <rdfs:label xml:lang="en">Node type</rdfs:label>
+    <rdfs:comment xml:lang="en">Predicate to test the RDF node type
+    of a node.</rdfs:comment>
+  </qel:BuiltinPredicate>
+  <qel:BuiltinPredicate rdf:about="&qel;language">
+    <rdfs:label xml:lang="en">Language</rdfs:label>
+    <rdfs:comment xml:lang="en">Predicate to test the language of
+    an RDF literal.</rdfs:comment>
+  </qel:BuiltinPredicate>
+  <qel:BuiltinPredicate rdf:about="&qel;dataType">
+    <rdfs:label xml:lang="en">Data type</rdfs:label>
+    <rdfs:comment xml:lang="en">Predicate to test the data type of
+    an RDF literal.</rdfs:comment>
+  </qel:BuiltinPredicate>
+  <qel:BuiltinPredicate rdf:about="&qel;member">
+    <rdfs:label xml:lang="en">Member</rdfs:label>
+    <rdfs:comment xml:lang="en">Predicate to test container
+    membership.</rdfs:comment>
+  </qel:BuiltinPredicate>
+  <rdfs:Class rdf:about="&qel;NodeType">
+    <rdfs:label xml:lang="en">Node type</rdfs:label>
+    <rdfs:comment xml:lang="en">Instances of this class are RDF
+    node types.</rdfs:comment>
+  </rdfs:Class>
+  <qel:NodeType rdf:about="&qel;Literal">
+    <rdfs:label xml:lang="en">Literal</rdfs:label>
+    <rdfs:comment xml:lang="en">Represents RDF literal
+    nodes.</rdfs:comment>
+  </qel:NodeType>
+  <qel:NodeType rdf:about="&qel;NonLiteral">
+    <rdfs:label xml:lang="en">NonLiteral</rdfs:label>
+    <rdfs:comment xml:lang="en">Represents RDF non-literal
+    nodes.</rdfs:comment>
+  </qel:NodeType>
+  <qel:NodeType rdf:about="&qel;AnonymousResource">
+    <rdfs:label xml:lang="en">Literal</rdfs:label>
+    <rdfs:comment xml:lang="en">Represents RDF anonymous
+    resources.</rdfs:comment>
+  </qel:NodeType>
+  <qel:NodeType rdf:about="&qel;NonAnonymouResource">
+    <rdfs:label xml:lang="en">Literal</rdfs:label>
+    <rdfs:comment xml:lang="en">Represents RDF non-anonymous
+    resources.</rdfs:comment>
+  </qel:NodeType>
+<!-- RESULT CLASSES AND PROPERTIES -->
+  <rdfs:Class rdf:about="&qel;ResultSet">
+    <rdfs:subClassOf rdf:resource="&qel;VariableContainer" />
+    <rdfs:label xml:lang="en">Result set</rdfs:label>
+    <rdfs:comment xml:lang="en">Instances of this class are QEL
+    result sets.</rdfs:comment>
+  </rdfs:Class>
+  <rdf:Property rdf:about="&qel;query">
+    <rdfs:domain rdf:resource="&qel;ResultSet" />
+    <rdfs:range rdf:resource="&qel;Query" />
+    <rdfs:label xml:lang="en">Query</rdfs:label>
+    <rdfs:comment xml:lang="en">The query belonging to a result
+    set.</rdfs:comment>
+  </rdf:Property>
+  <rdf:Property rdf:about="&qel;result">
+    <rdfs:domain rdf:resource="&qel;ResultSet" />
+    <rdfs:range rdf:resource="&rdf;Seq" />
+    <rdfs:label xml:lang="en">Result</rdfs:label>
+    <rdfs:comment xml:lang="en">A result belonging to a result
+    set.</rdfs:comment>
+  </rdf:Property>
+<!-- QEL IMPLEMENTATION CAPABILITIES -->
+  <rdfs:Class rdf:about="&qel;QELImplementation">
+    <rdfs:label xml:lang="en">QEL implementation</rdfs:label>
+    <rdfs:comment xml:lang="en">Instances of this class are QEL
+    implementations.</rdfs:comment>
+  </rdfs:Class>
+  <rdf:Property rdf:about="&qel;supportsComplexity">
+    <rdfs:domain rdf:resource="&qel;QELImplementation" />
+    <rdfs:range rdf:resource="&qel;Complexity" />
+    <rdfs:label xml:lang="en">Supports complexity</rdfs:label>
+    <rdfs:comment xml:lang="en">The complexity that an
+    implementation supports for non-outer join
+    queries.</rdfs:comment>
+  </rdf:Property>
+  <rdf:Property rdf:about="&qel;supportsOuterJoinComplexity">
+    <rdfs:domain rdf:resource="&qel;QELImplementation" />
+    <rdfs:range rdf:resource="&qel;Complexity" />
+    <rdfs:label xml:lang="en">Supports outer join
+    complexity</rdfs:label>
+    <rdfs:comment xml:lang="en">The complexity that an
+    implementation supports for outer join queries.</rdfs:comment>
+  </rdf:Property>
+  <rdfs:Class rdf:about="&qel;Complexity">
+    <rdfs:label xml:lang="en">Complexity</rdfs:label>
+    <rdfs:comment xml:lang="en">A query complexity.</rdfs:comment>
+  </rdfs:Class>
+  <qel:Complexity rdf:about="&qel;RulelessQueries">
+    <rdfs:label xml:lang="en">Ruleless queries</rdfs:label>
+    <rdfs:comment xml:lang="en">The complexity of rule-less
+    queries.</rdfs:comment>
+  </qel:Complexity>
+  <qel:Complexity rdf:about="&qel;ConjunctiveQueries">
+    <rdfs:label xml:lang="en">Conjunctive queries</rdfs:label>
+    <rdfs:comment xml:lang="en">The complexity of conjunctive
+    queries.</rdfs:comment>
+  </qel:Complexity>
+  <qel:Complexity rdf:about="&qel;DisjunctiveQueries">
+    <rdfs:label xml:lang="en">Disjunctive queries</rdfs:label>
+    <rdfs:comment xml:lang="en">The complexity of disjunctive
+    queries.</rdfs:comment>
+  </qel:Complexity>
+  <qel:Complexity rdf:about="&qel;LinearRecursiveQueries">
+    <rdfs:label xml:lang="en">Linear recursive queries</rdfs:label>
+    <rdfs:comment xml:lang="en">The complexity of linear recursive
+    queries.</rdfs:comment>
+  </qel:Complexity>
+  <qel:Complexity rdf:about="&qel;GeneralRecursiveQueries">
+    <rdfs:label xml:lang="en">General recursive
+    queries</rdfs:label>
+    <rdfs:comment xml:lang="en">The complexity of general recursive
+    queries.</rdfs:comment>
+  </qel:Complexity>
+  <rdf:Property rdf:about="&qel;supportsBuiltin">
+    <rdfs:domain rdf:resource="&qel;QELImplementation" />
+    <rdfs:range rdf:resource="&qel;BuiltinPredicate" />
+    <rdfs:label xml:lang="en">Supports built-in
+    predicate</rdfs:label>
+    <rdfs:comment xml:lang="en">A built-in predicate that the
+    implementation supports.</rdfs:comment>
+  </rdf:Property>
+  <rdf:Property rdf:about="&qel;supportsNegation">
+    <rdfs:domain rdf:resource="&qel;QELImplementation" />
+    <rdfs:range rdf:resource="&xsd;boolean" />
+    <rdfs:label xml:lang="en">Supports negation</rdfs:label>
+    <rdfs:comment xml:lang="en">Whether the implementation supports
+    negation of built-in predicates.</rdfs:comment>
+  </rdf:Property>
+</rdf:RDF>
+

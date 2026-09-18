@@ -1,0 +1,28 @@
+/*****************************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 1993 Tore Risch, EDSLAB
+ * $RCSfile: lobbug.osql,v $
+ * $Revision: 1.2 $ $Date: 2011/01/28 09:18:11 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ ****************************************************************************/
+
+create function ov(integer i)-> integer as stored;
+set ov(1)=3;
+create function try(integer r,integer s)-> integer as
+  for each where notany((select ov(r) from integer j
+              where s=j and j=2)) 
+   return r;
+create function foo(integer)-> integer as select 1;
+lisp;
+(checkequal "The Loborg Bug"
+	    ((osql "try(1,2);")nil)
+	    ((osql "try(3,2);")'((3)))
+	    ((osql "try(1,3);")'((1)))
+	    ((osql "try(4,3);")'((4))))
+(checkequal "Dummy Select"
+	((osql "select 1,foo(1);") '((1 1))))
+:osql
+rollback;

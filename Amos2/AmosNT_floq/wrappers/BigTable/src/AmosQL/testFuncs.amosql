@@ -1,0 +1,152 @@
+
+create function q9()->bag of charstring as 
+select cityname(c) from City_ds1 c;
+
+pc("q9");
+
+q9();
+
+
+
+create function q10()->charstring as
+select cityname(c) from City_ds1 c where population(c) > 800000;
+
+pc("q10");
+
+
+q10();
+
+
+
+create function q11()->charstring as
+select cityname(c) from City_ds1 c 
+	 where population(c) > 800000 and
+	       population(c) < 2000000;
+
+pc("q11");
+
+
+q11();
+
+
+
+create function q12()->charstring as
+select cityname(c) from City_ds1 c where population(c)>800000 and
+                                       state(c)='CA';
+
+pc("q12");
+
+
+q12();
+
+
+
+create function q13()-><charstring,charstring> as
+select cityname(c), fullname(s)
+         from City_ds1 c, State_ds1 s
+         where population(c)>800000 and
+               state(c) = shortname(s);
+
+pc("q13");
+
+
+q13();
+
+
+
+create function q14()-><charstring,charstring> as
+select cityname(c), fullname(s)
+         from City_ds1 c, State_ds1 s
+         where population(c)>800000 and population(c)<2000000 and
+               state(c) = shortname(s);
+
+pc("q14");
+
+
+q14();
+
+
+
+create function q15()-><charstring,charstring> as
+select cityname(c), fullname(s)
+         from City_ds1 c, State_ds1 s
+         where population(c)>800000 and shortname(s)>'CA' and
+               state(c) = shortname(s);
+
+pc("q15");
+
+
+q15();
+
+
+
+create function q16()->charstring as
+select cityname(c) from City_ds2 c where population(c) > 800000;
+
+pc("q16");
+
+
+q16();
+
+
+
+create function q17()->charstring as
+select cityname(c) from City_ds2 c 
+         where population(c) > 800000 and
+               population(c) < 2000000;
+
+pc("q17");
+
+
+q17();
+
+
+
+create function q18()->charstring as
+select cityname(c) from City_ds2 c where population(c)>800000 and
+                                       state(c)='CA';
+
+pc("q18");
+
+
+q18();
+
+
+
+create function q19()-><charstring,charstring> as
+select cityname(c), fullname(s)
+         from City_ds1 c, State_ds2 s
+         where population(c)>800000 and
+               state(c) = shortname(s);
+
+pc("q19");
+
+
+q19();
+
+
+
+create function q20()-><charstring,charstring> as
+select cityname(c), fullname(s)
+         from City_ds2 c, State_ds1 s
+         where population(c)>800000 and population(c)<2000000 and
+               state(c) = shortname(s);
+
+pc("q20");
+
+
+q20();
+
+
+
+create function q21()-><charstring,charstring> as
+select cityname(c), fullname(s)
+         from City_ds2 c, State_ds2 s
+         where population(c)>800000 and shortname(s)>'CA' and
+               state(c) = shortname(s);
+
+pc("q21");
+
+
+q21();
+

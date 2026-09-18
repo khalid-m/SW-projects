@@ -1,0 +1,75 @@
+/*****************************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 1993 Tore Risch, EDSLAB
+ * $RCSfile: family.osql,v $
+ * $Revision: 1.1.1.1 $ $Date: 1999/01/30 22:26:02 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ ****************************************************************************/
+
+create function father (charstring c) ->charstring f as stored;
+create function mother (charstring c)->charstring m as stored;
+create function orphan (charstring p) ->boolean as stored;
+create function french (charstring p)->boolean as stored;
+
+set father("jane")="bill";
+set father("liz")="ed";
+set father("ed")="henry";
+set father("mary")="henry";
+set father("max")="henry";
+set father("ann")="john";
+set father("bill")="kent";
+set father("sally")="kent";
+
+
+set mother("bill")="ann";
+set mother("sally")="ann";
+set mother("liz")="jane";
+set mother("mary")="linda";
+set mother("max")="linda";
+set mother("ann")="nicole";
+set mother("ed")="sally";
+
+set orphan("henry")=TRUE;
+set orphan("john")=TRUE;
+set orphan("kent")=TRUE;
+set orphan("linda")=TRUE;
+set orphan("nicole")=TRUE;
+
+set french("henry")=TRUE;
+set french("john")=TRUE;
+set french("kent")=TRUE;
+set french("nicole")=TRUE;
+
+create function parent (Charstring child)->charstring parent 
+		 as select p from charstring p
+		 where p = father(child) or p = mother(child);
+
+create function ancestor(charstring Descendant)->charstring Ancestor
+		 as select ancestor
+		 from charstring Ancestor,charstring parent
+		 where  ancestor = parent(descendant) or
+			(ancestor = ancestor(parent) and
+			 parent = parent(descendant));
+create function ancestor0(charstring Descendant)->charstring Ancestor
+		 as select ancestor
+		 from charstring ancestor
+		 where ancestor = parent(descendant) or
+			ancestor = ancestor0(parent(descendant));
+create function same_generation(charstring X)->charstring Y
+		 as select y
+		 from charstring y,charstring xparent,charstring yparent
+		 where 	(yparent = same_generation(xparent)
+				and xparent = parent(x)
+				and yparent = parent(y))
+			or (x = y and orphan(x));
+create function same_generation0 (charstring x)->charstring y
+		 as select y from charstring y
+		 where  parent(y) = same_generation0(parent(x)) 
+			or (x = y and orphan(x));
+
+rollback;
+
+

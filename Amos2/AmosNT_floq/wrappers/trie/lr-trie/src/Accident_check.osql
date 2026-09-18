@@ -1,0 +1,195 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Mårten Svensson, UDBL
+ * $RCSfile: Accident_check.osql,v $
+ * $Revision: 1.1 $ $Date: 2011/08/24 05:02:17 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Functions for finding accidents
+ *
+ ****************************************************************************
+ * $Log: Accident_check.osql,v $
+ * Revision 1.1  2011/08/24 05:02:17  soba1559
+ * Adding trie based implementation of the Linear Road Benchmark
+ *
+ * Revision 1.2  2010/06/02 12:19:43  torer
+ * *** empty log message ***
+ *
+ * Revision 1.1  2010/04/01 11:38:57  torer
+ * Original lr version
+ *
+ * Revision 1.4  2007/11/05 15:08:55  masv3245
+ * Removed some of the vectors
+ *
+ * Revision 1.3  2007/11/05 09:16:22  masv3245
+ * added comments to code, removed some old junk
+ *
+ * Revision 1.2  2007/10/22 17:31:25  torer
+ * Code indented and simplified
+ *
+ ****************************************************************************/
+
+create function accident()-> <integer xway, integer seg,integer dir, 
+                              integer t,integer min>
+  as stored;
+
+create function add_accident(integer xway, integer seg,integer dir, integer t,
+                             integer min)->Boolean
+  as add accident()=<xway,seg,dir,t,min>;
+
+create function is_accident_area(integer xway, integer seg, integer dir)
+                                 -> Boolean
+  as select true where (dir = 1 and
+                        some(select xway 
+                             from integer t,integer s,integer min 
+                             where accident()=<xway,s,dir,t,min>
+                               and s<=seg and s>seg-5
+                               and current_minute()>min))
+                    or (dir != 1 and
+                        some(select xway 
+                             from integer t,integer s,integer min 
+                             where accident()=<xway,s,dir,t,min>
+                               and s>=seg 
+                               and s<seg+5
+                               and current_minute()>min));
+
+create function get_accident_seg(integer xway)->integer
+  as select seg 
+     from integer seg, integer dir, integer t,integer min 
+     where accident()=<xway,seg,dir,t,min>;
+
+create function no_accident_in_seg(integer xway, integer seg, integer dir)
+                                  ->boolean
+  as select notany(select t from integer t,integer min 
+                   where accident()=<xway,seg,dir,t,min>);
+
+create function stopped_car()-><integer p, integer x, integer d, integer t, 
+                                integer v,integer lane>
+  as stored;
+
+create function add_stopped_car(integer v, integer x, integer p, integer d, 
+                                integer t,integer lane)->Boolean
+  as add stopped_car()=<p,x,d,t,v,lane>;
+
+create function remove_stopped_cars(integer sec)->boolean
+  as remove stopped_car()=<p,x,d,t,v,lane>
+       from integer p, integer x, integer d, integer t, integer v,integer lane
+       where t < sec-120;
+
+create function Smashed_car()-><integer vid,integer pos,integer xway, 
+                               integer seg,integer dir,integer lane>
+  as stored;
+
+create function add_Smashed_car(integer vid,integer pos,integer xway, 
+                                integer seg,integer dir,integer lane)
+                                ->Boolean
+  as add Smashed_car()=<vid,pos,xway,seg,dir,lane>;
+
+/*	
+create function remove_smashed_car(integer xway, integer seg, integer dir)
+                                  ->Boolean
+  as remove smashed_car()=<vid,pos,xway,seg,dir,lane> 
+       from integer vid, integer pos, integer lane;
+*/
+
+create function remove_smashed_car(integer xway)->Boolean
+  as remove smashed_car()=<vid,pos,xway,seg,dir,lane> 
+       from integer vid, integer pos,integer seg,integer dir, integer lane;
+
+create function is_Smashed(integer vid)->integer
+  as select count(select v 
+                  from integer v, integer pos,integer xway,integer seg,
+                       integer dir,integer lane
+                  where Smashed_car()=<v,pos,xway,seg,dir,lane>
+                    and v=vid);
+
+create function giveme_smashed_pos(integer vid)->integer
+  as select pos 
+     from integer v,integer pos,integer xway,integer seg,integer dir,
+          integer lane
+     where smashed_car()=<v,pos,xway,seg,dir,lane>
+       and v=vid;
+
+create function giveme_smashed_seg(integer vid)->integer
+  as select seg 
+     from integer v,integer pos,integer xway,integer seg,integer dir,
+          integer lane
+     where smashed_car()=<v,pos,xway,seg,dir,lane>
+       and v=vid;
+
+create function giveme_smashed_xway(integer vid)->integer
+  as select xway 
+     from integer v,integer pos,integer xway,integer seg,integer dir,
+          integer lane 
+     where smashed_car()=<v,pos,xway,seg,dir,lane>
+       and v=vid;
+
+create function giveme_smashed_dir(integer vid)->integer
+  as select dir 
+     from integer v,integer pos,integer xway,integer seg,integer dir,
+          integer lane 
+     where smashed_car()=<v,pos,xway,seg,dir,lane>
+       and v=vid;
+
+create function stopped_at(integer x, integer pos, integer dir,integer lane)
+                           -><integer,integer>
+  as select v, count(select v from integer t 
+                     where stopped_car()=<pos,x,dir,t,v,lane>)
+     from integer v
+     where v in (select distinct vid 
+                 from integer vid, integer t 
+                 where stopped_car()=<pos,x,dir,t,vid,lane>);
+
+create function collided_vids_at(integer x, integer pos, integer dir,
+                                 integer lane)->vector of integer
+  as select vectorof(select vehicle
+                     from integer vehicle, integer no_stopped
+                     where <vehicle,no_stopped> = stopped_at(x,pos,dir,lane)
+                       and no_stopped > 3);
+
+create function accident_remove_order()-><integer xway,integer min>
+  as stored;
+
+create function add_accident_remove_order(integer xway, integer min)->Boolean
+  as add accident_remove_order()=<xway,min>;
+
+create function remove_accident(integer xway)->Boolean
+  as begin
+     remove accident()=<xway,seg,dir,t,min> 
+       from integer seg,integer dir,integer t,integer min;
+     remove_smashed_car(xway);
+     remove accident_remove_order()=<xway,min> 
+       from integer min;
+     end;
+
+create function check_kill_accident(integer xway)->Boolean
+  as if(current_minute() in (select min 
+                             from integer min 
+                             where accident_remove_order()=<xway,min>))
+     then remove_accident(xway);
+
+/* accident check
+1. Check if VID is a smashed car
+2. If not add car to stopped_car
+3. Check if there are two stopped cars at pos and four reports each
+4. If so add the cars to smashed_car
+5. Add accident
+*/
+ 
+create function accident_check(integer sec, integer vid, integer xway, integer lane, integer dir, integer seg,integer pos)->boolean
+  as if  is_smashed(vid)<1 /*check if carid is a samshed_car*/
+     then begin
+  		declare vector of integer stopped;
+	  	add_stopped_car(vid,xway,pos,dir,sec,lane);
+	  	set stopped = collided_vids_at(xway,pos,dir,lane);
+	  	if(dim(stopped)>1) 
+                then begin
+	                select add_Smashed_car(v,pos,xway,seg,dir,lane) 
+                        from integer v 
+                        where v in stopped;
+                      print({"accident detected in xway,seg,vid,minute,sec:",xway, seg,
+                            vid, current_minute(),sec});	
+	              add_accident(xway,seg,dir,sec,current_minute());
+	            end;
+	  end;

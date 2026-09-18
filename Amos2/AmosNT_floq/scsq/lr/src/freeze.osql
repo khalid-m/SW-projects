@@ -1,0 +1,210 @@
+/*-*-sql-*-*******************************************************************/
+
+/* Essentially testing parasplit: random split, // fsplit, tcount */
+
+create function rsplit_fsplit_tcount(vector of charstring infiles, integer inl,
+integer mult, integer rsplitfo)
+-> vector as
+select in(mergestreams(proc))
+from stream of iarray src, vector of stream of iarray rsplit, integer fo,
+vector of stream fsplit, vector of stream proc
+where proc = mapstreams(premerge(fsplit, rsplitfo, fo), #'stcount')
+and fsplit = unpackfsplit(rsplit, fo, #'xwayrfn', #'q2bfn', 15)
+and rsplit = rsplit_force_flex(src, rsplitfo, {'hostnum':0, 'rem':'rsplit'})
+and src = ostream(newspflex(
+streamof(clrmultiply(in(lreadfastbins(infiles)), inl, mult)),
+{'hostnum':0, 'rem':'src'}), 0)
+and fo = inl*mult;
+
+/* random split, // fsplit, LRbin, tcount, mergestreams (uall of counts) */
+
+create function rsplit_fsplit_lrbin_tcount(
+vector of charstring infiles, integer inl, integer mult, integer rsplitfo)
+ -> vector as
+select in(mergestreams(cnt))
+from stream of iarray src, vector of stream of iarray rsplit, integer fo,
+vector of stream fsplit, vector of stream proc, vector of stream cnt
+where cnt = mapstreams(proc, #'stcount')
+and proc = mapstreams(premerge(fsplit, rsplitfo, fo), #'lrbin')
+and fsplit = unpackfsplit(rsplit, fo, #'xwayrfn', #'q2bfn', 15)
+and rsplit = rsplit_force_flex(src, rsplitfo, {'hostnum':0, 'rem':'rsplit'})
+and src = ostream(newspflex(
+streamof(clrmultiply(in(lreadfastbins(infiles)), inl, mult)),
+{'hostnum':0, 'rem':'src'}), 0)
+and fo = inl*mult;
+
+/* random split, // fsplit, LRbin, uall of all LRbins */
+
+create function rsplit_fsplit_lrbin_uallall_tcount(
+vector of charstring infiles, integer inl, integer mult, integer rsplitfo)
+ -> vector as
+select in(res)
+from stream of iarray src, vector of stream of iarray rsplit, integer fo,
+vector of stream fsplit, vector of stream proc, stream res
+where res = ostream(newsp(stcount(mergestreams(proc))), 0)
+and proc = mapstreams(premerge(fsplit, rsplitfo, fo), #'lrbin')
+and fsplit = unpackfsplit(rsplit, fo, #'xwayrfn', #'q2bfn', 15)
+and rsplit = rsplit_force_flex(src, rsplitfo, {'hostnum':0, 'rem':'rsplit'})
+and src = ostream(newspflex(
+streamof(clrmultiply(in(lreadfastbins(infiles)), inl, mult)),
+{'hostnum':0, 'rem':'src'}), 0)
+and fo = inl*mult;
+
+/* random split, // fsplit, LRbin, ## BG_uall ## of all LRbins */
+
+create function rsplit_fsplit_lrbin_bguallall_tcount(
+vector of charstring infiles, integer inl, integer mult, integer rsplitfo)
+ -> vector as
+select in(res)
+from stream of iarray src, vector of stream of iarray rsplit, integer fo,
+vector of stream fsplit, vector of stream proc, stream res
+where res = ostream(newsp(stcount(bgmerge(proc, 0.001))), 0)
+and proc = mapstreams(premerge(fsplit, rsplitfo, fo), #'lrbin')
+and fsplit = unpackfsplit(rsplit, fo, #'xwayrfn', #'q2bfn', 15)
+and rsplit = rsplit_force_flex(src, rsplitfo, {'hostnum':0, 'rem':'rsplit'})
+and src = ostream(newspflex(
+streamof(clrmultiply(in(lreadfastbins(infiles)), inl, mult)),
+{'hostnum':0, 'rem':'src'}), 0)
+and fo = inl*mult;
+
+/* random split, // fsplit, LRbin+oesplit, uall of each eventtype */
+
+create function rsplit_fsplit_lrbin_uall_tcount(
+vector of charstring infiles, integer inl, integer mult, integer rsplitfo)
+ -> vector as
+select in(res)
+from stream of iarray src, vector of stream of iarray rsplit, integer fo,
+vector of stream fsplit, vector of stream proc,
+stream t0, stream t1, stream t2, stream res
+where res = mergestreams({t0, t1, t2})
+and t2 = ostream(newsp(stcount(mergestreams(vectorize(
+select i, proc[i*3 + 2] from integer i where i in iota(0, dim(proc)/3))))), 0)
+and t1 = ostream(newsp(stcount(mergestreams(vectorize(
+select i, proc[i*3 + 1] from integer i where i in iota(0, dim(proc)/3))))), 0)
+and t0 = ostream(newsp(stcount(mergestreams(vectorize(
+select i, proc[i*3 + 0] from integer i where i in iota(0, dim(proc)/3))))), 0)
+and proc = mapflex(premerge(fsplit, rsplitfo, fo), #'lrbin',
+make_record({'imagesize', 200000000, 'nsub',3,'sfn',#'oesplit'}))
+and fsplit = unpackfsplit(rsplit, fo, #'xwayrfn', #'q2bfn', 15)
+and rsplit = rsplit_force_flex(src, rsplitfo, {'hostnum':0, 'rem':'rsplit'})
+and src = ostream(newspflex(
+streamof(clrmultiply(in(lreadfastbins(infiles)), inl, mult)),
+{'hostnum':0, 'rem':'src'}), 0)
+and fo = inl*mult;
+
+/* random split, // fsplit, LRbin+oesplit, ## BG_uall ## of each eventtype */
+
+create function rsplit_fsplit_lrbin_bguall_tcount(
+vector of charstring infiles, integer inl, integer mult, integer rsplitfo)
+ -> vector as
+select in(res)
+from stream of iarray src, vector of stream of iarray rsplit, integer fo,
+vector of stream fsplit, vector of stream proc,
+stream t0, stream t1, stream t2, stream res
+where res = mergestreams({t0, t1, t2})
+and t2 = ostream(newsp(stcount(bgmerge(vectorize(
+select i, proc[i*3 + 2] from integer i
+where i in iota(0, dim(proc)/3)), 0.001))), 0)
+and t1 = ostream(newsp(stcount(bgmerge(vectorize(
+select i, proc[i*3 + 1] from integer i
+where i in iota(0, dim(proc)/3)), 0.001))), 0)
+and t0 = ostream(newsp(stcount(bgmerge(vectorize(
+select i, proc[i*3 + 0] from integer i
+where i in iota(0, dim(proc)/3)), 0.001))), 0)
+and proc = mapflex(premerge(fsplit, rsplitfo, fo), #'lrbin',
+make_record({'imagesize', 200000000, 'nsub',3,'sfn',#'oesplit'}))
+and fsplit = unpackfsplit(rsplit, fo, #'xwayrfn', #'q2bfn', 15)
+and rsplit = rsplit_force_flex(src, rsplitfo, {'hostnum':0, 'rem':'rsplit'})
+and src = ostream(newspflex(
+streamof(clrmultiply(in(lreadfastbins(infiles)), inl, mult)),
+{'hostnum':0, 'rem':'src'}), 0)
+and fo = inl*mult;
+
+/* rsplit-//fsplit-LRbin+oesplit+multi-BGuallx3 */
+
+create function rs_fs_lrbinmulti_bguall_tcount(
+vector of charstring infiles, integer inl, integer mult, integer rsplitfo, 
+integer postmsz) -> vector as
+select in(res)
+from stream of iarray src, vector of stream of iarray rsplit, integer fo,
+vector of stream fsplit, vector of stream proc,
+stream t0, stream t1, stream t2, stream res
+where res = mergestreams({t0, t1, t2})
+and t2 = ostream(newsp(stcount(bgmerge(vectorize(
+select i, proc[i*3 + 2] from integer i
+where i in iota(0, dim(proc)/3)), 0.001))), 0)
+and t1 = ostream(newsp(stcount(bgmerge(vectorize(
+select i, proc[i*3 + 1] from integer i
+where i in iota(0, dim(proc)/3)), 0.001))), 0)
+and t0 = ostream(newsp(stcount(bgmerge(vectorize(
+select i, proc[i*3 + 0] from integer i
+where i in iota(0, dim(proc)/3)), 0.001))), 0)
+and proc = mapflex(premerge(fsplit, rsplitfo, fo), #'lrbin',
+make_record({'imagesize', 200000000, 'nsub',3,'sfn',#'oesplit', 'na2m',
+{'ma-size': postmsz}}))
+and fsplit = unpackfsplit(rsplit, fo, #'xwayrfn', #'q2bfn', 15)
+and rsplit = rsplit_force_flex(src, rsplitfo, {'hostnum':0, 'rem':'rsplit'})
+and src = ostream(newspflex(
+streamof(clrmultiply(in(lreadfastbins(infiles)), inl, mult)),
+{'hostnum':0, 'rem':'src'}), 0)
+and fo = inl*mult;
+
+/* rsplit - //fsplit - //LRbin+oesplit+multi - 2xuall//zip+unpack+tcount */
+
+create function rs_fs_lrbinmulti_bguazipup_tcount(
+vector of charstring infiles, integer inl, integer mult, integer rsplitfo, 
+integer postmsz) -> vector as
+select in(res)
+from stream of iarray src, vector of stream of iarray rsplit, integer fo,
+vector of stream fsplit, vector of stream proc,
+stream t0, stream t1, stream t2, stream res
+where res = mergestreams({t0, t1, t2})
+and t2 = ostream(newsp(stcount(
+lzipmmaplayer(vectorize(select i, proc[i*3 + 2] from integer i
+where i in iota(0, dim(proc)/3)), 1, 6, #'lrfd')[0])), 0)
+and t1 = ostream(newspflex(stcount(streamof(multi2na(in_d(bgmerge(vectorize(
+select i, proc[i*3 + 1] from integer i
+where i in iota(0, dim(proc)/3)), 0.001)), 5))), {'rem':'t1'}), 0)
+and t0 = ostream(newspflex(stcount(streamof(multi2na(in_d(bgmerge(vectorize(
+select i, proc[i*3 + 0] from integer i
+where i in iota(0, dim(proc)/3)), 0.001)), 6))), {'rem':'t0'}), 0)
+and proc = mapflex(premerge(fsplit, rsplitfo, fo), #'lrbin',
+make_record({'imagesize', 200000000, 'nsub',3,'sfn',#'oesplit', 'na2m',
+{'ma-size': postmsz}}))
+and fsplit = unpackfsplit(rsplit, fo, #'xwayrfn', #'q2bfn', 15)
+and rsplit = rsplit_force_flex(src, rsplitfo, {'hostnum':0, 'rem':'rsplit'})
+and src = ostream(newspflex(
+streamof(clrmultiply(in(lreadfastbins(infiles)), inl, mult)),
+{'hostnum':0, 'rem':'src'}), 0)
+and fo = inl*mult;
+
+/* rs - //fs - //LRbin+oesplit+multi - 2xuall//sqtreezip+unpack+tcount */
+
+create function rs_fs_lrbinmulti_bguasqtzipup_tcount(
+vector of charstring infiles, integer inl, integer mult, integer rsplitfo, 
+integer postmsz) -> vector as
+select in(res)
+from stream of iarray src, vector of stream of iarray rsplit, integer fo,
+vector of stream fsplit, vector of stream proc, vector of stream t20,
+stream t0, stream t1, stream t2, stream res
+where res = zipstreams({t0, t1, t2})
+and t2 = ostream(newspflex(stcount(lzipmmaplayer(t20, 1, 6, #'lrfd')[0]), 
+{'rem':'t2'}), 0)
+and t20 = lzipmmaplayerm(vectorize(select i, proc[i*3 + 2]
+from integer i where i in iota(0, dim(proc)/3)), 
+integer(sqrt(fo)), 6, #'lrfd', postmsz)
+and t1 = ostream(newspflex(stcount(streamof(multi2na(in_d(bgmerge(vectorize(
+select i, proc[i*3 + 1] from integer i
+where i in iota(0, dim(proc)/3)), 0.001)), 5))), {'rem':'t1'}), 0)
+and t0 = ostream(newspflex(stcount(streamof(multi2na(in_d(bgmerge(vectorize(
+select i, proc[i*3 + 0] from integer i
+where i in iota(0, dim(proc)/3)), 0.001)), 6))), {'rem':'t0'}), 0)
+and proc = mapflex(premerge(fsplit, rsplitfo, fo), #'lrbin',
+make_record({'imagesize', 200000000, 'nsub',3,'sfn',#'oesplit', 'na2m',
+{'ma-size': postmsz}}))
+and fsplit = unpackfsplit(rsplit, fo, #'xwayrfn', #'q2bfn', 15)
+and rsplit = rsplit_force_flex(src, rsplitfo, {'hostnum':0, 'rem':'rsplit'})
+and src = ostream(newspflex(
+streamof(clrmultiply(in(lreadfastbins(infiles)), inl, mult)),
+{'hostnum':0, 'rem':'src'}), 0)
+and fo = inl*mult;

@@ -1,0 +1,30 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2008 Ruslan Fomkin, UDBL
+ * $RCSfile: AllBkgs.2003.MAN.osql,v $
+ * $Revision: 1.2 $ $Date: 2008/01/21 16:02:12 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Experiments to measure performance of cuts over all 41 bks files. 
+ * For simple (ranksort) optimization on default AMOS cost model (i.e. without
+ * cost model for aggregates and udfs.
+ * Cut query based on 2003 in best order, which was found manualy.
+ * Run this script in ALEH started by run.current.limited.sh.
+ ****************************************************************************
+ * $Log: AllBkgs.2003.MAN.osql,v $
+ * Revision 1.2  2008/01/21 16:02:12  ruslan
+ * bug is fixed
+ *
+ * Revision 1.1  2008/01/21 12:12:44  ruslan
+ * experiment on best effort manual plan
+ *
+ ****************************************************************************/
+
+cd('osql');
+<'../experiments/stream.osql';
+
+openwritefile('../experiments/AllBkgs.2003.MAN.txt');
+manbkgs(5);
+closewritefile();

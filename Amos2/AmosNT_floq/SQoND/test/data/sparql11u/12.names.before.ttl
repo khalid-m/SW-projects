@@ -1,0 +1,8 @@
+# Graph: http://example.com/names
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+
+<http://example/william> a foaf:Person .
+<http://example/william> foaf:givenName "William" .
+
+<http://example/fred> a foaf:Person .
+<http://example/fred> foaf:givenName "Fred" .

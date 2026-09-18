@@ -1,0 +1,16 @@
+  create function CityToZipCode(charstring city)-><charstring zipcode>
+	as select v[j]
+	   from vector r, integer i, vector v, integer j
+	  where r =callwebservice("C:/AmosNT/wrappers/WSMED/wsdl/ZipCode1.wsdl","CityToZipCode",{city})and
+	  v = r[i];
+
+
+lisp;
+(defun CityToZipCode_f (fno city zipcode)
+	(mapfunctionres 'CityToZipCode (list city) nil
+		  (f/l (row)
+		       (osql-result city (nth 0 row)))))
+:osql
+create function CityToZipCode_cc()-><charstring city, charstring zipcode> as foreign "CityToZipCode_f";
+
+create function #CityToZipCode(charstring city,charstring zipcode)-> boolean as select where CityToZipCode_cc()=<city,zipcode>; 

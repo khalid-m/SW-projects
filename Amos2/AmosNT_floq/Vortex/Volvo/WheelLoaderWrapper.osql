@@ -1,0 +1,100 @@
+/*-*-sql-*-*******************************************************************
+ * 
+ * Author: 2013 Elisabeth Ibeh, Volvo CE, Tore Risch, Cheng Xu, UDBL
+ * 
+ * Description: Volvo CE Wheel Loader CanBus stream wrapper meta-data
+ * Wrapper functions for accessing Wheel Loader Signals in the SVALI DSMS
+ * for  Frame ID A, Frame ID B, Frame ID CF00F03, Frame ID CF00E03 and  
+ * Frame ID F in the Volvo L90F machine
+ *
+ ****************************************************************************/
+
+create function frameKind(Vector of Number f) -> Real
+  as f[0];
+
+create function timeStamp(Vector of Number f) -> Real
+  as f[1];
+
+
+create function isFrameA(Vector of Number f) -> Boolean
+  as frameKind(f) = 10.0;
+
+create function pressureForward1(Vector of Number f) -> Real
+  as select f[2] where isFrameA(f);
+
+create function pressureForward2(Vector of Number f) -> Real
+  as select f[3] where isFrameA(f);
+
+create function mainPressure(Vector of Number f) -> Real
+  as select f[4] where isFrameA(f);
+
+create function forwardPressure(Vector of Number f) -> Real
+  as select f[5] where isFrameA(f);
+
+
+
+create function isFrameB(Vector of Number f) -> Boolean
+  as frameKind(f) = 11.0;
+
+create function pressureR(Vector of Number f) -> Real
+  as select f[2] where isFrameB(f);
+
+create function rearTorque(Vector of Number f) -> Real
+  as select f[3] where isFrameB(f);
+
+create function frontTorque(Vector of Number f) -> Real
+  as select f[4] where isFrameB(f);
+
+create function isFrameCF00F03(Vector of Number f) -> Boolean
+  as frameKind(f) = -1930424573.0;
+
+create function inputSpeed(Vector of Number f) -> Real
+  as select f[2] where isFrameCF00F03(f);
+
+create function turbTorque(Vector of Number f) -> Real
+  as select f[3] where isFrameCF00F03(f);
+
+create function TrmOilTemp(Vector of Number f) -> Real
+  as select f[4] where isFrameCF00F03(f);
+
+create function Shifting1To2(Vector of Number f) -> Real
+  as select f[5] where isFrameCF00F03(f);
+
+create function OffgSlipping(Vector of Number f) -> Real
+  as select f[6] where isFrameCF00F03(f);
+
+create function OngSlipping(Vector of Number f) -> Real
+  as select f[7] where isFrameCF00F03(f);
+
+create function Gear(Vector of Number f) -> Real
+  as select f[8]where isFrameCF00F03(f);
+
+create function DirGear(Vector of Number f)-> Real
+  as select f[9] where isFrameCF00F03(f);
+
+
+
+create function isFrameCF00E03(Vector of Number f) -> Boolean
+  as frameKind(f) = -1930424829.0;
+
+create function diffSpeed1(Vector of Number f) -> Real
+  as select f[2] where isFrameCF00E03(f);
+
+create function diffSpeed2(Vector of Number f) -> Real
+  as select f[3] where isFrameCF00E03(f);
+
+create function turbSpeed(Vector of Number f) -> Real
+  as select f[4] where isFrameCF00E03(f);
+
+create function outgSpeed(Vector of Number f) -> Real
+  as select f[5] where isFrameCF00E03(f);
+
+
+
+create function isFrameF(Vector of Number f) -> Boolean
+  as frameKind(f) = 15.0;
+
+create function outputCoolerTemp(Vector of Number f) -> Real
+  as select f[2] where isFrameF(f);
+
+commit;

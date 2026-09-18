@@ -1,0 +1,98 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: 2012, Tore Risch, UDBL
+ * $RCSfile: join.amosql,v $
+ * $Revision: 1.2 $ $Date: 2012/02/15 10:18:47 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Join algorithms as foreign Python functions
+ ****************************************************************************/
+
+extlang("python");
+
+/* Test database: */
+create function f1(Number k)-> Number v as stored;
+create_index("f1","k","mbtree","unique"); /* Btree index on join column */
+create function f2(Number k)-> Number v as stored;
+create_index("f2","k","mbtree","unique"); /* Btree index on join column */
+
+create function populate(Integer size)->Boolean
+  as for each Integer i where i in iota(1,size)
+         begin set f1(i) = rand(size);
+               set f2(i+integer(size/2)) = rand(size); 
+                   /* 50% overlap */
+         end; 
+
+populate(100);
+
+
+/************************** Nested loop join ********************************/
+create function nestedloopjoin(Bag b1, Bag b2, Number pos) -> Bag of Vector
+  /* Join bags b1 and b2 on position pos of tuples in the bags */
+  as for each Vector x where x in tuples(b1)
+         for each Vector y where y in tuples(b2)
+                                 and y[pos] = x[pos]
+            return concat(x,y); /* return is emit! */
+
+/* Same nested loop join implemented in Python: */
+create function py_nestedloopjoin(Bag b1, Bag b2, Integer pos)->Bag of Object
+  as foreign 'py:join.nestedloopjoin';
+
+count(nestedloopjoin((select k,f1(k) from Number k),
+                     (select k,f2(k) from Number k),
+                    0)); /* Join on key */
+
+count(nestedloopjoin((select k,f1(k) from Number k),
+                     (select k,f2(k) from Number k),
+                     1)); /* Join on value */
+
+count(py_nestedloopjoin((select k,f1(k) from Number k),
+                        (select k,f2(k) from Number k),
+                        0)); /* Join on key */
+
+count(py_nestedloopjoin((select k,f1(k) from Number k),
+                        (select k,f2(k) from Number k),
+                        1)); /* Join on value */
+
+/* Python implementation much slower because of repeated opening of scans! */
+
+/***************************** Merge join ************************************/
+create function mergejoin(Bag b1, Bag b2, Number pos) -> Bag of Vector
+  /* Join bags of tuples b1 and b2 on position pos.
+     Assumes both bags sorted on position pos */
+  as begin declare Scan c1, Scan c2;
+      open c1 for b1; next(c1);
+      open c2 for b2; next(c2);
+      loop if notany(this(c1)) then leave;
+           if notany(this(c2)) then leave;
+           if this(c1)[pos]<this(c2)[pos] then next(c1) 
+           else if this(c1)[pos]>this(c2)[pos] then next(c2)
+           else begin return concat(this(c1), this(c2)); /* emit */
+                      next(c1);
+                      next(c2);
+                      /* Notice that this code assumes 1-1 matchings 
+                         between c1 and c2 on position pos */
+                      /* What should happen if there could be 
+                         > 1 matching c2 for each c1?  */
+                end
+      end loop;
+      close c1;
+      close c2;
+     end;
+
+/* merge join implemented in Python: */
+create function py_mergejoin(Bag b1, Bag b2, Integer pos)->Bag of Object
+  as foreign 'py:join.mergejoin';
+
+
+/* Test merge join: */
+count(mergejoin((select k,f1(k) from Number k),
+                (select k,f2(k) from Number k),
+                0)); /* Join on sorted keys only */
+
+count(py_mergejoin((select k,f1(k) from Number k),
+                   (select k,f2(k) from Number k),
+                   0)); /* Join on sorted keys only */
+/* Very good Python performance! */
+

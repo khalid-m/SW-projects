@@ -1,0 +1,149 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2006 Ruslan Fomkin, UDBL
+ * $RCSfile: cuts.grouped.const.osql,v $
+ * $Revision: 1.2 $ $Date: 2006/11/14 15:45:15 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Cuts are implemented through groups, defined in lsp/grouping.lsp. This is
+ * used in the paper for the dynamic cost modeling.
+ ****************************************************************************
+ * $Log: cuts.grouped.const.osql,v $
+ * Revision 1.2  2006/11/14 15:45:15  ruslan
+ * redundant condition in the hadr top cut (okJets function) is removed
+ *
+ * Revision 1.1  2006/08/28 13:22:16  ruslan
+ * fragmentation code added
+ *
+ ****************************************************************************/
+
+<'formulas.osql';
+
+create function leptonsWithinEta (Event ev) -> Lepton as
+	select l from Lepton l
+	where l = leptons(ev) and abs(eta(l)) < 2.4;
+
+create function isolatedLeptons(Event ev) -> Lepton as
+	select l from Lepton l
+	where l=leptonsWithinEta(ev) and pt(l) > 7.0;
+
+create function TLCcount(event ev) -> Boolean as
+	select count(isolatedLeptons(ev))=3;
+
+create function TLCsome(event ev) -> Boolean as
+	select some(select r from real r 
+			where r=Pt(isolatedLeptons(ev)) and r>20.0);
+
+create function threeLeptonCut (Event ev) -> Boolean as
+	select group(theresolvent("TLCcount"),ev) and
+		group(theresolvent("TLCsome"),ev);
+
+create function oppositeLeptons(Event ev) -> vector of Lepton as
+	select {l1, l2} from Lepton l1, Lepton l2
+	where l1 = particles(ev) and l2 = particles(ev) and Kf(l1)=-Kf(l2);
+
+create function EvInvMass(Event ev) -> real r as
+	select r
+	from vector lept, real inv
+	where lept = oppositeLeptons(ev) and
+		inv = invMass(lept) and
+		r=abs(inv-91.1882) and	r < 10.0;
+
+create function ZVC(event ev) -> boolean as
+	select notany(EvInvMass(ev));
+
+create function zVetoCut(Event ev) -> Boolean as
+	select group(theresolvent("ZVC"),ev);
+
+create function okJetsHelpfunc(Event ev) -> JetB as
+	select j from JetB j where event(j)=ev and abs(eta(j))<4.5 and
+		pt(j)>20.0;
+create function okJets(Event ev) -> JetB as
+	select j from JetB j where j=okJetsHelpfunc(ev)/* and
+                          atleast(3,okJetsHelpfunc(ev))*/;
+
+create function bJets(Event ev) -> JetB as
+	select j from JetB j where j=okJets(ev) and
+		kf(j)=5;
+
+create function wJets(Event ev) -> JetB as
+	select j from JetB j where j=okJets(ev) and
+		kf(j)!=5;
+
+create function wPairs(Event ev) -> vector v as
+	select v from JetB j1, JetB j2
+	where j1=wJets(ev) and j2=wJets(ev)
+		and j1>j2 and v={j1,j2} and 
+		absInvMass(v,80.419)<15.0; 
+
+create function topComb(Event ev) -> vector v as
+	select v from JetB j1, JetB j2, Jetb bj
+	where v={j1,j2,bj} and {j1,j2}=wPairs(ev) and bj=bJets(ev) and
+		absInvMass(v,174.3)<35.0;
+
+create function TC(event ev) -> boolean as
+	select some(topComb(ev));
+
+create function topCut(Event ev) -> Boolean as
+	select group(theresolvent("TC"),ev);
+
+create function mTopComb(Event ev) -> vector v as
+	select v
+	where v=topComb(ev) and absInvMass(v,174.3)=
+		minagg(absInvMass(topComb(ev),174.3));
+
+create function leftJets(Event ev) -> JetB as
+	select j from JetB j
+	where j=okJets(ev) and
+		notany(select j 
+				where j=in(mTopComb(ev)));
+
+create function JVC(event ev) -> boolean as
+	select notany(select j from JetB j 
+			where j=leftJets(ev) and Pt(j)>70.0);
+
+create function jetVetoCut(Event ev) -> Boolean as
+	select group(theresolvent("JVC"),ev);
+
+create function LCnotany(event ev) -> boolean as
+	select notany(select l from Lepton l
+			where l=isolatedLeptons(ev) and Pt(l)>150.0);
+
+create function LCsome(event ev) -> boolean as
+	select some(select r from real r
+			where r=Pt(isolatedLeptons(ev)) and r<=40.0);
+ 
+create function leptonCuts(Event ev) -> Boolean as
+	select group(theresolvent("LCnotany"),ev)
+		and group(theresolvent("LCsome"),ev);
+
+create function MEC(event ev) -> boolean as
+	select ptMiss={PxMiss(ev),PyMiss(ev)} and mod(ptMiss)>=40.0
+		and pt31={sum(select Px(isolatedLeptons(ev))),
+				sum(select Py(isolatedLeptons(ev)))}
+		and effectiveMass(ptMiss,pt31)<=150.0
+	from vector ptMiss, vector pt31;
+
+create function missEeCuts(Event ev) -> Boolean as
+	select group(theresolvent("MEC"),ev);
+
+create function allCuts() -> Event ev as
+	select ev
+	where threeLeptonCut(ev) and zVetoCut(ev)
+		and topCut(ev) and jetVetoCut(ev) and 
+		leptonCuts(ev) and missEeCuts(ev);
+
+create function optAllCuts() -> Event ev as
+	select ev
+	where threeleptoncut(ev) and leptoncuts(ev) and 
+		misseecuts(ev) and zvetocut(ev) and 
+		topcut(ev) and jetvetocut(ev);
+
+create function expcuts() -> Event ev as
+select ev
+where topcut(ev) and jetvetocut(ev) and 
+	misseecuts(ev) and zvetocut(ev) and 
+	threeleptoncut(ev) and leptoncuts(ev);
+

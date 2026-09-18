@@ -1,0 +1,101 @@
+	set :upv = "dmoz";	 			/* UPV name */
+	set :ds = "dmozDS";				/* UPV name */
+	set :dmoz = "DmozML";				/* Ontology*/
+	set :uri = "http://localhost:3306/dmoz";	/* Default URI of UPV */
+
+
+/* Datetimes with all-zero components ('0000-00-00 ...') — These values can not be
+   represented reliably in Java. Connector/J 3.0.x always converted them to NULL when being
+   read from a ResultSet. */
+
+/*Define a UPV data source to access the relational database.
+  A UPV data source simply stores all the information needed to access a particular relational
+  database.*/
+        
+	defineDS(:ds,
+                 "jdbc:mysql://localhost:3306/dmoz?zeroDateTimeBehavior=convertToNull",
+                 "com.mysql.jdbc.Driver",
+                 "",
+                 "",
+                 "root",
+                 "");
+
+/*Define a UPV and associate it with the UPV data source defined above.
+  Every UPV must be associated with a UPV data source.*/
+
+	defineUPV(:ds,:upv,:uri);
+							
+/*Add mappings between exported columns in 'DMOZ'and properties from the RDF-Schema used by the UPV. 
+  E.g. column 'CATID' in table 'DATATYPES' is mapped to the property 
+  'http://udbl.it.uu.se/schemas/DmozMLSchema#DatatypesID' in the UPV 'dmoz':*/
+
+	assignPropID("STRUCTURE","CATID",:upv,
+			"http://udbl.it.uu.se/schemas/DmozMLSchema#StructureID");
+	assignPropID("STRUCTURE","NAME",:upv,
+			"http://udbl.it.uu.se/schemas/DmozMLSchema#Name");
+	assignPropID("STRUCTURE","TITLE",:upv,
+			"http://udbl.it.uu.se/schemas/DmozMLSchema#StructureTitle");
+	assignPropID("STRUCTURE","DESCRIPTION",:upv,
+			"http://udbl.it.uu.se/schemas/DmozMLSchema#StructureSubject");
+	assignPropID("STRUCTURE","LASTUPDATE",:upv,
+			"http://udbl.it.uu.se/schemas/DmozMLSchema#Date");
+	assignPropID("DATATYPES","CATID",:upv,
+			"http://udbl.it.uu.se/schemas/DmozMLSchema#DatatypesID");
+	assignPropID("DATATYPES","NEWID",:upv,
+			"http://udbl.it.uu.se/schemas/DmozMLSchema#DatatypesNewID");
+	assignPropID("DATATYPES","TYPE",:upv,
+			"http://udbl.it.uu.se/schemas/DmozMLSchema#DatatypesType");
+	assignPropID("DATATYPES","RESOURCE",:upv,
+			"http://udbl.it.uu.se/schemas/DmozMLSchema#Resource");
+	assignPropID("CONTENTS","NEWID",:upv,
+			"http://udbl.it.uu.se/schemas/DmozMLSchema#ContentsNewID");
+	assignPropID("CONTENTS","EXTERNALPAGE",:upv,
+			"http://udbl.it.uu.se/schemas/DmozMLSchema#Externalpage");
+	assignPropID("CONTENTS","TITLE",:upv,
+			"http://udbl.it.uu.se/schemas/DmozMLSchema#ContentsTitle");
+	assignPropID("CONTENTS","DESCRIPTION",:upv,
+			"http://udbl.it.uu.se/schemas/DmozMLSchema#Subject");
+	assignPropID("CONTENTS","AGES",:upv,
+			"http://udbl.it.uu.se/schemas/DmozMLSchema#Ages");
+	assignPropID("CONTENTS","MEDIADATE",:upv,
+			"http://udbl.it.uu.se/schemas/DmozMLSchema#Mediadate");
+	assignPropID("CONTENTS","PRIORITY",:upv,
+			"http://udbl.it.uu.se/schemas/DmozMLSchema#Priority");
+	assignPropID("CLINKS","CATID",:upv,
+			"http://udbl.it.uu.se/schemas/DmozMLSchema#ClinksID");
+	assignPropID("CLINKS","NEWID",:upv,
+			"http://udbl.it.uu.se/schemas/DmozMLSchema#ClinksNewID");
+	assignPropID("CLINKS","TOPIC",:upv,
+			"http://udbl.it.uu.se/schemas/DmozMLSchema#Topic");
+	assignPropID("CLINKS","TYPE",:upv,
+			"http://udbl.it.uu.se/schemas/DmozMLSchema#ClinksType");
+	assignPropID("CLINKS","RESOURCE",:upv,
+			"http://udbl.it.uu.se/schemas/DmozMLSchema#ClinksSubject");
+
+
+/*Add mappings between exported tables in 'DMOZ' and RDF-Schema classes 
+  e.g. table 'CONTENTS' is mapped to the class 
+  'http://udbl.it.uu.se/schemas/Dmoz#Contents' in the UPV 'dmoz':*/
+
+	assignClassID("STRUCTURE",:upv,:dmoz + "#Structure");
+	assignClassID("DATATYPES",:upv,:dmoz + "#Datatypes");
+	assignClassID("CONTENTS",:upv,:dmoz + "#Contents");
+	assignClassID("CLINKS",:upv,:dmoz + "#Clinks");
+
+	print("===============================================");
+	print("Connecting to the UPV data source...");
+	print("===============================================");
+
+	DSConnect(:upv);
+	
+	print("===============================================");
+	print("Exporting the ODP database as a UPV");
+	print("===============================================");
+
+	exportRDB(:upv);
+
+        DSDisconnect(:upv);
+
+        save_database("../../bin/odpviewer.dmp");
+       
+        

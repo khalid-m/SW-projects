@@ -1,0 +1,341 @@
+/*-*-sql-*-*******************************************************************/
+
+logging off;
+
+create function lasttime()->real; 
+
+set L()=20;
+set lasttime() = real(now());
+lisp;
+(checkequal "readfile only, 1M tpls"
+((osql "count(readfile('/scratch/erikz/20-1M'));")
+'((1000000))))
+
+:osql
+print(real(now()) - lasttime());
+set lasttime() = real(now());
+lisp;
+
+(checkequal "rangefilter0, port 0, 1M tpls"
+((osql "sort(select distinct xway(v) from vector v 
+where v=readfile('/scratch/erikz/20-1M') and rangefilter0(v, 1, 2));")
+'((#(10 11 12 13 14 15 16 17 18 19)))))
+
+:osql
+print(real(now()) - lasttime());
+set lasttime() = real(now());
+lisp;
+
+(checkequal "rangefilter0, port 1, 1M tpls"
+((osql "sort(select distinct xway(v) from vector v
+where v=readfile('/scratch/erikz/20-1M') and rangefilter0(v, 0, 2));")
+'((#(0 1 2 3 4 5 6 7 8 9)))))
+:osql
+print(real(now()) - lasttime());
+set lasttime() = real(now());
+lisp;
+
+(checkequal "modfilter0, port 1, 1M tpls"
+((osql "sort(select distinct xway(v) from vector v
+where v=readfile('/scratch/erikz/20-1M') and modfilter0(v, 1, 2));")
+'((#(1 3 5 7 9 11 13 15 17 19)))))
+:osql
+print(real(now()) - lasttime());
+set lasttime() = real(now());
+lisp;
+
+(checkequal "modfilter0, port 0, 1M tpls"
+((osql "sort(select distinct xway(v) from vector v
+where v=readfile('/scratch/erikz/20-1M') and modfilter0(v, 0, 2));")
+'((#(0 2 4 6 8 10 12 14 16 18)))))
+:osql
+print(real(now()) - lasttime());
+set lasttime() = real(now());
+lisp; 
+
+
+(checkequal "modfilter0 in an sp, 1M tpls"
+((osql "sort(select distinct xway(v) 
+from vector v, sp src
+where v = lr_extract(src, 20)
+and src = sp(streamof(modfilter(
+lreadfast('/scratch/erikz/20-1M', 20),0 ,10))));")
+'((#(-1 0 10)))))
+
+:osql
+print(real(now()) - lasttime());
+set lasttime() = real(now());
+lisp;  
+
+(checkequal "rangefilter of modfilter, 1M tpls"
+((osql "select distinct xway(v)
+from sp src, vector v
+where v = lr_extract(src, 20)
+and rangefilter0(v, 1, 2)
+and src = sp(streamof(modfilter(
+lreadfast('/scratch/erikz/20-1M', 20),0 ,10)));")
+'((10))))
+
+:osql
+print(real(now()) - lasttime());
+set lasttime() = real(now());
+lisp;
+
+(checkequal "modfilter of rangefilter, 1M tpls"
+((osql "select distinct xway(v)
+from sp src, vector v
+where v = lr_extract(src, 20)
+and modfilter0(v, 0, 2)
+and src = sp(streamof(rangefilter(
+lreadfast('/scratch/erikz/20-1M', 20), 5 ,10)));")
+'((10))))
+
+:osql
+print(real(now()) - lasttime());
+set lasttime() = real(now());
+lisp; 
+
+(checkequal "db_partstream. L=20, 1M tpls"
+((osql "count(select v
+from sp src, vector v
+where v = uall(db_partstream(src, 1, 20, 'modfilter'))
+and src = layer_1_fast({'/scratch/erikz/20-1M'}, 4));")
+'((999058))))
+
+:osql
+print(real(now()) - lasttime());
+set lasttime() = real(now());
+lisp; 
+
+(checkequal "db_partstream. L=20, 100k tpls"
+((osql "count(select v
+from sp src, vector v, vector of sp dbp
+where v = uall(dbp)
+and dbp = db_partstream(src, 1, 20, 'modfilter')
+and src = layer_1_fast({'/scratch/erikz/20-100k'}, 4));")
+'((99908))))
+
+:osql
+print(real(now()) - lasttime());
+set lasttime() = real(now());
+lisp; 
+
+(checkequal "treenodes. L=20, fanout=20, nsub = 1, 100k tpls"
+((osql "count(select v
+from sp src, vector of sp dbp, vector of sp tp, vector of sp all, 
+vector v, integer L
+where L = 20
+and v = uall(all)
+and all = concat({dbp[0]}, tp)
+and tp = treenodes(dbp[1], L, L, 1, '')
+and dbp = db_partstream(src, L, L, 'modfilter')
+and src = layer_1_fast({'/scratch/erikz/20-100k'}, L));")
+'((109769))))
+
+; dbp has 20 subscribers
+; each treenode sends its output to uall
+; each treenode lets all type 2 events through. 
+; Hence, 19 extra copies of each will arrive at the uall node.
+; 99908 + 19*519 = 109769.
+
+:osql
+print(real(now()) - lasttime());
+set lasttime() = real(now());
+lisp; 
+
+(checkequal "treenodes with proclayer. L=20, fanout=20, nsub = 1, 100k tpls"
+((osql "count(select v
+from sp src, vector of sp dbp, vector of sp tp, vector of sp all, 
+vector of stream is, vector of sp proc,
+vector v, integer L
+where L = 20
+and v = uall(all)
+and all = concat({dbp[0]}, proc)
+and proc = spv(is)
+and is = lrinputstreams(tp, 1)
+and tp = treenodes(dbp[1], L, L, 1, '')
+and dbp = db_partstream(src, L, L, 'modfilter')
+and src = layer_1_fast({'/scratch/erikz/20-100k'}, L));")
+'((109769))))
+
+:osql
+print(real(now()) - lasttime());
+set lasttime() = real(now());
+lisp; 
+
+(checkequal "treenodes with proclayer. L=20, fanout=10, nsub = 2, 100k tpls"
+((osql "count(select v
+from sp src, vector of sp dbp, vector of sp tp, vector of sp all, 
+vector of stream is, vector of sp proc,
+vector v, integer L, integer fanout, integer nsub
+where L = 20 and fanout = 10 and nsub = L/fanout
+and v = uall(all)
+and all = concat({dbp[0]}, proc)
+and proc = spv(is)
+and is = lrinputstreams(tp, nsub)
+and tp = treenodes(dbp[1], L, fanout, nsub, 'rangefilter')
+and dbp = db_partstream(src, fanout, L, 'modfilter')
+and src = layer_1_fast({'/scratch/erikz/20-100k'}, L));")
+'((109769))))
+
+:osql
+print(real(now()) - lasttime());
+set lasttime() = real(now());
+lisp; 
+
+(checkequal "treenodes with proclayer. L=20, fanout=5, nsub = 4, 100k tpls"
+((osql "count(select v
+from sp src, vector of sp dbp, vector of sp tp, vector of sp all, 
+vector of stream is, vector of sp proc,
+vector v, integer L, integer fanout, integer nsub
+where L = 20 and fanout = 5 and nsub = L/fanout
+and v = uall(all)
+and all = concat({dbp[0]}, proc)
+and proc = spv(is)
+and is = lrinputstreams(tp, nsub)
+and tp = treenodes(dbp[1], L, fanout, nsub, 'rangefilter')
+and dbp = db_partstream(src, fanout, L, 'modfilter')
+and src = layer_1_fast({'/scratch/erikz/20-100k'}, L));")
+'((109769))))
+
+:osql
+print(real(now()) - lasttime());
+set lasttime() = real(now());
+lisp; 
+
+(checkequal "treenodes with proclayer. L=20, fanout=4, nsub = 5, 100k tpls"
+((osql "count(select v
+from sp src, vector of sp dbp, vector of sp tp, vector of sp all, 
+vector of stream is, vector of sp proc,
+vector v, integer L, integer fanout, integer nsub
+where L = 20 and fanout = 4 and nsub = L/fanout
+and v = uall(all)
+and all = concat({dbp[0]}, proc)
+and proc = spv(is)
+and is = lrinputstreams(tp, nsub)
+and tp = treenodes(dbp[1], L, fanout, nsub, 'rangefilter')
+and dbp = db_partstream(src, fanout, L, 'modfilter')
+and src = layer_1_fast({'/scratch/erikz/20-100k'}, L));")
+'((109769))))
+
+:osql
+print(real(now()) - lasttime());
+set lasttime() = real(now());
+lisp; 
+
+(checkequal "treenodes with proclayer. L=20, fanout=20, nsub = 1, 1M tpls"
+((osql "count(select v
+from sp src, vector of sp dbp, vector of sp tp, vector of sp all, 
+vector of stream is, vector of sp proc,
+vector v, integer L
+where L = 20
+and v = uall(all)
+and all = concat({dbp[0]}, proc)
+and proc = spv(is)
+and is = lrinputstreams(tp, 1)
+and tp = treenodes(dbp[1], L, L, 1, '')
+and dbp = db_partstream(src, L, L, 'modfilter')
+and src = layer_1_fast({'/scratch/erikz/20-1M'}, L));")
+'((1093222)))) 
+
+:osql
+print(real(now()) - lasttime());
+set lasttime() = real(now());
+lisp; 
+
+(checkequal "treenodes with proclayer. L=20, fanout=10, nsub = 2, 1M tpls"
+((osql "count(select v
+from sp src, vector of sp dbp, vector of sp tp, vector of sp all, 
+vector of stream is, vector of sp proc,
+vector v, integer L, integer fanout, integer nsub
+where L = 20 and fanout = 10 and nsub = L/fanout
+and v = uall(all)
+and all = concat({dbp[0]}, proc)
+and proc = spv(is)
+and is = lrinputstreams(tp, nsub)
+and tp = treenodes(dbp[1], L, fanout, nsub, 'rangefilter')
+and dbp = db_partstream(src, fanout, L, 'modfilter')
+and src = layer_1_fast({'/scratch/erikz/20-1M'}, L));")
+'((1093222))))
+
+:osql
+print(real(now()) - lasttime());
+set lasttime() = real(now());
+lisp; 
+
+(checkequal "treenodes with proclayer. L=20, fanout=5, nsub = 4, 1M tpls"
+((osql "count(select v
+from sp src, vector of sp dbp, vector of sp tp, vector of sp all, 
+vector of stream is, vector of sp proc,
+vector v, integer L, integer fanout, integer nsub
+where L = 20 and fanout = 5 and nsub = L/fanout
+and v = uall(all)
+and all = concat({dbp[0]}, proc)
+and proc = spv(is)
+and is = lrinputstreams(tp, nsub)
+and tp = treenodes(dbp[1], L, fanout, nsub, 'rangefilter')
+and dbp = db_partstream(src, fanout, L, 'modfilter')
+and src = layer_1_fast({'/scratch/erikz/20-1M'}, L));")
+'((1093222))))
+
+:osql
+print(real(now()) - lasttime());
+set lasttime() = real(now());
+lisp; 
+
+(checkequal "treenodes with proclayer. L=20, fanout=4, nsub = 5, 1M tpls"
+((osql "count(select v
+from sp src, vector of sp dbp, vector of sp tp, vector of sp all, 
+vector of stream is, vector of sp proc,
+vector v, integer L, integer fanout, integer nsub
+where L = 20 and fanout = 4 and nsub = L/fanout
+and v = uall(all)
+and all = concat({dbp[0]}, proc)
+and proc = spv(is)
+and is = lrinputstreams(tp, nsub)
+and tp = treenodes(dbp[1], L, fanout, nsub, 'rangefilter')
+and dbp = db_partstream(src, fanout, L, 'modfilter')
+and src = layer_1_fast({'/scratch/erikz/20-1M'}, L));")
+'((1093222))))
+
+:osql
+print(real(now()) - lasttime());
+set lasttime() = real(now());
+lisp;
+
+(checkequal "treenodes with proclayer. L=20, fanout=2, nsub = 10, 1M tpls"
+((osql "count(select v
+from sp src, vector of sp dbp, vector of sp tp, vector of sp all, 
+vector of stream is, vector of sp proc,
+vector v, integer L, integer fanout, integer nsub
+where L = 20 and fanout = 2 and nsub = L/fanout
+and v = uall(all)
+and all = concat({dbp[0]}, proc)
+and proc = spv(is)
+and is = lrinputstreams(tp, nsub)
+and tp = treenodes(dbp[1], L, fanout, nsub, 'rangefilter')
+and dbp = db_partstream(src, fanout, L, 'modfilter')
+and src = layer_1_fast({'/scratch/erikz/20-1M'}, L));")
+'((1093222)))) 
+
+:osql
+
+create function p(charstring input, integer L, integer fanout)->integer as
+select count(select v
+from sp src, vector of sp dbp, vector of sp tp, vector of sp all, 
+vector of stream is, vector of sp proc,
+vector v, integer nsub
+where nsub = L/fanout
+and v = uall(all)
+and all = concat({dbp[0]}, proc)
+and proc = procs(is, theresolvent('lr'))
+and is = lrinputstreams(tp, nsub)
+and tp = treenodes(dbp[1], L, fanout, nsub, 'rangefilter')
+and dbp = db_partstream(src, fanout, L, 'modfilter')
+and src = layer_1_fast({input}, L));
+
+print(real(now()) - lasttime());
+set lasttime() = real(now());
+lisp; 
+
+(send-form '(quit) (open-nameserver-port))

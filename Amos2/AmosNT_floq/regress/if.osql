@@ -1,0 +1,90 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 1993 Martin Sköld, EDSLAB
+ * $RCSfile: if.osql,v $
+ * $Revision: 1.5 $ $Date: 2013/04/13 14:28:22 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Testing if-the-else
+ *
+ ****************************************************************************
+ * $Log: if.osql,v $
+ * Revision 1.5  2013/04/13 14:28:22  torer
+ * if-then-else over nil did not always work correctly
+ *
+ * Revision 1.4  2012/11/04 12:45:17  torer
+ * Testing atomic boolean conditions in if
+ *
+ ****************************************************************************/
+
+/* Test of if-then-else
+   and local variables */
+
+create function testif(integer i) -> integer j
+  as if i=1 then return i+1;
+
+create function testif2(integer i) -> Bag of (Object, Object);
+
+set testif2(1)=(nil,nil);
+set testif2(2)=(nil,1);
+set testif2(3)=(false,false);
+add testif2(4)=(false,nil);
+add testif2(4)=(nil,false);
+
+create function testif3(Integer i)-> Boolean;
+set testif3(1)=true;
+set testif3(2)=false;
+
+lisp;
+
+(checkequal "Atomic boolean condition"
+	    ((osql "if false then return 1 else return 2;") '((2)))
+	    ((osql "if true then return 1 else return 2;") '((1)))
+	    ((osql "if 5 then return 1 else return 2;") '((1)))
+	    ((osql "if nil then return 1 else return 2;") '((2)))
+	    )
+
+(checkequal "then part of if-then-else..."
+	    ((osql "begin
+		declare integer x, integer y;
+		set x = 9;
+		set y = 81;
+		if x = y/x 
+			then return x
+			else return y;
+	       end;")
+	     '((9)))
+	    ((osql "if 2 = 4/2 then return true;") '((true)))
+	    ((osql "if functionnamed('BANANEN') then return true;") nil)
+	    ((osql "testif(1);") '((2)))
+	    ((osql "testif(2);") nil)
+	    )
+
+(checkequal "else part of if-then-else..."
+	    ((osql "begin
+		declare integer x, integer y;
+		set x = 9;
+		set y = 18;
+		if x = y/x 
+			then return x
+			else return y;
+	       end;")
+	     '((18))))
+(checkequal "null values in if-then-else"
+	    ((osql "if testif2(1) then return 1 else return 0;")
+	     '((0)))
+	    ((osql "if testif2(2) then return 1 else return 0;")
+	     '((1)))
+	    ((osql "if testif2(3) then return 1 else return 0;")
+	     '((0)))
+	    ((osql "if testif2(4) then return 1 else return 0;")
+	     '((0)))
+	    ((osql "if testif3(1) then return 1 else return 0;")
+	     '((1)))
+	    ((osql "if testif3(2) then return 1 else return 0;")
+	     '((0)))
+	    )
+
+:osql
+rollback;

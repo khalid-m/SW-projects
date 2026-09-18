@@ -1,0 +1,68 @@
+
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2013 Silvia Stefanova, UDBL
+ * $RCSfile: sard2.amosql,v $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: SARD2 master file
+ *
+ ****************************************************************************
+ *
+ ****************************************************************************/
+lisp;
+(load "src/lsp/patch.lsp")
+(load "src/lsp/URI.lsp")
+(load "src/lsp/rdf-fns.lsp")
+:osql
+
+<'src/AmosQL/foreign.amosql';
+<'src/AmosQL/RDBschema.amosql';
+<'src/AmosQL/mapTables_URI.amosql';
+<'src/AmosQL/rowid_compK_URI.amosql';
+<'src/AmosQL/s_view_URI.amosql';
+<'src/AmosQL/exportSW_SARD_URI.amosql';
+/*TO DO: Needs to be fixed with the new Sparql parser*/
+/*<'src/AmosQL/export_DPS_URI.amosql';*/
+<'src/AmosQL/ddescribe.amosql';
+/*<'src/AmosQL/unloadRDB_asNT.amosql';*/
+/*<'src/AmosQL/distinct.amosql';*/
+/*<'src/AmosQL/restoreRDB_fromNT.amosql';*/
+/*<'src/AmosQL/reloadfromNT.amosql';*/
+lisp;
+(load "src/lsp/purge1.lsp")
+(load "src/lsp/small_rewrites.lsp")
+(load "src/lsp/gct.lsp")
+(load "src/lsp/unif.lsp")
+:osql
+
+/* Set SARD system image size to 200M
+ */
+
+imagesize 200000000;
+
+/* Partial evaluation of predicates in SARD system
+ */
+parteval('pmap');
+parteval('cmap');
+parteval("ucmap");
+parteval('rcmap');
+parteval('rmmMap');
+parteval('typeMap');
+parteval('xsd_Shortmap');
+parteval('rowid');
+parteval('rowid_uri');
+/*parteval("valueid");*/
+parteval("urii");
+parteval("ustr_literal");
+parteval('like');
+parteval("OBJECT.OBJECT.!=->BOOLEAN");
+parteval("TEVEXTENT2");
+
+
+
+
+
+
+

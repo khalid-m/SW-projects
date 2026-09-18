@@ -1,0 +1,7 @@
+cd('osql');
+<'cuts2005.stream.nohints.osql';
+<'../experiments/stream.osql';
+
+openwritefile('../experiments/c2005.UNOPT.bkgs.txt');
+UNOPTbkgs(1);
+closewritefile();

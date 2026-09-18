@@ -1,0 +1,32 @@
+/*-*-sql-*-*******************************************************************/
+
+logging off;
+
+lisp;
+
+(checkequal "mysql on gr16 (xway 0...9)"
+((osql "extract(spv(
+{streamof(mysqltoll('gr16.uppmax.uu.se', 'lr',
+streamof({3,2,1,-1,0,-1,-1,-1,-1,10001,-1,-1,-1,-1,1})))},
+{'mytoll.dmp'}, {'mei.it.uu.se'}, {'javascsq'})[0]);")
+'((#(3 2 0 10001 4)))))
+
+(checkequal "mysql on gr41 (xway 10...19)"
+((osql "extract(spv(
+{streamof(mysqltoll('gr41.uppmax.uu.se', 'lr',
+streamof({3,2,1373388,-1,10,-1,-1,-1,-1,10002,-1,-1,-1,-1,1})))}, 
+{'mytoll.dmp'}, {'mei.it.uu.se'}, {'javascsq'})[0]);")
+'((#(3 2 0 10002 40)))))
+
+(checkequal "Parallel mysql (gr16 + gr41)"
+((osql "uall(spv(
+{streamof(mysqltoll('gr16.uppmax.uu.se', 'lr', 
+                    streamof({3,2,1,-1,0,-1,-1,-1,-1,10001,-1,-1,-1,-1,1}))),
+streamof(mysqltoll('gr41.uppmax.uu.se', 'lr',
+              streamof({3,2,1373388,-1,10,-1,-1,-1,-1,10002,-1,-1,-1,-1,1})))},
+{'mytoll.dmp', 'mytoll.dmp'}, {'mei.it.uu.se', 'mei.it.uu.se'}, 
+{'javascsq', 'javascsq'}));")
+'((#(3 2 0 10001 4)) (#(3 2 0 10002 40)))))
+
+
+(send-form '(quit) (open-nameserver-port))

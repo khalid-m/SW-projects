@@ -1,0 +1,88 @@
+OPTIONS {
+    package orwise;
+    Recursive(2): get(nextpage) {
+        concat title;
+        concat url;
+        concat subject;
+    };
+}
+
+SCHEMA {
+        //exporting to Java type
+
+        String[] title;
+        String[] url;
+        String[] subject;
+        String nextpage;
+        String check;
+}
+
+EXTRACTION {
+
+        title=html.body[0].div[0].div[0].dl[*].dt[0].b[1].a[0].pcdata[0].txt;
+
+        url=html.body[0].div[0].div[0].dl[*].dt[0].b[1].a[0]@+href;
+
+        subject=html.body[0].div[0].div[0].dl[*].dd[0].pcdata[0].txt;
+
+        nextpage =  html.body->a[i]@+href
+        where a[i].pcdata.txt =~ "Next" ;
+	
+        check = html.body[0].div[0].table[1].tr[0].td[1].pcdata[0].txt;
+
+}
+
+RETRIEVAL {
+
+  search(int entriesPerPage, String keyword, String language, String startDate, String endDate){
+	METHOD: GET;
+	URL: "http://www.altavista.com/cgi-bin/query";
+	PARAM:      "q"=$keyword$,
+                  "pg"="ps",
+	            "nbq"=$entriesPerPage$,
+                  "sb"="any",
+	            "kl"=$language$,
+	            "d0"=$startDate$,
+	            "d1"=$endDate$,
+	            "Translate"="on";
+
+   }
+
+    get(String url) {
+            GET "$url$";
+    }
+}
+
+JAVACODE {
+
+    public static void main(String args[]) throws Exception {
+
+      int pages=3;
+      int entriesPerPage=10;
+      try {
+                pages = Integer.parseInt(args[0].trim());
+                entriesPerPage = Integer.parseInt(args[1].trim());
+                }
+      catch (NumberFormatException nfe) {
+                System.out.println("NumberFormatException: " + nfe.getMessage());
+             }
+
+      try{
+        String keyword=args[2];
+        String language=args[3];
+        String startDate=args[4];
+        String endDate=args[5];
+
+        System.out.println("Pages: " + pages);
+        System.out.println("Entries per page: " + entriesPerPage);
+        System.out.println("Keyword: " + keyword);
+        System.out.println("language: " +language);
+        System.out.println("Start Date: " +startDate);
+        System.out.println("End Date: " +endDate);
+	      System.out.println(searchRecursive(pages, entriesPerPage, keyword, language, startDate, endDate));
+      }
+      catch(Error mae){
+        System.out.println("java altavista [Pages] [Entries per page] [Keyword] [language] [startDate]  [endDate]");
+      }
+  }
+}

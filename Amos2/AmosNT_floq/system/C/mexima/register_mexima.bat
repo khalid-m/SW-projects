@@ -1,0 +1,1 @@
+amos2 amos2.dmp -o "cd('lsp');load_lisp('mexima.lsp');cd('..');save '../../../bin/amos2.dmp'; quit;"

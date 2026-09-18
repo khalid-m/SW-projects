@@ -1,0 +1,103 @@
+importTopicMap("apg","http://user.it.uu.se/~udbl/software/swatm/apg2008_01_14.xtm");
+
+Example Query 1:
+set :query1= "SELECT ?bnt1 
+      	     FROM <http://user.it.uu.se/~udbl/software/swatm/apg2008_01_14.xtm>
+      	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'systemId2'.
+		    ?t1 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bn.
+		    ?bn <http://udbl2.it.uu.se/swatm:BASENAMESTRING> ?bnt1.
+		    ?bn <http://udbl2.it.uu.se/swatm:SCOPEBASENAME> ?t2. 
+  		    ?t2 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'systemId4'. }";
+		    
+ sparql(:query1);
+
+Answer:
+{"en"}
+
+
+Example Query 2:
+Give me the description names in english of all resources providing information relevant to the 'Language' topic
+
+set :query2= "SELECT DISTINCT ?bns
+      	     FROM <http://user.it.uu.se/~udbl/software/swatm/apg2008_01_14.xtm>
+      	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bnt1.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm:BASENAMESTRING> 'Language'.
+		    ?t1 <http://udbl2.it.uu.se/swatm:OCCURRENCETOPIC> ?ot1.
+		    ?ot1 <http://udbl2.it.uu.se/swatm:INSTANCEOFOCCURRENCE> ?iot1.
+		    ?iot1 <http://udbl2.it.uu.se/swatm:IDTOPIC> ?idt2.
+		    ?iot1 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bnt2.
+		    ?bnt2 <http://udbl2.it.uu.se/swatm:SCOPEBASENAME> ?t3.
+		    ?t3 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'systemId2'.		
+		    ?bnt2 <http://udbl2.it.uu.se/swatm:BASENAMESTRING> ?bns. }";
+
+set :query21= "SELECT DISTINCT ?idt2 ?bns ?dat
+      	     FROM <http://user.it.uu.se/~udbl/software/swatm/apg2008_01_14.xtm>
+      	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bnt1.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm:BASENAMESTRING> 'Language'.
+		    ?t1 <http://udbl2.it.uu.se/swatm:OCCURRENCETOPIC> ?ot1.
+		    ?ot1 <http://udbl2.it.uu.se/swatm:INSTANCEOFOCCURRENCE> ?iot1.
+		    ?iot1 <http://udbl2.it.uu.se/swatm:IDTOPIC> ?idt2.
+		    ?iot1 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bnt2.
+		    ?bnt2 <http://udbl2.it.uu.se/swatm:SCOPEBASENAME> ?t3.
+		    ?t3 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'systemId2'.		
+		    ?bnt2 <http://udbl2.it.uu.se/swatm:BASENAMESTRING> ?bns.
+                    ?t3 <http://udbl2.it.uu.se/swatm:OCCURRENCETOPIC> ?ot3.
+		    ?ot3 <http://udbl2.it.uu.se/swatm:DATA> ?dat}";
+
+ sparql(:query2);
+
+set :query22= "SELECT DISTINCT ?idt2 ?bns
+      	     FROM <http://user.it.uu.se/~udbl/software/swatm/apg2008_01_14.xtm>
+      	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bnt1.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm:BASENAMESTRING> 'Language'.
+		    ?t1 <http://udbl2.it.uu.se/swatm:OCCURRENCETOPIC> ?ot1.
+		    ?ot1 <http://udbl2.it.uu.se/swatm:INSTANCEOFOCCURRENCE> ?iot1.
+		    ?iot1 <http://udbl2.it.uu.se/swatm:IDTOPIC> ?idt2.
+		    ?iot1 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bnt2.
+		    ?bnt2 <http://udbl2.it.uu.se/swatm:SCOPEBASENAME> ?t3.
+		    ?t3 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bnt3.
+		    ?bn3 <http://udbl2.it.uu.se/swatm:BASENAMESTRING> 'en'.		
+		    ?bnt2 <http://udbl2.it.uu.se/swatm:BASENAMESTRING> ?bns. }";
+
+
+Example Query 3:
+Give me the names of the working languages togehter with their Web resources 
+
+set :query3= "SELECT ?data ?sub 
+      	     FROM <http://user.it.uu.se/~udbl/software/swatm/apg2008_01_14.xtm>
+      	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm:OCCURRENCETOPIC> ?ot1.
+		    ?ot1 <http://udbl2.it.uu.se/swatm:DATA> ?data.
+		    ?t1 <http://udbl2.it.uu.se/swatm:SUBJECTADDRESS> ?sub.
+      	            FILTER REGEX (?data, '*language').}";
+
+sparql(:query3);
+
+
+Example Query 4:
+What is the creation date of the previous pass of the citizen? 
+
+set :query4= "SELECT DISTINCT ?bns ?rdat
+      	     FROM <http://user.it.uu.se/~udbl/software/swatm/apg2008_01_14.xtm>
+      	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bnt1.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm:BASENAMESTRING> 'Had previous passport'.
+		    ?t1 <http://udbl2.it.uu.se/swatm:OCCURRENCETOPIC> ?ot1.
+		    ?ot1 <http://udbl2.it.uu.se/swatm:DATA> ?rdat. 	
+		    ?ot1 <http://udbl2.it.uu.se/swatm:INSTANCEOFOCCURRENCE> ?iot1.
+		    ?iot1 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bnt2.
+		    ?bnt2 <http://udbl2.it.uu.se/swatm:BASENAMESTRING> ?bns. 
+		    FILTER REGEX (?bns, '*date')}";
+
+sparql(:query4);
+
+Example Query 5:
+Other information
+set :query5= "SELECT DISTINCT ?bns ?id1
+      	     FROM <http://user.it.uu.se/~udbl/software/swatm/apg2008_01_14.xtm>
+      	     WHERE{ ?t1 <http://udbl2.it.uu.se/swatm:INSTANCEOFTOPIC> ?t2.
+		    ?t2 <http://udbl2.it.uu.se/swatm:IDTOPIC> 'systemId26493'.
+		    ?t1 <http://udbl2.it.uu.se/swatm:IDTOPIC> ?id1.
+		    ?t1 <http://udbl2.it.uu.se/swatm:BASENAMETOPIC> ?bnt1.
+		    ?bnt1 <http://udbl2.it.uu.se/swatm:BASENAMESTRING> ?bns.}";
+
+sparql(:query5);
+

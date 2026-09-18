@@ -1,0 +1,119 @@
+
+/*************WSMED****************/
+
+importwsdl("wsdl/TerraService2.wsdl");
+
+importwsdl("wsdl/PlaceLookup.wsdl");
+
+<'src/amosql/place.amosql';
+<'src/amosql/placedetails.amosql';
+
+putsoaphvalue( 'wsdl/PlaceLookup.wsdl', 'GeoPlaces', 'GetPlaceDetails',{'5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'});
+
+putsoaphvalue( 'wsdl/PlaceLookup.wsdl', 'GeoPlaces', 'GetAllStates',{'5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'});
+putsoaphvalue( 'wsdl/PlaceLookup.wsdl', 'GeoPlaces', 'SaveUserPlaces',{'5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'});
+putsoaphvalue( 'wsdl/PlaceLookup.wsdl', 'GeoPlaces', 'GetAllUserPlaces',{'5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'});
+
+putsoaphvalue( 'wsdl/PlaceLookup.wsdl', 'GeoPlaces', 'GetPlacesInside', {'5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'});
+
+putsoaphvalue( 'wsdl/PlaceLookup.wsdl', 'GeoPlaces', 'GetPlacesWithin',{'5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q'});
+
+
+/******************************SQL queries**********************************/
+ 
+sql("select s.placename, p.placename, s.lon, s.lat,s.placetypeid from PlaceDetails p, Place s where s.city='Atlanta' and p.city=s.city and p.state='GA' and s.imagepresence='true' and s.maxitems=100");
+
+sql("select s.placename, p.placename, st.state,s.lon, s.lat,s.placetypeid from PlaceDetails p, Place s, States st where s.city='Atlanta' and p.city=s.city and st.state=p.state and st.statename=s.statename  and s.imagepresence='true' and s.maxitems=100");
+
+sql("select statename  from  States st where  st.state='GA'");
+
+sql("select  p.placename, st.statename from PlaceDetails p,  States st where p.city='Atlanta' and st.state=p.state");
+
+
+select   where GetPlaceList( 100,'true')
+
+
+
+
+sql("select state,statename from PlaceDetails p, Place s, States st where s.city='Atlanta' and p.city=s.city and st.state=p.state and st.statename=s.statename  and s.imagepresence='true' and s.maxitems=100");
+
+/**************'capability definition*****************/
+
+create function bbff_place(charstring kw, charstring state)-><charstring pn,charstring pid> as select pn, state1 from charstring state1, charstring country, real lon1, real lat1,integer theme, integer pop
+  where GetPlaceList(kw+", "+state, 100,'true')=<pn,state1,country,lon1,lat1,theme,pid,pop>;
+
+create function bfff_place(charstring kw)-> <charstring pn ,charstring state,charstring pid> as select   pn,pid  from  charstring state, charstring statename, Charstring types,  real latDegrees, real lonDegrees, real latRadians, real lonRadians, charstring pn, charstring statename1, charstring country, real lon1, real lat1,integer theme, charstring pid, integer pop  where GetAllStates()=< statename ,types ,state, latDegrees , lonDegrees , latRadians , lonRadians> and GetPlaceList(kw+", ",100,'true')=<pn,statename,country,lon1,lat1,theme,pid,pop> ;
+
+create function ffff_place()-> <charstring kw, charstring pn ,charstring state,charstring pid> as select   "",pn,state,pid  from  charstring state, charstring statename, Charstring types,  real latDegrees, real lonDegrees, real latRadians, real lonRadians, charstring pn, charstring statename1, charstring country, real lon1, real lat1,integer theme, charstring pid, integer pop  where GetAllStates()=< statename ,types ,state, latDegrees , lonDegrees , latRadians , lonRadians> and GetPlaceList(" "+", "+state, 50,'true')=<pn,statename1,country,lon1,lat1,theme,pid,pop>;
+
+
+
+create function place()-><charstring kw, charstring pn,charstring state,charstring pid> as multidirectional
+("ffff" select kw,pn,state,pid where ffff_place()=<kw,pn,state,pid>)
+("bbff" select pn,pid where bbff_place(kw, state)=<pn,pid>)
+("bfff" select pn,state,pid  where bfff_place(kw)=<pn,state,pid>)
+("fbff" select  kw,pn,pid where bbff_place("", state)=<pn,pid>);
+
+select pn,state,stn  from charstring city, charstring state, charstring pn, charstring stn where place()=<city,state,pn,stn> and city='Atlanta';
+
+
+/***********osql query***********************/
+
+
+parteval("NAME");
+parteval("SOAPACTIONURI");
+parteval("STYLE");
+parteval("ENCODINGSTYLE");
+parteval("TARGETURL");
+parteval("NAMESPACEURI");
+parteval("WSDLURI");
+
+
+create function q1()-> <charstring pn ,charstring pid> as select   pn,pid  from  charstring state, charstring statename, Charstring types,  real latDegrees, real lonDegrees, real latRadians, real lonRadians, charstring pn, charstring state1, charstring country, real lon1, real lat1,integer theme, charstring pid, integer pop  where GetAllStates()=< statename ,types ,state, latDegrees , lonDegrees , latRadians , lonRadians> and GetPlaceList("Atlanta"+", "+state, 100,'true')=<pn,state1,country,lon1,lat1,theme,pid,pop> and pid="OtherLandFeature";
+
+
+
+create function q2()-><charstring pn ,charstring pn2> as select   pn,pn2  
+from  charstring state, charstring statename, Charstring types,  real latDegrees, real lonDegrees, real latRadians, real lonRadians, charstring pn, charstring state1, charstring country, real lon1, real lat1,integer theme, charstring pid, integer pop,charstring pid1,charstring pn1, charstring state2,real distance, charstring pn2, charstring state3, charstring country1, real lon2, real lat2,integer theme1, charstring pid2, integer pop1  
+where GetAllStates()=< statename ,types ,state, latDegrees , lonDegrees , latRadians , lonRadians> 
+     and 
+      GetPlaceList("Atlanta"+", "+state, 100,'true')=<pn,state1,country,lon1,lat1,theme,pid,pop> and pid="OtherLandFeature"      and 
+      
+      GetPlacesWithin(pn,state, 50.0,pid1)=<pn1,state2,distance> and pid1="City" 
+     and 
+      GetPlaceList(pn1+", "+state2, 100,'true')=<pn2,state3,country1,lon2,lat2,theme1,pid,pop1>;
+
+
+
+create function q3()-> <charstring pn ,charstring pid> as select   pn,pid  from  charstring state, charstring statename, Charstring types,  real latDegrees, real lonDegrees, real latRadians, real lonRadians, charstring pn, charstring state1, charstring country, real lon1, real lat1,integer theme, charstring pid, integer pop  where GetAllStates()=< statename ,types ,state, latDegrees , lonDegrees , latRadians , lonRadians> and GetPlaceList(" "+", "+state, 1000,'true')=<pn,state1,country,lon1,lat1,theme,pid,pop> and pid="OtherLandFeature";
+
+
+
+
+
+create function q4()-> Vector as select {"Atlanta",100,"true",state} from charstring state, charstring statename, Charstring types, real latDegrees, real lonDegrees, real latRadians, real lonRadians where GetAllStates()=< statename ,types ,state, latDegrees , lonDegrees , latRadians , lonRadians>;
+
+
+create function GetPlaceList_w(charstring kw, integer notuple, charstring imagepresence,charstring state)->Vector as 
+select {pn,statename,country,lon1,lat1,theme,pid,pop} 
+from charstring pn,charstring statename, charstring country, real lon1, real lat1,integer theme, charstring pid, integer pop
+where GetPlaceList(kw+", "+state, notuple, imagepresence)=<pn,statename,country,lon1,lat1,theme,pid,pop>;
+
+
+create function q5()-><charstring pn ,charstring pn2> as select   pn2,state3  
+from  charstring state, charstring statename, Charstring types,  real latDegrees, real lonDegrees, real latRadians, real lonRadians, charstring pn1, charstring state2,real distance, charstring pn2, charstring state3, charstring country1, real lon2, real lat2,integer theme1, charstring pid2, integer pop1  
+where GetAllStates()=< statename ,types ,state, latDegrees , lonDegrees , latRadians , lonRadians> 
+     and 
+       GetPlacesWithin("Atlanta",state, 5.0,"City")=<pn1,state2,distance>  
+     and 
+      GetPlaceList(pn1+", "+state2, 100,'true')=<pn2,state3,country1,lon2,lat2,theme1,pid2,pop1>;
+
+
+
+(defun replace-str(fno is r)
+  (let ((s (explode is)) (rstr ""))
+     
+    (dolist (x s)
+      (cond   ((= x "^")(setq rstr (concat rstr "<")))
+	      (t (setq rstr (concat rstr x)))))
+    (osql-result is rstr)))

@@ -1,0 +1,22 @@
+/* Test recursive OSQL procedures */
+/* Tore Risch 11/20/1992          */
+
+create function parent(integer)->integer as stored;
+set parent(2)=1;
+set parent(3)=1;
+set parent(4)=3;
+set parent(5)=3;
+create function ancestors(integer i)->integer a as
+begin
+   for each integer c where parent(c)=i
+     begin
+       return c;
+       for each integer a where a=ancestors(c) return a
+     end
+end;
+lisp;
+(checkequal "recursive procedure"
+	((osql "ancestors(1);") '((2) (3) (4) (5))))
+:osql
+rollback;
+

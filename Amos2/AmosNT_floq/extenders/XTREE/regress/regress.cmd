@@ -1,0 +1,7 @@
+amos2 -o "load_amosql('regress.osql'); quit;"
+amos2 -o "load_lisp('case1.lsp'); quit;"
+amos2 -o "load_lisp('case2.lsp'); quit;"
+amos2 -o "load_lisp('case2b.lsp'); quit;"
+amos2 -o "load_lisp('case3.lsp'); quit;"
+amos2 -o "load_lisp('case4.lsp'); quit;"
+amos2 -o "load_lisp('case5.lsp'); quit;"

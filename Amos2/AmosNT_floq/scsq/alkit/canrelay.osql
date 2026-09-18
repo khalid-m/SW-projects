@@ -1,0 +1,14 @@
+create function canrelay( Charstring program )
+ -> Bag of Vector
+  as foreign 'canrelay';
+
+create function canrelay()
+ -> Bag of Vector
+  as canrelay("./canrelay -connect 88.131.107.11");
+  
+create function crsv() -> Stream of vector as
+streamof( canrelay() );
+
+create function testcan( Integer i) -> Stream of Integer
+  as foreign 'testcan';
+  

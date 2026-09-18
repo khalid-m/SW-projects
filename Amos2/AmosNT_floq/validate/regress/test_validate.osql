@@ -1,0 +1,431 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2011 Cheng Xu, UDBL
+ * $RCSfile: test_validate.osql,v $
+ *
+ * Description: test for validation primitives
+ *
+ ****************************************************************************
+ * $Log: test_validate.osql,v $
+ * Revision 1.21  2013/11/16 13:41:02  chexu484
+ * validation function returns both valid and invalid result
+ *
+ * Revision 1.20  2013/10/31 12:32:13  chexu484
+ * partition window
+ *
+ * Revision 1.19  2013/10/29 15:38:16  chexu484
+ * something is working again
+ *
+ * Revision 1.18  2013/04/08 15:03:46  chexu484
+ * regression test for time based window with jump predicate
+ * regression test for incremental aggregation of windows
+ *
+ * Revision 1.17  2013/04/02 20:31:34  chexu484
+ * threshold in validatefn
+ *
+ * Revision 1.16  2013/03/29 00:54:15  chexu484
+ * *** empty log message ***
+ *
+ * Revision 1.15  2013/03/29 00:47:42  chexu484
+ * regression test for intermediate window
+ *
+ * Revision 1.14  2013/01/08 13:14:08  chexu484
+ * revert
+ *
+ * Revision 1.13  2013/01/08 12:49:47  chexu484
+ * model and validate returns stream of vector instead of stream of qua-tuple
+ *
+ * Revision 1.12  2013/01/04 13:40:05  chexu484
+ * *** empty log message ***
+ *
+ * Revision 1.11  2012/11/22 15:52:40  chexu484
+ * testing validation (update threshold) using java client
+ *
+ * Revision 1.10  2012/11/21 15:34:38  chexu484
+ * regression test for mnv and lnv
+ * NOTE: not tested in a distributed environment
+ *
+ * Revision 1.9  2012/10/25 11:49:37  chexu484
+ * test valiation when model function returns a bag
+ *
+ * Revision 1.8  2012/10/24 17:11:49  chexu484
+ * simple test for model and validate
+ *
+ * Revision 1.7  2012/07/24 22:23:40  chexu484
+ * added regression test for both cases
+ *
+ * Revision 1.6  2012/07/24 15:01:07  chexu484
+ * code refactoring
+ *
+ * Revision 1.5  2012/05/22 11:51:31  chexu484
+ * *** empty log message ***
+ *
+ * Revision 1.4  2012/04/19 17:20:29  chexu484
+ * 1. code refactoring
+ * 2. both start and stop become real predicate
+ *    i.e. stop takes the first event and current event
+ *
+ * Revision 1.3  2012/02/15 14:52:45  chexu484
+ * namespace for functions svali:
+ *
+ * Revision 1.2  2012/01/16 13:32:02  chexu484
+ * predicate based window note:
+ * startfn and stopfn checks are mutual exclusive
+ *
+ * Revision 1.1  2012/01/03 16:23:17  chexu484
+ * regression test script
+ *
+ *
+ ****************************************************************************/
+
+<'model.osql';
+
+create function mapw(Integer i, Integer j) -> Integer as i + j;
+
+create function mapw1(Integer i) -> Integer as i * i;
+
+validation_profile(False);
+
+lisp;
+
+(setq tl (tconc))
+(tconc tl 1)
+(tconc tl 2)
+(tconc tl 3)
+
+(setq amos_w (make-swin 'list 3 3 tl))
+
+
+(checkequal 
+ "count based empty window test 1"
+ ((osql "count(cwindowize0(siota(1,10), 11, 11, -1));") 
+  '((0)))
+ )
+
+(checkequal 
+ "count based empty window test 1 with micro window on"
+ ((osql "count(cwindowize0(siota(1,10), 11, 11, 2));") 
+  '((5)))
+ )
+
+(checkequal 
+ "count based empty window test 2"
+ ((osql "count(cwindowize0(siota(1,10), 11, 2, -1));") 
+  '((0)))
+ )
+
+(checkequal 
+ "count based empty window test 2 with micro window on"
+ ((osql "count(cwindowize0(siota(1,10), 11, 2, 2));") 
+  '((5)))
+ )
+
+(checkequal 
+ "count based tumbling window"
+ ((osql "count(cwindowize0(siota(1,10), 3, 3, -1));") 
+  '((3)))
+ )
+
+(checkequal 
+ "count based tumbling window with micro window on"
+ ((osql "count(cwindowize0(siota(1,10), 3, 3, 2));") 
+  '((7)))
+ )
+
+(checkequal
+ "count based tumbling window in"
+ ((osql "in(cwindowize0(siota(1,10), 3, 3, -1));")
+  '((1) (2) (3) (4) (5) (6) (7) (8) (9)))
+ )
+
+(checkequal
+ "count based tumbling window with micro window in"
+ ((osql "in(cwindowize0(siota(1,10), 3, 3, 2));")
+  '((1) (2) (1) (2) (3) (4) (4) (5) (6) (7) (8) (7) (8) (9) (10)))
+ )
+
+(checkequal 
+ "count based sliding window"
+ ((osql "count(cwindowize0(siota(1,10), 3, 2, -1));") 
+  '((4)))
+ )
+
+(checkequal 
+ "count based sliding window with micro window"
+ ((osql "count(cwindowize0(siota(1,10), 3, 2, 2));") 
+  '((9)))
+ )
+
+(checkequal
+ "count based sliding window in"
+ ((osql "in(cwindowize0(siota(1,10), 3, 2, -1));")
+  '((1) (2) (3) (3) (4) (5) (5) (6) (7) (7) (8) (9)))
+ )
+
+(checkequal
+ "count based sliding window with micro window in"
+ ((osql "in(cwindowize0(siota(1,10), 3, 2, 2));")
+  '((1) (2) (1) (2) (3) (3) (4) (3) (4) (5) 
+   (5) (6) (5) (6) (7) (7) (8) (7) (8) (9) (9) (10)))
+ )
+
+(checkequal 
+ "count based tumbling window aggregation"
+ ((osql "select window_count(w), agg3(w), agg4(w) from Window w
+         where w in cwindowize(siota(1,10), 3, 3, -1);") 
+  '((3 6 3) (3 15 3) (3 24 3)))
+ )
+
+(checkequal 
+ "count based tumbling window with micro window on aggregation"
+ ((osql "select window_count(w), agg3(w), agg4(w) from Window w
+         where w in cwindowize(siota(1,10), 3, 3, 2);")
+  '((2 3 2) (3 6 3) (1 4 1) (3 15 3) (2 15 2) (3 24 3) (1 10 1)))
+ )
+
+(checkequal 
+ "count based sliding window aggregation"
+ ((osql "select window_count(w), agg3(w), agg4(w) from Window w
+         where w in cwindowize(siota(1,10), 3, 2, -1);")
+  '((3 6 3) (3 12 3) (3 18 3) (3 24 3)))
+ )
+
+(checkequal 
+ "count based sliding window with micro window aggregation"
+ ((osql "select window_count(w), agg3(w), agg4(w) from Window w
+         where w in cwindowize(siota(1,10), 3, 2, 2);")
+  '((2 3 2) (3 6 3) (2 7 2) (3 12 3) (2 11 2) (3 18 3) (2 15 2) (3 24 3) (2 19 2)))
+ )
+
+
+(checkequal 
+ "partition (empty) tumbling window"
+ ((osql "count(partwindowize0(tstream2(1), #'partVal'));")
+  '((0)))
+ )
+
+(checkequal 
+ "partition tumbling window"
+ ((osql "count(partwindowize0(tstream2(10), #'partVal'));")
+  '((9)))
+ )
+
+(checkequal 
+ "partition tumbling window in"
+ ((osql "select count(in(w)) from Window w
+         where w in partwindowize(tstream2(10), #'partVal');")
+  '((1) (2) (3) (4) (5) (6) (7) (8) (9)))
+ )
+
+
+(checkequal 
+ "time based tumbling window"
+ ((osql "count(twindowize0(tstream(10), #'vector.ts->number', 3, 3, -1, #'falsefn', #'truefn'));")
+  '((3)))
+ )
+
+;; important note: the reason the last second 10 is not reported is
+;; that time stamp 11 never arrives, there is no way to decide if
+;; current second 10 is ended, solution: punctuation! 2013.03.29
+(checkequal 
+ "time based tumbling window report every 1 second"
+ ((osql "count(twindowize0(tstream(10), #'vector.ts->number', 3, 3, 1, #'falsefn', #'truefn'));")
+  '((9)))
+ )
+
+(checkequal 
+ "time based tumbling window with jump predicate"
+ ((osql "count(twindowize0(tstream1(10), #'vector.ts->number', 4, 4, -1, #'jumpstartfn', #'jumpstopfn'));")
+  '((2)))
+ )
+
+(checkequal 
+ "time based tumbling window report every 1 second and with jump predicate"
+ ((osql "count(twindowize0(tstream1(10), #'vector.ts->number', 3, 3, 1, #'jumpstartfn', #'jumpstopfn'));")
+  '((8)))
+ )
+
+(checkequal
+ "time based tumbling window in"
+ ((osql "count(in(twindowize0(tstream(10), #'vector.ts->number', 3, 3, -1, #'falsefn', #'truefn')));")
+  '((45)))
+ )
+
+(checkequal
+ "time based tumbling window in report every 1 second"
+ ((osql "count(in(twindowize0(tstream(10), #'vector.ts->number', 3, 3, 1, #'falsefn', #'truefn')));")
+  '((84)))
+ )
+
+(checkequal 
+ "time based tumbling window in with jump predicate"
+ ((osql "count(in(twindowize0(tstream1(10), #'vector.ts->number', 3, 3, -1, #'jumpstartfn', #'jumpstopfn')));")
+  '((31)))
+ )
+
+(checkequal 
+ "time based tumbling window in report every 1 second and with jump predicate"
+ ((osql "count(in(twindowize0(tstream1(10), #'vector.ts->number', 3, 3, 1, #'jumpstartfn', #'jumpstopfn')));")
+  '((63)))
+ )
+
+(checkequal
+ "time based tumbling window aggregation report every 1 second and with jump predicate"
+  ((osql "select ts(w), agg1(w), agg2(w)
+          from Window w
+          where w in twindowize(tstream1(10), #'vector.ts->number', 3, 3, 1, #'jumpstartfn', #'jumpstopfn');")
+   '((1 #(1 1) 1) (2 #(5 4) 3) (3 #(14 10) 6) (4 #(16 10) 4) (6 #(36 21) 6) (7 #(85 49) 13) (8 #(149 85) 21) (9 #(81 45) 9)))
+)
+
+(checkequal
+ "time based tumbling window aggregation report every 1 second and with jump predicate"
+  ((osql "select ts(w), agg1(w), agg2(w)
+          from Window w
+          where w in twindowize(tstream1(10), #'vector.ts->number', 6, 6, 1, #'jumpstartfn', #'jumpstopfn');")
+   '((1 #(1 1) 1) (2 #(5 4) 3) (3 #(14 10) 6) (4 #(30 20) 10) (6 #(36 21) 6) (7 #(85 49) 13) (8 #(149 85) 21) (9 #(230 130) 30)))
+)
+
+(checkequal
+ "time based sliding window"
+ ((osql "count(twindowize0(tstream(10), #'vector.ts->number', 3, 2, -1, #'falsefn', #'truefn'));")
+  '((4)))
+ )
+
+(checkequal
+ "time based sliding window report every 1 second"
+ ((osql "count(twindowize0(tstream(10), #'vector.ts->number', 3, 2, 1, #'falsefn', #'truefn'));")
+  '((9)))
+ )
+
+(checkequal
+ "time based sliding window with jump predicate"
+ ((osql "count(twindowize0(tstream1(10), #'vector.ts->number', 3, 2, -1, #'jumpstartfn', #'jumpstopfn'));")
+  '((3)))
+ )
+
+(checkequal
+ "time based sliding window with jump predicate"
+ ((osql "count(twindowize0(tstream1(10), #'vector.ts->number', 4, 2, -1, #'jumpstartfn', #'jumpstopfn'));")
+  '((2)))
+ )
+
+(checkequal
+ "time based sliding window report every 1 second with jump predicate"
+ ((osql "count(twindowize0(tstream1(10), #'vector.ts->number', 3, 2, 1, #'jumpstartfn', #'jumpstopfn'));")
+  '((8)))
+ )
+
+(checkequal
+ "time based sliding window in"
+ ((osql "count(in(twindowize0(tstream(10), #'vector.ts->number', 3, 2, -1, #'falsefn', #'truefn')));")
+  '((60)))
+ )
+
+(checkequal
+ "time based sliding window in report every 1 second"
+ ((osql "count(in(twindowize0(tstream(10), #'vector.ts->number', 3, 2, 1, #'falsefn', #'truefn')));")
+  '((97)))
+ )
+
+(checkequal
+ "time based sliding window in with jump predicate"
+ ((osql "count(in(twindowize0(tstream1(10), #'vector.ts->number', 3, 2, -1, #'jumpstartfn', #'jumpstopfn')));")
+  '((34)))
+ )
+
+(checkequal
+ "time based sliding window in report every 1 second with jump predicate"
+ ((osql "count(in(twindowize0(tstream1(10), #'vector.ts->number', 3, 2, 1, #'jumpstartfn', #'jumpstopfn')));")
+  '((74)))
+ )
+
+(checkequal
+ "time based sliding window aggregation report every 1 second and with jump predicate"
+  ((osql "select ts(w), agg1(w), agg2(w)
+          from Window w
+          where w in twindowize(tstream1(10), #'vector.ts->number', 3, 2, 1, #'jumpstartfn', #'jumpstopfn');")
+   '((1 #(1 1) 1) (2 #(5 4) 3) (3 #(14 10) 6) (4 #(25 16) 7) (6 #(36 21) 6) (7 #(85 49) 13) (8 #(149 85) 21) (9 #(145 81) 17)))
+)
+
+(checkequal
+ "predicate based window empty window"
+ ((osql "in(pwindowize0(siota(1,2), #'istartp', #'istopp'));")
+  '())
+ )   
+
+(checkequal
+ "predicate based window"
+ ((osql "count(pwindowize0(siota(1,100), #'istartp', #'istopp'));")
+  '((9)))
+ )
+
+(checkequal
+ "predicate based window in"
+ ((osql "count(in(pwindowize0(siota(1,100), #'istartp', #'istopp')));")
+  '((45)))
+ )
+
+(checkequal
+ "predicate based window"
+ ((osql "count(pwindowize0(siota(1,100), #'istartp1', #'istopp1'));")
+  '((9)))
+ )
+
+(checkequal
+ "predicate based window in"
+ ((osql "count(in(pwindowize0(siota(1,100), #'istartp1', #'istopp1')));")
+  '((90)))
+ )
+
+(checkequal
+ "predicate based window"
+ ((osql "count(pwindowize0(tstream(20), #'vstartp', #'vstopp'));")
+  '((1)))
+ )
+
+(checkequal
+ "predicate based window in"
+ ((osql "count(in(pwindowize0(tstream(20), #'vstartp', #'vstopp')));")
+  '((60)))
+ )
+
+(checkequal
+ "model n and validate with model function returns one single model"
+ ((osql "in(model_n_validate(siota(1, 2), #'expected', #'check_equal'));")
+  '((#(2 2 4))))
+ )
+
+(checkequal
+ "model n and validate with model function returns a bag"
+ ((osql "in(model_n_validate(siota(1, 2), #'expectedb', #'check_equalb'));")
+  '((#(1 1 #(2 3))) (#(2 2 #(3 4)))))
+ )
+
+(checkequal
+ "learn n and validate with learn function returns a single model"
+ ((osql "in(learn_n_validate(pwindowize(siota(1, 60), #'istartp', #'istopp'), #'learnfn', 2, #'validatefn'));")
+  '((#(0 #(50 51 52 53 54) #(15 16 17 18 19)))))
+ )
+
+(checkequal
+ "learn n and validate with learn function returns a bag"
+ ((osql "in(learn_n_validate(pwindowize(siota(1, 60), #'istartp', #'istopp'),
+                             #'learnfn_bag', 2, #'validatefn_bag'));")
+  '((#(0 #(50 51 52 53 54) #(#(10 11 12 13 14) #(20 21 22 23 24))))))
+ )
+
+(checkequal
+"mapper on window"
+((osql "in(map_window(:w, #'INTEGER.INTEGER.mapw->INTEGER', {1}));")
+ '((2) (3) (4)))) 
+
+(checkequal
+"mapper on window"
+((osql "in(map_window(:w, #'INTEGER.mapw1->INTEGER'));")
+ '((1) (4) (9)))) 
+
+
+:osql
+
+quit;

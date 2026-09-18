@@ -1,0 +1,39 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> 2012 <author> Minpeng Zhu, UDBL
+ * $RCSfile: test2.amosql,v $
+ * $Revision: 1.2 $ $Date: 2012/09/14 14:44:00 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: regression test for combining data from cloud database, 
+ * personel database and log database in order to analyze the equipment errors
+ *
+ ****************************************************************************/
+
+
+set :b = jdbc("B", "com.microsoft.jdbc.sqlserver.SQLServerDriver");
+
+set :dburl = "jdbc:microsoft:sqlserver://localhost;DatabaseName=";
+
+connect(:b, :dburl + "personal", "regress", "regress");
+
+lisp;
+
+(osql "import_table(:b, 'employee');")
+
+(osql "select ssn(e), name(e)
+       from employee_B e;")
+
+set :c = jdbc("C", "com.microsoft.jdbc.sqlserver.SQLServerDriver");
+
+set :dburl = "jdbc:microsoft:sqlserver://localhost;DatabaseName=";
+
+connect(:c, :dburl + "LogDB", "regress", "regress");
+
+lisp;
+
+(osql "import_table(:c, 'logdata');")
+
+(osql "select time(l), variable(l), value(l)
+       from logdata_C l;")

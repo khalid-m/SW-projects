@@ -1,0 +1,122 @@
+#ifndef _HELP_H_
+#define _HELP_H_
+
+#define ERR_PRT		printf
+
+#if 0
+/* Print debug message */
+#define DBG_PRT		printf("\t\t>> "); printf
+#define DBG_PRT1	printf
+#else
+#define DBG_PRT		dummy_print
+#define DBG_PRT1	dummy_print
+#endif
+
+#if 1
+/* Print information message*/
+#define INFO_PRT	printf
+#else
+#define INFO_PRT	dummy_print
+#endif
+
+void dummy_print(char *in, ...);
+void error_reason(char *in);
+
+#define MAX_INPUT	(2048)
+
+#define T_TYPE_MASK(a)		((a & 0xFFFF0000) >> 16)
+#define T_VAL_MASK(a)		(a & 0x0000FFFF)		
+#define T_MAKE_TYPE(a,b)	((a << 16) | ( b & 0x0000FFFF))
+
+typedef unsigned int SparQLType;
+
+#define T_LST_END			(0)
+#define T_VAR				(1)
+#define T_BKV				(2)
+#define T_IRI				(3)
+#define T_LTR				(4)
+#define T_STR				(5)
+#define T_TPL				(6)
+#define T_LST				(7)
+#define T_PRF				(8)
+#define T_FLT				(9)
+#define T_EMPTY				(0xFFFE0000)
+#define T_UNKNOWN			(0xFFFF0000)
+
+extern void *AmosC;
+
+extern char			*gpInput;
+extern SparQLType	gQueryVar;
+extern SparQLType	gDistinct;
+extern SparQLType 	gComma;
+extern SparQLType 	gCloseB;
+extern char 	        *gRDF_src; /*Hold the name of RDF source. Added by Johan Petrini*/
+
+int	sparql_input(char *buf, int max_size);
+
+void sparql_set_amos_connection(void* c);
+	
+void init_help(void);
+void help_profile(void);
+
+SparQLType 	insert_iri(char* in, int bCpy);
+SparQLType 	insert_var(char* in);
+SparQLType 	insert_bkv();
+SparQLType 	insert_ltr(char* in, const int op, const unsigned int type);
+SparQLType 	insert_str(char* in, int bCpy);
+SparQLType 	insert_list(void);
+SparQLType 	insert_prefix(SparQLType name, SparQLType URI);
+int 		insert_triple(SparQLType subject, SparQLType lst, int group);
+void 		insert_filter(SparQLType lst, int group);
+char*           getstr(SparQLType id); /* Extract content of an SparQL id. Added by Johan Petrini*/
+SparQLType	mk_plain_ltr(SparQLType strID, const char* tag);
+
+void		make_order_info(SparQLType name, char *order);
+
+SparQLType 	new_list_and_merge(SparQLType dst, ...);
+void 		append_to_list_back(SparQLType first, ...);
+void 		append_to_list_front(SparQLType dst, ...);
+SparQLType 	find_prfx(const char* in);
+SparQLType 	map_prfx_uri(SparQLType src, const char* ncname);
+SparQLType 	get_prfx_uri(SparQLType id);
+	
+SparQLType	amos_query_var(void);
+SparQLType	amos_decl_var(void);
+SparQLType	amos_condition(void);
+
+void	set_limit(const char *_limit);
+void	set_offset(const char *_offset);
+
+int		enter_opt();
+int		leave_opt();
+int		get_opt();
+int		in_opt();
+
+void	mk_base(SparQLType uri);
+
+#define content(a)		(void*)((Table*)(&tblsAddr[T_TYPE_MASK(a)])->tbl[T_VAL_MASK(a)])
+#define mk_var(a)		(insert_var(a))
+#define mk_bkv()		(insert_bkv())
+#define mk_iri(a)		(insert_iri(a, 1))		/*content of 'a'' will be copied and saved*/
+#define mk_iri2(a)		(insert_iri(a, 0))		/*'a', as a pointer, will be saved*/
+#define mk_ltr(a,b)		(insert_ltr(a, T_UNKNOWN, b))	/*'a' is a C string*/
+#define mk_ltr2(a,b)	(insert_ltr(NULL, a, b))/*'a'' is a T_STR ID*/
+#define mk_str(a)		(insert_str(a, 1))		/*content of 'a' will be copied and saved*/
+#define mk_str2(a)		(insert_str(a, 0))		/*'a', as a pointer, will be saved*/
+#define mk_lst()		(insert_list())
+#define mk_tpl(a,b,c)	(insert_triple(a,b,c))
+#define mk_prfx(a,b)	(insert_prefix(a,b))
+#define mk_fltr(a,b)	(insert_filter(a,b))
+#define mk_ordrinf(a,b)	(make_order_info(a,b))
+
+char*	output_query(void);
+
+#define r_uri			(0)
+#define r_plain_lit		(1)
+#define r_xsd_integer	(2)
+#define r_xsd_decimal	(3) 
+#define r_xsd_double	(4)
+#define r_xsd_boolean	(5)
+#define r_xsd_string	(6)
+
+#endif

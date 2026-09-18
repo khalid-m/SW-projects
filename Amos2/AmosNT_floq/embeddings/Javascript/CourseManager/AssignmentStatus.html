@@ -1,0 +1,82 @@
+<html>
+    <head>
+        <title>Assignment status for user</title>
+        <script type="text/javascript" src="scripts/SOAPClient.js"></script>
+        <script type="text/javascript" src="scripts/cookies.js"></script>
+        <script type="text/javascript" src="scripts/utility.js"></script>
+        <script type="text/javascript" language="javascript">
+            var oMyObject = window.dialogArguments;
+            var sname = oMyObject.studentName;
+            var cname = oMyObject.courseName;
+            var error;
+        
+            function btnLGM_onclick(){
+                error = null;
+                SOAPClient.invoke("LISTGROUPMEMBERS", [sname,cname], true, btnLGM_callBack, error_callBack);
+            }
+
+            function btnLGM_callBack(o, xmlDoc)
+            {
+                if (o != null){
+                    var tblHead = "<tr style='background-color:lightgrey'><th>Name</th><th>e-mail</th><th>Group No.</th></tr>";
+                    var table = resultToTable(o,null,tblHead);
+                    document.getElementById("groupMemberDiv").innerHTML = table;
+                }
+            }
+	
+            function btnSAS_onclick(){
+                error = null;
+                SOAPClient.invoke("STUDENTASSIGNMENTSTATUS", [sname,cname], true, btnSAS_callBack, error_callBack);
+            }
+
+            function btnSAS_callBack(o, xmlDoc)
+            {
+                if (o != null){
+                    var tblHead = "<tr style='background-color:lightgrey'><th>Assignment Name</th><th>Status</th><th>Assistant</th></tr>";
+                    var table = resultToTable(o,null,tblHead);
+                    document.getElementById("assStatusDiv").innerHTML = table;
+                }
+            }
+
+            function error_callBack(e, errorCode){
+                if (e != null){
+                    error = e;
+                    document.getElementById("statusDiv").style.display='none';
+                    document.getElementById("errorDiv").innerHTML="Error callBack:<br>" + error + "<br><br>Error code:<br>" + errorCode;
+                }
+            }
+
+            function btnClose_onclick(){
+                window.close();
+            }
+
+            function assignmentStatus_onload(){
+                if (getCookie("name")==""||getCookie("name")==null){
+                    alert("You don't have authority to view this page.");
+                    document.all.aLogout.href='index.html';
+                    document.all.aLogout.click();
+                }
+                btnLGM_onclick();
+                btnSAS_onclick();
+            }
+        </script>
+    </head>
+
+    <body onload="return assignmentStatus_onload();">
+        <h2>Assignment status for user</h2>
+        <div id="statusDiv" style="display:block;"><br>
+            Your group consists of:<br><br>
+            <div id="groupMemberDiv"></div><br>
+            The results registered for your assignments are:<br><br>
+            <div id="assStatusDiv"></div><br>
+            <hr><b>Notice:</b><br>
+            When the status of an assignment is "FAILED", this means that there are
+            some errors in the assignment and some parts have to be coorected.<br>
+            Once you complete your assignment and it is acceptable, its status will
+            be changed to "PASSED".<br>
+            You pass the course when all assignments are marked as "PASSED".<br><br>
+        </div>
+        <div id="errorDiv"></div>
+        <div align="center"><input type="button" value="close" onclick="return btnClose_onclick();" /><div>
+   </body>
+ </html>

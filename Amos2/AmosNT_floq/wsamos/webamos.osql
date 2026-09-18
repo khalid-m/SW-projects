@@ -1,0 +1,26 @@
+create type person properties (name charstring, age integer);
+create person(name,age) instances :p1("Milena",38), :p2("Johan",30),:p3("Erik",29) ;
+
+create function info()-> <charstring name,integer age> as
+select name(p),age(p) from person p;
+create function info(person p)-> <charstring name,integer age> as
+select name(p),age(p);
+create function getage(charstring nm)-> integer age as
+select age(p) from person p where name(p)=nm;
+
+create function WS_operations()-> function as stored;
+
+add WS_operations()=functionnamed("GETAGE");
+add WS_operations()=resolvents(functionnamed("INFO"));
+add WS_operations()=resolvents(functionnamed("GETAGE"));
+add WS_operations()=functionnamed("EVAL");
+
+create function fun_descr(Function f)-> 
+	<Charstring name, Vector args> as
+select name(f), arg_descr(f);
+
+create function WS_operations_descr()-> 
+	<Charstring name, Vector args> 
+as select fun_descr(WS_operations());
+
+add WS_operations()=resolvents(functionnamed("WS_OPERATIONS_DESCR"));

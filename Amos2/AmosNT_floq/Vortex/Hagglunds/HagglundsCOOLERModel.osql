@@ -1,0 +1,264 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) <year> <author>, UDBL
+ * $RCSfile: HagglundsCOOLERModel.osql,v $
+ * $Revision: 1.4 $ $Date: 2013/11/20 21:06:36 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: <description>
+ *
+ ****************************************************************************
+ * $Log: HagglundsCOOLERModel.osql,v $
+ * Revision 1.4  2013/11/20 21:06:36  chexu484
+ * *** empty log message ***
+ *
+ * Revision 1.3  2013/10/22 11:58:57  torer
+ * *** empty log message ***
+ *
+ * Revision 1.2  2013/10/20 18:42:08  chexu484
+ * moving average included
+ * To be refined:
+ * 1. how to choose appropriate size of the moving window
+ * 2. how to choose appropriate size of the training data
+ *
+ * Revision 1.1  2013/09/27 12:11:57  chexu484
+ * demo of learn_n_validate
+ * scenario: hagglunds cooler
+ *
+ * Revision 1.1  2006/02/12 20:01:08  torer
+ * Folder AmosNT/headers contains CVS header templates
+ *
+ ****************************************************************************/
+
+extlang("python");
+
+create function finv(Number p, Number v1, Number v2) -> Number
+  as foreign 'py:pca.pyppf';
+
+create function pypcalatent(Vector of Vector of Number traing) -> Number
+  as foreign 'py:pca.pcalatent';
+
+create function meanv(Bag of Vector of Number training) -> Vector of Number mean
+  as aggv(training, #'avg');
+
+create function stdv(Bag of Vector of Number training) -> Vector of Number stde
+  as aggv(training, #'stdev');
+
+/**/
+create function sort2nda1st(Vector of Number v1, Vector v2)
+                                        -> (Vector of Number sortedv1, Vector sortedv2)
+  as select sortvector(v1, #'>'), sortedv2
+     from Vector of Number idx
+     where idx = (vselect i from Integer i, Number val
+                  where (val, i) in leastk((select v1[i], i from Integer i), dim(v1)))
+     and sortedv2 = project(v2, idx);
+
+create function sortedPCA(Bag of Vector of Number training)
+			                -> (Vector of Number eigval, Vector of Vector of Number eigvec)
+  as sort2nda1st(pca(zscore(training)));
+/**/
+
+/* sum of top K component */
+/* v: the sorted eigval */
+/* note: the vector V should be sorted in decreasing order! */
+create function sumOfTopKC(Vector of Number v, Integer i) -> Number
+  as sum(select v[j] from Integer j where j in iota(0, i - 1));
+
+/* determine K princeple component
+   v: the eigval */
+create function getKPC(Vector of Number v, Number perc) -> Integer
+  as minagg(select k
+     from Number sum, Integer k
+     where sum = sum(in(v))
+     and k in iota(1, dim(v))
+     and sumOfTopKC(v, k) / sum > perc);
+
+create function TopKPC(Bag of Vector of Number training, Number perc) -> Integer
+  as select getKPC(d, perc)
+     from Vector of Number d, Vector of Vector of Number w
+     where (d, w) = sortedPCA(training);
+
+
+
+/* k: top k principle components 
+   n: data size
+   beta: inspection level */
+create function T2Stats(Number k, Number n, Number beta) -> Number
+  as (k * (n - 1) / (n - k)) * finv(beta, k, n - k);
+
+/* perc: contribution rate (threshold for choose top k)
+   k: top k principle components 
+   n: data size
+   beta: inspection level */
+create function T2(Bag of Vector of Number training, Number perc, Number beta) -> Number
+  as select T2Stats(k, n, beta)
+     from Number k, Number n
+     where k = TopKPC(training, perc) and
+     n = count(training);
+
+
+/* the statistics stored in the database */
+
+/* beta: the inspection level */
+create function beta() -> Number as stored;
+
+/* perc: the contribution rate */
+create function perc() -> Number as stored;
+
+/* the mean vector */
+create function mu() -> Vector of Number as stored;
+
+/* the stadard deviation */
+create function sigma() -> Vector of Number as stored;
+
+/* the eigenvector W */
+create function COEFF() -> Vector of Vector Number as stored;
+
+/* the eigenvalues D */
+create function LATENT() -> Vector of Number as stored;
+
+/* the top K princeple components */
+create function K() -> Number as stored;
+
+/* the T square statistics */
+create function T2limit() -> Number as stored;
+/* *** */
+
+
+
+/* the function to build the statistics
+   they will be stored in memory database */
+create function buildStats0(Bag of Vector of Number training) -> Number
+  as begin
+       set beta() = 0.98;
+       set perc() = 0.99;
+       set mu() = meanv(training);
+       set sigma() = stdv(training);
+       set LATENT() = sortvector(vectorof(pypcalatent(vectorof(zscore(training)))), #'>');
+       set COEFF() = (select eigvec
+       		       from Vector of Number eigval, Vector of Vector of Number eigvec
+       		       where (eigval, eigvec) = sortedPCA(training));
+       set K() = getKPC(LATENT(), perc());
+       set T2limit() = T2Stats(K(), count(training), beta());
+       return T2limit();
+     end;
+
+/* this is the learn function */
+create function buildStats(Vector of Record training) -> Number
+  as select buildStats0(select {hsREG410(r), hsREG402(r), hsREG403(r)}
+         		from Record r
+	 		where r in training);
+
+/* helper function to get the index of the top k princeple componets */
+create function topkindex(Vector of Number v, Integer topk) -> Bag of Integer
+  as select indx
+     from Number val, Integer indx
+     where (val, indx) in topk((select v[i], i from Integer i), topk);
+
+/* the vector to be validated */
+/* vector of:
+   {Number CoolMediumTemp, Number TempOilIn, Number TempOilOut} */
+create function XTest(Vector of Number v) -> Vector of Number
+  as (v - mu())./ sigma();
+
+create function topKscore(Vector of Number v) -> Vector of Number
+  as vselect XTest(v) * COEFF()[i]
+     from Integer i
+     where i in iota(0, K() - 1);
+
+create function topKLATENT() -> Vector of Number
+  as vselect LATENT()[i]
+     from Integer i
+     where i in iota(0, K() - 1);
+
+/* this is only for validating VECTOR PER VECTOR */
+create function measuredT2(Vector of Number v) -> Number
+  as select (topKscore ./ topKLATENT()) * topKscore
+     from Vector of Number topKscore
+     where topKscore = topKscore(v);
+
+
+/* the following is the incremental moving average of hagglunds stream */
+
+create function hsMovingAverageInit() -> Vector /* (Integer count, Record sum) */
+  as select {0, make_record({})};
+
+create function hsMovingAverageAdd(Vector countAndSum, Record r)
+					-> Vector /* (Integer newCount, Record newSum) */
+  as select {count + 1, add_records(sum, r)}
+     from Integer count, Record sum
+     where {count, sum} = countAndSum;
+
+create function hsMovingAverageRemove(Vector countAndSum, Record r)
+					-> Vector /* (Integer newCount, Record newSum) */
+  as select {count - 1, subtract_records(sum, r)}
+     from Integer count, Record sum
+     where {count, sum} = countAndSum;
+
+aggregate_function("hsMovingAverage", "hsMovingAverageInit",
+		   "hsMovingAverageAdd", "hsMovingAverageRemove");
+
+create function movingAverage(Stream of Record hs, Number size, Number stride) -> Stream of Record
+  as streamof(select record_multiply(sum, 1/count)
+	      from Window w, Integer count, Record sum
+	      where w in twindowize(hs, #'hsTS', size, stride)
+	      and {count, sum} = hsMovingAverage(w));
+
+
+
+/* the following is for the oil temperature */
+
+create function oilTempIn(Record r) -> Number
+  as select temp
+     from Number temp
+     where temp = r["REG403"];
+
+create function oilTempOut(Record r) -> Number
+  as select temp
+     from Number temp
+     where temp = r["REG402"];
+
+create function oilTempIn(Stream of Record s) -> Stream of (Number, Number)
+  as streamof(select hsTS(r), oilTempIn(r)
+              from Record r
+	      where r in s);
+
+create function oilTempOut(Stream of Record s) -> Stream of (Number, Number)
+  as streamof(select hsTS(r), oilTempOut(r)
+              from Record r
+	      where r in s);
+
+create function oilTempIn(Charstring hid) -> Stream of (Number, Number)
+  as oilTempIn(hagglundsRecords(hid));
+
+create function oilTempOut(Charstring hid) -> Stream of (Number, Number)
+  as oilTempOut(hagglundsRecords(hid));
+
+
+create function th(HagglundsStream s) -> Number as stored;
+
+create function get_th(Charstring hlundid) -> Number
+  as th(theHagglundsStream(hlundid));
+
+create function set_th(Charstring hlundid, Number newTH) -> Boolean
+  as set th(theHagglundsStream(hlundid)) = newTH;
+
+
+create function oilTempOutWarningLimit(HagglundsStream s) -> Number as stored;
+
+create function get_oilTempOutWarningLimit(Charstring hlundid) -> Number
+  as oilTempOutWarningLimit(theHagglundsStream(hlundid));
+
+create function set_oilTempOutWarningLimit(Charstring hlundid, Number newTH) -> Boolean
+  as set oilTempOutWarningLimit(theHagglundsStream(hlundid)) = newTH;
+
+
+
+create function oilTempOutAlarmLimit(HagglundsStream s) -> Number as stored;
+
+create function get_oilTempOutAlarmLimit(Charstring hlundid) -> Number
+  as oilTempOutAlarmLimit(theHagglundsStream(hlundid));
+
+create function set_oilTempOutAlarmLimit(Charstring hlundid, Number newTH) -> Boolean
+  as set oilTempOutAlarmLimit(theHagglundsStream(hlundid)) = newTH;

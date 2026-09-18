@@ -1,0 +1,82 @@
+/*-*-sql-*-*******************************************************************
+ * SVALI
+ *
+ * Author: (c) 2012 Cheng Xu, Minpeng Zhu, Tore Risch UDBL
+ * $RCSfile: MillingModel.osql,v $
+ *
+ * Description: The Sandvik milling model
+ ****************************************************************************
+ * $Log: MillingModel.osql,v $
+ * Revision 1.8  2013/11/16 17:02:39  chexu484
+ * returning stream of tuples
+ *
+ * Revision 1.7  2013/09/29 15:39:40  chexu484
+ * validation stream change to stream of vector instead of stream of tuple
+ *
+ * Revision 1.6  2012/11/12 16:28:55  larme597
+ * *** empty log message ***
+ *
+ * Revision 1.5  2012/11/08 16:14:46  torer
+ * New milling model
+ *
+ * Revision 1.4  2012/10/30 15:13:17  torer
+ * *** empty log message ***
+ *
+ * Revision 1.3  2012/10/30 14:35:15  torer
+ * Cleaned up schema.
+ * Made demo script for milling model
+ * Corrected readme
+ *
+ * Revision 1.2  2012/10/30 13:50:28  torer
+ * Corrected model
+ *
+ * Revision 1.4  2012/10/16 21:34:29  chexu484
+ * mill and drill model are seperated
+ *
+ * Revision 1.2  2012/10/15 13:58:25  chexu484
+ * newest version
+ *
+ ****************************************************************************/
+
+create function hm(Record r) -> Number
+  as (2 * pi() * sin(90 * pi() / 180) 
+     * ae(r) * fz(r))
+     / (pi() * cuttingDiameter(r) 
+        * acos(1 - 2 * ae(r)/cuttingDiameter(r)));
+
+create function kc(Record r) -> Number
+  as 1950*power(hm(r), -0.25) * (1-2.5/100);
+
+create function expected_power(Record r) -> Number p
+  as  (cuttingDepth(r) * ae(r) * fz(r) * vc(r) * zt(r) * kc(r))
+      /(pi() * cuttingDiameter(r) * 60000);
+
+create function millPower_b(MillStream cs) -> Bag of (Number, Number)
+  /* A CQ returns a bag of (ts, power) */
+  as select timestampMill(r), powerConsumption(r)
+     from Record r
+     where r in rawStreamTuples(cs);
+
+create function millPower(MillStream cs) -> Stream of (Number, Number)
+  /* A CQ returns a stream of (ts, power) */
+  as streamof(millPower_b(cs));
+
+/*** Conveniance functions ***/
+
+create function millPower(Charstring coreid) -> Stream of (Number, Number)
+  as millPower(theMillStream(coreid));
+
+create function expectedPower_b(MillStream cs) -> Bag of (Number, Number)
+  /* A CQ returns a bag of (ts, power) */
+  as select timestampMill(r), expected_power(r)
+     from Record r
+     where r in rawStreamTuples(cs);
+
+create function expectedPower(MillStream cs) -> Stream of (Number, Number)
+  /* A CQ returns a stream of (ts, power) */
+  as streamof(expectedPower_b(cs));
+
+/*** Conveniance functions ***/
+
+create function expectedPower(Charstring coreid) -> Stream of (Number, Number)
+  as millPower(theMillStream(coreid));

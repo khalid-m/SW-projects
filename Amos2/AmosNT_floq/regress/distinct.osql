@@ -1,0 +1,97 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2000 Tore Risch, UDBL
+ * $RCSfile: distinct.osql,v $
+ * $Revision: 1.5 $ $Date: 2011/02/16 18:47:30 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Distinct in subqueries
+ *
+ ****************************************************************************
+ * $Log: distinct.osql,v $
+ * Revision 1.5  2011/02/16 18:47:30  torer
+ * 1. Correct signature for evalv and eval
+ * 2. tuples_in -> tuples
+ *
+ * Revision 1.4  2009/11/16 21:54:55  torer
+ * Strict use of in over bag (not =)
+ *
+ ****************************************************************************/
+create function mytuples(Integer)-> Bag of (Integer,Integer);
+/* set tuples(1)= bag((1,1),(1,2),(1,3),(2,1),(2,2),(2,3)); bug */
+add mytuples(1) = (1,1);
+add mytuples(1) = (1,2);
+add mytuples(1) = (1,3);
+add mytuples(1) = (2,1);
+add mytuples(1) = (2,2);
+add mytuples(1) = (2,3);
+
+create function dist1()->Bag of Integer as
+  select distinct i from Integer i, Integer j where
+                    (i,j) in mytuples(1);
+
+create function dist2()-> Integer as
+  select count((  select distinct i from Integer i, Integer j where
+                    (i,j) in mytuples(1)));
+
+create function dist3()-> Integer as
+  select count((select distinct i,j from Integer i, Integer j, Integer k 
+  where (j,k) in mytuples(i)));
+
+create function dist4()->Bag of (Integer, Integer) as
+  select distinct i,j from Integer i, Integer j, Integer k
+  where (j,k) in mytuples(i);
+
+create function dist5()->Integer i as /* Implicit bag */
+  select distinct i from Integer j where
+                    (i,j) in mytuples(1);
+
+lisp;
+
+(create-function user_attributes ((type t)) ((function f))
+   as (f)
+   foreach ((type tp))
+   where (and (= tp (allsupertypes t))
+              (!= tp (typenamed "OBJECT"))
+              (= f (attributes tp))))
+
+:osql
+
+create function table_methods(charstring table) -> function as
+	select f from function f where f =
+	user_attributes(typenamed(table));
+
+
+create function table_method_result(function f) -> (charstring, type) as 
+	select distinct name(f), t from Integer k, type t, Integer m where
+	(k, t, m) = argrestypes(resolvents(f)) and k = 2;
+
+
+create function foo(function f) -> (charstring, type) as
+	select distinct  nm, t from charstring nm, type t where
+	(nm, t) = table_method_result(f); 
+
+create function fie(charstring tp) -> (charstring, type) as
+   select foo(table_methods(tp));
+
+lisp;
+(checkequal "distinct"
+  ((sorttuples(osql "select distinct i from Integer i, Integer j where
+                            (i,j) in mytuples(1);")) '((1)(2)))
+  ((sorttuples(osql "dist1();")) '((1)(2)))
+  ((sorttuples(osql "select in((select distinct i from Integer i, Integer j 
+                                where (i,j) in mytuples(1)));")) '((1)(2)))
+  ((osql "dist2();") '((2)))
+  ((osql " select count((select distinct i,j from Integer i, Integer j, 
+           Integer k where (j,k) in mytuples(i)));") '((2)))
+  ((sorttuples(osql "select distinct i,j from Integer i, Integer j, Integer k
+                     where (j,k) in mytuples(i);")) '((1 1)(1 2)))
+  ((osql "dist3();") '((2)))
+  ((osql "count(dist4());") '((2)))
+  ((osql "count(dist5());") '((2)))
+  ((null(osql "fie('TYPE');")) nil)
+)
+:osql
+rollback;
+

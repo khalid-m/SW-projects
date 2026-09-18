@@ -1,0 +1,11 @@
+
+/*Set up connection*/
+	set :dbname="example_db";
+	set :dbuser="u1";
+	set :dbpass="12345";
+	set :a = jdbc("con1", "com.mysql.jdbc.Driver");
+	set :dburl="jdbc:mysql://localhost:3306/"+:dbname;
+	connect(:a, :dburl, :dbuser, :dbpass);set :dbname=:dbname;
+	
+	logging off;
+

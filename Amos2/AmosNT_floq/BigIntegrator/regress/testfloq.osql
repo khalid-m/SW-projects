@@ -1,0 +1,154 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2007 Tore Risch, UDBL
+ * $RCSfile: multicast.osql,v $
+ * $Revision: 1.1 $ $Date: 2007/08/27 19:28:22 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Test multicasting functions
+ *
+ ****************************************************************************
+ ****************************************************************************/
+
+select measure(sid,loc) from Charstring loc, Number sid
+where sid = 1;
+
+select measure(sid,loc) from Charstring loc, Number sid
+where loc = "Uppsala" and sid=1;
+
+
+select measure(sid,loc) from Charstring loc, Number sid
+where loc = "Uppsala";
+
+/* new experiment */
+create function myiota(vector of vector params)->bag of integer
+as select iota(par1, par2)
+   from integer par1, integer par2
+   where {par1, par2} in params;
+
+myiota({{1,5},{7,8}});
+
+/* works */
+multicastreceive({'u', 'v'}, 'myiota', {{{{1,5},{7,8}}}, {{{10,15},{16,20}}}});
+
+multicastreceive({'u', 'v'}, 'iota', {{1,5},{10,20}});
+
+
+/* this is my own session for testing */
+create function peers()->Bag of Charstring as stored;
+
+add peers()="u";
+add peers()="v";
+
+
+create function foo()->number as
+select n
+from vector peervec, number n
+where peervec=vectorof(peers()) and 
+n in multicastreceive(peervec, "measures", {{},{}});
+
+foo();
+
+create function foo1()->(number, vector) as
+select n, peervec
+from vector peervec, number n
+where peervec=vectorof(peers()) and 
+n in multicastreceive(peervec, "measures", {{},{}});
+
+create function peersvector()->Bag of vector as stored;
+
+add peersvector()={"u", 10, 50, 1, 1};
+
+add peersvector()={"u", 10, 50, 2, 1};
+
+add peersvector()={"u", 10, 50, 3, 1};
+
+add peersvector()={"v", 20, 80, 6, 1};
+
+add peersvector()={"v", 20, 80, 7, 1};
+
+add peersvector()={"v", 20, 80, 8, 1};
+
+create function foo2()->(number, vector) as
+select n, peervec
+from vector peervec, number n
+where peervec=vectorof(peersvector()[0]) and 
+n in multicastreceive(peervec, "measures", {{},{}});
+
+multicastreceive({"u","v"}, "measure", {{peersvector()[3]},{peersvector()[3]}});
+
+/* works */
+multicastreceive({'u', 'v'}, "measurev2", {{vectorof(peersvector()[3])},{vectorof(peersvector()[3])}});
+
+/* doesn't work */
+create function foo3()->(number, vector) as
+select n, peervec
+from vector peervec, number n, integer sid
+where peervec=vectorof(peersvector()[0]) and
+      sid = peersvector()[3] and 
+n in multicastreceive(peervec, "measure", {{sid},{sid}});
+
+create function foo4()->number as
+multicastreceive({"u","v"}, "measure", {{iota(1,3)},{iota(1,3)}});
+
+create function foo4a()->(number,vector) as
+select n, peervec
+from vector peervec, number n
+where peervec=vectorof(select distinct peersvector()[0]) and
+n in multicastreceive(peervec, "measure", {{iota(1,3)},{iota(1,3)}});
+
+create function foo5()->(number, vector) as
+select n, peervec
+from vector peervec, number n
+where peervec=vectorof(select distinct peersvector()[0]) and
+n in multicastreceive(peervec, "measure", {{1},{2}});
+
+create function foo6()->(number, vector) as
+select n, peervec
+from vector peervec, number n
+where peervec=vectorof(select distinct peersvector()[0]) and
+n in multicastreceive(peervec, "measure", {{peersvector()[3]},{peersvector()[3]}});
+
+
+create function peersvector2()->Bag of vector as stored;
+
+create function peersvector3()->Bag of vector as stored;
+
+add peersvector2()={"u", 1, 1, 1, 10};
+
+add peersvector2()={"u", 2, 2, 2, 20};
+
+add peersvector2()={"u", 3, 3, 3, 30};
+
+add peersvector3()={"v", 4, 4, 4, 40};
+
+add peersvector3()={"v", 5, 5, 5, 50};
+
+add peersvector3()={"v", 6, 6, 6, 60};
+
+create function subvec(Bag of vector v)->Bag of vector
+  as select {uv[1], uv[2], uv[3]}
+     from vector uv
+     where uv in v;
+
+multicastreceive(vectorof(unique(in(bag(peersvector2()[0], peersvector3()[0])))), "measure2", {{1,1,1},{2,2,2}});
+
+/* I want multicastreceive returns exact 6 tuple as result, 
+but now it returns 18 rows, do trace("multicastreceive") to see */
+multicastreceive(vectorof(unique(in(bag(peersvector2()[0], peersvector3()[0])))), "measure2", {subvec(peersvector2()),subvec(peersvector3())});
+
+count(multicastreceive(vectorof(unique(in(bag(peersvector2()[0], peersvector3()[0])))), "measure2", {subvec(peersvector2()),subvec(peersvector3())}));
+
+create function genvec()->Bag of Vector
+  as select v
+     from vector v
+     where v in unique(bag(peersvector2(), peersvector3()));
+
+create function foo7(Bag of Vector v)->number as
+select n
+from number n, vector peervec, vector argvec
+where  peervec= vectorof(unique(v[0])) and argvec=subvec(v) and
+       n in multicastreceive(peervec, "measure2",......  
+
+suppose peers() is call1 to sql, sql returns bag of vector

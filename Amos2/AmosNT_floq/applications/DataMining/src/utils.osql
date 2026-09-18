@@ -1,0 +1,129 @@
+/*-*-sql-*-*******************************************************************
+ * AMOS2
+ *
+ * Author: (c) 2010, Tore Risch, UDBL
+ * $RCSfile: utils.osql,v $
+ * $Revision: 1.6 $ $Date: 2010/08/29 10:05:17 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Utility functions for data mining
+ *
+ ****************************************************************************
+ * $Log: utils.osql,v $
+ * Revision 1.6  2010/08/29 10:05:17  torer
+ * Example of how to normalize dfn(cid)->Vector of Number
+ *
+ * Revision 1.5  2010/08/29 09:26:55  torer
+ * Command miner.cmd to run amos2 with data mining script loaded
+ * Functions showing range normalization added
+ *
+ * Revision 1.4  2010/08/27 13:16:57  torer
+ * Bugs fixed
+ *
+ * Revision 1.3  2010/08/27 10:27:51  torer
+ * Bug in add_dfn
+ *
+ * Revision 1.2  2010/08/27 08:22:28  torer
+ * Generic data population functions
+ *
+ * Revision 1.1  2010/08/25 20:54:48  torer
+ * Utility functions for data mining excercises
+ *
+ ****************************************************************************/
+
+/* The data functions dfn all have one of the signatures:
+   create function dfn(Number id) -> Bag of Vector of Number val as stored;
+   create function dfn(Number id) -> Vector of Number val as stored;
+   Populate from blank separated file with
+    add_dfn(file, dfn, idpos, valposl)
+   
+   In some cases a set of unidentified data values are used:
+   create function dfn() -> Bag of Vector of Number val as stored;
+   Populate from blank separated file with
+    add_dfn(file, dfn, valposl)
+*/
+
+load_lisp("utils.lsp"); /* Load foreign functions in Lisp */
+
+create function add_dfn(Charstring file, Function dfn,
+                        Number idpos, Vector of Number valposl) 
+                       -> Function
+  /* Read instances to populate data function 
+      dfn(Number id)->Bag of Vector of Number val or
+      dfn(Number id)->Vector of Number val
+     from file with blank separated rows.
+     file: n-tuples file to import
+     dfn: data function to populate
+     idpos: Row position specifying id
+     valposl: Row positions specifying val vector */
+  as begin
+       for each Vector row where row in read_ntuples(file)
+         addfunction(dfn, project(row,{idpos}), {project(row, valposl)});
+       result dfn;
+     end;
+
+create function replace_dfn(Charstring file, Function dfn,
+                            Number idpos, Vector of Number valposl)
+                            -> Function
+  /* Replace contents of data function dfn with rows in file.
+     Also read comment on add_dfn */
+  as begin dropfunction(dfn,1);
+           result add_dfn(file, dfn, idpos, valposl);
+     end;
+
+create function add_dfn(Charstring file, Function dfn,
+                        Vector of Number valposl) 
+                       -> Function
+  /* Read instances to populate data function 
+      dfn()->Bag of Vector of Number val or
+      dfn()->Vector of Number val
+     from file with blank separated rows.
+     file: n-tuples file to import
+     dfn: data function to populate
+     valposl: Row positions specifying val vector */
+  as begin
+       for each Vector row where row in read_ntuples(file)
+         addfunction(dfn, {}, {project(row, valposl)});
+       result dfn;
+     end;
+
+create function replace_dfn(Charstring file, Function dfn,
+                            Vector of Number valposl)
+                            -> Function
+  /* Replace contents of data function dfn with rows in file.
+     Read comment on add_dfn for details */
+  as begin dropfunction(dfn,1);
+           result add_dfn(file, dfn, valposl);
+     end;
+
+create function upper_range(Bag of Vector of Number vals)
+                           -> Vector of Number 
+  /* Get the upper limit of values in vals */
+  as aggv(vals,#'maxagg');
+
+create function lower_range(Bag of Vector of Number vals)
+                           -> Vector of Number 
+  /* Get the lower limit of values in vals */
+  as aggv(vals,#'minagg');
+
+create function ranges(Bag of Vector of Number vals)
+                      -> <Vector of Number lower, Vector of Number upper>
+  /* Get both lower and upper limit of values in vals */
+  as select lower_range(vals), upper_range(vals);
+
+create function normalize_rangev(Vector of Number val,
+                                 Vector of Number lower,
+                                 Vector of Number upper)
+                                -> Vector of Number
+  /* Normalize vector val in range [lower,upper] */
+  as (val - lower) ./ substv(0,000001,upper - lower);
+
+create function normalize_range(Bag of Vector of Number vals)
+                               -> Bag of Vector of Number
+  /* Range normalize a bag of vectors */
+  as select normalize_rangev(val,minvector,maxvector)
+     from Vector of Number minvector, 
+          Vector of Number maxvector,
+          Vector of Number val
+     where <minvector, maxvector> = ranges(vals) and
+           val in vals;

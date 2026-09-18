@@ -1,0 +1,43 @@
+load_lisp('src/lisp/qplan.lsp');
+load_lisp('src/lisp/subplan.lsp');
+load_lisp('src/lisp/tablename.lsp');
+load_lisp('src/lisp/callws.lsp');
+load_amosql('src/amosql/wsmedpeers.amosql');
+load_amosql('src/amosql/wsdlschema.amosql');
+load_amosql('src/amosql/wrapperfunctions.amosql');
+load_amosql('src/amosql/input_signature.amosql');
+load_amosql('src/amosql/inputformat.amosql');
+load_amosql('src/amosql/soaphformat.amosql');
+load_amosql('src/amosql/callws.amosql');
+load_amosql('src/amosql/callws_co.amosql');
+load_amosql('src/amosql/wsqs_multi.amosql');
+
+/*default authentication values*/
+putsoaphvalue( 'http://codebump.com/services/PlaceLookup.asmx?wsdl','GeoPlaces','GetAllStates','','5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q');
+putsoaphvalue( 'http://codebump.com/services/PlaceLookup.asmx?wsdl','GeoPlaces','GetPlacesWithin','placeCHARSTRINGstateCHARSTRINGdistanceREALplaceTypeToFindCHARSTRING','5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q');
+putsoaphvalue( 'http://codebump.com/services/ZipCodeLookup.asmx?wsdl','ZipCodes','GetPlacesInside','zipCHARSTRING','5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q');
+putsoaphvalue( 'http://codebump.com/services/ZipCodeLookup.asmx?wsdl','ZipCodes','GetZipCodesWithin','zipCHARSTRINGdistanceREAL','5Dk7GEJdXC5Fe07t6wzk7iKrngadVXznLjVQT0gC0vsb2VNLushCXeiAhB2Ki0HuwiQY43c+1QpQOqTLLKX2Y8cRTCHDHO+Q');
+
+/* helping functions*/
+lisp;
+(defun getzipcode (fno string r)
+  "Returns a list of substrings (zipcode) of string"
+  (let ((zc "") (j 0) tstr)
+    (if (string= string "") (osql-result string nil)
+      (progn 
+	(setq tstr (explode (mksymbol string)))
+	(dolist (i tstr)
+	  (if (integerp i) (progn (if (< j 5)(setq zc ( concat zc (mkstring i)))) (setq j (1+ j)))
+	    (if (not (string= zc "")) (progn (setq j 0)(osql-result string zc) (setq zc "")) ))
+      
+      
+	  )))
+    ))
+
+(register-init-form '(delay-emit t));wsmed requires delayed emits 
+
+:osql
+create function sql:getzipcode(charstring zipstr)->charstring zipcode as foreign "getzipcode"; 
+create function sql:substring(charstring str, integer start, integer finish)->charstring substr as select substring(str,start,finish); 
+save 'wsmed.dmp';
+quit;

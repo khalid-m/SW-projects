@@ -1,0 +1,29 @@
+/*****************************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 1993 Magnus Werner, EDSLAB
+ * $RCSfile: correctedbugs.osql,v $
+ * $Revision: 1.1.1.1 $ $Date: 1999/01/30 22:26:02 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: Regression tests for fixed bugs.
+ ****************************************************************************/
+
+lisp;
+
+;; Test for fix of BugID 940630.1
+(checkequal "arithmetic comparison"
+   ((osql "select 54.5 > 60;") nil)
+   ((osql "select 54.5 < 60;") '((TRUE)))
+   ((osql "select 54.5 = 60;") nil))
+
+;; Test for fix of BugID 941102.1
+(osql "create function bar()->integer;")
+(checkequal "bar()=bar()+1"
+   ((osql "set bar()=1;"))
+   ((osql "set bar()=bar()+1;"))
+   ((osql "bar();") '((2)))
+)
+
+(rollback)
+:osql

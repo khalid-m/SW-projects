@@ -1,0 +1,43 @@
+/*****************************************************************************
+ * AMOS2
+ * 
+ * Author: (c) 2005 Ruslan Fomkin, UDBL
+ * $RCSfile: grids_schema.osql,v $
+ * $Revision: 1.1 $ $Date: 2005/03/09 15:33:59 $
+ * $State: Exp $ $Locker:  $
+ *
+ * Description: 
+ *  Contains description (schema) of Grid parts: data and clusters
+ *
+ ****************************************************************************/
+
+create type cluster;
+create type RuntimeEnvironment;
+create type EventData;
+create type binary;
+
+create function name(cluster) -> charstring key as stored;
+create function nickname(cluster) -> charstring key as stored;
+create function binarypath(cluster) -> charstring as stored;
+create function rootRE(cluster) -> charstring as stored;
+create function mpiRE(cluster) -> charstring as stored;
+/* cputime should be moved to job statistic block of meta-data */
+create function cputime(cluster, integer) -> integer as stored;
+
+create function name(RuntimeEnvironment) -> charstring as stored;
+
+create function name(EventData) -> charstring key as stored; /* filename */
+create function path(EventData nonkey) -> charstring as stored;
+create function size(EventData) -> integer as stored; /* number of events */
+
+create function name(binary) -> charstring as stored;
+create function path(binary) -> charstring as stored;
+
+/********************************************************
+ *********************** DATA ***************************
+ ********************************************************/
+
+/*************************** not used ***************/
+/* create type MPI under RuntimeEnvironment;
+create type ROOT under RuntimeEnvironment;*/
+/* create function REs(cluster nonkey) -> RuntimeEnvironment as stored;*/

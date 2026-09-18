@@ -1,0 +1,258 @@
+/*-*-sql-*-*******************************************************************/
+
+/* Turn off one-tuple buffering to facilitate truly dynamic cursors */
+lisp; 
+(delay-emit NIL) ; disable
+:osql 
+
+create function enumerate(Bag of Vector bv) 
+                      -> Bag of (Integer i, Vector  v)
+  /* Enumerates a bag of vectors bv from 1 to count(bv) */
+  as 
+  begin
+    set i = 0;
+    for each original Vector v where v in bv
+    begin
+      set i = i + 1;
+      return (i, v);
+    end;
+  end; 
+
+create function datapoint(Integer d)->Vector of Number v 
+  /* Function to store enumerated data points as vectors */
+  as stored;
+create_index('datapoint', 'v', 'mbtree', 'multiple');
+
+create function add_datapoints(Bag of Vector bv)->Boolean
+  /* Adds the enumerated vectors in input bag bv to the stored 
+     function datapoint() */ 
+  as add datapoint(i) =  v
+     from Integer i, Vector v
+     where (i, v) in enumerate(bv);
+
+create function load_datapoints(Charstring file)->Boolean
+  /* Loads stored function datapoint() from a file that
+     contains numerical n-tuples representing vectors */
+  as add_datapoints(read_ntuples(file)); 
+
+create function ddrtab(Integer p)->Bag of (Integer q)
+  /* Stored function of the directly density reachable 
+     graph, i.e. ddrtab(p)=q entails that p is a corepoint and q 
+     is in p's eps-neighborhood. */ 
+   as stored; 
+create_index('ddrtab', 'q', 'hash', 'multiple');
+
+create function nbr(Integer p, Number eps)->Bag of Integer
+  /* Calculate the eps-neighborhood of point p (p is excluded) */
+  as select q
+     from Integer q,
+          Vector of Number pv, Vector of Number qv
+     where pv = datapoint(p)
+       and qv = datapoint(q)
+       and qv > pv-eps
+       and qv < pv+eps
+       and euclid(pv, qv) <= eps
+       and p != q;
+
+create function ddr(Integer p, Number eps, Integer minpts) -> Bag of Integer
+  /* Calculate the set of points q that are ddr from p */
+  as select q
+     from Integer q
+     where count(nbr(p,eps)) >= minpts
+       and q in nbr(p, eps);
+
+create function build_ddrtab(Number eps, Integer minpts) -> Boolean
+  /* Populate the stored function ddrtab() by applying ddr() to 
+     the data points in stored function datapoint() */
+  as add ddrtab(p)=q
+     from Integer p, Integer q
+     where q in ddr(p,eps,minpts); 
+
+create function remove_ddrtab(Vector of Integer dcc) -> Boolean
+  /* Remove a density-connected dc component, i.e., a cluster 
+     from ddrtab */
+  as remove ddrtab(a)=b
+     from Integer a, Integer b
+     where a in dcc 
+        or b in dcc;
+
+create function ddr_child(Integer p) -> Bag of Integer
+  /* Return a set of points q that are ddr from point p.
+     Essentially the same results as ddr(p), but instead
+     of operating on the stored table datapoint, it 
+     retrieves the results from the pre-calculated ddrtab.
+     Used to traverse the ddr graph stored in ddrtab() by 
+     iterative application of the function on its results
+     via transitive closure (see next function). */
+  as select q 
+     from Integer q
+     where q in ddrtab(p);  
+
+create function dc(Integer p) -> Bag of Integer
+  /* Retrieve the maximal set of density-connected points
+     starting from and including p, i.e., a the maximal ddr chain */
+  as select q 
+     from Integer q
+     where q in tclose(#'ddr_child', p)
+       and p != q;
+
+create function find_and_remove_dc(Integer p, Integer cn) -> Vector
+  /* Finds, removes, and emits (as a cluster) a density-connected 
+     dc points starting from p. */
+  as 
+  begin
+      declare Vector of Integer dcc;
+      /* find dc(p) */ 
+      set dcc = vectorof(dc(p));
+      /* add p to dcc */
+      set dcc = concat(dcc, {p});
+      /* remove dcc from ddrtab */
+      remove_ddrtab(dcc);
+      /* emit dcc */ 
+      return (select {cn, q, datapoint(q)} 
+              from Integer q
+              where q in dcc);
+  end;
+
+create function nnbr(Integer p) -> Integer
+  /* Return the number of neighbors of p based on ddrtab */ 
+  as count(ddrtab(p));
+
+create function corepoints(Number eps) -> Bag of Integer
+  /* Return the corepoints based on the content of ddrtab() */
+  as select distinct p
+     from Integer p, Integer q
+     where q in ddrtab(p)
+       and nnbr(p) >= eps;
+
+create function dbscan(Number eps, Integer minpts) -> Bag of Vector
+  /* The DBSCAN algorithm based on retrieval of dcc-s from the ddr graph */
+  as 
+  begin 
+     declare Integer cn;
+     set cn = 1; 
+     /* build ddr tab */
+     clear_function("ddrtab");
+     build_ddrtab(eps, minpts);
+     /* find, remove and emit dcc-s from ddrtab */
+     for each original Integer cp
+     where cp in corepoints(eps)
+     begin 
+        return find_and_remove_dc(cp, cn);
+        set cn = cn + 1;
+     end;
+  end;
+
+/* NOTE: For each 'original' is almost like a true dynamic cursor over 
+   the result set, but a one-tuple buffering is performed by the DBMS. 
+   Hence the above implementation of DBSCAN is not entirely correct, 
+   because the for each original corepoint loop buffers one core point 
+   ahead. So for example if x and y are core points that are calculated 
+   in the given order and y belongs to the dcc of x, then y is added to 
+   the cluster of x and is removed from ddrtab. However, because of the 
+   buffering x will be tried as a new core point of a cluster, and 
+   because of the faulty logic, will actually be placed in its own 
+   singelton cluster AGAIN!!!  To avoid this one can disable the 
+   buffering as it is done in the beginning of this script. */
+
+create function dbscan_bag(Bag of vector bv, Number eps, Integer minpts)
+                       -> Bag of Vector
+  /* The DBSCAN algorithm based on retrieval of dcc-s from the ddr graph */
+  as 
+  begin 
+    clear_function('datapoint');
+    add_datapoints(bv);
+    return dbscan(eps, minpts); 
+  end;
+
+create function dbscan_file(Charstring file, 
+                            Number eps, 
+                            Integer minpts)
+                        -> Bag of Vector
+  /* The DBSCAN algorithm based on retrieval of dcc-s from the ddr graph */
+  as dbscan_bag(read_ntuples(file),eps,minpts);
+
+create function disp_clustering3d(Bag of Vector c)
+                              -> Integer   
+  /* Create a 3D scatter plot display of a clustering */
+  as scatter3p((select concat(project(v[2],{0,1,2}),{v[0]})
+                from Vector of Vector v
+                where v in c));
+
+/* TODO: Implement the k(=5)-dist based method to estimate value of eps. */
+
+create function p2p_distances() -> Bag of (Integer p1, Integer p2, Number d)
+  /* Calculates all the all distances between points */  
+  as select p1, p2, d
+     where d = euclid(datapoint(p1), datapoint(p2)); 
+
+create function p2p_d() -> Bag of (Integer p1, Number d)
+  /* Same a p2p_distances() but without p2 */
+  as select p1, d
+     from Integer p2
+     where (p1, p2, d) in p2p_distances();
+
+create function kth_smallest(Bag of Object b, Integer k) -> Object
+  /* Returns the kth smallest object out of the bag of objects b */
+  as {topk(leastk(b,k),1)}[0];
+
+create function fifth_smallest(Bag of Number b)->Number
+  /* Returns the 5th smallest element in the bag of numbers b */
+  as kth_smallest(b,5);
+
+create function kdist0() -> Bag of (Integer p, Number fifthd)
+  /* Calculate the distance to the k-th nearest neighbor for each point */
+  as groupby(p2p_d(), #'fifth_smallest');
+
+create function kdist() -> Bag of Number 
+  /* A subselection of kdist()->Bag of (Integer, Number) */
+  as select d 
+     from Integer p, Number d 
+     where (p,d) in kdist0();
+
+/* TODO: Display the sorted k-distance graph and choose an appropriate value
+   for eps */ 
+
+create function disp_sorted_5dist(Bag of Number kd) -> Integer
+  /* Displays the sorted 5-dist graph which can be used to estimate eps. */ 
+  as scatter2((select {i, v[i]}
+               from Vector v, Integer i
+               where v = sort(kd, 'dec')));
+
+/* Sample calls: 
+
+clear_function("datapoint");
+
+load_vdp("./data/patterns2.nt");
+
+add eps()=0.3;
+
+nbr(1,0.3);
+
+disp_sorted_5dist(kdist()); 
+
+dbscan(0.54,5);
+
+disp_clustering3d(dbscan_file('./data/patterns2.nt',0.54,5));
+
+*/
+
+/* Regression */
+
+create function col_means(Bag of Vector of Number bv)
+                       -> Vector of Number
+  /* Calculate the columns-wise mean of the bag of vectors bv */
+  as aggv(bv, #'avg');
+
+create function cnt_means(Bag of Vector of Number bv) -> Vector
+  /* Compute column-wise count and average of vectors in bv */ 
+  as {count(bv), roundto(col_means(bv),4)};
+
+create function cluster_statistics(Bag of Vector clus)
+                               -> Bag of (Integer, Vector) 
+  /* Computes the centroids based on the input clustering clus */  
+  as groupby((select c, pv
+              from Integer c, Integer p, Vector of Number pv
+              where {c,p,pv} in clus),
+             #'cnt_means'); 
+

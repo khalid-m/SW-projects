@@ -1,0 +1,15 @@
+lisp;
+;(setq _debugging_ t)
+:osql
+
+create type isyemp properties (
+  id     charstring key,
+  name   charstring, 
+  pay    integer,
+  wplace integer
+);
+
+load_lisp("isydb-gen.lsp");
+
+nameserver("ISYDB");
+listen();

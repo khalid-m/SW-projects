@@ -1,0 +1,78 @@
+/*-*-sql-*-****************************************************************************/
+
+lisp;
+
+(checkequal "Atomic Sort Merge Join"
+ ((osql "vectorof(lsmj(spv(vselect streamof({i*iota(1,5)}) 
+        from integer i where i in iota(1,3)), 0));")
+ '((#(#(1) #(2) #(2) #(3) #(3) #(4) #(4) #(5) #(6) #(6) #(8) #(9) #(10) #(12) #(15)))))
+ ((osql "vectorof(lsmj(spv(vselect streamof({0, i*iota(1, 3+i), 1})
+         from integer i where i in iota(1, 3)), 1));")
+ '((#(#(0 1 1) #(0 2 1) #(0 2 1) #(0 3 1) #(0 3 1) #(0 4 1) #(0 4 1) #(0 6 1) 
+      #(0 6 1) #(0 8 1) #(0 9 1) #(0 10 1) #(0 12 1) #(0 15 1) #(0 18 1))))))
+
+(checkequal "Atomic SMJ with delay"
+((osql "vectorof(lsmj(spv(vselect streamof(retard(0.5, {i*iota(1,5)}))
+	from Integer i where i in iota(1,3)), 0));")
+'((#(#(1) #(2) #(2) #(3) #(3) #(4) #(4) #(5) #(6) #(6) #(8) #(9) #(10) #(12) #(15))))))
+
+
+(checkequal "error propagation at start of lsmj"
+((errcond-msg (catch-error (osql 
+"count(lsmj({newsp(streamof(select v from vector of integer v
+where v in readfiles({'non-existing-file'})))}, 1));")))
+"Cannot open file"))
+
+(checkequal "error propagation inside lsmj"
+((errcond-msg (catch-error (osql 
+"count(lsmj({newsp(streamof(select v from vector of integer v
+where v in readfiles({getenv('AMOS_HOME') + '/validate/', 
+'non-existing-file'})))}, 1));")))
+"Cannot open file"))
+
+:osql
+
+create function lsmjsrc()->vector of stream of vector of integer as
+vectorize(select i-1, streamof({integer(i*iota(1,5))})
+from integer i where i in iota(1,3));
+
+lisp;
+
+(checkequal "lsmjstreamsv"
+((osql "in(lsmjstreamsv(exestreams(lsmjsrc()), 0));")
+ '((#(1)) (#(2)) (#(2)) (#(3)) (#(3)) (#(4)) (#(4)) (#(5)) (#(6)) (#(6)) (#(8))
+  (#(9)) (#(10)) (#(12)) (#(15)))))
+
+(checkequal
+ "error propagation at start of Atomic Sort Merge Join"
+ ((errcond-msg (catch-error 
+  (osql "count(lsmj({newsp(streamof(readfiles({'non-existing-file'})))},0));")))
+  '"Cannot open file"))
+
+(checkequal 
+ "error propagation at start of Atomic Sort Merge Join, > 1 proc"
+ ((errcond-msg (catch-error 
+  (osql "count(lsmj({newsp(streamof(readfiles({'non-existing-file'}))),
+                    newsp(streamof(retard(0.5, {iota(0, 10)})))},0));")))
+  '"Cannot open file"))
+
+(checkequal 
+ "error propagation inside Atomic Sort Merge Join"
+ ((errcond-msg (catch-error 
+  (osql "count(lsmj({newsp(streamof(readfiles({'validate/', 
+                                              'non-existing-file'})))},0));")))
+  '"Cannot open file"))
+
+(checkequal
+ "error propagation inside Atomic Sort Merge Join, > 1 proc"
+ ((errcond-msg (catch-error 
+  (osql "count(lsmj(
+         {newsp(streamof(readfiles(
+          {'vaildate/', 'non-existing-file'}))), 
+          newsp(streamof(retard(0.5, {iota(0, 10)}))), 
+          newsp(streamof(retard(0.5, {iota(0, 10)})))},0));")))
+  '"Cannot open file"))
+
+:osql
+
+kill_the_federation();

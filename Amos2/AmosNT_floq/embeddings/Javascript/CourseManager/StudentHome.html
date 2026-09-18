@@ -1,0 +1,77 @@
+<html>
+    <head>
+        <base target=_self></base>
+        <title>Student Home</title>
+        <script type="text/javascript" src="scripts/cookies.js"></script>
+        <script type="text/javascript" language="javascript">
+            var studName,courseName;
+        
+            function aAssignmentStatus_onclick(){
+                if (studName == "" || studName == null){
+                    alert("you should login first.");
+                    document.all.aindex.click();
+                }
+                if (studName!='' || studName != null){
+                    var myObject = new Object();
+                    myObject.studentName = studName;
+                    myObject.courseName = courseName;
+                    var regSucc = window.showModalDialog('AssignmentStatus.html',myObject,'dialogWidth:800px; dialogHeight:600px; center:Yes; resizable: Yes; help: No;');
+                    return false;
+                }
+            }
+    
+            function atodo_onclick(){
+                var regSucc = window.showModalDialog('todo.html',regSucc,'dialogWidth:800px; dialogHeight:600px; center:Yes; resizable: Yes; help: No;');
+                return false;
+            }
+
+            function getCourse()
+            {
+                var urlInfo =  window.location.href;
+                var len = urlInfo.length;
+                var offset = urlInfo.indexOf("?");
+                var strKeyValue = urlInfo.substr(offset,len);
+                var arrParam = strKeyValue.split("=");
+                courseName = arrParam[1];
+            }
+        
+            function logout_onclick(){
+                deleteCookie("name");
+                document.all.aLogout.href='index.html';
+                document.all.aLogout.click();
+            }
+
+            function window_onload(){
+                if (getCookie("name")==""||getCookie("name")==null){
+                    alert("You don't have authority to view this page.");
+                    document.all.aLogout.href='index.html';
+                    document.all.aLogout.click();
+                }
+                studName = getCookie("name");
+                document.getElementById("loginName").innerHTML = "You are logged as: <b>" + studName + "</b>";
+                getCourse();
+            }
+        </script>
+    </head>
+
+    <body onload="return window_onload();">
+        <hr>
+        <table width="80%" border="0">
+            <tr><td colspan="15%"><a id="aindex" href="index.html">Main</a></td>
+                <td colspan="15%"><a id="aStudentHome" href="StudentHome.html">Student Home</a></td>
+                <td colspan="15%"><a id="aAssignmentStatus" href=""
+                                     onclick="return aAssignmentStatus_onclick();">Assignment status</a></td>
+                <td colspan="15%"><a id="aLogout" href="" onclick="return logout_onclick();">Logout</a></td>
+                <td colspan="20%" id="loginName"></td>
+        </table>
+        <hr>
+        <h2>Student Home</h2>
+        <ul>
+            <li><a id="aAssignmentStatus" href=""
+                   onclick="return aAssignmentStatus_onclick();">View the status of your assignments.</a><br>
+            <li><a id="aPersonalInfo" href="" onclick="return atodo_onclick();">View your personal information stored in the database.</a>
+            <li><a id="aUpdateInfo" href="" onclick="return atodo_onclick();">Update your personal information.</a>
+            <li><a id="aUpdateGroup" href="" onclick="return atodo_onclick();">Update your group membership.</a>
+        </ul>
+    </body>
+</html>

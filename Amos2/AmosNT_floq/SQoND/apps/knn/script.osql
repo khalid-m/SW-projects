@@ -1,0 +1,46 @@
+/*-*-sql-*-******************************************************************/
+
+load_lisp('extfns.lsp');
+
+create function DEF() -> (Literal s, Literal p, Literal o);
+
+add DEF() = turtle('glassdata.ttl');
+add DEF() = turtle('testdata.ttl');
+
+/* Get all tests identified by row number */
+set :knn_query0 = "
+PREFIX : <http://udbl.uu.se/knn#> 
+SELECT ?i ( ?test[?i,:] as ?test)
+WHERE { :Test001 :Rows ?test }
+";
+
+/* Get the distances from Row 0 to all samples */
+set :knn_query1 = "
+PREFIX : <http://udbl.uu.se/knn#> 
+SELECT ?c ( euclid(?test[0,:],?sampledata) as ?distance)
+WHERE { :Test001 :Rows ?test .
+        ?sample :Data ?sampledata .
+        ?sample :Class ?c }
+";
+
+/* Return distinct classes with smallsest distances to Row 0 */
+set :knn_query2 = "
+PREFIX : <http://udbl.uu.se/knn#> 
+SELECT ?c ( min(euclid(?test[0,:],?sampledata)) as ?mindistance)
+WHERE { :Test001 :Rows ?test .
+        ?sample :Data ?sampledata .
+        ?sample :Class ?c }
+";
+
+/* Select 10 closest samples to Row 0 */
+set :knn_query3 = "
+PREFIX : <http://udbl.uu.se/knn#> 
+SELECT ?c ( euclid(?test[0,:],?sampledata) as ?distance)
+WHERE { :Test001 :Rows ?test .
+        ?sample :Data ?sampledata .
+        ?sample :Class ?c }
+ORDER BY ?distance
+LIMIT 10
+";
+
+/*
