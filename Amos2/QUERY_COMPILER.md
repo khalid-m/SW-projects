@@ -2,7 +2,10 @@
 
 How Amos II turns an AmosQL query into an execution plan, traced through the Lisp source in
 [AmosNT_floq/lsp/](AmosNT_floq/lsp/). Companion to [KERNEL.md](KERNEL.md), which covers the C side:
-how a query arrives, and what runs the finished plan.
+how a query arrives, and what runs the finished plan. [OPTIMIZER.md](OPTIMIZER.md) goes deeper into
+costs (with a worked calculation), the three ordering strategies and rewrite rules;
+[STORAGE.md](STORAGE.md) covers the data the plans run against; [GLOSSARY.md](GLOSSARY.md) defines
+the terms.
 
 Your notes in [../amos-query-optimization/](../amos-query-optimization/) describe the optimizer from
 the outside (`pc()` transcripts, REPL introspection, the 1992 paper). This file describes it from the

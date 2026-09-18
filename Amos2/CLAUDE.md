@@ -98,12 +98,15 @@ benchmark) — all under `AmosNT_floq/`.
 ## Architecture
 
 Deep dives, written from the source: [QUERY_COMPILER.md](QUERY_COMPILER.md) (`lsp/` compiler and
-optimizer), [KERNEL.md](KERNEL.md) (`system/` C kernel) and [BIGINTEGRATOR.md](BIGINTEGRATOR.md)
-(wrapper/mediator framework, relational wrapper, FLOQ). Generated references (rerun the scripts
-in `tools/` rather than editing them): [LSP_FUNCTION_INDEX.md](LSP_FUNCTION_INDEX.md) (every
-`defun`/`defmacro` in `lsp/`), [C_BUILTINS.md](C_BUILTINS.md) (every Lisp built-in registered from
-`system/C`), [GRAMMAR_MAP.md](GRAMMAR_MAP.md) (AmosQL grammar rule → Lisp form → handler). All paths
-below are relative to `AmosNT_floq/`.
+optimizer pipeline), [OPTIMIZER.md](OPTIMIZER.md) (cost model, join-ordering strategies, rewrite
+rules, recompilation), [STORAGE.md](STORAGE.md) (data model, updates, indexes, MEXIMA, extenders),
+[KERNEL.md](KERNEL.md) (`system/` C kernel) and [BIGINTEGRATOR.md](BIGINTEGRATOR.md) (wrapper/mediator
+framework, relational wrapper, FLOQ). Terms: [GLOSSARY.md](GLOSSARY.md). Generated references (rerun
+the scripts in `tools/` rather than editing them): [LSP_FUNCTION_INDEX.md](LSP_FUNCTION_INDEX.md)
+(every `defun`/`defmacro` in `lsp/`), [C_BUILTINS.md](C_BUILTINS.md) (every Lisp built-in registered
+from `system/C`), [GRAMMAR_MAP.md](GRAMMAR_MAP.md) (AmosQL grammar rule → Lisp form → handler),
+[REWRITE_RULES.md](REWRITE_RULES.md) (every rewrite-rule registration). All paths below are relative
+to `AmosNT_floq/`.
 
 - **`system/`** — the C kernel. `system/C` has source for startup, the REPL, the AmosQL/SQL
   parsers (bison/flex `.y`/`.l`; generation rules in `system/Linux/Makefile`, although that
