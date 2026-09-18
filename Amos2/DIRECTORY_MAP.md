@@ -21,8 +21,8 @@ Status flags:
 
 | Dir | Status | What it is |
 |---|---|---|
-| [system/](AmosNT_floq/system/) | 🟢 | C kernel: storage manager, buffer/index management, the aLisp interpreter, the OSQL/AmosQL grammars (bison/flex, generated into `system/C`). Platform subtrees: `Linux` (obsolete Makefile — see [CLAUDE.md](CLAUDE.md)), `Unix` (current Unix/macOS build), `MVC` (Windows/MSVC), `aix`. `system/include` and `system/C` hold shared headers/sources used by all platform builds. |
-| [lsp/](AmosNT_floq/lsp/) | 🟢 | ~170 Lisp files: the AmosQL compiler, type system, and optimizer (`optimizer.lsp`), the rule compiler (`rule_compiler.lsp`), and `init.lsp` — the master file that loads everything and gets compiled into `bin/amos2.dmp`. Most query-language feature work happens here rather than in `system/`. |
+| [system/](AmosNT_floq/system/) | 🟢 | C kernel: storage manager, buffer/index management, the aLisp interpreter, the OSQL/AmosQL grammars (bison/flex, generated into `system/C`). **The evaluator, storage, relations, indexes and plan executor are binary-only** (`.obj`/`.o`, no source); see [KERNEL.md](KERNEL.md). Platform subtrees: `Linux` (obsolete Makefile — see [CLAUDE.md](CLAUDE.md)), `Unix` (current Unix/macOS build), `MVC` (Windows/MSVC), `aix`. `system/include` and `system/C` hold shared headers/sources used by all platform builds. |
+| [lsp/](AmosNT_floq/lsp/) | 🟢 | ~170 Lisp files: the AmosQL compiler, type system, and optimizer (`optimizer.lsp`; module order in `coredef.lsp`; see [QUERY_COMPILER.md](QUERY_COMPILER.md)), the ECA trigger compiler (`rule_compiler.lsp`, off by default), and `init.lsp` — the master file that loads everything and gets compiled into `bin/amos2.dmp`. Most query-language feature work happens here rather than in `system/`. |
 | [C/](AmosNT_floq/C/) | 🟢 | Public C embedding API: `callin.h` (call into Amos), `callout.h` (Amos calls out to C), `storage.h`, `alisp.h`. Host applications link against `libamos.so`/`amos2.dll` using these headers. |
 | [bin/](AmosNT_floq/bin/) | 🟢 | Build output + install scripts: `amos2`/`amos2.dmp` (main system), `alisp`/`alisp.dmp` (bare Lisp REPL), `libamos.so`, `bt.so`/`xt.so` extenders, `javaamos.jar`. `install.sh`/`install.bat` drive the build. |
 | [regress/](AmosNT_floq/regress/) | 🟢 | Core regression suite — mostly self-contained `.osql`/`.lsp` scripts, run via `regress/Makefile`. Good source of executable AmosQL examples (`basic.lsp`, `bags.osql`, `cursor.osql`, `disjunctions.osql`, etc.). |
@@ -100,8 +100,9 @@ Status flags:
 - **MongoDB / mediator work** (matches recent repo history) → `wrappers/Mongo` for the driver/wrapper,
   `BigIntegrator/` (+ its `FLOQ` scenario scripts) for capability-based query mediation across
   sources, `BigIntegrator/src/AmosQL` and `.../Lisp` for the mediator core itself.
-- **Understanding a query's execution path** → start at `lsp/optimizer.lsp` and `lsp/amosdef.lsp`,
-  then the parser/eval loop in `system/C`.
+- **Understanding a query's execution path** → [KERNEL.md](KERNEL.md) (startup, REPL, parsing,
+  C↔Lisp handoff, plan execution) and [QUERY_COMPILER.md](QUERY_COMPILER.md) (flattening →
+  TR → rewrite → view expansion → cost-based ordering → TBR plan).
 - **Anything Windows-only** (`.cmd`/`.bat`, `.dsp`/`.vcxproj`, `xynt/`, `demo10/`) can be skipped
   if you're working on macOS/Linux, per the platform notes in [CLAUDE.md](CLAUDE.md).
 - **Safe to deprioritize** (🟡 above): `astro/` (BlueGene-specific), `wsqs/` (dead external

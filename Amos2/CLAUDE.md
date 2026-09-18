@@ -97,18 +97,26 @@ benchmark) — all under `AmosNT_floq/`.
 
 ## Architecture
 
-All paths below are relative to `AmosNT_floq/`.
+Deep dives, written from the source: [QUERY_COMPILER.md](QUERY_COMPILER.md) (`lsp/` compiler and
+optimizer) and [KERNEL.md](KERNEL.md) (`system/` C kernel). All paths below are relative to
+`AmosNT_floq/`.
 
-- **`system/`** — the C kernel: storage manager, buffer/index management, the aLisp interpreter,
-  the OSQL/AmosQL parsers (built from `.y`/`.l` grammar files with bison/flex — see
-  `system/Linux/Makefile` for the generation rules even though that Makefile itself is obsolete
-  for building). Platform subtrees: `Linux`, `Unix` (current canonical build, covers both Linux32
-  and Apple32 via `Makefile.<ARCHITECTURE>`), `MVC` (Windows/MSVC), `aix`. `system/C` holds the
-  shared C source; `system/include` the shared headers.
-- **`lsp/`** — the query processor, written in Lisp: AmosQL compiler, type system, optimizer
-  (`optimizer.lsp`), rule compiler (`rule_compiler.lsp`), and the master init file
-  (`init.lsp`) that loads everything and defines system functions. This is what gets compiled
-  into `amos2.dmp`. Most "language feature" work happens here, not in `system/`.
+- **`system/`** — the C kernel. `system/C` has source for startup, the REPL, the AmosQL/SQL
+  parsers (bison/flex `.y`/`.l`; generation rules in `system/Linux/Makefile`, although that
+  Makefile is obsolete for building), the C↔Lisp glue, the client API, sockets and scans. **The
+  aLisp evaluator, object storage, relations, indexes, B-trees, transactions and the plan executor
+  (`eval`, `storage`, `rel`, `index`, `btree`, `hist`, `olog`, …) are binary-only**: `.obj`/`.o`
+  in `system/MVC` and `system/Unix/Linux32`, with no `.c`. Platform subtrees: `Linux`, `Unix`
+  (current canonical build, covers both Linux32 and Apple32 via `Makefile.<ARCHITECTURE>`), `MVC`
+  (Windows/MSVC), `aix`. `system/include` holds the shared headers.
+- **`lsp/`** — the query processor, written in Lisp: the AmosQL compiler, type system and
+  optimizer. The compiler's real module list is the load order in `coredef.lsp`; the driver is
+  `compile_phase2` (`comppred.lsp`) and optimization is in `optimizer.lsp`. `init.lsp` is the
+  master file that loads everything into `amos2.dmp`. Most "language feature" work happens here,
+  not in `system/`. (`rule_compiler.lsp` is the ECA-trigger compiler, disabled by default. It is
+  not part of the optimizer.)
+- `parser.y` and several other C files are ISO-8859 with CRLF line endings, so use `grep -a` or
+  they are skipped as binary.
 - **`C/`** — the public C embedding API (`callin.h`/`callout.h`/`storage.h`) for host applications
   that link against `libamos.so`/`amos2.dll`.
 - **`extenders/`** — dynamically loaded native extension modules (index types: BTREE, Judy, XTREE)
