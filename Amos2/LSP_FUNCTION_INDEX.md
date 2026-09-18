@@ -584,8 +584,8 @@ For how the pieces fit together see [QUERY_COMPILER.md](QUERY_COMPILER.md).
 | `genvars` | [366](AmosNT_floq/lsp/misc.lsp#L366) | Genereate local variables with TYPES |  |  |
 | `ilength` | [370](AmosNT_floq/lsp/misc.lsp#L370) | Interlisp LENGTH |  |  |
 | `sorttuples` | [375](AmosNT_floq/lsp/misc.lsp#L375) |  |  |  |
-| `list&lt;` | [377](AmosNT_floq/lsp/misc.lsp#L377) |  |  |  |
-| `list&lt;=` | [379](AmosNT_floq/lsp/misc.lsp#L379) |  |  |  |
+| `list<` | [377](AmosNT_floq/lsp/misc.lsp#L377) |  |  |  |
+| `list<=` | [379](AmosNT_floq/lsp/misc.lsp#L379) |  |  |  |
 | `eqstart` | [381](AmosNT_floq/lsp/misc.lsp#L381) | Is list Y the beginning of list X? |  |  |
 | `smash` | [386](AmosNT_floq/lsp/misc.lsp#L386) |  |  |  |
 | `buildl` | [394](AmosNT_floq/lsp/misc.lsp#L394) |  |  |  |
@@ -786,7 +786,7 @@ For how the pieces fit together see [QUERY_COMPILER.md](QUERY_COMPILER.md).
 | `osql-functionp` | [1183](AmosNT_floq/lsp/function.lsp#L1183) |  |  |  |
 | `foreign-functionp` | [1186](AmosNT_floq/lsp/function.lsp#L1186) |  |  |  |
 | `allfunctionsfortype` | [1188](AmosNT_floq/lsp/function.lsp#L1188) | Returns sorted list of all non-generic functions used by a given |  |  |
-| `function&lt;` | [1203](AmosNT_floq/lsp/function.lsp#L1203) |  |  |  |
+| `function<` | [1203](AmosNT_floq/lsp/function.lsp#L1203) |  |  |  |
 
 ## foreign.lsp
 
@@ -1231,7 +1231,7 @@ For how the pieces fit together see [QUERY_COMPILER.md](QUERY_COMPILER.md).
 | `unify-key-preds` | [268](AmosNT_floq/lsp/rewrite.lsp#L268) | Until no change do: Infer equality preds and substitute equalities |  |  |
 | `substequal` | [280](AmosNT_floq/lsp/rewrite.lsp#L280) | In a conjunctive clause ANDARGS with free variables FREEVARS, |  |  |
 | `bindeqvarsubst` | [314](AmosNT_floq/lsp/rewrite.lsp#L314) | Maintains all equalities in a query for later substitution |  |  |
-| `eqvarorder&lt;` | [330](AmosNT_floq/lsp/rewrite.lsp#L330) | The order in wich variables are to be stored as equal |  |  |
+| `eqvarorder<` | [330](AmosNT_floq/lsp/rewrite.lsp#L330) | The order in wich variables are to be stored as equal |  |  |
 | `substeqvars` | [340](AmosNT_floq/lsp/rewrite.lsp#L340) | In the conjunction predl where all equality predicates have been removed, |  |  |
 | `substeqvars1` | [359](AmosNT_floq/lsp/rewrite.lsp#L359) | In expression l, substitute every variable occurrence |  |  |
 | `getmostgeneralsubst` | [367](AmosNT_floq/lsp/rewrite.lsp#L367) | Get the variable to equality substiture var against |  |  |
@@ -1530,9 +1530,9 @@ For how the pieces fit together see [QUERY_COMPILER.md](QUERY_COMPILER.md).
 | `assign-variable` *(macro)* | [278](AmosNT_floq/lsp/fncall.lsp#L278) | Transactional SETQ for AmosQL variables |  |  |
 | `assign-global` | [286](AmosNT_floq/lsp/fncall.lsp#L286) | Assign global interface variable transactional |  |  |
 | `unbind-interface-variables` | [292](AmosNT_floq/lsp/fncall.lsp#L292) | Unbind permanently all global interface variables transactionally |  |  |
-| `set-function` *(macro)* | [305](AmosNT_floq/lsp/fncall.lsp#L305) | Compile parsed set function-name(...)=... [from ... where...]; |  |  |
-| `add-function` *(macro)* | [313](AmosNT_floq/lsp/fncall.lsp#L313) | Compile parsed 'add function-name(...)=... [from ... where...]' |  |  |
-| `rem-function` *(macro)* | [321](AmosNT_floq/lsp/fncall.lsp#L321) | Compile parsed 'remove function-name(...)=... [from ... where...]' |  |  |
+| `set-function` *(macro)* | [305](AmosNT_floq/lsp/fncall.lsp#L305) | Compile parsed set function-name(...)=... \[from ... where...\]; |  |  |
+| `add-function` *(macro)* | [313](AmosNT_floq/lsp/fncall.lsp#L313) | Compile parsed 'add function-name(...)=... \[from ... where...\]' |  |  |
+| `rem-function` *(macro)* | [321](AmosNT_floq/lsp/fncall.lsp#L321) | Compile parsed 'remove function-name(...)=... \[from ... where...\]' |  |  |
 | `osql-foreach` *(macro)* | [330](AmosNT_floq/lsp/fncall.lsp#L330) | Compile parsed 'foreach declarations where-clause do' |  |  |
 | `call-function` *(macro)* | [339](AmosNT_floq/lsp/fncall.lsp#L339) | Backward compatibility. Used only in ECA rules |  |  |
 | `osql` *(macro)* | [343](AmosNT_floq/lsp/fncall.lsp#L343) | Embedded AmosQL string in ALisp |  |  |
@@ -2558,8 +2558,8 @@ For how the pieces fit together see [QUERY_COMPILER.md](QUERY_COMPILER.md).
 |---|---|---|---|---|
 | `print-timeval` | [24](AmosNT_floq/lsp/temporal.lsp#L24) |  |  |  |
 | `now+` | [39](AmosNT_floq/lsp/temporal.lsp#L39) |  | FF |  |
-| `t&lt;=` | [85](AmosNT_floq/lsp/temporal.lsp#L85) |  |  |  |
-| `t&gt;=` | [86](AmosNT_floq/lsp/temporal.lsp#L86) |  |  |  |
+| `t<=` | [85](AmosNT_floq/lsp/temporal.lsp#L85) |  |  |  |
+| `t>=` | [86](AmosNT_floq/lsp/temporal.lsp#L86) |  |  |  |
 | `print-timeinterval` | [104](AmosNT_floq/lsp/temporal.lsp#L104) |  |  |  |
 | `timeintervaltype` | [132](AmosNT_floq/lsp/temporal.lsp#L132) |  |  |  |
 | `print-time` | [227](AmosNT_floq/lsp/temporal.lsp#L227) |  |  |  |

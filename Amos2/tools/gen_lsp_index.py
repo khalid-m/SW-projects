@@ -169,7 +169,14 @@ def foreign_names():
 
 
 def md(text):
-    return text.replace("|", "\\|").replace("<", "&lt;").replace(">", "&gt;")
+    """Escape for a Markdown table cell outside code spans."""
+    return (text.replace("|", "\\|").replace("<", "&lt;").replace(">", "&gt;")
+            .replace("[", "\\[").replace("]", "\\]"))
+
+
+def code(text):
+    """Escape for a Markdown table cell inside a `code span` (entities would show literally)."""
+    return text.replace("|", "\\|")
 
 
 def main():
@@ -223,7 +230,7 @@ def main():
             if len(first) > 110:
                 first = first[:107].rstrip() + "..."
             others = [f"{g}:{l}" for g, l in where[name.lower()] if (g, l) != (f, line)]
-            label = f"`{md(name)}`" + (" *(macro)*" if kind == "defmacro" else "")
+            label = f"`{code(name)}`" + (" *(macro)*" if kind == "defmacro" else "")
             out(f"| {label} | [{line}]({LINK}{f}#L{line}) | {md(first)} | "
                 f"{'FF' if name.lower() in foreign else ''} | {md(', '.join(others[:3]))}"
                 f"{' …' if len(others) > 3 else ''} |\n")

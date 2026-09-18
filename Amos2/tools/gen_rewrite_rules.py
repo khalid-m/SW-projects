@@ -120,7 +120,7 @@ def main():
                 cells.append(f"`{n}` [{os.path.basename(f)}:{line}](AmosNT_floq/{url(f)}#L{line})"
                              + (f": {lspidx.md(first)}" if first else ""))
             else:
-                cells.append(f"`{lspidx.md(n)}`")
+                cells.append(f"`{lspidx.code(n)}`")
         return "<br>".join(cells)
 
     w = sys.stdout.write
@@ -148,7 +148,7 @@ def main():
     w("| Kind | Where | Image | Target | Binding pattern | Rewriter / test + action |\n|---|---|---|---|---|---|\n")
     for kind, path, line, target, bpat, fns in rows:
         w(f"| {kind} | [{path}:{line}](AmosNT_floq/{url(path)}#L{line}) | {'yes' if in_image(path) else ''} | "
-          f"`{lspidx.md(target)}` | {('`' + lspidx.md(bpat) + '`') if bpat else ''} | {fn_cell(fns)} |\n")
+          f"`{lspidx.code(target)}` | {('`' + lspidx.code(bpat) + '`') if bpat else ''} | {fn_cell(fns)} |\n")
 
 
 if __name__ == "__main__":

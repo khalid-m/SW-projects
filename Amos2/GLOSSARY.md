@@ -5,7 +5,8 @@ links to where it is explained. Doc abbreviations: **QC** = [QUERY_COMPILER.md](
 **OPT** = [OPTIMIZER.md](OPTIMIZER.md), **K** = [KERNEL.md](KERNEL.md), **ST** =
 [STORAGE.md](STORAGE.md), **BI** = [BIGINTEGRATOR.md](BIGINTEGRATOR.md).
 
-For individual Lisp functions see [LSP_FUNCTION_INDEX.md](LSP_FUNCTION_INDEX.md). For C built-ins see
+For individual Lisp functions see [LSP_FUNCTION_INDEX.md](LSP_FUNCTION_INDEX.md), for AmosQL functions
+[AMOSQL_FUNCTIONS.md](AMOSQL_FUNCTIONS.md), for the C API [C_API.md](C_API.md), and for C built-ins
 [C_BUILTINS.md](C_BUILTINS.md).
 
 | Term | Meaning | See |
@@ -17,7 +18,7 @@ For individual Lisp functions see [LSP_FUNCTION_INDEX.md](LSP_FUNCTION_INDEX.md)
 | **aLisp** | Amos II's own embedded Lisp. The evaluator is binary-only here; the query compiler is written in it. | [K §1](KERNEL.md#1-three-layers) |
 | **Amos II** | The object-relational/functional DBMS from Uppsala University's UDBL lab. The whole checkout is Amos II plus research extensions. | [DIRECTORY_MAP.md](DIRECTORY_MAP.md) |
 | **AmosQL / OSQL** | The query language. The grammar is in `system/C/parser.y`; `.osql` and `.amosql` files are AmosQL scripts. | [K §5](KERNEL.md#5-the-grammars), [GRAMMAR_MAP.md](GRAMMAR_MAP.md) |
-| **AQIT** | Algebraic Query Inequality Transformation. Rewrites inequalities, including distance predicates, so that indexes can be used. On in the standard image, and it also installs the late TR rewriters. | [QC §4.3](QUERY_COMPILER.md#43-the-driver-compile_phase2) |
+| **AQIT** | Algebraic Query Inequality Transformation. Rewrites inequalities, including distance predicates, so that indexes can be used. On in the standard image, and it also installs the late TR rewriters. | [DTR_AQIT.md Part 2](DTR_AQIT.md#part-2--aqit) |
 | **binding pattern (bpat)** | One symbol per argument/result position of a call. In Lisp **`-` = bound (input)** and **`+` = free (output)**; in AmosQL `multidirectional` clauses, `b` / `f`. | [QC §3](QUERY_COMPILER.md#binding-pattern-notation) |
 | **BigIntegrator** | The 2012–13 mediator framework (absorber / finalizer) for pushing query parts into external sources. | [BI](BIGINTEGRATOR.md) |
 | **callin / callout** | The C APIs for calling Amos from a host program (`C/callin.h`) and for implementing AmosQL functions in C (`C/callout.h`). | [K §6–7](KERNEL.md#6-the-c--lisp-bridge) |
@@ -28,7 +29,7 @@ For individual Lisp functions see [LSP_FUNCTION_INDEX.md](LSP_FUNCTION_INDEX.md)
 | **delpred** | A function's *update template*, the `selectbody` field naming the relation that updates write to. A function without one is not directly updatable. | [ST §3](STORAGE.md#3-stored-functions-and-their-relations), [§4](STORAGE.md#4-updates) |
 | **derived function** | A function defined by a query (`create function … as select …`). Queries themselves are compiled as anonymous derived functions. | [QC §1](QUERY_COMPILER.md#1-the-pipeline-at-a-glance) |
 | **DNF** | Disjunctive normal form. The TR predicate is normalized to it (`*use-dnf*`, on by default) before cost-based optimization. | [QC §4.3](QUERY_COMPILER.md#43-the-driver-compile_phase2) |
-| **DTR / late binding** | Dynamic type resolver. When the resolvent of an overloaded call can't be chosen at compile time, a DTR call picks it at run time. On by default (`_USE_DTR_`). | [QC §4.2](QUERY_COMPILER.md#42-flattening-overload-resolution-and-type-checks-compileselect) |
+| **DTR / late binding** | Dynamic type resolver. When the resolvent of an overloaded call can't be chosen at compile time, a DTR call picks it at run time. On by default (`_USE_DTR_`). | [DTR_AQIT.md Part 1](DTR_AQIT.md#part-1--late-binding) |
 | **ECA rules** | Event-condition-action triggers, compiled by `rule_compiler.lsp`. Disabled by default; not part of the optimizer. | [QC §9](QUERY_COMPILER.md#9-what-is-not-part-of-the-query-pipeline) |
 | **extender** | A loadable shared library that adds an index type through MEXIMA: `bt` (MBTREE), `xt` (XTREE), Judy. | [ST §7.3](STORAGE.md#73-the-extenders) |
 | **extent** | All objects of a type, kept as a linked list through the C `oidcell`s. It is not a stored table. | [ST §2](STORAGE.md#2-objects-and-types) |

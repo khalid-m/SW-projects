@@ -97,15 +97,18 @@ benchmark) — all under `AmosNT_floq/`.
 
 ## Architecture
 
-Deep dives, written from the source: [QUERY_COMPILER.md](QUERY_COMPILER.md) (`lsp/` compiler and
-optimizer pipeline), [OPTIMIZER.md](OPTIMIZER.md) (cost model, join-ordering strategies, rewrite
-rules, recompilation), [STORAGE.md](STORAGE.md) (data model, updates, indexes, MEXIMA, extenders),
+Start at [README.md](README.md) (reading order and a list of every doc). Deep dives, written from the
+source: [QUERY_COMPILER.md](QUERY_COMPILER.md) (`lsp/` compiler and optimizer pipeline),
+[OPTIMIZER.md](OPTIMIZER.md) (cost model, join-ordering strategies, rewrite rules, recompilation),
+[DTR_AQIT.md](DTR_AQIT.md) (late binding and inequality transformation), [STORAGE.md](STORAGE.md) (data model, updates, indexes, MEXIMA, extenders),
 [KERNEL.md](KERNEL.md) (`system/` C kernel) and [BIGINTEGRATOR.md](BIGINTEGRATOR.md) (wrapper/mediator
 framework, relational wrapper, FLOQ). Terms: [GLOSSARY.md](GLOSSARY.md). Generated references (rerun
 the scripts in `tools/` rather than editing them): [LSP_FUNCTION_INDEX.md](LSP_FUNCTION_INDEX.md)
 (every `defun`/`defmacro` in `lsp/`), [C_BUILTINS.md](C_BUILTINS.md) (every Lisp built-in registered
 from `system/C`), [GRAMMAR_MAP.md](GRAMMAR_MAP.md) (AmosQL grammar rule → Lisp form → handler),
-[REWRITE_RULES.md](REWRITE_RULES.md) (every rewrite-rule registration). All paths below are relative
+[REWRITE_RULES.md](REWRITE_RULES.md) (every rewrite-rule registration),
+[AMOSQL_FUNCTIONS.md](AMOSQL_FUNCTIONS.md) (the AmosQL functions the image defines),
+[C_API.md](C_API.md) (the public C API in `C/*.h`). Regenerate them all with `sh tools/regenerate.sh`. All paths below are relative
 to `AmosNT_floq/`.
 
 - **`system/`** — the C kernel. `system/C` has source for startup, the REPL, the AmosQL/SQL
