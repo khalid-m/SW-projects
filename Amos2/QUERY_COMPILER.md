@@ -383,7 +383,8 @@ arguments gets an equality test added (`add-duplicate-param-test`, :1301).
 
 ### 4.7 Mediator hooks: absorber before, finalizer after
 
-These come from BigIntegrator (Minpeng Zhu and Tore Risch, 2012).
+These come from BigIntegrator (Minpeng Zhu and Tore Risch, 2012). The framework, the relational
+wrapper and FLOQ are covered in full in [BIGINTEGRATOR.md](BIGINTEGRATOR.md).
 
 - **Absorber** ([absorbmng.lsp:33](AmosNT_floq/BigIntegrator/src/Lisp/absorbmng.lsp#L33)). For
   each *source predicate* (a function with the `cclusterfct?` property), it finds the wrapper for

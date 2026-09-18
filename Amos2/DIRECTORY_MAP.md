@@ -48,7 +48,7 @@ Status flags:
 | Dir | Status | What it is |
 |---|---|---|
 | [wrappers/](AmosNT_floq/wrappers/) | 🔵 | The largest directory (~1800 files). Each subfolder is a wrapper exposing an external data source as Amos foreign functions/types: `JDBC`, `ODBC`, `Mongo` (MongoDB — has its own install/run scripts and a tutorial in its readme), `RDF`/`CRDF`/`ntriples`, `BigTable`, `SparQL`, `ROOTWrap` (CERN ROOT files, used by `aleh`), `Twitter`, `TopicMap`, `WSMED`/`WSDM` (web-service-based sources), `Xtree`/`MBTree`/`trie` (index structures exposed as wrappers), `datasource`/`relational`/`amosexport`/`Amos` (generic/relational and Amos-to-Amos wrapping), `gsl`, `labview`. Treat each subfolder as an independent mini-project; most have their own `compile.cmd`. |
-| [BigIntegrator/](AmosNT_floq/BigIntegrator/) | 🔵 | "Generic system to wrap external data sources having databases with different capabilities" (per its readme) — i.e. capability-based query mediation across heterogeneous sources. `src/AmosQL` and `src/Lisp` hold the mediator core; `relational`, `Bigtable`, `JDBC`, `SparQL` are source-specific bindings; `regress/` has its tests. **`FLOQ`** is a sub-component here — meta-database scripts (`metadb*.sql` at small/medium/large scale, `bij.osql`, `peer.osql`) for a sensor/machine-installation scenario, suggesting a federated-query benchmark or demo built on the mediator. This checkout is named after `AmosNT_floq`, presumably because it was cloned for FLOQ-related work. |
+| [BigIntegrator/](AmosNT_floq/BigIntegrator/) | 🔵 | "Generic system to wrap external data sources having databases with different capabilities" (per its readme) — i.e. capability-based query mediation across heterogeneous sources. `src/AmosQL` and `src/Lisp` hold the mediator core (absorber and finalizer managers, access filters); `Bigtable` (App Engine) and `SparQL` are source-specific wrappers; `relational/` is an old 2012 copy, and the live relational wrapper is `wrappers/relational/`. **FLOQ** (in `regress/` and `FLOQ/`) is Minpeng Zhu's 2013–14 research on one declarative query over a MySQL metadata DB plus a collection of SQL Server log DBs, run in parallel on Amos peers. It is not in the standard image; experiment scripts load it by hand. See [BIGINTEGRATOR.md](BIGINTEGRATOR.md). |
 | [SQL/](AmosNT_floq/SQL/) | 🔵 | "SQLFront" — a SQL front end layered on Amos II (installed via `compile`, tested via `(load "regress/master.lsp")`). Separate from the wrapper-level SQL access in `wrappers/`. |
 | [orwise/](AmosNT_floq/orwise/) | 🔵 | Another wrapping project (`orwise.jpr` is a JBuilder project) — `make_wrappers.bat` suggests it auto-generates wrapper code. Has its own `demo/` and `initORWISE.osql`. |
 
@@ -97,9 +97,9 @@ Status flags:
 ## How to use this map
 
 - **Core language/compiler work** → `system/` + `lsp/`, tested via `regress/`.
-- **MongoDB / mediator work** (matches recent repo history) → `wrappers/Mongo` for the driver/wrapper,
-  `BigIntegrator/` (+ its `FLOQ` scenario scripts) for capability-based query mediation across
-  sources, `BigIntegrator/src/AmosQL` and `.../Lisp` for the mediator core itself.
+- **MongoDB / mediator work** (matches recent repo history) → [BIGINTEGRATOR.md](BIGINTEGRATOR.md)
+  (absorber/finalizer framework, the relational wrapper as a worked example, FLOQ). Note that
+  `wrappers/Mongo` here is the older C-only wrapper, not part of the optimizer.
 - **Understanding a query's execution path** → [KERNEL.md](KERNEL.md) (startup, REPL, parsing,
   C↔Lisp handoff, plan execution) and [QUERY_COMPILER.md](QUERY_COMPILER.md) (flattening →
   TR → rewrite → view expansion → cost-based ordering → TBR plan).
