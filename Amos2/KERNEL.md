@@ -203,7 +203,7 @@ grammar actions build Lisp lists directly with `cons`, `a_list` and `mksymbol`:
 - The top rule (:1602) stores each statement in the global `parse_return` and calls `YYACCEPT`, so the
   parser returns one statement per call. `top` also accepts `lisp_stmt`, which is why raw Lisp forms
   work at the AmosQL prompt.
-- `select_stmt1` (:791) builds `(osql-select …distinct… (items) …into… …from… …where…)`. This is the
+- `select_stmt1` (:792) builds `(osql-select …distinct… (items) …into… …from… …where…)`. This is the
   form the Lisp side receives.
 - A bare expression statement such as `name(:p);` becomes `(osql-select (expr))`
   (`general_expr_query`, :1656). That is the shape `osql-callp` recognises for its no-compile fast
