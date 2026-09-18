@@ -39,6 +39,13 @@ two — algebra trees like Polars, global cost-based search like AMOS II.
 > be larger than described here, it is **mutually exclusive** with the
 > cost-based search, and AMOS II's inability to drive an index from a range
 > is a property of the tested build rather than of the system.
+>
+> A third follows the MongoDB wrapper in
+> [`mongo-wrapper/`](mongo-wrapper/). This document called AMOS II a mediator
+> in its first sentence and then compared it purely as a local engine. The
+> mediator dimension is now §2a. It also reverses one conclusion: against a
+> **wrapped** source AMOS II has no statistics at all, so the
+> "AMOS II estimates, Polars proves" framing inverts there.
 
 ## At a glance
 
@@ -51,7 +58,8 @@ two — algebra trees like Polars, global cost-based search like AMOS II.
 | Rule-based rewrite layer | simplification passes, **plus TBR-rewrite rules** — but those fire only under `ranksort` | the primary mechanism — eight passes, always on |
 | Global cost model | yes — `(cost . fanout)` per predicate per binding pattern | **no** — no whole-plan cost function |
 | Does it estimate? | yes — cardinality and fanout, for every predicate | yes, but narrowly: group-by strategy, join branch order |
-| Statistics used | live cardinality, index uniqueness | Parquet row-group min/max, Hive paths, sortedness |
+| Statistics used | live cardinality, index uniqueness — **but none for wrapped sources** | Parquet row-group min/max, Hive paths, sortedness |
+| Pushes predicates into | **arbitrary foreign query languages**, via a per-source translator | file formats — Parquet, CSV, Hive layouts — via built-in readers |
 | Purpose of statistics | **compare candidate plans** | **skip data that can't match** |
 | Join order | chosen by search over `n!` orderings, minimising cost | reordered to reduce **memory pressure** |
 | Join algorithm | nested loop | hash, or sort-merge when sortedness is provable |
@@ -289,7 +297,7 @@ The [official list](https://docs.pola.rs/user-guide/lazy/optimizations/):
 
 | Polars pass | What it does | AMOS II analogue |
 |---|---|---|
-| **Predicate pushdown** | apply filters as early as possible, at scan level | **both** — *emergent* under `exhaustive` (cheap selective predicates sort to the front because the cost model prices them that way); **rule-based** under `ranksort`, where TBR-rewrite rules fold predicates into an index access call |
+| **Predicate pushdown** | apply filters as early as possible, at scan level | **three mechanisms** — *emergent* under `exhaustive` (the cost model sorts cheap selective predicates to the front); *rule-based* under `ranksort` via TBR-rewrite rules; and *wrapper extractors*, which push predicates into an external system's own query language (§2a) |
 | **Projection pushdown** | read only the columns needed, at scan level | **none** — no columns to prune; a stored function's tuples are its extent |
 | **Slice pushdown** | load only the required slice; don't materialise sliced output | **none** in the plan model |
 | **Common subplan elimination** | cache subtrees / file scans used by multiple subtrees | **none** in `dynprogsort` — it orders one conjunction |
@@ -375,6 +383,12 @@ Polars has no such constraint: its eight passes and its two local estimates
 run together on every query. Whether AMOS II's restriction is fundamental or
 an artifact of how the two paths were implemented is not stated in the
 document.
+
+**Scope of this finding.** It concerns TBR-rewrite rules specifically.
+AMOS II has a *third* pushdown mechanism — wrapper extractors (§2a) —
+registered through a different API, and whether those are equally restricted
+to `ranksort` is not established. If they are not, pushdown into external
+sources survives `optmethod('exhaustive')` even though rewrite rules do not.
 
 ### How Polars' two estimates are actually used
 
@@ -539,6 +553,104 @@ architecture. By design both systems exploit ordering for ranges; they differ
 in where — Polars skips blocks it never reads, AMOS II selects an access
 path.
 
+## 2a. The mediator dimension
+
+This document opened by calling AMOS II a *functional mediator* and then
+compared it as though it were a local engine. That leaves out the thing it
+was built for — and the place where the comparison with Polars is closest.
+
+A **mediator** presents external sources as if they were local, so one
+declarative query can span them and the system decides what to send where.
+The MongoDB wrapper in [`mongo-wrapper/`](mongo-wrapper/) is a complete
+worked example: a MongoDB collection is imported as an AMOS II type, and
+
+```sql
+select p from Person p where p["age"] > 30 and p["age"] <= 50;
+```
+
+becomes a single call carrying
+`{"$and": [{"age":{"$gt":30}}, {"age":{"$lte":50}}]}`. That is **literal**
+predicate pushdown into a foreign system — the thing §5 uses "pushdown" as a
+metaphor for.
+
+### Both push down; into very different things
+
+| | Polars | AMOS II |
+|---|---|---|
+| Pushes into | file formats — Parquet, CSV, Hive layouts | **arbitrary foreign query languages** |
+| Capability model | fixed per format, built into the reader | **per source, programmable** — a Lisp extractor decides per query |
+| What is emitted | a filter the reader understands | a query in the source's own language, assembled as a document |
+| Adding a new source | implement a reader in the engine | write a wrapper outside it |
+
+Polars' pushdown is deeper but narrower: it knows Parquet intimately and can
+skip blocks it never reads. AMOS II's is shallower but open-ended — it does
+not know what MongoDB can do until the wrapper author writes an extractor,
+and that same machinery works for JDBC, a search index, or anything else.
+
+### Capabilities versus per-query decision
+
+`rewrite.txt` §1 criticises the built-in relational wrapper for declaring
+fixed **capabilities**:
+
+> If you have a source that can handle certain capabilities but not all
+> combinations of these in a conjunction, the query optimizer will fail
+
+An extractor declares nothing in advance. It inspects the actual conjunction
+and claims the subset it can serve, leaving the rest as post-filters — so an
+unsupported combination degrades instead of failing. Polars sits on the
+declarative side: its readers know statically what a format supports, which
+is why a regex cannot drive Parquet skipping (§5).
+
+### Where the estimates go — and this reverses a conclusion elsewhere
+
+Against a **local** stored function AMOS II reads live cardinality and index
+uniqueness. Against a **wrapped** source it has neither. The MongoDB cost
+model is four hardcoded tiers:
+
+```lisp
+((null (cdr filter))               (list 100000 100000))   ; full scan
+((has-mongo-equality filter bnd)   (list 10 10))
+((has-mongo-comparison filter bnd) (list 100 100))
+(t                                 (list 1000 1000))
+```
+
+No cardinality, no selectivity, nothing read from MongoDB — even though
+`mongo_collStats` and `mongo_count` sit unused in the wrapper's own
+interface file.
+
+So the framing used elsewhere in this document — *AMOS II estimates where
+Polars proves* — **inverts for mediator queries.** Against a wrapped source
+AMOS II is guessing with constants, while Polars at least has exact bounds
+from a Parquet footer. The cost-based advantage is a property of local data,
+not of the architecture.
+
+One thing does survive intact: those four tiers are still `(cost fanout)`
+pairs, in the same currency as every local predicate. However crude the
+numbers, a MongoDB access can still be *compared* with an in-memory hash
+lookup — which is what Polars has no way to do at all.
+
+### A cost hook is finer than a cost annotation
+
+§7 ranks the three systems by cost-annotation granularity and puts AMOS II
+finest, at per-function-per-binding-pattern. A wrapper goes a level beyond
+that: `set_costmodel('Mongo', 'mongo-costmodel')` installs a **programmable
+cost function for a whole class of predicates**, evaluated per query against
+the actual bindings rather than declared once per function.
+
+### Open: does wrapper translation survive `exhaustive`?
+
+§2's "mutually exclusive" finding is established for **TBR-rewrite rules** —
+`rewrite.txt` §3 restricts those to RANKSORT, and the A/B transcript confirms
+it. Wrapper extractors are registered through a *different* mechanism
+(`set_extractor`, undocumented in `rewrite.txt`), and nothing here
+establishes whether they are similarly restricted.
+
+If they are not, AMOS II keeps a genuine pushdown capability under
+`optmethod('exhaustive')`, and the mutual-exclusivity claim applies only to
+the narrower rewrite-rule path. **Untested** — the wrapper cannot be loaded
+on this build
+([why](mongo-wrapper/README.md#status-unverified-and-blocked)).
+
 ## 3. Constraints beat statistics — in both systems
 
 Not every number an optimizer uses is an estimate. **Constraints** are
@@ -621,6 +733,23 @@ in the access path.
 Polars, by contrast, finds ranges *easier* than equality on the skipping
 side: min/max row-group statistics are exactly range bounds, so `col > 100`
 prunes blocks that an equality on an unsorted column could not.
+
+### Against a wrapped source there is nothing to estimate *with*
+
+Both failures above are about imperfect statistics. For an external source
+there are none at all. The MongoDB wrapper's cost model returns one of four
+constants (§2a) — no cardinality, no selectivity, nothing read from the
+server.
+
+That makes the risk described at the top of this section larger, not smaller,
+for mediator queries: the estimates still decide the whole plan, but they are
+now declarations rather than measurements. It is the same failure mode as the
+unannotated foreign predicate priced at `(100 . 100)` in §5, generalised to
+an entire data source.
+
+Nothing prevents a wrapper from doing better — `mongo_collStats` and
+`mongo_count` are declared in the wrapper's interface and simply not used by
+its cost model. The gap is in this wrapper, not in the mechanism.
 
 ### One thing AMOS II structurally cannot get wrong
 
@@ -868,17 +997,28 @@ overall comparison:
 |---|---|
 | Polars | none |
 | PostgreSQL | per function (`CREATE FUNCTION … COST 10000`) |
-| AMOS II | **per function, per binding pattern** (`cost "fiebfcost"`) |
+| AMOS II | per function, per binding pattern (`cost "fiebfcost"`) |
+| AMOS II, wrapped source | **a programmable cost function per data source** (`set_costmodel`) |
 
-AMOS II's is the finest of the three, and necessarily so: a multi-directional
-predicate has a different cost in each direction, so one number per function
-would be meaningless.
+The last row is a different kind of thing: not an annotation but a **hook**,
+evaluated per query against the actual bindings rather than declared once.
+Even the per-binding-pattern form is finer than PostgreSQL's, and necessarily
+so — a multi-directional predicate costs differently in each direction, so
+one number per function would be meaningless.
 
 **AMOS II could use exact metadata.** It estimates where Polars proves.
 Histograms would fix its skew blindness on `"multiple"` indexes, and range
-statistics would let `>`/`<` drive access paths rather than degrading into
-post-filters — a gap Polars does not have, since min/max bounds *are* range
-bounds.
+statistics would let `>`/`<` drive *local* access paths rather than degrading
+into post-filters.
+
+Note the qualifier. Range **pushdown** already works where a wrapper
+implements it — the MongoDB wrapper emits `$gt` and `$lte` without
+difficulty. The weakness is specific to local `mbtree` indexes on the tested
+build, not to ranges in general.
+
+A wrapper could also read the source's own statistics and stop guessing;
+§2a notes that the MongoDB one has the calls available and does not make
+them.
 
 **Neither objective is the whole story.** AMOS II minimises tuples visited.
 Polars' join ordering minimises **memory pressure** — a different objective
@@ -916,6 +1056,15 @@ provable category alone could not support.
   reordering can achieve. But they fire only under `ranksort`, so enabling
   `dynprogsort` disables them. You get Selinger-style search or Polars-style
   rewriting, not both. Polars runs all its passes together, always.
+  *(Established for rewrite rules; a wrapper's extractor is a separate
+  mechanism and may not be restricted the same way — see §2a.)*
+- **AMOS II pushes predicates into foreign query languages, not just into
+  scans.** A wrapper translates part of a conjunction into the source's own
+  language — MongoDB filter documents, for instance — deciding per query what
+  that source can serve rather than declaring capabilities in advance.
+  Polars' pushdown is deeper but narrower: it knows Parquet intimately and
+  can skip blocks it never reads, while AMOS II's is open-ended and knows
+  nothing until a wrapper author writes an extractor.
 - **The real distinction is what an estimate is *for*.** Polars estimates to
   choose **how to execute one operator**; AMOS II estimates to choose
   **which of n! plans to run**. Only the second needs a whole-plan cost
@@ -923,6 +1072,14 @@ provable category alone could not support.
 - **"Statistics" is an overloaded word.** AMOS II's price candidate plans
   and are approximate; Polars' Parquet min/max bounds skip unreadable data
   and are exact.
+- **Against a wrapped source the estimate framing inverts.** AMOS II reads
+  live cardinality for local functions and *nothing at all* for external
+  ones — the MongoDB cost model is four constants. So "AMOS II estimates
+  where Polars proves" holds for local data and reverses for mediator
+  queries, where AMOS II guesses and Polars has exact footer bounds. What
+  survives is the currency: those constants are still `(cost fanout)` pairs,
+  so a MongoDB access can be compared against a local one, which Polars
+  cannot do at all.
 - **Objectives differ, not just methods.** AMOS II minimises tuples visited;
   Polars' join ordering minimises memory pressure. Formally that is a **sum**
   over the plan versus a **max** over it — and `dynprogsort` already computes
@@ -967,6 +1124,9 @@ provable category alone could not support.
 - TBR-rewrite rules, and a worked construction of one:
   [`query-rewrite/README.md`](query-rewrite/README.md) and
   [`query-rewrite/building-a-rewrite-rule.md`](query-rewrite/building-a-rewrite-rule.md).
+- The MongoDB wrapper, as a worked example of mediator pushdown:
+  [`mongo-wrapper/README.md`](mongo-wrapper/README.md) and
+  [`mongo-wrapper/query-translation.md`](mongo-wrapper/query-translation.md).
 - Polars' official list of optimization passes:
   <https://docs.pola.rs/user-guide/lazy/optimizations/>
 - Polars predicate pushdown and data skipping:
